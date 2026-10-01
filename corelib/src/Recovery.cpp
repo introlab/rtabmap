@@ -243,7 +243,7 @@ bool databaseRecovery(
 	else if(UFile::erase(databasePath) != 0)
 	{
 		if(errorMsg)
-			*errorMsg = uFormat("Failed remove original database file \"%s\". Is it opened by another app? The recovered database cannot be copied back to original name.", UFile::getName(databasePath).c_str(), UFile::getName(recoveryPath).c_str());
+			*errorMsg = uFormat("Failed remove original database file \"%s\". Is it opened by another app? The recovered database \"%s\" cannot be copied back to original name.", UFile::getName(databasePath).c_str(), UFile::getName(recoveryPath).c_str());
 		return false;
 	}
 

@@ -332,7 +332,7 @@ void DBDriver::emptyTrashes(bool async)
 	std::map<int, VisualWord*> visualWords;
 	_trashesMutex.lock();
 	{
-		ULOGGER_DEBUG("signatures=%d, visualWords=%d", _trashSignatures.size(), _trashVisualWords.size());
+		ULOGGER_DEBUG("signatures=%d, visualWords=%d", (int)_trashSignatures.size(), (int)_trashVisualWords.size());
 		signatures = _trashSignatures;
 		visualWords = _trashVisualWords;
 		_trashSignatures.clear();
@@ -539,10 +539,10 @@ void DBDriver::updateLaserScan(int nodeId, const LaserScan & scan)
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::load(VWDictionary & dictionary, bool lastStateOnly) const
+void DBDriver::load(VWDictionary & dictionary, bool lastStateOnly, bool idsOnly) const
 {
 	_dbSafeAccessMutex.lock();
-	this->loadQuery(dictionary, lastStateOnly);
+	this->loadQuery(dictionary, lastStateOnly, idsOnly);
 	_dbSafeAccessMutex.unlock();
 }
 
@@ -707,7 +707,10 @@ void DBDriver::getNodeData(
 			((!images || !s->sensorData().imageCompressed().empty()) &&
 			 (!scan || !s->sensorData().laserScanCompressed().isEmpty()) &&
 			 (!userData || !s->sensorData().userDataCompressed().empty()) &&
-			 (!occupancyGrid || s->sensorData().gridCellSize() != 0.0f))))
+			 (!occupancyGrid ||
+				!s->sensorData().gridGroundCellsCompressed().empty() ||
+				!s->sensorData().gridObstacleCellsCompressed().empty() ||
+				!s->sensorData().gridEmptyCellsCompressed().empty()))))
 		{
 			data = (SensorData)s->sensorData();
 			if(!images)
@@ -1368,7 +1371,7 @@ void DBDriver::generateGraph(
 			 if(idsInput.size() == 0)
 			 {
 				 this->getAllNodeIds(ids);
-				 UDEBUG("ids.size()=%d", ids.size());
+				 UDEBUG("ids.size()=%d", (int)ids.size());
 				 for(std::map<int, Signature*>::const_iterator iter=otherSignatures.begin(); iter!=otherSignatures.end(); ++iter)
 				 {
 					 ids.insert(iter->first);
@@ -1382,7 +1385,7 @@ void DBDriver::generateGraph(
 			 const char * colorG = "green";
 			 const char * colorP = "pink";
 			 const char * colorNM = "blue";
-			 UINFO("Generating map with %d locations", ids.size());
+			 UINFO("Generating map with %d locations", (int)ids.size());
 			 fprintf(fout, "digraph G {\n");
 			 for(std::set<int>::iterator i=ids.begin(); i!=ids.end(); ++i)
 			 {

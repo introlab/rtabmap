@@ -47,6 +47,7 @@ ExportDialog::ExportDialog(QWidget * parent) :
 	connect(_ui->spinBox_ignored, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_framerate, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_session, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_selected_nodes, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_rgb, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_depth, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_depth2d, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
@@ -70,6 +71,8 @@ void ExportDialog::saveSettings(QSettings & settings, const QString & group) con
 	settings.setValue("framesIgnored", this->framesIgnored());
 	settings.setValue("targetFramerate", this->targetFramerate());
 	settings.setValue("sessionExported", this->sessionExported());
+	settings.setValue("currentComponentOnly", this->currentComponentOnly());
+	settings.setValue("selectedNodesOnly", this->selectedNodesOnly());
 	settings.setValue("rgbExported", this->isRgbExported());
 	settings.setValue("depthExported", this->isDepthExported());
 	settings.setValue("depth2dExported", this->isDepth2dExported());
@@ -90,6 +93,8 @@ void ExportDialog::loadSettings(QSettings & settings, const QString & group)
 	_ui->spinBox_ignored->setValue(settings.value("framesIgnored", this->framesIgnored()).toInt());
 	_ui->doubleSpinBox_framerate->setValue(settings.value("targetFramerate", this->targetFramerate()).toDouble());
 	_ui->spinBox_session->setValue(settings.value("sessionExported", this->sessionExported()).toInt());
+	_ui->checkBox_current_component->setChecked(settings.value("currentComponentOnly", this->currentComponentOnly()).toBool());
+	_ui->checkBox_selected_nodes->setChecked(settings.value("selectedNodesOnly", this->selectedNodesOnly()).toBool());
 	_ui->checkBox_rgb->setChecked(settings.value("rgbExported", this->isRgbExported()).toBool());
 	_ui->checkBox_depth->setChecked(settings.value("depthExported", this->isDepthExported()).toBool());
 	_ui->checkBox_depth2d->setChecked(settings.value("depth2dExported", this->isDepth2dExported()).toBool());
@@ -106,6 +111,8 @@ void ExportDialog::restoreDefaults()
 	_ui->spinBox_ignored->setValue(0);
 	_ui->doubleSpinBox_framerate->setValue(0);
 	_ui->spinBox_session->setValue(-1);
+	_ui->checkBox_current_component->setChecked(false);
+	_ui->checkBox_selected_nodes->setChecked(false);
 	_ui->checkBox_rgb->setChecked(true);
 	_ui->checkBox_depth->setChecked(true);
 	_ui->checkBox_depth2d->setChecked(true);
@@ -140,6 +147,16 @@ double ExportDialog::targetFramerate() const
 int ExportDialog::sessionExported() const
 {
 	return _ui->spinBox_session->value();
+}
+
+bool ExportDialog::currentComponentOnly() const
+{
+	return _ui->checkBox_current_component->isChecked();
+}
+
+bool ExportDialog::selectedNodesOnly() const
+{
+	return _ui->checkBox_selected_nodes->isChecked();
 }
 
 bool ExportDialog::isRgbExported() const

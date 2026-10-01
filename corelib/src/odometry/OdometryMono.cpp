@@ -43,7 +43,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UMath.h"
 #include <opencv2/imgproc/imgproc.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/calib3d/calib3d.hpp>
+#else
+#include <opencv2/geometry.hpp>
+#endif
 #include <opencv2/video/tracking.hpp>
 #include <pcl/common/centroid.h>
 
@@ -472,9 +476,8 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 								}
 							}
 
-							std::set<int> outliers;
 							UWARN("Bundle adjustment begin");
-							poses = ba->optimizeBA(poses.begin()->first, poses, links, models, localMap_, wordReferences, &outliers);
+							poses = ba->optimizeBA(poses.begin()->first, poses, links, models, localMap_, wordReferences);
 							UWARN("Bundle adjustment end");
 							if(!poses.empty())
 							{

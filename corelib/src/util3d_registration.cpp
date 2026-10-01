@@ -31,7 +31,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d.h"
 
+#include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <pcl/registration/icp.h>
+
+// Explicitly instantiate pcl::RandomSampleConsensus and
+// pcl::SampleConsensusModelRegistration for pcl::PointXYZINormal. PCL itself
+// only ships precompiled symbols for the types listed in PCL_XYZ_POINT_TYPES
+// when built without PCL_ONLY_CORE_POINT_TYPES; the Windows pre-built PCL
+// (and any "core point types" build) omits PointXYZINormal, so without this
+// rtabmap_core.dll fails to link when the rejector is used with that type.
+#include <pcl/sample_consensus/impl/ransac.hpp>
+#include <pcl/sample_consensus/impl/sac_model_registration.hpp>
+template class pcl::RandomSampleConsensus<pcl::PointXYZINormal>;
+template class pcl::SampleConsensusModelRegistration<pcl::PointXYZINormal>;
+
 #include <pcl/registration/transformation_estimation_2D.h>
 #include <pcl/registration/transformation_estimation_svd.h>
 #include <pcl/sample_consensus/sac_model_registration.h>
@@ -51,6 +64,7 @@ Transform transformFromXYZCorrespondencesSVD(
 	const pcl::PointCloud<pcl::PointXYZ> & cloud1,
 	const pcl::PointCloud<pcl::PointXYZ> & cloud2)
 {
+	UASSERT(cloud1.size() == cloud2.size());
 	pcl::registration::TransformationEstimationSVD<pcl::PointXYZ, pcl::PointXYZ> svd;
 
 	// Perform the alignment
@@ -205,7 +219,7 @@ Transform transformFromXYZCorrespondences(
 				{
 					double variance =  model->computeVariance();
 					UASSERT(uIsFinite(variance));
-					*covariance *= variance;
+					*covariance *= variance + 1e-6;
 				}
 
 				// get best transformation
@@ -256,7 +270,13 @@ void computeVarianceAndCorrespondencesImpl(
 	est->setInputTarget(target);
 	est->setInputSource(source);
 	pcl::Correspondences correspondences;
-	est->determineReciprocalCorrespondences(correspondences, maxCorrespondenceDistance);
+	if(reciprocal) {
+		est->determineReciprocalCorrespondences(correspondences, maxCorrespondenceDistance);
+	}
+	else {
+		est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
+	}
+
 
 	if(correspondences.size())
 	{
@@ -340,7 +360,12 @@ void computeVarianceAndCorrespondencesImpl(
 	est->setInputTarget(cloudA->size()>cloudB->size()?cloudA:cloudB);
 	est->setInputSource(cloudA->size()>cloudB->size()?cloudB:cloudA);
 	pcl::Correspondences correspondences;
-	est->determineReciprocalCorrespondences(correspondences, maxCorrespondenceDistance);
+	if(reciprocal) {
+		est->determineReciprocalCorrespondences(correspondences, maxCorrespondenceDistance);
+	}
+	else {
+		est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
+	}
 
 	if(correspondences.size()>=3)
 	{
@@ -381,6 +406,28 @@ void computeVarianceAndCorrespondences(
 	computeVarianceAndCorrespondencesImpl<pcl::PointXYZI>(cloudA, cloudB, maxCorrespondenceDistance, variance, correspondencesOut, reciprocal);
 }
 
+// RANSAC-based correspondence rejector: fits a rigid transform on random
+// 3-pair subsets and discards pairs that disagree. PCL's
+// IterativeClosestPoint::setRANSACOutlierRejectionThreshold and
+// setRANSACIterations are NOT honored by ICP itself (only by NDT and
+// k-4PCS), so we install the rejector explicitly here.
+template<typename PointT>
+void addRansacRejector(
+		pcl::IterativeClosestPoint<PointT, PointT> & icp,
+		const typename pcl::PointCloud<PointT>::ConstPtr & cloud_source,
+		const typename pcl::PointCloud<PointT>::ConstPtr & cloud_target,
+		double maxCorrespondenceDistance,
+		float ransacOutlierRatio)
+{
+	typename pcl::registration::CorrespondenceRejectorSampleConsensus<PointT>::Ptr
+			rejector(new pcl::registration::CorrespondenceRejectorSampleConsensus<PointT>());
+	rejector->setInlierThreshold(maxCorrespondenceDistance * ransacOutlierRatio);
+	rejector->setMaximumIterations(50);
+	rejector->setInputSource(cloud_source);
+	rejector->setInputTarget(cloud_target);
+	icp.addCorrespondenceRejector(rejector);
+}
+
 // return transform from source to target (All points must be finite!!!)
 template<typename PointT>
 Transform icpImpl(const typename pcl::PointCloud<PointT>::ConstPtr & cloud_source,
@@ -390,7 +437,9 @@ Transform icpImpl(const typename pcl::PointCloud<PointT>::ConstPtr & cloud_sourc
 			  bool & hasConverged,
 			  pcl::PointCloud<PointT> & cloud_source_registered,
 			  float epsilon,
-			  bool icp2D)
+			  bool icp2D,
+			  float ransacOutlierRatio,
+			  int * iterationsDone)
 {
 	pcl::IterativeClosestPoint<PointT, PointT> icp;
 	// Set the input source and target
@@ -404,19 +453,25 @@ Transform icpImpl(const typename pcl::PointCloud<PointT>::ConstPtr & cloud_sourc
 		icp.setTransformationEstimation(est);
 	}
 
-	// Set the max correspondence distance to 5cm (e.g., correspondences with higher distances will be ignored)
+	// Set the max correspondence distance (e.g., correspondences with higher distances will be ignored)
 	icp.setMaxCorrespondenceDistance (maxCorrespondenceDistance);
 	// Set the maximum number of iterations (criterion 1)
 	icp.setMaximumIterations (maximumIterations);
 	// Set the transformation epsilon (criterion 2)
 	icp.setTransformationEpsilon (epsilon*epsilon);
 	// Set the euclidean distance difference epsilon (criterion 3)
-	//icp.setEuclideanFitnessEpsilon (1);
-	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
+	//icp.setEuclideanFitnessEpsilon (-std::numeric_limits<double>::max());
+
+	if(ransacOutlierRatio > 0.0f && ransacOutlierRatio < 1.0f)
+	{
+		addRansacRejector<PointT>(icp, cloud_source, cloud_target,
+				maxCorrespondenceDistance, ransacOutlierRatio);
+	}
 
 	// Perform the alignment
 	icp.align (cloud_source_registered);
 	hasConverged = icp.hasConverged();
+	if(iterationsDone) *iterationsDone = icp.nr_iterations_;
 	return Transform::fromEigen4f(icp.getFinalTransformation());
 }
 
@@ -428,9 +483,11 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 			  bool & hasConverged,
 			  pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered,
 			  float epsilon,
-			  bool icp2D)
+			  bool icp2D,
+			  float ransacOutlierRatio,
+			  int * iterationsDone)
 {
-	return icpImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D);
+	return icpImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D, ransacOutlierRatio, iterationsDone);
 }
 
 // return transform from source to target (All points must be finite!!!)
@@ -441,9 +498,11 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZI>::ConstPtr & cloud_source,
 			  bool & hasConverged,
 			  pcl::PointCloud<pcl::PointXYZI> & cloud_source_registered,
 			  float epsilon,
-			  bool icp2D)
+			  bool icp2D,
+			  float ransacOutlierRatio,
+			  int * iterationsDone)
 {
-	return icpImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D);
+	return icpImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D, ransacOutlierRatio, iterationsDone);
 }
 
 // return transform from source to target (All points/normals must be finite!!!)
@@ -456,7 +515,9 @@ Transform icpPointToPlaneImpl(
 		bool & hasConverged,
 		pcl::PointCloud<PointNormalT> & cloud_source_registered,
 		float epsilon,
-		bool icp2D)
+		bool icp2D,
+		float ransacOutlierRatio,
+		int * iterationsDone)
 {
 	pcl::IterativeClosestPoint<PointNormalT, PointNormalT> icp;
 	// Set the input source and target
@@ -467,7 +528,7 @@ Transform icpPointToPlaneImpl(
 	est.reset(new pcl::registration::TransformationEstimationPointToPlaneLLS<PointNormalT, PointNormalT>);
 	icp.setTransformationEstimation(est);
 
-	// Set the max correspondence distance to 5cm (e.g., correspondences with higher distances will be ignored)
+	// Set the max correspondence distance (e.g., correspondences with higher distances will be ignored)
 	icp.setMaxCorrespondenceDistance (maxCorrespondenceDistance);
 	// Set the maximum number of iterations (criterion 1)
 	icp.setMaximumIterations (maximumIterations);
@@ -475,17 +536,29 @@ Transform icpPointToPlaneImpl(
 	icp.setTransformationEpsilon (epsilon*epsilon);
 	// Set the euclidean distance difference epsilon (criterion 3)
 	//icp.setEuclideanFitnessEpsilon (1);
-	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
+
+	if(ransacOutlierRatio > 0.0f && ransacOutlierRatio < 1.0f)
+	{
+		addRansacRejector<PointNormalT>(icp, cloud_source, cloud_target,
+				maxCorrespondenceDistance, ransacOutlierRatio);
+	}
 
 	// Perform the alignment
 	icp.align (cloud_source_registered);
 	hasConverged = icp.hasConverged();
+	if(iterationsDone) *iterationsDone = icp.nr_iterations_;
 	Transform t = Transform::fromEigen4f(icp.getFinalTransformation());
 
 	if(icp2D)
 	{
-		// FIXME probably an estimation approach already 2D like in icp() version above exists.
+		// PCL has no 2D-aware PointToPlane estimator (only the
+		// point-to-point pcl::registration::TransformationEstimation2D),
+		// so we run the full 6DoF PointToPlaneLLS above and then snap
+		// the result to 3DoF here.  The 6DoF LLS on planar (z=0) input
+		// is numerically fragile -- callers that need 2D PointToPlane
+		// reliably should use libpointmatcher (Icp/Strategy=1).
 		t = t.to3DoF();
+		pcl::transformPointCloudWithNormals(*cloud_source, cloud_source_registered, t.toEigen4f());
 	}
 
 	return t;
@@ -500,9 +573,11 @@ Transform icpPointToPlane(
 		bool & hasConverged,
 		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered,
 		float epsilon,
-		bool icp2D)
+		bool icp2D,
+		float ransacOutlierRatio,
+		int * iterationsDone)
 {
-	return icpPointToPlaneImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D);
+	return icpPointToPlaneImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D, ransacOutlierRatio, iterationsDone);
 }
 // return transform from source to target (All points/normals must be finite!!!)
 Transform icpPointToPlane(
@@ -513,9 +588,11 @@ Transform icpPointToPlane(
 		bool & hasConverged,
 		pcl::PointCloud<pcl::PointXYZINormal> & cloud_source_registered,
 		float epsilon,
-		bool icp2D)
+		bool icp2D,
+		float ransacOutlierRatio,
+		int * iterationsDone)
 {
-	return icpPointToPlaneImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D);
+	return icpPointToPlaneImpl(cloud_source, cloud_target, maxCorrespondenceDistance, maximumIterations, hasConverged, cloud_source_registered, epsilon, icp2D, ransacOutlierRatio, iterationsDone);
 }
 
 }

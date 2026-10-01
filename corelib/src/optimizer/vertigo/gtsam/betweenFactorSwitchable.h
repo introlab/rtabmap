@@ -41,14 +41,23 @@ namespace vertigo {
 #endif
         {
 
-          // calculate error
+          // calculate error: f(p1, p2, s) = E_raw(p1, p2) * s
           gtsam::Vector error = betweenFactor.evaluateError(p1, p2, H1, H2);
+
+          // Jacobian w.r.t. the switch tangent: dE/ds = E_raw (the
+          // unscaled error). Must be captured BEFORE scaling `error` by
+          // s.value() below. Setting H3 to the scaled error (= E_raw*s)
+          // was a bug: at small s the switch gradient vanishes
+          // quadratically with s, so the optimizer stalls before driving
+          // the switch to 0 -- visibly worse outlier rejection than the
+          // g2o equivalent (EdgeSE3Switchable, which has the correct
+          // constant Jacobian-element).
+          if (H3) *H3 = error;
           error *= s.value();
 
           // handle derivatives
           if (H1) *H1 = *H1 * s.value();
           if (H2) *H2 = *H2 * s.value();
-          if (H3) *H3 = error;
 
           return error;
         };
@@ -91,7 +100,8 @@ namespace vertigo {
         // handle derivatives
         if (H1) *H1 = *H1 * w;
         if (H2) *H2 = *H2 * w;
-        if (H3) *H3 = error /* (w*(1.0-w))*/;  // sig(x)*(1-sig(x)) is the derivative of sig(x) wrt. x
+        // error already includes w; sigmoid's derivative is w*(1-w).
+        if (H3) *H3 = error * (1.0-w);
 
         return error;
       };

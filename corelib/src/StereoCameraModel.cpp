@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+#if (CV_MAJOR_VERSION > 2 and CV_MAJOR_VERSION < 5) or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 #include <rtabmap/core/stereo/stereoRectifyFisheye.h>
 #endif
 
@@ -179,12 +179,20 @@ void StereoCameraModel::updateStereoRectification()
 	{
 		cv::Vec4d D_left(left_.D_raw().at<double>(0,0), left_.D_raw().at<double>(0,1), left_.D_raw().at<double>(0,4), left_.D_raw().at<double>(0,5));
 		cv::Vec4d D_right(right_.D_raw().at<double>(0,0), right_.D_raw().at<double>(0,1), right_.D_raw().at<double>(0,4), right_.D_raw().at<double>(0,5));
-
+#if CV_MAJOR_VERSION < 5
 		stereoRectifyFisheye(
 				left_.K_raw(), D_left,
 				right_.K_raw(), D_right,
 				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
 				cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
+#else
+		double balance = 0.0, fov_scale = 1.0;
+		cv::fisheye::stereoRectify(
+				left_.K_raw(), D_left,
+				right_.K_raw(), D_right,
+				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
+				cv::CALIB_ZERO_DISPARITY, left_.imageSize(), balance, fov_scale);
+#endif
 
 		// Re-zoom to original focal distance
 		if(P1.at<double>(0,0) < 0)
@@ -220,11 +228,11 @@ void StereoCameraModel::updateStereoRectification()
 	right_ = CameraModel(right_.name(), right_.imageSize(), right_.K_raw(), right_.D_raw(), R2, P2, right_.localTransform());
 }
 
-bool StereoCameraModel::load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform)
+bool StereoCameraModel::load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform, bool initRectificationMaps)
 {
 	name_ = cameraName;
-	bool leftLoaded = left_.load(directory, cameraName+"_"+getLeftSuffix());
-	bool rightLoaded = right_.load(directory, cameraName+"_"+getRightSuffix());
+	bool leftLoaded = left_.load(directory, cameraName+"_"+getLeftSuffix(), initRectificationMaps);
+	bool rightLoaded = right_.load(directory, cameraName+"_"+getRightSuffix(), initRectificationMaps);
 	if(leftLoaded && rightLoaded)
 	{
 		if(ignoreStereoTransform)
@@ -248,7 +256,7 @@ bool StereoCameraModel::load(const std::string & directory, const std::string & 
 			n = fs["camera_name"];
 			if(n.type() != cv::FileNode::NONE)
 			{
-				name_ = (int)n;
+				name_ = n.string();
 			}
 			else
 			{
@@ -588,6 +596,30 @@ float StereoCameraModel::computeDisparity(unsigned short depth) const
 		return 0.0f;
 	}
 	return baseline() * left().fx() / (float(depth)/1000.0f) - right().cx() + left().cx();
+}
+
+void StereoCameraModel::reproject(float x, float y, float z, float & uLeft, float & vLeft, float & uRight, float & vRight) const
+{
+	UASSERT(z!=0.0f);
+	float invZ = 1.0f/z;
+	// CameraModel::reproject() doesn't apply Tx, as a camera model with a Tx set is
+	// also used to tag a left camera having stereo observations (see the stereo edges
+	// of the BA optimizers). Here Tx is the baseline of the rectified projection
+	// matrices (0 for the left camera, -fx*baseline for the right one), so that
+	// (uLeft-uRight) is the disparity of the point.
+	uLeft = (left_.fx()*x + left_.Tx())*invZ + left_.cx();
+	vLeft = (left_.fy()*y)*invZ + left_.cy();
+	uRight = (right_.fx()*x + right_.Tx())*invZ + right_.cx();
+	vRight = (right_.fy()*y)*invZ + right_.cy();
+}
+void StereoCameraModel::reproject(float x, float y, float z, int & uLeft, int & vLeft, int & uRight, int & vRight) const
+{
+	float uLeftF, vLeftF, uRightF, vRightF;
+	this->reproject(x, y, z, uLeftF, vLeftF, uRightF, vRightF);
+	uLeft = uLeftF;
+	vLeft = vLeftF;
+	uRight = uRightF;
+	vRight = vRightF;
 }
 
 Transform StereoCameraModel::stereoTransform() const

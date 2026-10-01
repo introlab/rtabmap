@@ -32,9 +32,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+/**
+ * @class GPS
+ * @brief WGS84 GPS fix attached to a sensor sample or graph node.
+ *
+ * Stores a timestamped geographic position with horizontal accuracy and bearing.
+ * Values are persisted in the database as six doubles in the order
+ * @c stamp, @c longitude, @c latitude, @c altitude, @c error, @c bearing.
+ *
+ * @see SensorData::gps()
+ * @see GeodeticCoords
+ */
 class GPS
 {
 public:
+	/** @brief Default-constructs a fix at the origin with zero stamp and error. */
 	GPS():
 		stamp_(0.0),
 		longitude_(0.0),
@@ -43,6 +55,15 @@ public:
 		error_(0.0),
 		bearing_(0.0)
 	{}
+	/**
+	 * @brief Constructs a GPS fix.
+	 * @param stamp Timestamp in seconds.
+	 * @param longitude Longitude in decimal degrees (DD, east positive).
+	 * @param latitude Latitude in decimal degrees (DD, north positive).
+	 * @param altitude Altitude in meters above the WGS84 ellipsoid.
+	 * @param error Horizontal position error radius in meters.
+	 * @param bearing Heading in degrees, 0 = north, increasing clockwise.
+	 */
 	GPS(const double & stamp,
 		const double & longitude,
 		const double & latitude,
@@ -56,13 +77,22 @@ public:
 			error_(error),
 			bearing_(bearing)
 	{}
+	/** @return Timestamp in seconds. */
 	const double & stamp() const {return stamp_;}
+	/** @return Longitude in decimal degrees (DD). */
 	const double & longitude() const {return longitude_;}
+	/** @return Latitude in decimal degrees (DD). */
 	const double & latitude() const {return latitude_;}
+	/** @return Altitude in meters. */
 	const double & altitude() const {return altitude_;}
+	/** @return Horizontal position error in meters. */
 	const double & error() const {return error_;}
+	/** @return Bearing in degrees (north = 0, clockwise). */
 	const double & bearing() const {return bearing_;}
 
+	/**
+	 * @return @ref GeodeticCoords built from @ref latitude(), @ref longitude() and @ref altitude().
+	 */
 	GeodeticCoords toGeodeticCoords() const {return GeodeticCoords(latitude_, longitude_, altitude_);}
 private:
 	double stamp_;     // in sec

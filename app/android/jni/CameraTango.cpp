@@ -865,7 +865,7 @@ SensorData CameraTango::updateDataOnRender(Transform & pose)
 	}
 
 	SensorData data;
-	if(tangoDataReady_.acquireTry(1))
+	if(tangoDataReady_.acquireTry(1) == 0)
 	{
 		boost::mutex::scoped_lock  lock(tangoDataMutex_);
 		data = tangoData_;

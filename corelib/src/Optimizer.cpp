@@ -277,7 +277,7 @@ void Optimizer::getConnectedGraph(
 		posesOut.insert(std::make_pair(currentId, currentPose));
 
 		// add prior links
-		for(std::multimap<int, Link>::const_iterator pter=linksIn.find(currentId); pter!=linksIn.end() && pter->first==currentId; ++pter)
+		for(std::multimap<int, Link>::const_iterator pter=linksIn.lower_bound(currentId); pter!=linksIn.end() && pter->first==currentId; ++pter)
 		{
 			if(pter->second.from() == pter->second.to() && (!priorsIgnored() || pter->second.type() != Link::kPosePrior))
 			{
@@ -285,7 +285,7 @@ void Optimizer::getConnectedGraph(
 			}
 		}
 
-		for(std::multimap<int, std::pair<int, Link::Type> >::const_iterator iter=biLinks.find(currentId); iter!=biLinks.end() && iter->first==currentId; ++iter)
+		for(std::multimap<int, std::pair<int, Link::Type> >::const_iterator iter=biLinks.lower_bound(currentId); iter!=biLinks.end() && iter->first==currentId; ++iter)
 		{
 			int toId = iter->second.first;
 			Link::Type type = iter->second.second;
@@ -476,8 +476,12 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
-		std::set<int> * outliers)
+		BAOutliers * outliers)
 {
+	if(outliers)
+	{
+		outliers->clear();
+	}
 	UERROR("Optimizer %d doesn't implement optimizeBA() method.", (int)this->type());
 	return std::map<int, Transform>();
 }
@@ -563,7 +567,7 @@ Transform Optimizer::optimizeBA(
 		const CameraModel & model,
 		std::map<int, cv::Point3f> & points3DMap,
 		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
-		std::set<int> * outliers)
+		BAOutliers * outliers)
 {
 	std::map<int, Transform> poses;
 	poses.insert(std::make_pair(link.from(), Transform::getIdentity()));
@@ -811,13 +815,13 @@ void Optimizer::computeBACorrespondences(
 					}
 					else
 					{
-						UWARN("Not enough inliers (%d) between %d and %d", info.inliersIDs.size(), sFrom.id(), sTo.id());
+						UWARN("Not enough inliers (%d) between %d and %d", (int)info.inliersIDs.size(), sFrom.id(), sTo.id());
 					}
 				}
 			}
 		}
 	}
-	UDEBUG("Added %d words (edges with words=%d/%d)", wordCount, edgeWithWordsAdded, links.size());
+	UDEBUG("Added %d words (edges with words=%d/%d)", wordCount, edgeWithWordsAdded, (int)links.size());
 	if(links.empty())
 	{
 		UERROR("No links found for BA?!");

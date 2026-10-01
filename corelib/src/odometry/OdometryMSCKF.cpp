@@ -32,7 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UThread.h"
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_MSCKF_VIO
 #include <msckf_vio/image_processor.h>
@@ -867,7 +866,7 @@ Transform OdometryMSCKF::computeTransform(
 
 			if(data.imageRaw().type() == CV_8UC3)
 			{
-				cv::cvtColor(data.imageRaw(), cam0.image, CV_BGR2GRAY);
+				cv::cvtColor(data.imageRaw(), cam0.image, cv::COLOR_BGR2GRAY);
 			}
 			else
 			{
@@ -875,7 +874,7 @@ Transform OdometryMSCKF::computeTransform(
 			}
 			if(data.rightRaw().type() == CV_8UC3)
 			{
-				cv::cvtColor(data.rightRaw(), cam1.image, CV_BGR2GRAY);
+				cv::cvtColor(data.rightRaw(), cam1.image, cv::COLOR_BGR2GRAY);
 			}
 			else
 			{

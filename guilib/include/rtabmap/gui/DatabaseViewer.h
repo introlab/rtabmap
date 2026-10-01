@@ -33,10 +33,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMainWindow>
 #include <QtCore/QByteArray>
 #include <QtCore/QMap>
+#include <QtCore/QPointF>
 #include <QtCore/QSet>
 #include <QtGui/QImage>
 #include <opencv2/core/core.hpp>
+#if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
+#else
+#include <opencv2/features.hpp>
+#endif
 #include <set>
 #include <vector>
 #include <pcl/point_cloud.h>
@@ -67,6 +72,24 @@ class EditMapArea;
 class LinkRefiningDialog;
 class Registration;
 class RegistrationIcp;
+class ExportDialog;
+
+class GraphComponent
+{
+public:
+	GraphComponent() : id(0), rootId(0), firstNodeId(0), lastNodeId(0), rotationValue(0), viewScale(-1.0f), optimizationFlavor(0) {}
+
+    int id;
+    int rootId;
+	int firstNodeId;
+	int lastNodeId;
+    int rotationValue;
+    QPointF rootCoordinates;
+    float viewScale;
+    std::set<int> nodeIds;
+	std::set<int> selectedNodeIds;
+    int optimizationFlavor; 
+};
 
 class RTABMAP_GUI_EXPORT DatabaseViewer : public QMainWindow
 {
@@ -81,6 +104,10 @@ public:
 
 protected:
 	virtual void showEvent(QShowEvent* anEvent);
+
+private:
+	void backupCurrentComponent();
+
 	virtual void moveEvent(QMoveEvent* anEvent);
 	virtual void resizeEvent(QResizeEvent* anEvent);
 	virtual void keyPressEvent(QKeyEvent *event);
@@ -88,6 +115,7 @@ protected:
 	virtual bool eventFilter(QObject *obj, QEvent *event);
 
 private Q_SLOTS:
+	void updateGraphInteractionMode();
 	void writeSettings();
 	void restoreDefaultSettings();
 	void configModified();
@@ -127,6 +155,7 @@ private Q_SLOTS:
 	void view3DMap();
 	void generate3DMap();
 	void detectMoreLoopClosures();
+	void mergeComponents();
 	void updateAllNeighborCovariances();
 	void updateAllLoopClosureCovariances();
 	void updateAllLandmarkCovariances();
@@ -134,6 +163,7 @@ private Q_SLOTS:
 	void resetAllChanges();
 	void graphNodeSelected(int);
 	void graphLinkSelected(int, int);
+	void zoomToNode();
 	void sliderAValueChanged(int);
 	void sliderBValueChanged(int);
 	void sliderAMoved(int);
@@ -142,6 +172,7 @@ private Q_SLOTS:
 	void sliderNeighborValueChanged(int);
 	void sliderLoopValueChanged(int);
 	void sliderIterationsValueChanged(int);
+	void updateGraphViewRootId();
 	void editConstraint();
 	void updateGrid();
 	void updateOctomapView();
@@ -157,6 +188,12 @@ private Q_SLOTS:
 	void notifyParametersChanged(const QStringList &);
 	void setupMainLayout(bool vertical);
 	void updateConstraintButtons();
+	void optimizationIgnoredStateChanged();
+	void fitInViewClicked();
+	void tabBarComponentsValueChanged(int);
+	void regenerateGraphComponents();
+	void updateComponentSelectedNodes();
+	void clearAllSelectedNodes();
 
 private:
 	QString getIniFilePath() const;
@@ -171,7 +208,7 @@ private:
 				QLabel * label,
 				QLabel * stamp,
 				rtabmap::ImageView * view,
-				QLabel * labelId,
+				QToolButton * buttonNodeId,
 				QLabel * labelMapId,
 				QLabel * labelPose,
 				QLabel * labelOptPose,
@@ -201,7 +238,8 @@ private:
 	std::multimap<int, rtabmap::Link> updateLinksWithModifications(
 			const std::multimap<int, rtabmap::Link> & edgeConstraints);
 	void updateNeighborsSlider(int from = 0, int to = 0);
-	void updateLoopClosuresSlider(int from = 0, int to = 0);
+	void updateLoopClosuresSlider(int from, int to);
+	void updateLoopClosuresSlider();
 	void updateCovariances(const QList<Link> & links);
 	void refineLinks(const QList<Link> & links);
 	void refineConstraint(int from, int to, Registration * reg, RegistrationIcp * regIcp, bool silent);
@@ -230,6 +268,9 @@ private:
 	std::string databaseFileName_;
 	std::list<std::map<int, rtabmap::Transform> > graphes_;
 	std::multimap<int, rtabmap::Link> graphLinks_;
+	std::vector<GraphComponent> components_;
+	int activeComponentIndex_;
+	int lastValidNodeId_;
 	std::map<int, rtabmap::Transform> odomPoses_;
 	std::map<int, rtabmap::Transform> groundTruthPoses_;
 	std::map<int, rtabmap::Transform> gpsPoses_;
@@ -249,6 +290,7 @@ private:
 	QDialog * editMapDialog_;
 	EditMapArea * editMapArea_;
 	LinkRefiningDialog * linkRefiningDialog_;
+	ExportDialog * exportDataDialog_;
 
 	bool savedMaximized_;
 	bool firstCall_;

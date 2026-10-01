@@ -28,12 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/camera/CameraVideo.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UConversion.h>
-#if CV_MAJOR_VERSION > 3
-#include <opencv2/videoio/videoio_c.h>
-#if CV_MAJOR_VERSION > 4
-#include <opencv2/videoio/legacy/constants_c.h>
-#endif
-#endif
+#include <opencv2/videoio.hpp>
 
 namespace rtabmap
 {
@@ -105,7 +100,7 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 	{
 		if (_guid.empty())
 		{
-			unsigned int guid = (unsigned int)_capture.get(CV_CAP_PROP_GUID);
+			unsigned int guid = (unsigned int)_capture.get(cv::CAP_PROP_GUID);
 			if (guid != 0 && guid != 0xffffffff)
 			{
 				_guid = uFormat("%08x", guid);
@@ -143,12 +138,12 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 				}
 
 				bool resolutionSet = false;
-				resolutionSet = _capture.set(CV_CAP_PROP_FRAME_WIDTH, _model.imageWidth());
-				resolutionSet = resolutionSet && _capture.set(CV_CAP_PROP_FRAME_HEIGHT, _model.imageHeight());
+				resolutionSet = _capture.set(cv::CAP_PROP_FRAME_WIDTH, _model.imageWidth());
+				resolutionSet = resolutionSet && _capture.set(cv::CAP_PROP_FRAME_HEIGHT, _model.imageHeight());
 
 				// Check if the resolution was set successfully
-				int actualWidth = int(_capture.get(CV_CAP_PROP_FRAME_WIDTH));
-				int actualHeight = int(_capture.get(CV_CAP_PROP_FRAME_HEIGHT));
+				int actualWidth = int(_capture.get(cv::CAP_PROP_FRAME_WIDTH));
+				int actualHeight = int(_capture.get(cv::CAP_PROP_FRAME_HEIGHT));
 				if(!resolutionSet ||
 				   actualWidth != _model.imageWidth() ||
 				   actualHeight != _model.imageHeight())
@@ -165,12 +160,12 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 			else if(_width > 0 && _height > 0)
 			{
 				int resolutionSet = false;
-				resolutionSet = _capture.set(CV_CAP_PROP_FRAME_WIDTH, _width);
-				resolutionSet = resolutionSet && _capture.set(CV_CAP_PROP_FRAME_HEIGHT, _height);
+				resolutionSet = _capture.set(cv::CAP_PROP_FRAME_WIDTH, _width);
+				resolutionSet = resolutionSet && _capture.set(cv::CAP_PROP_FRAME_HEIGHT, _height);
 
 				// Check if the resolution was set successfully
-				int actualWidth = int(_capture.get(CV_CAP_PROP_FRAME_WIDTH));
-				int actualHeight = int(_capture.get(CV_CAP_PROP_FRAME_HEIGHT));
+				int actualWidth = int(_capture.get(cv::CAP_PROP_FRAME_WIDTH));
+				int actualHeight = int(_capture.get(cv::CAP_PROP_FRAME_HEIGHT));
 				if(!resolutionSet || actualWidth != _width || actualHeight != _height)
 				{
 					UWARN("Desired resolution (%dx%d) cannot be set to camera driver, "
@@ -182,7 +177,7 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 			}
 
 			// Set FPS
-			if (this->getFrameRate() > 0 && _capture.set(CV_CAP_PROP_FPS, this->getFrameRate()))
+			if (this->getFrameRate() > 0 && _capture.set(cv::CAP_PROP_FPS, this->getFrameRate()))
 			{
 				// Check if the FPS was set successfully
 				double actualFPS = _capture.get(cv::CAP_PROP_FPS);
@@ -213,10 +208,10 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 					std::string fourccUpperCase = uToUpperCase(_fourcc);
 					int fourcc = cv::VideoWriter::fourcc(fourccUpperCase.at(0), fourccUpperCase.at(1), fourccUpperCase.at(2), fourccUpperCase.at(3));
 					
-					bool fourccSupported = _capture.set(CV_CAP_PROP_FOURCC, fourcc);
+					bool fourccSupported = _capture.set(cv::CAP_PROP_FOURCC, fourcc);
 
 					// Check if the FOURCC was set successfully
-					int actualFourcc = int(_capture.get(CV_CAP_PROP_FOURCC));
+					int actualFourcc = int(_capture.get(cv::CAP_PROP_FOURCC));
 
 					if(!fourccSupported || actualFourcc != fourcc)
 					{

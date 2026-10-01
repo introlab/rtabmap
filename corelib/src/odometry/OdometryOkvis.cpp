@@ -34,7 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UThread.h"
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UDirectory.h"
-#include <opencv2/imgproc/types_c.h>
 
 #ifdef RTABMAP_OKVIS
 #include <iostream>
@@ -427,7 +426,7 @@ Transform OdometryOkvis::computeTransform(
 				cv::Mat gray;
 				if(images[i].type() == CV_8UC3)
 				{
-					cv::cvtColor(images[i], gray, CV_BGR2GRAY);
+					cv::cvtColor(images[i], gray, cv::COLOR_BGR2GRAY);
 				}
 				else if(images[i].type() == CV_8UC1)
 				{

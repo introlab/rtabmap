@@ -52,9 +52,13 @@ public:
 		int nodeIdMax,
 		int mapIdMin,
 		int mapIdMax);
+	
+	void setRangesEnabled(bool selectedNodes, bool currentComponent);
 
 	Link::Type getLinkType() const;
 	void getIntraInterSessions(bool & intra, bool & inter) const;
+	bool isRangeByCurrentComponent() const;
+	bool isRangeBySelectedNodeIds() const;
 	bool isRangeByNodeId() const;
 	bool isRangeByMapId() const;
 	void getRangeNodeId(int & from, int & to) const;

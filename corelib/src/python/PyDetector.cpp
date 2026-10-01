@@ -24,6 +24,7 @@ PyDetector::PyDetector(const ParametersMap & parameters) :
 		path_(Parameters::defaultPyDetectorPath()),
 		cuda_(Parameters::defaultPyDetectorCuda())
 {
+	PythonInterface::instance("PyDetector");
 	this->parseParameters(parameters);
 
 	UDEBUG("path = %s", path_.c_str());
@@ -39,11 +40,19 @@ PyDetector::PyDetector(const ParametersMap & parameters) :
 	std::string matcherPythonDir = UDirectory::getDir(path_);
 	if(!matcherPythonDir.empty())
 	{
+		// For Windows
+		matcherPythonDir = uReplaceChar(matcherPythonDir, '\\', '/');
 		PyRun_SimpleString("import sys");
 		PyRun_SimpleString(uFormat("sys.path.append(\"%s\")", matcherPythonDir.c_str()).c_str());
 	}
 
 	_import_array();
+
+	// Invalidate importlib's directory-listing caches so a script created
+	// after sys.path was first scanned in this process is still found. Without
+	// this, the second PyDetector instance pointing at a freshly-written
+	// script in an already-known directory fails with ModuleNotFoundError.
+	PyRun_SimpleString("import importlib; importlib.invalidate_caches()");
 
 	std::string scriptName = uSplit(UFile::getName(path_), '.').front();
 	PyObject * pName = PyUnicode_FromString(scriptName.c_str());
@@ -81,7 +90,10 @@ void PyDetector::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kPyDetectorPath(), path_);
 	Parameters::parse(parameters, Parameters::kPyDetectorCuda(), cuda_);
 
-	path_ = uReplaceChar(path_, '~', UDirectory::homeDir());
+	if(!path_.empty() && path_[0] == '~' && (path_.size() == 1 || path_[1] == '/' || path_[1] == '\\'))
+	{
+		path_ = UDirectory::homeDir() + path_.substr(1);
+	}
 }
 
 std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)

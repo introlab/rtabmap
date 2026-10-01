@@ -23,6 +23,7 @@ PyDescriptor::PyDescriptor(
 		dim_(Parameters::defaultPyDescriptorDim())
 {
 	UDEBUG("");
+	PythonInterface::instance("PyDescriptor");
 	this->parseParameters(parameters);
 }
 
@@ -47,7 +48,10 @@ void PyDescriptor::parseParameters(const ParametersMap & parameters)
 	std::string previousPath = path_;
 	Parameters::parse(parameters, Parameters::kPyDescriptorPath(), path_);
 	Parameters::parse(parameters, Parameters::kPyDescriptorDim(), dim_);
-	path_ = uReplaceChar(path_, '~', UDirectory::homeDir());
+	if(!path_.empty() && path_[0] == '~' && (path_.size() == 1 || path_[1] == '/' || path_[1] == '\\'))
+	{
+		path_ = UDirectory::homeDir() + path_.substr(1);
+	}
 	UINFO("path = %s", path_.c_str());
 	UINFO("dim = %d", dim_);
 	UTimer timer;
@@ -77,14 +81,32 @@ void PyDescriptor::parseParameters(const ParametersMap & parameters)
 		{
 			return;
 		}
+		// Pre-validate the path: PyImport_Import on a non-existent script
+		// fails without setting a Python exception, after which
+		// getPythonTraceback() dereferences NULL pointers in Py_BuildValue
+		// and crashes. Mirrors the check in PyDetector::PyDetector().
+		if(!UFile::exists(path_) || UFile::getExtension(path_).compare("py") != 0)
+		{
+			UERROR("Cannot initialize Python descriptor, the path is not valid: \"%s\"=\"%s\"",
+					Parameters::kPyDescriptorPath().c_str(), path_.c_str());
+			return;
+		}
 		std::string matcherPythonDir = UDirectory::getDir(path_);
 		if(!matcherPythonDir.empty())
 		{
+			// For windows
+			matcherPythonDir = uReplaceChar(matcherPythonDir, '\\', '/');
 			PyRun_SimpleString("import sys");
 			PyRun_SimpleString(uFormat("sys.path.append(\"%s\")", matcherPythonDir.c_str()).c_str());
 		}
 
 		_import_array();
+
+		// Invalidate importlib's directory-listing caches so a script created
+		// after sys.path was first scanned in this process is still found.
+		// Without this, the second Py* instance pointing at a freshly-written
+		// script in an already-known directory fails with ModuleNotFoundError.
+		PyRun_SimpleString("import importlib; importlib.invalidate_caches()");
 
 		std::string scriptName = uSplit(UFile::getName(path_), '.').front();
 		PyObject * pName = PyUnicode_FromString(scriptName.c_str());

@@ -1,0 +1,33 @@
+# Codecov configuration -- https://docs.codecov.com/docs/codecov-yaml
+#
+# Coverage data is produced by .github/workflows/coverage.yml (lcov over a Debug
+# build with ENABLE_COVERAGE=ON) and uploaded by codecov/codecov-action; this
+# file only controls what Codecov reports back on a pull request. Nothing is
+# posted unless the Codecov GitHub App has access to the repository.
+
+# Mark uncovered added lines inline in the "Files changed" tab.
+github_checks:
+  annotations: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "10...90" # red/green scale: 10% is fully red, 90% fully green
+
+  status:
+    # Catch a slow slide down without pinning an absolute number.
+    project:
+      default:
+        target: auto
+        threshold: 1%
+
+    # Coverage of the lines this pull request touches. Advisory: reported, but
+    # does not block the merge -- drop "informational" to make it gate.
+    patch:
+      default:
+        informational: true
+
+comment:
+  layout: "condensed_header, diff, files"
+  behavior: default
+  require_changes: true # stay quiet when coverage doesn't move
