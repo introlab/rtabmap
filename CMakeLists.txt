@@ -620,14 +620,7 @@ IF(WITH_GTSAM)
     # Force config mode to ignore PCL's findGTSAM.cmake file
     FIND_PACKAGE(GTSAM CONFIG QUIET)
     IF(GTSAM_FOUND)
-      # For issue https://github.com/introlab/rtabmap/pull/1626
-      FIND_FILE(GTSAM_NOISE_MODEL_FACTOR_N_FILE gtsam/nonlinear/NoiseModelFactorN.h
-         PATHS ${GTSAM_INCLUDE_DIR}
-         NO_DEFAULT_PATH)
-      IF(GTSAM_NOISE_MODEL_FACTOR_N_FILE)
-         MESSAGE(STATUS "GTSAM with NoiseModelFactorN.h")
-         ADD_DEFINITIONS("-DGTSAM_WITH_NOISE_MODEL_FACTOR_N")
-      ENDIF(GTSAM_NOISE_MODEL_FACTOR_N_FILE)
+      INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/CheckGTSAMFeatures.cmake)
     ENDIF(GTSAM_FOUND)
 ENDIF(WITH_GTSAM)
 
@@ -1063,10 +1056,6 @@ IF(NOT MSVC)
     ENDIF()
 ENDIF()
 
-
-IF(GTSAM_FOUND)
-    INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/CheckGtsamAttitudeFactor.cmake)
-ENDIF()
 
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
