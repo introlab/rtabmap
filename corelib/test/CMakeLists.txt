@@ -68,8 +68,19 @@ set(corelib_test_sources
 	test_sensorcapturethread.cpp        #SensorCaptureThread.h
 )
 
+# test_optimizer_gtsam.cpp includes the Vertigo GTSAM factors from
+# corelib/src/optimizer directly, so it needs GTSAM itself (rtabmap_core links
+# it PRIVATE).
+IF(GTSAM_FOUND)
+	list(APPEND corelib_test_sources test_optimizer_gtsam.cpp)  #OptimizerGTSAM.h (Vertigo factors, gravity)
+ENDIF(GTSAM_FOUND)
+
 add_executable(test_corelib ${corelib_test_sources})
 target_link_libraries(test_corelib gtest_main rtabmap_core)
+
+IF(GTSAM_FOUND)
+	target_link_libraries(test_corelib gtsam)
+ENDIF(GTSAM_FOUND)
 
 # test_registrationicp.cpp includes corelib/src/icp/libpointmatcher.h directly
 # to test the LaserScan <-> DataPoints conversions, so it needs the library
