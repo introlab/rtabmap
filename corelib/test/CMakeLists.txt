@@ -68,6 +68,11 @@ set(corelib_test_sources
 	test_sensorcapturethread.cpp        #SensorCaptureThread.h
 )
 
+# The sigmoid factor regression can also build independently of corelib.
+IF(GTSAM_FOUND)
+    ADD_SUBDIRECTORY(gtsam_sigmoid)
+ENDIF()
+
 add_executable(test_corelib ${corelib_test_sources})
 target_link_libraries(test_corelib gtest_main rtabmap_core)
 
