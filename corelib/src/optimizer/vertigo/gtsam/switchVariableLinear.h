@@ -124,7 +124,7 @@ template<> struct traits<vertigo::SwitchVariableLinear> {
   }
   static int GetDimension(const vertigo::SwitchVariableLinear & key) {return key.Dim();}
 
-  typedef OptionalJacobian<3, 3> ChartJacobian;
+  typedef OptionalJacobian<1, 1> ChartJacobian;
   typedef gtsam::Vector TangentVector;
   static TangentVector Local(const vertigo::SwitchVariableLinear& origin, const vertigo::SwitchVariableLinear& other,
 #if GTSAM_VERSION_NUMERIC >= 40300
@@ -132,6 +132,8 @@ template<> struct traits<vertigo::SwitchVariableLinear> {
 #else
       ChartJacobian Horigin = boost::none, ChartJacobian Hother = boost::none) {
 #endif
+    if(Horigin) *Horigin = -gtsam::Matrix11::Identity();
+    if(Hother) *Hother = gtsam::Matrix11::Identity();
     return origin.localCoordinates(other);
   }
   static vertigo::SwitchVariableLinear Retract(const vertigo::SwitchVariableLinear& g, const TangentVector& v,
@@ -140,6 +142,8 @@ template<> struct traits<vertigo::SwitchVariableLinear> {
 #else
       ChartJacobian H1 = boost::none, ChartJacobian H2 = boost::none) {
 #endif
+      if(H1) *H1 = gtsam::Matrix11::Identity();
+      if(H2) *H2 = gtsam::Matrix11::Identity();
       return g.retract(v);
     }
 };

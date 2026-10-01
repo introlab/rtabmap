@@ -112,6 +112,11 @@ namespace gtsam {
 // Define Key to be Testable by specializing gtsam::traits
 template<typename T> struct traits;
 template<> struct traits<vertigo::SwitchVariableSigmoid> {
+  // Manifold concept, required by noiseModel::Unit::Create() in recent gtsam
+  typedef manifold_tag structure_category;
+  typedef vertigo::SwitchVariableSigmoid ManifoldType;
+  enum { dimension = 1 };
+
   static void Print(const vertigo::SwitchVariableSigmoid& key, const std::string& str = "") {
     key.print(str);
   }
@@ -120,7 +125,7 @@ template<> struct traits<vertigo::SwitchVariableSigmoid> {
   }
   static int GetDimension(const vertigo::SwitchVariableSigmoid & key) {return key.Dim();}
 
-  typedef OptionalJacobian<3, 3> ChartJacobian;
+  typedef OptionalJacobian<1, 1> ChartJacobian;
   typedef gtsam::Vector TangentVector;
   static TangentVector Local(const vertigo::SwitchVariableSigmoid& origin, const vertigo::SwitchVariableSigmoid& other,
 #if GTSAM_VERSION_NUMERIC >= 40300
@@ -128,6 +133,8 @@ template<> struct traits<vertigo::SwitchVariableSigmoid> {
 #else
 	  ChartJacobian Horigin = boost::none, ChartJacobian Hother = boost::none) {
 #endif
+    if(Horigin) *Horigin = -gtsam::Matrix11::Identity();
+    if(Hother) *Hother = gtsam::Matrix11::Identity();
     return origin.localCoordinates(other);
   }
   static vertigo::SwitchVariableSigmoid Retract(const vertigo::SwitchVariableSigmoid& g, const TangentVector& v,
@@ -136,6 +143,8 @@ template<> struct traits<vertigo::SwitchVariableSigmoid> {
 #else
         ChartJacobian H1 = boost::none, ChartJacobian H2 = boost::none) {
 #endif
+      if(H1) *H1 = gtsam::Matrix11::Identity();
+      if(H2) *H2 = gtsam::Matrix11::Identity();
       return g.retract(v);
     }
 };
