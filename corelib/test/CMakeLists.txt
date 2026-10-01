@@ -68,13 +68,19 @@ set(corelib_test_sources
 	test_sensorcapturethread.cpp        #SensorCaptureThread.h
 )
 
-# The sigmoid factor regression can also build independently of corelib.
+# test_optimizer_gtsam.cpp includes the Vertigo GTSAM factors from
+# corelib/src/optimizer directly, so it needs GTSAM itself (rtabmap_core links
+# it PRIVATE).
 IF(GTSAM_FOUND)
-    ADD_SUBDIRECTORY(gtsam_sigmoid)
-ENDIF()
+	list(APPEND corelib_test_sources test_optimizer_gtsam.cpp)  #OptimizerGTSAM.h (Vertigo factors, gravity)
+ENDIF(GTSAM_FOUND)
 
 add_executable(test_corelib ${corelib_test_sources})
 target_link_libraries(test_corelib gtest_main rtabmap_core)
+
+IF(GTSAM_FOUND)
+	target_link_libraries(test_corelib gtsam)
+ENDIF(GTSAM_FOUND)
 
 # test_registrationicp.cpp includes corelib/src/icp/libpointmatcher.h directly
 # to test the LaserScan <-> DataPoints conversions, so it needs the library
@@ -225,8 +231,3 @@ IF(libLAS_FOUND)
 	target_include_directories(test_laswriter PRIVATE ${libLAS_INCLUDE_DIRS})
 	add_test(NAME test_laswriter COMMAND test_laswriter)
 ENDIF(libLAS_FOUND)
-
-# This header-only compatibility test also builds independently of corelib.
-IF(GTSAM_FOUND)
-    ADD_SUBDIRECTORY(gtsam)
-ENDIF()
