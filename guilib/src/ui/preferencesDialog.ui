@@ -12391,7 +12391,7 @@ see Sqlite3 doc 'PRAGMA synchronous'.</string>
                     <item row="5" column="1">
                      <widget class="QLabel" name="label_760">
                       <property name="text">
-                       <string>Depth image compression format (should be &quot;.png&quot; or &quot;.rvl&quot;).</string>
+                       <string>Depth image compression format (should be &quot;.png&quot; or &quot;.rvl&quot;). Add &quot;:maxDepth[:quantization]&quot; (e.g., &quot;.rvl:10:100&quot;) to compress 32FC1 depth images as 16 bits inverse depth (lossy: precision ~d²/(2q(q+1)), depth over maxDepth is lost, databases cannot be opened by versions &lt; 0.24). 16UC1 depth images are always compressed losslessly.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
