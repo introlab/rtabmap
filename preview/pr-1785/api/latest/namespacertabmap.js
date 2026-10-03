@@ -508,5 +508,9 @@ var namespacertabmap =
     [ "operator<<", "namespacertabmap.html#aef0e1f1b121a9199e7511becbc8f1e32", null ],
     [ "CameraInfo", "namespacertabmap.html#ac1143b629394a895ca246d256dbc6038", null ],
     [ "CameraThread", "namespacertabmap.html#acd001e2ea3d2e44d9e24faab74d36324", null ],
-    [ "CameraEvent", "namespacertabmap.html#a02e773b48c5ac372ce67fe4e040d835d", null ]
+    [ "CameraEvent", "namespacertabmap.html#a02e773b48c5ac372ce67fe4e040d835d", null ],
+    [ "kCompressedDepthRvlSignature", "namespacertabmap.html#af79397e4c11daefaf353d14f943ae479", null ],
+    [ "kCompressedDepthRvlHeaderSize", "namespacertabmap.html#aaad2804128bde2d3e29f7e76ef4ccd9d", null ],
+    [ "kCompressedDepthInvSignature", "namespacertabmap.html#ae70d840d2253bf8e575122336b51ee9b", null ],
+    [ "kCompressedDepthInvHeaderSize", "namespacertabmap.html#a6fe0f42207f43d29b6aa013e1a57fb6c", null ]
 ];

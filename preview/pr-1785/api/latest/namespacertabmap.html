@@ -632,6 +632,18 @@ Variables</h2></td></tr>
 <tr class="memitem:a02e773b48c5ac372ce67fe4e040d835d" id="r_a02e773b48c5ac372ce67fe4e040d835d"><td class="memItemLeft" align="right" valign="top">RTABMAP_DEPRECATED typedef <a class="el" href="classrtabmap_1_1SensorEvent.html">SensorEvent</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#a02e773b48c5ac372ce67fe4e040d835d">CameraEvent</a></td></tr>
 <tr class="memdesc:a02e773b48c5ac372ce67fe4e040d835d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Backward compatibility typedef.  <br /></td></tr>
 <tr class="separator:a02e773b48c5ac372ce67fe4e040d835d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af79397e4c11daefaf353d14f943ae479" id="r_af79397e4c11daefaf353d14f943ae479"><td class="memItemLeft" align="right" valign="top">const char&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#af79397e4c11daefaf353d14f943ae479">kCompressedDepthRvlSignature</a> [8] = {'D', 'E', 'P', 'T', 'H', 'R', 'V', 'L'}</td></tr>
+<tr class="memdesc:af79397e4c11daefaf353d14f943ae479"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1Signature.html" title="Represents a node in RTAB-Map&#39;s pose graph.">Signature</a> of the ".rvl" layout (8 bytes, not null-terminated).  <br /></td></tr>
+<tr class="separator:af79397e4c11daefaf353d14f943ae479"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaad2804128bde2d3e29f7e76ef4ccd9d" id="r_aaad2804128bde2d3e29f7e76ef4ccd9d"><td class="memItemLeft" align="right" valign="top">const size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#aaad2804128bde2d3e29f7e76ef4ccd9d">kCompressedDepthRvlHeaderSize</a> = 16</td></tr>
+<tr class="memdesc:aaad2804128bde2d3e29f7e76ef4ccd9d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of the ".rvl" header: signature, uint32 cols, uint32 rows.  <br /></td></tr>
+<tr class="separator:aaad2804128bde2d3e29f7e76ef4ccd9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae70d840d2253bf8e575122336b51ee9b" id="r_ae70d840d2253bf8e575122336b51ee9b"><td class="memItemLeft" align="right" valign="top">const char&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#ae70d840d2253bf8e575122336b51ee9b">kCompressedDepthInvSignature</a> [8] = {'D', 'E', 'P', 'T', 'H', 'I', 'N', 'V'}</td></tr>
+<tr class="memdesc:ae70d840d2253bf8e575122336b51ee9b"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1Signature.html" title="Represents a node in RTAB-Map&#39;s pose graph.">Signature</a> of the inverse depth layout (8 bytes, not null-terminated).  <br /></td></tr>
+<tr class="separator:ae70d840d2253bf8e575122336b51ee9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6fe0f42207f43d29b6aa013e1a57fb6c" id="r_a6fe0f42207f43d29b6aa013e1a57fb6c"><td class="memItemLeft" align="right" valign="top">const size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#a6fe0f42207f43d29b6aa013e1a57fb6c">kCompressedDepthInvHeaderSize</a> = 16</td></tr>
+<tr class="memdesc:a6fe0f42207f43d29b6aa013e1a57fb6c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of the inverse depth header: signature, float depthQuantA, float depthQuantB.  <br /></td></tr>
+<tr class="separator:a6fe0f42207f43d29b6aa013e1a57fb6c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Contributed by e-consystemgit <a href="https://www.e-consystems.com/opensource-linux-webcam-software-application.asp">https://www.e-consystems.com/opensource-linux-webcam-software-application.asp</a> </p>
@@ -1556,6 +1568,78 @@ Variables</h2></td></tr>
 <p>CameraEvent is deprecated. Use <a class="el" href="classrtabmap_1_1SensorEvent.html" title="Event class for sensor data communication in RTAB-Map&#39;s event system.">SensorEvent</a> instead. </p>
 
 <p class="definition">Definition at line <a class="el" href="SensorEvent_8h_source.html#l00207">207</a> of file <a class="el" href="SensorEvent_8h_source.html">SensorEvent.h</a>.</p>
+
+</div>
+</div>
+<a id="af79397e4c11daefaf353d14f943ae479" name="af79397e4c11daefaf353d14f943ae479"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af79397e4c11daefaf353d14f943ae479">&#9670;&#160;</a></span>kCompressedDepthRvlSignature</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const char rtabmap::kCompressedDepthRvlSignature[8] = {'D', 'E', 'P', 'T', 'H', 'R', 'V', 'L'}</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p><a class="el" href="classrtabmap_1_1Signature.html" title="Represents a node in RTAB-Map&#39;s pose graph.">Signature</a> of the ".rvl" layout (8 bytes, not null-terminated). </p>
+
+<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00118">118</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
+
+</div>
+</div>
+<a id="aaad2804128bde2d3e29f7e76ef4ccd9d" name="aaad2804128bde2d3e29f7e76ef4ccd9d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaad2804128bde2d3e29f7e76ef4ccd9d">&#9670;&#160;</a></span>kCompressedDepthRvlHeaderSize</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const size_t rtabmap::kCompressedDepthRvlHeaderSize = 16</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Size of the ".rvl" header: signature, uint32 cols, uint32 rows. </p>
+
+<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00120">120</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
+
+</div>
+</div>
+<a id="ae70d840d2253bf8e575122336b51ee9b" name="ae70d840d2253bf8e575122336b51ee9b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae70d840d2253bf8e575122336b51ee9b">&#9670;&#160;</a></span>kCompressedDepthInvSignature</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const char rtabmap::kCompressedDepthInvSignature[8] = {'D', 'E', 'P', 'T', 'H', 'I', 'N', 'V'}</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p><a class="el" href="classrtabmap_1_1Signature.html" title="Represents a node in RTAB-Map&#39;s pose graph.">Signature</a> of the inverse depth layout (8 bytes, not null-terminated). </p>
+
+<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00122">122</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
+
+</div>
+</div>
+<a id="a6fe0f42207f43d29b6aa013e1a57fb6c" name="a6fe0f42207f43d29b6aa013e1a57fb6c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6fe0f42207f43d29b6aa013e1a57fb6c">&#9670;&#160;</a></span>kCompressedDepthInvHeaderSize</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const size_t rtabmap::kCompressedDepthInvHeaderSize = 16</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Size of the inverse depth header: signature, float depthQuantA, float depthQuantB. </p>
+
+<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00124">124</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
 
 </div>
 </div>
