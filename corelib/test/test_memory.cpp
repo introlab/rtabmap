@@ -4770,3 +4770,39 @@ INSTANTIATE_TEST_SUITE_P(
 				InverseDepthCase{"0.23.0", kCompressedDepthOnly, ".rvl:10:100", true, ".png"},     // decompressed, re-compressed
 				InverseDepthCase{"", kRawDepth, ".rvl", true, ".png"},                             // RVL is 16UC1 only: legacy
 				InverseDepthCase{"", kRawDepth, ".jpg", true, ".png"}));                           // invalid: default ".rvl"
+
+// Compressed images that Memory rectifies (Rtabmap/ImagesAlreadyRectified=false) are
+// decoded for it, even when nothing else needs them (no feature extraction here): they
+// are stored rectified, not as received.
+TEST(MemoryTest, DecodesCompressedImagesToRectifyThem)
+{
+	for(bool alreadyRectified : {true, false})
+	{
+		SCOPED_TRACE(alreadyRectified ? "already rectified" : "rectified by Memory");
+		ParametersMap params = defaultMemoryParams();
+		params[Parameters::kMemBinDataKept()] = "true";
+		params[Parameters::kRtabmapImagesAlreadyRectified()] = alreadyRectified ? "true" : "false";
+		Memory memory(params);
+		ASSERT_TRUE(memory.init(""));
+
+		cv::Mat rgb(48, 64, CV_8UC3);
+		cv::randu(rgb, 0, 255);
+		const cv::Mat K = (cv::Mat_<double>(3, 3) << 50, 0, 32, 0, 50, 24, 0, 0, 1);
+		const cv::Mat D = (cv::Mat_<double>(1, 5) << -0.3, 0.1, 0, 0, 0);
+		const cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
+		const cv::Mat P = (cv::Mat_<double>(3, 4) << 50, 0, 32, 0, 0, 50, 24, 0, 0, 0, 1, 0);
+		const CameraModel model("cam", cv::Size(64, 48), K, D, R, P, CameraModel::opticalRotation());
+		ASSERT_TRUE(model.isValidForRectification());
+		const cv::Mat compressed = compressImage2(rgb, ".png");
+		SensorData data(compressed, cv::Mat(), model);
+
+		ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+		const Signature * s = memory.getSignature(memory.getLastSignatureId());
+		ASSERT_NE(s, nullptr);
+		const cv::Mat & stored = s->sensorData().imageCompressed();
+		ASSERT_FALSE(stored.empty());
+		const bool sameBytes = stored.total() == compressed.total() &&
+				memcmp(stored.data, compressed.data, compressed.total()) == 0;
+		EXPECT_EQ(sameBytes, alreadyRectified);
+	}
+}

@@ -5246,7 +5246,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	if(!isIntermediateNode)
 	{
 		// We need raw images if we need to extract features and/or do tag detection
-		bool needRawImages = _feature2D->getMaxFeatures() >= 0 && 
+		bool needRawImages = (_feature2D->getMaxFeatures() >= 0 &&
 			(!_useOdometryFeatures ||
 			 data.keypoints().empty() ||
 			 (int)data.keypoints().size() != data.descriptors().rows ||
@@ -5254,7 +5254,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			 _detectMarkers ||
 			 _rotateImagesUpsideUp ||
 			 _imagePostDecimation > 1 ||
-			 (_createOccupancyGrid && _localMapMaker->isGridFromDepth()));
+			 (_createOccupancyGrid && _localMapMaker->isGridFromDepth()))) ||
+			// Images rectified below: stereo always, RGB-D unless only its features are
+			(!_imagesAlreadyRectified && !(_rectifyOnlyFeatures && data.stereoCameraModels().empty()));
 
 		// Note: we could avoid uncompressing scan if we don't do any filtering
 		// and if we don't use it for local occupancy grid
