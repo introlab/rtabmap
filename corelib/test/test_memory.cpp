@@ -4681,3 +4681,74 @@ TEST(MemoryTest, CreateSignatureRecompressesStereoPairAfterRectification)
 	EXPECT_GT(cv::countNonZero(uncompressImage(stored.depthOrRightCompressed()) != right), 0)
 			<< "stored right image still holds the unrectified pixels";
 }
+
+// ---------------------------------------------------------------------------
+// Mem/DepthCompressionFormat with inverse depth (".rvl:max:q"), which databases
+// older than 0.24 cannot hold: rtabmap 0.23 would still open them (e.g., created
+// with Db/TargetVersion=0.23.0) but could not decode their depth images.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+struct InverseDepthCase
+{
+	const char * targetVersion;
+	bool precompressed;      // depth already compressed as inverse depth, e.g., from ROS
+	const char * expectedFormat;
+};
+
+class MemoryInverseDepthTest : public ::testing::TestWithParam<InverseDepthCase> {};
+
+} // namespace
+
+TEST_P(MemoryInverseDepthTest, StoredDepthFormatFollowsDatabaseVersion)
+{
+	const InverseDepthCase & cs = GetParam();
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemDepthCompressionFormat()] = ".rvl:10:100";
+	params[Parameters::kDbTargetVersion()] = cs.targetVersion;
+	Memory memory(params);
+	const std::string dbPath = uniqueDbPath();
+	ASSERT_TRUE(memory.init(dbPath, true, params));
+
+	const cv::Mat rgb(16, 16, CV_8UC3, cv::Scalar(10, 20, 30));
+	cv::Mat depth(16, 16, CV_32FC1);
+	cv::randu(depth, 0.5f, 8.0f);
+	const CameraModel model(10.0, 10.0, 8.0, 8.0, CameraModel::opticalRotation());
+	SensorData data;
+	if(cs.precompressed)
+	{
+		data = SensorData(compressImage2(rgb, ".png"), compressImage2(depth, ".png:10:100"), model);
+		data.uncompressData(); // raw images are also there, as when received from ROS
+		ASSERT_FALSE(data.depthRaw().empty());
+	}
+	else
+	{
+		data = SensorData(rgb, depth, model);
+	}
+
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	const cv::Mat & stored = s->sensorData().depthOrRightCompressed();
+	ASSERT_FALSE(stored.empty());
+	EXPECT_EQ(compressedDepthFormat(stored), cs.expectedFormat);
+
+	const cv::Mat restored = uncompressImage(stored);
+	ASSERT_EQ(restored.type(), CV_32FC1);
+	ASSERT_EQ(restored.size(), depth.size());
+	EXPECT_LT(cv::norm(restored, depth, cv::NORM_INF), 0.01);
+
+	memory.close(false);
+	UFile::erase(dbPath);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+		DatabaseVersions,
+		MemoryInverseDepthTest,
+		::testing::Values(
+				InverseDepthCase{"", false, ".rvl:10:100"},
+				InverseDepthCase{"", true, ".png:10:100"},       // reused as is
+				InverseDepthCase{"0.23.0", false, ".png"},       // legacy 32FC1 format
+				InverseDepthCase{"0.23.0", true, ".png"}));      // re-compressed

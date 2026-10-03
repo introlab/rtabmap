@@ -848,6 +848,7 @@ private:
 	unsigned int _imagePreDecimation;
 	unsigned int _imagePostDecimation;
 	bool _legacyDecimatedOctave;
+	bool _inverseDepthCompressionAllowed; // database version >= 0.24
 	bool _compressionParallelized;
 	float _laserScanDownsampleStepSize;
 	float _laserScanVoxelSize;

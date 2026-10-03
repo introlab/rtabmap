@@ -28,9 +28,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Compression.h"
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UStl.h>
 #include <opencv2/opencv.hpp>
 
 #include <zlib.h>
+#include <cmath>
+#include <cstring>
 
 namespace rtabmap {
 
@@ -67,16 +70,130 @@ int deserializeMatType(int serializedType)
 			((serializedType >> kSerializedCnShift) & 511) + 1);
 }
 
+// Signatures at the start of rtabmap's own depth formats. Anything else is
+// assumed to be a standard image format (PNG, JPG) decoded by OpenCV.
+const char kRvlSignature[8] = {'D', 'E', 'P', 'T', 'H', 'R', 'V', 'L'};
+const size_t kRvlHeaderSize = 16; // signature, uint32 cols, uint32 rows
+
+// Quantized inverse depth of a 32FC1 depth image (same quantization as
+// ROS's compressed_depth_image_transport): signature, float depthQuantA,
+// float depthQuantB, followed by the 16UC1 inverse depth image compressed
+// in one of the formats above (PNG, or RVL with its own signature).
+// See the layouts documented in Compression.h, rtabmap_ros relies on them.
+const char kInvDepthSignature[8] = {'D', 'E', 'P', 'T', 'H', 'I', 'N', 'V'};
+const size_t kInvDepthHeaderSize = 16;
+
+// Default quantization when only the maximum depth is set in the format.
+const float kDefaultDepthQuantization = 100.0f;
+
+bool hasSignature(const unsigned char * bytes, size_t size, const void * signature)
+{
+	return bytes && size >= 8 && memcmp(bytes, signature, 8) == 0;
+}
+
+// Values over maxDepth, NaN, inf, 0 and negative values are set to 0 (invalid),
+// as well as values too close to be represented on 16 bits (under
+// depthQuantA / (65535 - depthQuantB) meters).
+cv::Mat depthToInvDepth(const cv::Mat & depth, float maxDepth, float quantization, float & depthQuantA, float & depthQuantB)
+{
+	UASSERT(depth.type() == CV_32FC1);
+	depthQuantA = quantization * (quantization + 1.0f);
+	depthQuantB = 1.0f - depthQuantA / maxDepth;
+	cv::Mat invDepth(depth.size(), CV_16UC1);
+	for(int i=0; i<depth.rows; ++i)
+	{
+		const float * in = depth.ptr<float>(i);
+		uint16_t * out = invDepth.ptr<uint16_t>(i);
+		for(int j=0; j<depth.cols; ++j)
+		{
+			const float d = in[j];
+			if(d > 0.0f && d < maxDepth) // false for NaN
+			{
+				// Rounded (ROS truncates), the decoding is the same.
+				const float v = depthQuantA / d + depthQuantB + 0.5f;
+				out[j] = v < 65536.0f ? (uint16_t)v : 0;
+			}
+			else
+			{
+				out[j] = 0;
+			}
+		}
+	}
+	return invDepth;
+}
+
+cv::Mat invDepthToDepth(const cv::Mat & invDepth, float depthQuantA, float depthQuantB)
+{
+	UASSERT(invDepth.type() == CV_16UC1);
+	cv::Mat depth(invDepth.size(), CV_32FC1);
+	for(int i=0; i<invDepth.rows; ++i)
+	{
+		const uint16_t * in = invDepth.ptr<uint16_t>(i);
+		float * out = depth.ptr<float>(i);
+		for(int j=0; j<invDepth.cols; ++j)
+		{
+			out[j] = in[j] ? depthQuantA / (float(in[j]) - depthQuantB) : 0.0f;
+		}
+	}
+	return depth;
+}
+
+void invDepthParameters(float depthQuantA, float depthQuantB, float & maxDepth, float & quantization)
+{
+	// inverse of depthQuantA = q*(q+1) and depthQuantB = 1 - depthQuantA/maxDepth
+	quantization = (std::sqrt(1.0f + 4.0f*depthQuantA) - 1.0f) / 2.0f;
+	maxDepth = depthQuantA / (1.0f - depthQuantB);
+}
+
 }  // namespace
 
-// format : ".jpg" ".png" ".rvl" "" (empty is general)
+bool parseImageCompressionFormat(const std::string & format, std::string & codec, float & maxDepth, float & quantization)
+{
+	codec.clear();
+	maxDepth = 0.0f;
+	quantization = 0.0f;
+	std::vector<std::string> fields = uListToVector(uSplit(format, ':'));
+	if(fields.empty())
+	{
+		return format.empty(); // empty is general (zlib)
+	}
+	if(fields[0].size() < 2 || fields[0][0] != '.')
+	{
+		return false;
+	}
+	if(fields.size() > 1)
+	{
+		// Inverse depth parameters only for formats supporting 16UC1
+		if((fields[0] != ".png" && fields[0] != ".rvl") || fields.size() > 3)
+		{
+			return false;
+		}
+		for(size_t i=1; i<fields.size(); ++i)
+		{
+			if(!uIsNumber(fields[i]) || uStr2Float(fields[i]) <= 0.0f)
+			{
+				return false;
+			}
+		}
+		maxDepth = uStr2Float(fields[1]);
+		quantization = fields.size() == 3 ? uStr2Float(fields[2]) : kDefaultDepthQuantization;
+	}
+	codec = fields[0];
+	return true;
+}
+
+// format : ".jpg" ".png" ".rvl" "" (empty is general), see parseImageCompressionFormat()
 CompressionThread::CompressionThread(const cv::Mat & mat, const std::string & format) :
 	uncompressedData_(mat),
 	format_(format),
 	image_(!format.empty()),
 	compressMode_(true)
 {
-	UASSERT(format.empty() || format.compare(".jpg") == 0 || format.compare(".png") == 0 || format.compare(".rvl") == 0);
+	std::string codec;
+	float maxDepth, quantization;
+	UASSERT_MSG(parseImageCompressionFormat(format, codec, maxDepth, quantization) &&
+			(codec.empty() || codec == ".jpg" || codec == ".png" || codec == ".rvl"),
+			uFormat("Invalid compression format \"%s\"", format.c_str()).c_str());
 }
 // assume image
 CompressionThread::CompressionThread(const cv::Mat & bytes, bool isImage) :
@@ -131,21 +248,43 @@ void CompressionThread::mainLoop()
 	this->kill();
 }
 
-// ".jpg" or ".png" or ".rvl"
+// ".jpg" or ".png" or ".rvl", with optional ":maxDepth[:quantization]" for 32FC1 depth images
 std::vector<unsigned char> compressImage(const cv::Mat & image, const std::string & format)
 {
 	std::vector<unsigned char> bytes;
 	if(!image.empty())
 	{
-		if(image.type() == CV_32FC1)
+		std::string codec;
+		float maxDepth, quantization;
+		if(!parseImageCompressionFormat(format, codec, maxDepth, quantization) || codec.empty())
+		{
+			UERROR("Invalid image compression format \"%s\"", format.c_str());
+			return bytes;
+		}
+
+		if(image.type() == CV_32FC1 && maxDepth > 0.0f)
+		{
+			float depthQuantA, depthQuantB;
+			cv::Mat invDepth = depthToInvDepth(image, maxDepth, quantization, depthQuantA, depthQuantB);
+			std::vector<unsigned char> invDepthBytes = compressImage(invDepth, codec);
+			if(!invDepthBytes.empty())
+			{
+				bytes.resize(kInvDepthHeaderSize + invDepthBytes.size());
+				memcpy(&bytes[0], kInvDepthSignature, 8);
+				memcpy(&bytes[8], &depthQuantA, 4);
+				memcpy(&bytes[12], &depthQuantB, 4);
+				memcpy(&bytes[kInvDepthHeaderSize], invDepthBytes.data(), invDepthBytes.size());
+			}
+		}
+		else if(image.type() == CV_32FC1)
 		{
 			//save in 8bits-4channel
 			cv::Mat bgra(image.size(), CV_8UC4, image.data);
 			cv::imencode(".png", bgra, bytes);
 		}
-		else if(format == ".rvl")
+		else if(codec == ".rvl")
 		{
-			bytes = {'D', 'E', 'P', 'T', 'H', 'R', 'V', 'L'};
+			bytes.assign(kRvlSignature, kRvlSignature+8);
 			int numPixels = image.rows * image.cols;
         	// In the worst case, RVL compression results in ~1.5x larger data.
         	bytes.resize(3 * numPixels + 20);
@@ -154,18 +293,18 @@ std::vector<unsigned char> compressImage(const cv::Mat & image, const std::strin
         	memcpy(&bytes[8], &cols, 4);
         	memcpy(&bytes[12], &rows, 4);
         	RvlCodec rvl;
-        	int compressedSize = rvl.CompressRVL(image.ptr<uint16_t>(), &bytes[16], numPixels);
-        	bytes.resize(16 + compressedSize);
+        	int compressedSize = rvl.CompressRVL(image.ptr<uint16_t>(), &bytes[kRvlHeaderSize], numPixels);
+        	bytes.resize(kRvlHeaderSize + compressedSize);
 		}
 		else
 		{
-			cv::imencode(format, image, bytes);
+			cv::imencode(codec, image, bytes);
 		}
 	}
 	return bytes;
 }
 
-// ".jpg" or ".png" or ".rvl"
+// ".jpg" or ".png" or ".rvl", with optional ":maxDepth[:quantization]" for 32FC1 depth images
 cv::Mat compressImage2(const cv::Mat & image, const std::string & format)
 {
 	std::vector<unsigned char> bytes = compressImage(image, format);
@@ -178,24 +317,60 @@ cv::Mat compressImage2(const cv::Mat & image, const std::string & format)
 
 cv::Mat uncompressImage(const cv::Mat & bytes)
 {
+	return uncompressImage(bytes.data, bytes.total()*bytes.elemSize());
+}
+
+cv::Mat uncompressImage(const std::vector<unsigned char> & bytes)
+{
+	return uncompressImage(bytes.data(), bytes.size());
+}
+
+cv::Mat uncompressImage(const unsigned char * bytes, size_t size)
+{
 	cv::Mat image;
-	if(!bytes.empty())
+	if(bytes && size)
 	{
-		if (compressedDepthFormat(bytes) == ".rvl")
+		if(hasSignature(bytes, size, kInvDepthSignature))
 		{
+			if(size <= kInvDepthHeaderSize)
+			{
+				UERROR("Inverse depth image is truncated (%d bytes).", (int)size);
+				return image;
+			}
+			float depthQuantA, depthQuantB;
+			memcpy(&depthQuantA, &bytes[8], 4);
+			memcpy(&depthQuantB, &bytes[12], 4);
+			cv::Mat invDepth = uncompressImage(&bytes[kInvDepthHeaderSize], size - kInvDepthHeaderSize);
+			if(invDepth.type() == CV_16UC1)
+			{
+				image = invDepthToDepth(invDepth, depthQuantA, depthQuantB);
+			}
+			else if(!invDepth.empty())
+			{
+				UERROR("Inverse depth image should be 16UC1 (type=%d).", invDepth.type());
+			}
+		}
+		else if(hasSignature(bytes, size, kRvlSignature))
+		{
+			if(size < kRvlHeaderSize)
+			{
+				UERROR("RVL depth image is truncated (%d bytes).", (int)size);
+				return image;
+			}
 			uint32_t cols, rows;
-        	memcpy(&cols, &bytes.data[8], 4);
-        	memcpy(&rows, &bytes.data[12], 4);
+        	memcpy(&cols, &bytes[8], 4);
+        	memcpy(&rows, &bytes[12], 4);
 			image = cv::Mat(rows, cols, CV_16UC1);
 			RvlCodec rvl;
-        	rvl.DecompressRVL(&bytes.data[16], image.ptr<uint16_t>(), cols * rows);
+        	rvl.DecompressRVL(&bytes[kRvlHeaderSize], image.ptr<uint16_t>(), cols * rows);
 		}
 		else
 		{
+			const cv::Mat buf(1, (int)size, CV_8UC1, (void *)bytes);
 #if CV_MAJOR_VERSION>2 || (CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4)
-			image = cv::imdecode(bytes, cv::IMREAD_UNCHANGED);
+			image = cv::imdecode(buf, cv::IMREAD_UNCHANGED);
 #else
-			image = cv::imdecode(bytes, -1);
+			image = cv::imdecode(buf, -1);
 #endif
 			if(image.type() == CV_8UC4)
 			{
@@ -204,36 +379,6 @@ cv::Mat uncompressImage(const cv::Mat & bytes)
 				cv::Mat depth(image.size(), CV_32FC1);
 				memcpy(depth.data, image.data, image.total()*image.elemSize());
 				image = depth;
-			}
-		}
-	}
-	return image;
-}
-
-cv::Mat uncompressImage(const std::vector<unsigned char> & bytes)
-{
-	cv::Mat image;
-	if(bytes.size())
-	{
-		if (compressedDepthFormat(bytes) == ".rvl")
-		{
-			uint32_t cols, rows;
-        	memcpy(&cols, &bytes[8], 4);
-        	memcpy(&rows, &bytes[12], 4);
-			image = cv::Mat(rows, cols, CV_16UC1);
-			RvlCodec rvl;
-        	rvl.DecompressRVL(&bytes[16], image.ptr<uint16_t>(), cols * rows);
-		}
-		else
-		{
-#if CV_MAJOR_VERSION>2 || (CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4)
-			image = cv::imdecode(bytes, cv::IMREAD_UNCHANGED);
-#else
-			image = cv::imdecode(bytes, -1);
-#endif
-			if(image.type() == CV_8UC4)
-			{
-				image = cv::Mat(image.size(), CV_32FC1, image.data).clone();
 			}
 		}
 	}
@@ -381,10 +526,17 @@ std::string compressedDepthFormat(const unsigned char * bytes, size_t size)
 	std::string format;
 	if(bytes && size)
 	{
-		size_t maxlen = std::min(size, size_t(8));
-		std::vector<unsigned char> signature(maxlen);
-		memcpy(&signature[0], bytes, maxlen);
-		if (std::string(signature.begin(), signature.end()) == "DEPTHRVL")
+		if(hasSignature(bytes, size, kInvDepthSignature) && size > kInvDepthHeaderSize)
+		{
+			float depthQuantA, depthQuantB, maxDepth, quantization;
+			memcpy(&depthQuantA, &bytes[8], 4);
+			memcpy(&depthQuantB, &bytes[12], 4);
+			invDepthParameters(depthQuantA, depthQuantB, maxDepth, quantization);
+			format = uFormat("%s:%g:%g",
+					compressedDepthFormat(&bytes[kInvDepthHeaderSize], size - kInvDepthHeaderSize).c_str(),
+					maxDepth, quantization);
+		}
+		else if(hasSignature(bytes, size, kRvlSignature))
 		{
 			format = ".rvl";
 		}

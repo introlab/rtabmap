@@ -102,6 +102,7 @@ Memory::Memory(const ParametersMap & parameters) :
     _imagePreDecimation(Parameters::defaultMemImagePreDecimation()),
 	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
 	_legacyDecimatedOctave(false),
+	_inverseDepthCompressionAllowed(true),
 	_compressionParallelized(Parameters::defaultMemCompressionParallelized()),
 	_laserScanDownsampleStepSize(Parameters::defaultMemLaserScanDownsampleStepSize()),
 	_laserScanVoxelSize(Parameters::defaultMemLaserScanVoxelSize()),
@@ -228,6 +229,11 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			// filling it that way; a new one gets the corrected scaling.
 			_legacyDecimatedOctave =
 					uStrNumCmp(_dbDriver->getDatabaseVersion(), "0.23.12") < 0;
+			// Depth images compressed as inverse depth cannot be read before 0.24, which
+			// would still open databases created with Db/TargetVersion < 0.24 or by an
+			// older version.
+			_inverseDepthCompressionAllowed =
+					uStrNumCmp(_dbDriver->getDatabaseVersion(), "0.24.0") >= 0;
 			// Only where the descriptors stored in the map end up different: keypoints
 			// from odometry, scaled into the pre-decimated image before being described.
 			if(_legacyDecimatedOctave && _useOdometryFeatures && _imagePreDecimation > 1)
@@ -826,6 +832,19 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMemIntermediateNodeDataKept(), _saveIntermediateNodeData);
 	Parameters::parse(params, Parameters::kMemImageCompressionFormat(), _rgbCompressionFormat);
 	Parameters::parse(params, Parameters::kMemDepthCompressionFormat(), _depthCompressionFormat);
+	{
+		std::string codec;
+		float maxDepth, quantization;
+		if(!parseImageCompressionFormat(_depthCompressionFormat, codec, maxDepth, quantization) ||
+		   (codec != ".png" && codec != ".rvl"))
+		{
+			UWARN("Invalid %s=\"%s\", using default \"%s\".",
+					Parameters::kMemDepthCompressionFormat().c_str(),
+					_depthCompressionFormat.c_str(),
+					Parameters::defaultMemDepthCompressionFormat().c_str());
+			_depthCompressionFormat = Parameters::defaultMemDepthCompressionFormat();
+		}
+	}
 	Parameters::parse(params, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
 	Parameters::parse(params, Parameters::kMemGenerateIds(), _generateIds);
 	Parameters::parse(params, Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
@@ -6625,6 +6644,44 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		std::vector<unsigned char> imageBytes;
 		std::vector<unsigned char> depthBytes;
 
+		std::string depthCompressionFormat = _depthCompressionFormat;
+		bool reuseCompressedDepth =
+				depthOrRightImage.data == data.depthOrRightRaw().data &&
+				!data.depthOrRightCompressed().empty();
+		if(!_inverseDepthCompressionAllowed)
+		{
+			std::string codec;
+			float maxDepth, quantization;
+			if(parseImageCompressionFormat(depthCompressionFormat, codec, maxDepth, quantization) && maxDepth > 0.0f)
+			{
+				static bool warned = false;
+				if(!warned)
+				{
+					UWARN("%s=\"%s\": inverse depth compression format is not compatible with database "
+						  "version %s (requires >= 0.24, see %s), \"%s\" format is used instead. This "
+						  "warning is only printed once.",
+						Parameters::kMemDepthCompressionFormat().c_str(),
+						depthCompressionFormat.c_str(),
+						_dbDriver?_dbDriver->getDatabaseVersion().c_str():"",
+						Parameters::kDbTargetVersion().c_str(),
+						codec.c_str());
+					warned = true;
+				}
+				depthCompressionFormat = codec;
+			}
+			if(reuseCompressedDepth &&
+			   compressedDepthFormat(data.depthOrRightCompressed()).find(':') != std::string::npos)
+			{
+				// Already compressed as inverse depth (e.g., received from ROS's
+				// compressed_depth_image_transport), re-compress it.
+				reuseCompressedDepth = false;
+				if(depthOrRightImage.empty())
+				{
+					depthOrRightImage = uncompressImage(data.depthOrRightCompressed());
+				}
+			}
+		}
+
 		if(!depthOrRightImage.empty() && depthOrRightImage.type() == CV_32FC1)
 		{
 			if(_saveDepth16Format)
@@ -6640,7 +6697,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				}
 				depthOrRightImage = util2d::cvtDepthFromFloat(depthOrRightImage);
 			}
-			else if(_depthCompressionFormat == ".rvl")
+			else if(depthCompressionFormat == ".rvl")
 			{
 				static bool warned = false;
 				if(!warned)
@@ -6650,13 +6707,16 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 						  "images will be compressed in \".png\" format instead. Explicitly "
 						  "set %s to true to keep using \"%s\" format and images will be "
 						  "converted to 16bits for convenience (warning: that would "
-						  "remove all depth values over 65 meters). Explicitly set %s=\".png\" "
+						  "remove all depth values over 65 meters). Set %s=\".rvl:<maxDepth>:<quantization>\" "
+						  "(e.g., \".rvl:10:100\") to compress them in RVL as 16 bits inverse depth "
+						  "(lossy, see parameter's description). Explicitly set %s=\".png\" "
 						  "to suppress this warning. This warning is only printed once.",
 						Parameters::kMemSaveDepth16Format().c_str(),
 						Parameters::kMemDepthCompressionFormat().c_str(),
-						_depthCompressionFormat.c_str(),
+						depthCompressionFormat.c_str(),
 						Parameters::kMemSaveDepth16Format().c_str(),
-						_depthCompressionFormat.c_str(),
+						depthCompressionFormat.c_str(),
+						Parameters::kMemDepthCompressionFormat().c_str(),
 						Parameters::kMemDepthCompressionFormat().c_str());
 					warned = true;
 				}
@@ -6666,9 +6726,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		bool reuseCompressedImage =
 				image.data == data.imageRaw().data &&
 				!data.imageCompressed().empty();
-		bool reuseCompressedDepth =
-				depthOrRightImage.data == data.depthOrRightRaw().data &&
-				!data.depthOrRightCompressed().empty();
+		reuseCompressedDepth = reuseCompressedDepth &&
+				depthOrRightImage.data == data.depthOrRightRaw().data;
 		bool reuseCompressedDepthConfidence =
 				depthConfidence.data == data.depthConfidenceRaw().data &&
 				!data.depthConfidenceCompressed().empty();
@@ -6685,7 +6744,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		if(_compressionParallelized)
 		{
 			rtabmap::CompressionThread ctImage(image, _rgbCompressionFormat);
-			rtabmap::CompressionThread ctDepth(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?_depthCompressionFormat:_rgbCompressionFormat);
+			rtabmap::CompressionThread ctDepth(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?depthCompressionFormat:_rgbCompressionFormat);
 			rtabmap::CompressionThread ctDepthConfidence(depthConfidence);
 			rtabmap::CompressionThread ctLaserScan(laserScan.data());
 			rtabmap::CompressionThread ctUserData(data.userDataRaw());
@@ -6724,7 +6783,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		else
 		{
 			compressedImage = reuseCompressedImage?cv::Mat():compressImage2(image, _rgbCompressionFormat);
-			compressedDepth = reuseCompressedDepth?cv::Mat():compressImage2(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?_depthCompressionFormat:_rgbCompressionFormat);
+			compressedDepth = reuseCompressedDepth?cv::Mat():compressImage2(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?depthCompressionFormat:_rgbCompressionFormat);
 			compressedDepthConfidence = reuseCompressedDepthConfidence?cv::Mat():compressData2(depthConfidence);
 			compressedScan = reuseCompressedScan?data.laserScanCompressed().data():compressData2(laserScan.data());
 			compressedUserData = reuseCompressedUserData?data.userDataCompressed():compressData2(data.userDataRaw());
