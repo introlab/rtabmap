@@ -70,19 +70,6 @@ int deserializeMatType(int serializedType)
 			((serializedType >> kSerializedCnShift) & 511) + 1);
 }
 
-// Signatures at the start of rtabmap's own depth formats. Anything else is
-// assumed to be a standard image format (PNG, JPG) decoded by OpenCV.
-const char kRvlSignature[8] = {'D', 'E', 'P', 'T', 'H', 'R', 'V', 'L'};
-const size_t kRvlHeaderSize = 16; // signature, uint32 cols, uint32 rows
-
-// Quantized inverse depth of a 32FC1 depth image (same quantization as
-// ROS's compressed_depth_image_transport): signature, float depthQuantA,
-// float depthQuantB, followed by the 16UC1 inverse depth image compressed
-// in one of the formats above (PNG, or RVL with its own signature).
-// See the layouts documented in Compression.h, rtabmap_ros relies on them.
-const char kInvDepthSignature[8] = {'D', 'E', 'P', 'T', 'H', 'I', 'N', 'V'};
-const size_t kInvDepthHeaderSize = 16;
-
 // Default quantization when only the maximum depth is set in the format.
 const float kDefaultDepthQuantization = 100.0f;
 
@@ -269,11 +256,11 @@ std::vector<unsigned char> compressImage(const cv::Mat & image, const std::strin
 			std::vector<unsigned char> invDepthBytes = compressImage(invDepth, codec);
 			if(!invDepthBytes.empty())
 			{
-				bytes.resize(kInvDepthHeaderSize + invDepthBytes.size());
-				memcpy(&bytes[0], kInvDepthSignature, 8);
+				bytes.resize(kCompressedDepthInvHeaderSize + invDepthBytes.size());
+				memcpy(&bytes[0], kCompressedDepthInvSignature, 8);
 				memcpy(&bytes[8], &depthQuantA, 4);
 				memcpy(&bytes[12], &depthQuantB, 4);
-				memcpy(&bytes[kInvDepthHeaderSize], invDepthBytes.data(), invDepthBytes.size());
+				memcpy(&bytes[kCompressedDepthInvHeaderSize], invDepthBytes.data(), invDepthBytes.size());
 			}
 		}
 		else if(image.type() == CV_32FC1)
@@ -284,7 +271,7 @@ std::vector<unsigned char> compressImage(const cv::Mat & image, const std::strin
 		}
 		else if(codec == ".rvl")
 		{
-			bytes.assign(kRvlSignature, kRvlSignature+8);
+			bytes.assign(kCompressedDepthRvlSignature, kCompressedDepthRvlSignature+8);
 			int numPixels = image.rows * image.cols;
         	// In the worst case, RVL compression results in ~1.5x larger data.
         	bytes.resize(3 * numPixels + 20);
@@ -293,8 +280,8 @@ std::vector<unsigned char> compressImage(const cv::Mat & image, const std::strin
         	memcpy(&bytes[8], &cols, 4);
         	memcpy(&bytes[12], &rows, 4);
         	RvlCodec rvl;
-        	int compressedSize = rvl.CompressRVL(image.ptr<uint16_t>(), &bytes[kRvlHeaderSize], numPixels);
-        	bytes.resize(kRvlHeaderSize + compressedSize);
+        	int compressedSize = rvl.CompressRVL(image.ptr<uint16_t>(), &bytes[kCompressedDepthRvlHeaderSize], numPixels);
+        	bytes.resize(kCompressedDepthRvlHeaderSize + compressedSize);
 		}
 		else
 		{
@@ -317,6 +304,10 @@ cv::Mat compressImage2(const cv::Mat & image, const std::string & format)
 
 cv::Mat uncompressImage(const cv::Mat & bytes)
 {
+	if(bytes.empty())
+	{
+		return cv::Mat();
+	}
 	return uncompressImage(bytes.data, bytes.total()*bytes.elemSize());
 }
 
@@ -330,9 +321,9 @@ cv::Mat uncompressImage(const unsigned char * bytes, size_t size)
 	cv::Mat image;
 	if(bytes && size)
 	{
-		if(hasSignature(bytes, size, kInvDepthSignature))
+		if(hasSignature(bytes, size, kCompressedDepthInvSignature))
 		{
-			if(size <= kInvDepthHeaderSize)
+			if(size <= kCompressedDepthInvHeaderSize)
 			{
 				UERROR("Inverse depth image is truncated (%d bytes).", (int)size);
 				return image;
@@ -340,7 +331,7 @@ cv::Mat uncompressImage(const unsigned char * bytes, size_t size)
 			float depthQuantA, depthQuantB;
 			memcpy(&depthQuantA, &bytes[8], 4);
 			memcpy(&depthQuantB, &bytes[12], 4);
-			cv::Mat invDepth = uncompressImage(&bytes[kInvDepthHeaderSize], size - kInvDepthHeaderSize);
+			cv::Mat invDepth = uncompressImage(&bytes[kCompressedDepthInvHeaderSize], size - kCompressedDepthInvHeaderSize);
 			if(invDepth.type() == CV_16UC1)
 			{
 				image = invDepthToDepth(invDepth, depthQuantA, depthQuantB);
@@ -350,9 +341,9 @@ cv::Mat uncompressImage(const unsigned char * bytes, size_t size)
 				UERROR("Inverse depth image should be 16UC1 (type=%d).", invDepth.type());
 			}
 		}
-		else if(hasSignature(bytes, size, kRvlSignature))
+		else if(hasSignature(bytes, size, kCompressedDepthRvlSignature))
 		{
-			if(size < kRvlHeaderSize)
+			if(size < kCompressedDepthRvlHeaderSize)
 			{
 				UERROR("RVL depth image is truncated (%d bytes).", (int)size);
 				return image;
@@ -362,7 +353,7 @@ cv::Mat uncompressImage(const unsigned char * bytes, size_t size)
         	memcpy(&rows, &bytes[12], 4);
 			image = cv::Mat(rows, cols, CV_16UC1);
 			RvlCodec rvl;
-        	rvl.DecompressRVL(&bytes[kRvlHeaderSize], image.ptr<uint16_t>(), cols * rows);
+        	rvl.DecompressRVL(&bytes[kCompressedDepthRvlHeaderSize], image.ptr<uint16_t>(), cols * rows);
 		}
 		else
 		{
@@ -526,17 +517,17 @@ std::string compressedDepthFormat(const unsigned char * bytes, size_t size)
 	std::string format;
 	if(bytes && size)
 	{
-		if(hasSignature(bytes, size, kInvDepthSignature) && size > kInvDepthHeaderSize)
+		if(hasSignature(bytes, size, kCompressedDepthInvSignature) && size > kCompressedDepthInvHeaderSize)
 		{
 			float depthQuantA, depthQuantB, maxDepth, quantization;
 			memcpy(&depthQuantA, &bytes[8], 4);
 			memcpy(&depthQuantB, &bytes[12], 4);
 			invDepthParameters(depthQuantA, depthQuantB, maxDepth, quantization);
 			format = uFormat("%s:%g:%g",
-					compressedDepthFormat(&bytes[kInvDepthHeaderSize], size - kInvDepthHeaderSize).c_str(),
+					compressedDepthFormat(&bytes[kCompressedDepthInvHeaderSize], size - kCompressedDepthInvHeaderSize).c_str(),
 					maxDepth, quantization);
 		}
-		else if(hasSignature(bytes, size, kRvlSignature))
+		else if(hasSignature(bytes, size, kCompressedDepthRvlSignature))
 		{
 			format = ".rvl";
 		}

@@ -4690,10 +4690,19 @@ TEST(MemoryTest, CreateSignatureRecompressesStereoPairAfterRectification)
 
 namespace {
 
+enum DepthInput
+{
+	kRawDepth,
+	kCompressedDepthWithRaw,   // e.g., received from ROS and decoded
+	kCompressedDepthOnly       // raw depth not needed (no features extracted here)
+};
+
 struct InverseDepthCase
 {
 	const char * targetVersion;
-	bool precompressed;      // depth already compressed as inverse depth, e.g., from ROS
+	DepthInput input;
+	const char * depthCompressionFormat;
+	bool parallelCompression;
 	const char * expectedFormat;
 };
 
@@ -4706,7 +4715,8 @@ TEST_P(MemoryInverseDepthTest, StoredDepthFormatFollowsDatabaseVersion)
 	const InverseDepthCase & cs = GetParam();
 	ParametersMap params = defaultMemoryParams();
 	params[Parameters::kMemBinDataKept()] = "true";
-	params[Parameters::kMemDepthCompressionFormat()] = ".rvl:10:100";
+	params[Parameters::kMemDepthCompressionFormat()] = cs.depthCompressionFormat;
+	params[Parameters::kMemCompressionParallelized()] = cs.parallelCompression ? "true" : "false";
 	params[Parameters::kDbTargetVersion()] = cs.targetVersion;
 	Memory memory(params);
 	const std::string dbPath = uniqueDbPath();
@@ -4717,15 +4727,18 @@ TEST_P(MemoryInverseDepthTest, StoredDepthFormatFollowsDatabaseVersion)
 	cv::randu(depth, 0.5f, 8.0f);
 	const CameraModel model(10.0, 10.0, 8.0, 8.0, CameraModel::opticalRotation());
 	SensorData data;
-	if(cs.precompressed)
+	if(cs.input == kRawDepth)
 	{
-		data = SensorData(compressImage2(rgb, ".png"), compressImage2(depth, ".png:10:100"), model);
-		data.uncompressData(); // raw images are also there, as when received from ROS
-		ASSERT_FALSE(data.depthRaw().empty());
+		data = SensorData(rgb, depth, model);
 	}
 	else
 	{
-		data = SensorData(rgb, depth, model);
+		data = SensorData(compressImage2(rgb, ".png"), compressImage2(depth, ".png:10:100"), model);
+		if(cs.input == kCompressedDepthWithRaw)
+		{
+			data.uncompressData();
+			ASSERT_FALSE(data.depthRaw().empty());
+		}
 	}
 
 	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
@@ -4748,7 +4761,12 @@ INSTANTIATE_TEST_SUITE_P(
 		DatabaseVersions,
 		MemoryInverseDepthTest,
 		::testing::Values(
-				InverseDepthCase{"", false, ".rvl:10:100"},
-				InverseDepthCase{"", true, ".png:10:100"},       // reused as is
-				InverseDepthCase{"0.23.0", false, ".png"},       // legacy 32FC1 format
-				InverseDepthCase{"0.23.0", true, ".png"}));      // re-compressed
+				InverseDepthCase{"", kRawDepth, ".rvl:10:100", true, ".rvl:10:100"},
+				InverseDepthCase{"", kRawDepth, ".rvl:10:100", false, ".rvl:10:100"},
+				InverseDepthCase{"", kCompressedDepthWithRaw, ".rvl:10:100", true, ".png:10:100"},  // reused as is
+				InverseDepthCase{"", kCompressedDepthOnly, ".rvl:10:100", true, ".png:10:100"},     // reused as is
+				InverseDepthCase{"0.23.0", kRawDepth, ".rvl:10:100", true, ".png"},                // legacy 32FC1 format
+				InverseDepthCase{"0.23.0", kCompressedDepthWithRaw, ".rvl:10:100", true, ".png"},  // re-compressed
+				InverseDepthCase{"0.23.0", kCompressedDepthOnly, ".rvl:10:100", true, ".png"},     // decompressed, re-compressed
+				InverseDepthCase{"", kRawDepth, ".rvl", true, ".png"},                             // RVL is 16UC1 only: legacy
+				InverseDepthCase{"", kRawDepth, ".jpg", true, ".png"}));                           // invalid: default ".rvl"

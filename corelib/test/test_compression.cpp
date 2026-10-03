@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <rtabmap/core/Compression.h>
+#include <rtabmap/utilite/UException.h>
 #include <opencv2/core.hpp>
 #include <cstring>
 #include <limits>
@@ -379,4 +380,34 @@ TEST(CompressionTest, LegacyFloatDepthIsLossless)
 		ASSERT_EQ(restored.type(), CV_32FC1);
 		EXPECT_EQ(memcmp(restored.data, depth.data, depth.total() * depth.elemSize()), 0);
 	}
+}
+
+TEST(CompressionTest, MalformedDepthFormatsDecodeToEmpty)
+{
+	// Signature and header only, no payload
+	std::vector<unsigned char> invDepth = {'D', 'E', 'P', 'T', 'H', 'I', 'N', 'V'};
+	invDepth.resize(16, 0);
+	EXPECT_TRUE(uncompressImage(invDepth).empty());
+	EXPECT_EQ(compressedDepthFormat(invDepth), ".png") << "too short to be inverse depth";
+
+	// Inverse depth header followed by an 8 bits image instead of a 16 bits one
+	const std::vector<unsigned char> png8 = compressImage(cv::Mat(4, 4, CV_8UC1, cv::Scalar(1)), ".png");
+	invDepth.insert(invDepth.end(), png8.begin(), png8.end());
+	EXPECT_TRUE(uncompressImage(invDepth).empty());
+
+	// RVL signature without its size
+	const std::vector<unsigned char> rvl = {'D', 'E', 'P', 'T', 'H', 'R', 'V', 'L', 4, 0};
+	EXPECT_TRUE(uncompressImage(rvl).empty());
+	EXPECT_EQ(compressedDepthFormat(rvl), ".rvl");
+
+	EXPECT_TRUE(uncompressImage(nullptr, 0).empty());
+}
+
+TEST(CompressionTest, CompressionThreadRejectsInvalidFormat)
+{
+	// std::string: a string literal would select the (bytes, isImage) constructor
+	const cv::Mat depth(4, 4, CV_32FC1, cv::Scalar(1.0f));
+	EXPECT_THROW(CompressionThread(depth, std::string(".jpg:10")), UException);
+	EXPECT_THROW(CompressionThread(depth, std::string(".bmp")), UException);
+	EXPECT_NO_THROW(CompressionThread(depth, std::string(".rvl:10:100")));
 }

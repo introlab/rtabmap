@@ -114,6 +114,15 @@ private:
  *               0 is invalid and v>0 is the depth depthQuantA/(v-depthQuantB).
  */
 
+/** @brief Signature of the ".rvl" layout (8 bytes, not null-terminated). */
+const char kCompressedDepthRvlSignature[8] = {'D', 'E', 'P', 'T', 'H', 'R', 'V', 'L'};
+/** @brief Size of the ".rvl" header: signature, uint32 cols, uint32 rows. */
+const size_t kCompressedDepthRvlHeaderSize = 16;
+/** @brief Signature of the inverse depth layout (8 bytes, not null-terminated). */
+const char kCompressedDepthInvSignature[8] = {'D', 'E', 'P', 'T', 'H', 'I', 'N', 'V'};
+/** @brief Size of the inverse depth header: signature, float depthQuantA, float depthQuantB. */
+const size_t kCompressedDepthInvHeaderSize = 16;
+
 /**
  * @brief Parses an image compression format "<codec>[:<maxDepth>[:<quantization>]]".
  *
