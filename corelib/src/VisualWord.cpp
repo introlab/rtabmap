@@ -73,7 +73,7 @@ unsigned long VisualWord::getMemoryUsed() const
 {
 	unsigned long memoryUsage = sizeof(VisualWord);
 	memoryUsage += _references.size() * (sizeof(int)*2+sizeof(std::map<int ,int>::iterator)) + sizeof(std::map<int ,int>);
-	memoryUsage += _descriptor.total() * _descriptor.elemSize();
+	memoryUsage += _descriptor.empty()?0:_descriptor.total() * _descriptor.elemSize();
 	return memoryUsage;
 }
 
