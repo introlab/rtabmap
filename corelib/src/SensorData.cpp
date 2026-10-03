@@ -313,6 +313,24 @@ SensorData::~SensorData()
 {
 }
 
+bool SensorData::keepCameraModel(
+		const CameraModel & model,
+		const cv::Mat & rgb,
+		const cv::Mat & depth,
+		bool clearPreviousData) const
+{
+	// An invalid model without any image is only a placeholder (e.g., scan-only data
+	// created with CameraModel()): it is not kept, so that cameraModels() is empty when
+	// there is no camera. An invalid model with an image is kept: images can be used
+	// without calibration, and they are split per camera model.
+	return model.isValidForProjection() ||
+			!rgb.empty() ||
+			!depth.empty() ||
+			(!clearPreviousData && (
+					!_imageRaw.empty() || !_imageCompressed.empty() ||
+					!_depthOrRightRaw.empty() || !_depthOrRightCompressed.empty()));
+}
+
 void SensorData::setRGBDImage(
 		const cv::Mat & rgb,
 		const cv::Mat & depth,
@@ -320,7 +338,10 @@ void SensorData::setRGBDImage(
 		bool clearPreviousData)
 {
 	std::vector<CameraModel> models;
-	models.push_back(model);
+	if(keepCameraModel(model, rgb, depth, clearPreviousData))
+	{
+		models.push_back(model);
+	}
 	setRGBDImage(rgb, depth, models, clearPreviousData);
 }
 void SensorData::setRGBDImage(
@@ -331,7 +352,10 @@ void SensorData::setRGBDImage(
 	bool clearPreviousData)
 {
 	std::vector<CameraModel> models;
-	models.push_back(model);
+	if(keepCameraModel(model, rgb, depth, clearPreviousData))
+	{
+		models.push_back(model);
+	}
 	setRGBDImage(rgb, depth, depthConfidence, models, clearPreviousData);
 }
 void SensorData::setRGBDImage(

@@ -598,6 +598,8 @@ public:
 	/**
 	 * Set image data. Detect automatically if raw or compressed.
 	 * A matrix of type CV_8UC1 with 1 row is considered as compressed.
+	 * An invalid @p model (not CameraModel::isValidForProjection()) without any image is
+	 * a placeholder (e.g., scan-only data): it is not added, so cameraModels() is empty.
 	 * @param clearPreviousData, clear previous raw and compressed images before setting the new ones.
 	 */
 	void setRGBDImage(const cv::Mat & rgb, const cv::Mat & depth, const CameraModel & model, bool clearPreviousData = true);
@@ -1025,6 +1027,9 @@ public:
 #endif
 
 private:
+	/// Whether setRGBDImage() keeps @p model: not an invalid model without any image.
+	bool keepCameraModel(const CameraModel & model, const cv::Mat & rgb, const cv::Mat & depth, bool clearPreviousData) const;
+
 	int _id; ///< Unique sensor data ID (0 if invalid)
 	double _stamp; ///< Timestamp in seconds
 
