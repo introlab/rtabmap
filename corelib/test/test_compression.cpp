@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include <rtabmap/core/Compression.h>
+#include <rtabmap/utilite/UException.h>
 #include <opencv2/core.hpp>
+#include <cstring>
+#include <limits>
 
 using namespace rtabmap;
 
@@ -182,4 +185,229 @@ TEST(CompressionTest, CompressionThreadDataRoundTrip)
 	uncompressThread.join();
 
 	expectMatEqual(uncompressThread.getUncompressedData(), data);
+}
+
+namespace {
+
+// 32FC1 depth image covering [minDepth, maxDepth[ with sub-millimeter values,
+// and the invalid values of the inverse depth format on the first row.
+cv::Mat makeFloatDepth(int rows, int cols, float minDepth, float maxDepth)
+{
+	cv::Mat depth(rows, cols, CV_32FC1);
+	for(int r = 0; r < rows; ++r)
+	{
+		for(int c = 0; c < cols; ++c)
+		{
+			depth.at<float>(r, c) = minDepth + (maxDepth - minDepth) * float(r * cols + c) / float(rows * cols);
+		}
+	}
+	return depth;
+}
+
+// Error bound of the inverse depth format: half a quantization step.
+float invDepthTolerance(float d, float quantization)
+{
+	// (with some margin for the float rounding of A/d + B, up to ~66000)
+	return 0.51f * d * d / (quantization * (quantization + 1.0f)) + 1e-6f;
+}
+
+} // namespace
+
+TEST(CompressionTest, ParseImageCompressionFormat)
+{
+	std::string codec;
+	float maxDepth, quantization;
+
+	EXPECT_TRUE(parseImageCompressionFormat("", codec, maxDepth, quantization));
+	EXPECT_TRUE(codec.empty());
+	EXPECT_EQ(maxDepth, 0.0f);
+
+	EXPECT_TRUE(parseImageCompressionFormat(".jpg", codec, maxDepth, quantization));
+	EXPECT_EQ(codec, ".jpg");
+	EXPECT_EQ(maxDepth, 0.0f);
+	EXPECT_EQ(quantization, 0.0f);
+
+	EXPECT_TRUE(parseImageCompressionFormat(".rvl", codec, maxDepth, quantization));
+	EXPECT_EQ(codec, ".rvl");
+	EXPECT_EQ(maxDepth, 0.0f);
+
+	EXPECT_TRUE(parseImageCompressionFormat(".png:20", codec, maxDepth, quantization));
+	EXPECT_EQ(codec, ".png");
+	EXPECT_FLOAT_EQ(maxDepth, 20.0f);
+	EXPECT_FLOAT_EQ(quantization, 100.0f);
+
+	EXPECT_TRUE(parseImageCompressionFormat(".rvl:10.5:50", codec, maxDepth, quantization));
+	EXPECT_EQ(codec, ".rvl");
+	EXPECT_FLOAT_EQ(maxDepth, 10.5f);
+	EXPECT_FLOAT_EQ(quantization, 50.0f);
+
+	EXPECT_FALSE(parseImageCompressionFormat("png", codec, maxDepth, quantization));
+	EXPECT_FALSE(parseImageCompressionFormat(".jpg:10:100", codec, maxDepth, quantization));
+	EXPECT_FALSE(parseImageCompressionFormat(".png:abc", codec, maxDepth, quantization));
+	EXPECT_FALSE(parseImageCompressionFormat(".png:0:100", codec, maxDepth, quantization));
+	EXPECT_FALSE(parseImageCompressionFormat(".png:-10:100", codec, maxDepth, quantization));
+	EXPECT_FALSE(parseImageCompressionFormat(".png:10:0", codec, maxDepth, quantization));
+	EXPECT_FALSE(parseImageCompressionFormat(".png:10:100:1", codec, maxDepth, quantization));
+}
+
+TEST(CompressionTest, InvalidFormatReturnsEmpty)
+{
+	const cv::Mat depth = makeFloatDepth(4, 4, 1.0f, 2.0f);
+	EXPECT_TRUE(compressImage(depth, ".jpg:10").empty());
+	EXPECT_TRUE(compressImage(depth, ".png:x").empty());
+}
+
+TEST(CompressionTest, InverseDepthRoundTrip)
+{
+	const float maxDepth = 10.0f;
+	const float quantization = 100.0f;
+	const float minDepth = quantization * (quantization + 1.0f) / (65535.0f + quantization * (quantization + 1.0f) / maxDepth);
+	cv::Mat depth = makeFloatDepth(48, 64, minDepth * 1.001f, maxDepth * 0.999f);
+	const float invalid[] = {
+			0.0f, -1.0f, maxDepth, maxDepth * 2.0f, minDepth * 0.9f,
+			std::numeric_limits<float>::quiet_NaN(),
+			std::numeric_limits<float>::infinity(),
+			-std::numeric_limits<float>::infinity()};
+	const int nInvalid = sizeof(invalid) / sizeof(float);
+	for(int i = 0; i < nInvalid; ++i)
+	{
+		depth.at<float>(0, i) = invalid[i];
+	}
+
+	for(const std::string codec : {".png", ".rvl"})
+	{
+		SCOPED_TRACE(codec);
+		const std::string format = codec + ":10:100";
+		const std::vector<unsigned char> bytes = compressImage(depth, format);
+		ASSERT_FALSE(bytes.empty());
+		EXPECT_LT(bytes.size(), depth.total() * depth.elemSize() / 2);
+		EXPECT_EQ(compressedDepthFormat(bytes), format);
+
+		const cv::Mat restored = uncompressImage(bytes);
+		ASSERT_EQ(restored.type(), CV_32FC1);
+		ASSERT_EQ(restored.size(), depth.size());
+		for(int r = 0; r < depth.rows; ++r)
+		{
+			for(int c = 0; c < depth.cols; ++c)
+			{
+				const float d = depth.at<float>(r, c);
+				if(r == 0 && c < nInvalid)
+				{
+					EXPECT_EQ(restored.at<float>(r, c), 0.0f) << "input=" << d;
+				}
+				else
+				{
+					ASSERT_NEAR(restored.at<float>(r, c), d, invDepthTolerance(d, quantization)) << "r=" << r << " c=" << c;
+				}
+			}
+		}
+
+		// Re-compressing with the detected format gives back the same bytes
+		// (e.g., DatabaseViewer saving an edited depth image).
+		EXPECT_EQ(compressImage(restored, compressedDepthFormat(bytes)), compressImage(restored, format));
+
+		// Same through cv::Mat and thread overloads
+		CompressionThread compressThread(depth, format);
+		compressThread.start();
+		compressThread.join();
+		const cv::Mat bytesMat = compressThread.getCompressedData();
+		ASSERT_EQ(bytesMat.total(), bytes.size());
+		EXPECT_EQ(memcmp(bytesMat.data, bytes.data(), bytes.size()), 0);
+		CompressionThread uncompressThread(bytesMat, true);
+		uncompressThread.start();
+		uncompressThread.join();
+		expectMatEqual(uncompressThread.getUncompressedData(), restored);
+	}
+}
+
+TEST(CompressionTest, InverseDepthQuantizationParameters)
+{
+	const cv::Mat depth = makeFloatDepth(32, 32, 1.0f, 39.0f);
+	const std::vector<unsigned char> bytes = compressImage(depth, ".png:40:50");
+	EXPECT_EQ(compressedDepthFormat(bytes), ".png:40:50");
+	const cv::Mat restored = uncompressImage(bytes);
+	ASSERT_EQ(restored.type(), CV_32FC1);
+	for(int r = 0; r < depth.rows; ++r)
+	{
+		for(int c = 0; c < depth.cols; ++c)
+		{
+			const float d = depth.at<float>(r, c);
+			ASSERT_NEAR(restored.at<float>(r, c), d, invDepthTolerance(d, 50.0f));
+		}
+	}
+}
+
+TEST(CompressionTest, InverseDepthNonContinuousImage)
+{
+	const cv::Mat depth = makeFloatDepth(20, 30, 1.0f, 5.0f);
+	const cv::Mat roi = depth(cv::Rect(3, 2, 10, 8));
+	ASSERT_FALSE(roi.isContinuous());
+	const cv::Mat restored = uncompressImage(compressImage(roi, ".rvl:10:100"));
+	ASSERT_EQ(restored.size(), roi.size());
+	for(int r = 0; r < roi.rows; ++r)
+	{
+		for(int c = 0; c < roi.cols; ++c)
+		{
+			const float d = roi.at<float>(r, c);
+			ASSERT_NEAR(restored.at<float>(r, c), d, invDepthTolerance(d, 100.0f));
+		}
+	}
+}
+
+TEST(CompressionTest, DepthParametersIgnoredFor16UC1)
+{
+	cv::Mat depth(24, 32, CV_16UC1);
+	cv::randu(depth, 0, 20000); // includes values over the max depth below
+	for(const std::string codec : {".png", ".rvl"})
+	{
+		SCOPED_TRACE(codec);
+		const std::vector<unsigned char> bytes = compressImage(depth, codec + ":10:100");
+		EXPECT_EQ(bytes, compressImage(depth, codec));
+		EXPECT_EQ(compressedDepthFormat(bytes), codec);
+		expectMatEqual(uncompressImage(bytes), depth);
+	}
+}
+
+TEST(CompressionTest, LegacyFloatDepthIsLossless)
+{
+	const cv::Mat depth = makeFloatDepth(16, 16, 0.01f, 100.0f);
+	for(const std::string format : {".png", ".rvl"})
+	{
+		SCOPED_TRACE(format);
+		const std::vector<unsigned char> bytes = compressImage(depth, format);
+		EXPECT_EQ(compressedDepthFormat(bytes), ".png");
+		const cv::Mat restored = uncompressImage(bytes);
+		ASSERT_EQ(restored.type(), CV_32FC1);
+		EXPECT_EQ(memcmp(restored.data, depth.data, depth.total() * depth.elemSize()), 0);
+	}
+}
+
+TEST(CompressionTest, MalformedDepthFormatsDecodeToEmpty)
+{
+	// Signature and header only, no payload
+	std::vector<unsigned char> invDepth = {'D', 'E', 'P', 'T', 'H', 'I', 'N', 'V'};
+	invDepth.resize(16, 0);
+	EXPECT_TRUE(uncompressImage(invDepth).empty());
+	EXPECT_EQ(compressedDepthFormat(invDepth), ".png") << "too short to be inverse depth";
+
+	// Inverse depth header followed by an 8 bits image instead of a 16 bits one
+	const std::vector<unsigned char> png8 = compressImage(cv::Mat(4, 4, CV_8UC1, cv::Scalar(1)), ".png");
+	invDepth.insert(invDepth.end(), png8.begin(), png8.end());
+	EXPECT_TRUE(uncompressImage(invDepth).empty());
+
+	// RVL signature without its size
+	const std::vector<unsigned char> rvl = {'D', 'E', 'P', 'T', 'H', 'R', 'V', 'L', 4, 0};
+	EXPECT_TRUE(uncompressImage(rvl).empty());
+	EXPECT_EQ(compressedDepthFormat(rvl), ".rvl");
+
+	EXPECT_TRUE(uncompressImage(nullptr, 0).empty());
+}
+
+TEST(CompressionTest, CompressionThreadRejectsInvalidFormat)
+{
+	// std::string: a string literal would select the (bytes, isImage) constructor
+	const cv::Mat depth(4, 4, CV_32FC1, cv::Scalar(1.0f));
+	EXPECT_THROW(CompressionThread(depth, std::string(".jpg:10")), UException);
+	EXPECT_THROW(CompressionThread(depth, std::string(".bmp")), UException);
+	EXPECT_NO_THROW(CompressionThread(depth, std::string(".rvl:10:100")));
 }

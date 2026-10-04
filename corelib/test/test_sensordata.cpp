@@ -199,7 +199,7 @@ TEST(SensorDataTest, IsValidWithCameraModel)
 {
     SensorData data;
     data.setRGBDImage(cv::Mat(), cv::Mat(), CameraModel());
-    EXPECT_FALSE(data.cameraModels().empty());
+    EXPECT_TRUE(data.cameraModels().empty()); // invalid without image: placeholder not kept
     EXPECT_FALSE(data.isValid()); // not valid for projection
 
     data.setRGBDImage(cv::Mat(), cv::Mat(), CameraModel(525.0, 525.0, 320.0, 240.0));
@@ -986,3 +986,32 @@ TEST(SensorDataTest, DifferentDepthTypes)
     EXPECT_EQ(data.depthOrRightRaw().type(), CV_32FC1);
 }
 
+
+// An invalid CameraModel without any image is a placeholder (e.g., lidar odometry
+// creating scan-only data with CameraModel()): it is not kept. With an image, it is kept,
+// as images can be used without calibration.
+TEST(SensorDataTest, InvalidCameraModelIsKeptOnlyWithImages)
+{
+	const LaserScan scan(cv::Mat(1, 3, CV_32FC2, cv::Scalar(1.0f, 0.0f)), 0, 10.0f, LaserScan::kXY);
+	const SensorData scanOnly(scan, cv::Mat(), cv::Mat(), CameraModel(), 1, 1.0);
+	EXPECT_TRUE(scanOnly.cameraModels().empty());
+	EXPECT_TRUE(scanOnly.isValid());
+
+	const cv::Mat image(4, 6, CV_8UC1, cv::Scalar(1));
+	const SensorData uncalibrated(image, CameraModel(), 1, 1.0);
+	EXPECT_EQ(uncalibrated.cameraModels().size(), 1u);
+
+	const SensorData compressedOnly(compressImage2(image, ".png"), CameraModel(), 1, 1.0);
+	EXPECT_EQ(compressedOnly.cameraModels().size(), 1u);
+
+	const CameraModel valid(10.0, 10.0, 3.0, 2.0);
+	const SensorData calibratedNoImage(scan, cv::Mat(), cv::Mat(), valid, 1, 1.0);
+	EXPECT_EQ(calibratedNoImage.cameraModels().size(), 1u) << "valid models are always kept";
+
+	// Keeping the images already there: they still need their model
+	SensorData data(image, CameraModel(), 1, 1.0);
+	data.setRGBDImage(cv::Mat(), cv::Mat(), CameraModel(), false);
+	EXPECT_EQ(data.cameraModels().size(), 1u);
+	data.setRGBDImage(cv::Mat(), cv::Mat(), CameraModel(), true);
+	EXPECT_TRUE(data.cameraModels().empty()) << "images cleared, nothing left to describe";
+}

@@ -162,6 +162,20 @@ IF(BUILD_PERF_TESTS)
 	set_tests_properties(test_graph_perf PROPERTIES
 			TIMEOUT ${_perf_timeout}
 			LABELS  "performance")
+
+	# Comparison of the depth image compression approaches (sizes, times, errors) for
+	# 16UC1 and 32FC1 depth images: PNG, RVL, zlib, the legacy 4-channel PNG of 32FC1
+	# images, their conversion to 16UC1 millimeters, and their quantization as 16 bits
+	# inverse depth (Mem/DepthCompressionFormat=".png:max:q" or ".rvl:max:q"):
+	#   bin/test_compression_perf
+	#   bin/test_compression_perf --gtest_filter=*Synthetic*
+	add_executable(test_compression_perf perf_compression.cpp)
+	target_link_libraries(test_compression_perf gtest_main rtabmap_core)
+
+	add_test(NAME test_compression_perf COMMAND test_compression_perf)
+	set_tests_properties(test_compression_perf PROPERTIES
+			TIMEOUT ${_perf_timeout}
+			LABELS  "performance")
 ENDIF(BUILD_PERF_TESTS)
 
 # Rtabmap end-to-end replay of sample DBs (test data fetched by

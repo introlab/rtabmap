@@ -4681,3 +4681,128 @@ TEST(MemoryTest, CreateSignatureRecompressesStereoPairAfterRectification)
 	EXPECT_GT(cv::countNonZero(uncompressImage(stored.depthOrRightCompressed()) != right), 0)
 			<< "stored right image still holds the unrectified pixels";
 }
+
+// ---------------------------------------------------------------------------
+// Mem/DepthCompressionFormat with inverse depth (".rvl:max:q"), which databases
+// older than 0.24 cannot hold: rtabmap 0.23 would still open them (e.g., created
+// with Db/TargetVersion=0.23.0) but could not decode their depth images.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+enum DepthInput
+{
+	kRawDepth,
+	kCompressedDepthWithRaw,   // e.g., received from ROS and decoded
+	kCompressedDepthOnly       // raw depth not needed (no features extracted here)
+};
+
+struct InverseDepthCase
+{
+	const char * targetVersion;
+	DepthInput input;
+	const char * depthCompressionFormat;
+	bool parallelCompression;
+	const char * expectedFormat;
+};
+
+class MemoryInverseDepthTest : public ::testing::TestWithParam<InverseDepthCase> {};
+
+} // namespace
+
+TEST_P(MemoryInverseDepthTest, StoredDepthFormatFollowsDatabaseVersion)
+{
+	const InverseDepthCase & cs = GetParam();
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemDepthCompressionFormat()] = cs.depthCompressionFormat;
+	params[Parameters::kMemCompressionParallelized()] = cs.parallelCompression ? "true" : "false";
+	params[Parameters::kDbTargetVersion()] = cs.targetVersion;
+	Memory memory(params);
+	const std::string dbPath = uniqueDbPath();
+	ASSERT_TRUE(memory.init(dbPath, true, params));
+
+	const cv::Mat rgb(16, 16, CV_8UC3, cv::Scalar(10, 20, 30));
+	cv::Mat depth(16, 16, CV_32FC1);
+	cv::randu(depth, 0.5f, 8.0f);
+	const CameraModel model(10.0, 10.0, 8.0, 8.0, CameraModel::opticalRotation());
+	SensorData data;
+	if(cs.input == kRawDepth)
+	{
+		data = SensorData(rgb, depth, model);
+	}
+	else
+	{
+		data = SensorData(compressImage2(rgb, ".png"), compressImage2(depth, ".png:10:100"), model);
+		if(cs.input == kCompressedDepthWithRaw)
+		{
+			data.uncompressData();
+			ASSERT_FALSE(data.depthRaw().empty());
+		}
+	}
+
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	const cv::Mat & stored = s->sensorData().depthOrRightCompressed();
+	ASSERT_FALSE(stored.empty());
+	EXPECT_EQ(compressedDepthFormat(stored), cs.expectedFormat);
+
+	const cv::Mat restored = uncompressImage(stored);
+	ASSERT_EQ(restored.type(), CV_32FC1);
+	ASSERT_EQ(restored.size(), depth.size());
+	EXPECT_LT(cv::norm(restored, depth, cv::NORM_INF), 0.01);
+
+	memory.close(false);
+	UFile::erase(dbPath);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+		DatabaseVersions,
+		MemoryInverseDepthTest,
+		::testing::Values(
+				InverseDepthCase{"", kRawDepth, ".rvl:10:100", true, ".rvl:10:100"},
+				InverseDepthCase{"", kRawDepth, ".rvl:10:100", false, ".rvl:10:100"},
+				InverseDepthCase{"", kCompressedDepthWithRaw, ".rvl:10:100", true, ".png:10:100"},  // reused as is
+				InverseDepthCase{"", kCompressedDepthOnly, ".rvl:10:100", true, ".png:10:100"},     // reused as is
+				InverseDepthCase{"0.23.0", kRawDepth, ".rvl:10:100", true, ".png"},                // legacy 32FC1 format
+				InverseDepthCase{"0.23.0", kCompressedDepthWithRaw, ".rvl:10:100", true, ".png"},  // re-compressed
+				InverseDepthCase{"0.23.0", kCompressedDepthOnly, ".rvl:10:100", true, ".png"},     // decompressed, re-compressed
+				InverseDepthCase{"", kRawDepth, ".rvl", true, ".png"},                             // RVL is 16UC1 only: legacy
+				InverseDepthCase{"", kRawDepth, ".jpg", true, ".png"}));                           // invalid: default ".rvl"
+
+// Compressed images that Memory rectifies (Rtabmap/ImagesAlreadyRectified=false) are
+// decoded for it, even when nothing else needs them (no feature extraction here): they
+// are stored rectified, not as received.
+TEST(MemoryTest, DecodesCompressedImagesToRectifyThem)
+{
+	for(bool alreadyRectified : {true, false})
+	{
+		SCOPED_TRACE(alreadyRectified ? "already rectified" : "rectified by Memory");
+		ParametersMap params = defaultMemoryParams();
+		params[Parameters::kMemBinDataKept()] = "true";
+		params[Parameters::kRtabmapImagesAlreadyRectified()] = alreadyRectified ? "true" : "false";
+		Memory memory(params);
+		ASSERT_TRUE(memory.init(""));
+
+		cv::Mat rgb(48, 64, CV_8UC3);
+		cv::randu(rgb, 0, 255);
+		const cv::Mat K = (cv::Mat_<double>(3, 3) << 50, 0, 32, 0, 50, 24, 0, 0, 1);
+		const cv::Mat D = (cv::Mat_<double>(1, 5) << -0.3, 0.1, 0, 0, 0);
+		const cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
+		const cv::Mat P = (cv::Mat_<double>(3, 4) << 50, 0, 32, 0, 0, 50, 24, 0, 0, 0, 1, 0);
+		const CameraModel model("cam", cv::Size(64, 48), K, D, R, P, CameraModel::opticalRotation());
+		ASSERT_TRUE(model.isValidForRectification());
+		const cv::Mat compressed = compressImage2(rgb, ".png");
+		SensorData data(compressed, cv::Mat(), model);
+
+		ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+		const Signature * s = memory.getSignature(memory.getLastSignatureId());
+		ASSERT_NE(s, nullptr);
+		const cv::Mat & stored = s->sensorData().imageCompressed();
+		ASSERT_FALSE(stored.empty());
+		const bool sameBytes = stored.total() == compressed.total() &&
+				memcmp(stored.data, compressed.data, compressed.total()) == 0;
+		EXPECT_EQ(sameBytes, alreadyRectified);
+	}
+}
