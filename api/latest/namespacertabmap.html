@@ -33,7 +33,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.13</span>
+   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.24.0</span>
    </div>
    <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
@@ -511,9 +511,11 @@ Functions</h2></td></tr>
 <tr class="memitem:a087b7a1b89acb679edee23883653f1a7" id="r_a087b7a1b89acb679edee23883653f1a7"><td class="memItemLeft" align="right" valign="top">RTABMAP_CORE_EXPORT std::ostream &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#a087b7a1b89acb679edee23883653f1a7">operator&lt;&lt;</a> (std::ostream &amp;os, const <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &amp;model)</td></tr>
 <tr class="memdesc:a087b7a1b89acb679edee23883653f1a7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stream operator for printing a camera model to an output stream.  <br /></td></tr>
 <tr class="separator:a087b7a1b89acb679edee23883653f1a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a52beb14eea422420c95fd69bdf3ab9dc" id="r_a52beb14eea422420c95fd69bdf3ab9dc"><td class="memItemLeft" align="right" valign="top"><a id="a52beb14eea422420c95fd69bdf3ab9dc" name="a52beb14eea422420c95fd69bdf3ab9dc"></a>
-std::vector&lt; unsigned char &gt; RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>compressImage</b> (const cv::Mat &amp;image, const std::string &amp;format=&quot;.png&quot;)</td></tr>
-<tr class="memdesc:a52beb14eea422420c95fd69bdf3ab9dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Encodes <code>image</code> to a byte buffer (OpenCV <code>imencode</code> or RVL for depth). <br /></td></tr>
+<tr class="memitem:ac1d5a5ac072d725e236431b21946dc98" id="r_ac1d5a5ac072d725e236431b21946dc98"><td class="memItemLeft" align="right" valign="top">bool RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#ac1d5a5ac072d725e236431b21946dc98">parseImageCompressionFormat</a> (const std::string &amp;format, std::string &amp;codec, float &amp;maxDepth, float &amp;quantization)</td></tr>
+<tr class="memdesc:ac1d5a5ac072d725e236431b21946dc98"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parses an image compression format "&lt;codec&gt;[:&lt;maxDepth&gt;[:&lt;quantization&gt;]]".  <br /></td></tr>
+<tr class="separator:ac1d5a5ac072d725e236431b21946dc98"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a52beb14eea422420c95fd69bdf3ab9dc" id="r_a52beb14eea422420c95fd69bdf3ab9dc"><td class="memItemLeft" align="right" valign="top">std::vector&lt; unsigned char &gt; RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#a52beb14eea422420c95fd69bdf3ab9dc">compressImage</a> (const cv::Mat &amp;image, const std::string &amp;format=&quot;.png&quot;)</td></tr>
+<tr class="memdesc:a52beb14eea422420c95fd69bdf3ab9dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Encodes <code>image</code> to a byte buffer (OpenCV <code>imencode</code> or RVL for depth).  <br /></td></tr>
 <tr class="separator:a52beb14eea422420c95fd69bdf3ab9dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abd9d5523210562abd9b5dc8fa9dbeb99" id="r_abd9d5523210562abd9b5dc8fa9dbeb99"><td class="memItemLeft" align="right" valign="top"><a id="abd9d5523210562abd9b5dc8fa9dbeb99" name="abd9d5523210562abd9b5dc8fa9dbeb99"></a>
 cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>compressImage2</b> (const cv::Mat &amp;image, const std::string &amp;format=&quot;.png&quot;)</td></tr>
@@ -527,6 +529,10 @@ cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><
 cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>uncompressImage</b> (const std::vector&lt; unsigned char &gt; &amp;bytes)</td></tr>
 <tr class="memdesc:af56ea8b86f7a873959588d35a7ede187"><td class="mdescLeft">&#160;</td><td class="mdescRight">Decodes compressed image bytes to a @cv::Mat. <br /></td></tr>
 <tr class="separator:af56ea8b86f7a873959588d35a7ede187"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab82c2ccce0996793c20ace4b13670711" id="r_ab82c2ccce0996793c20ace4b13670711"><td class="memItemLeft" align="right" valign="top"><a id="ab82c2ccce0996793c20ace4b13670711" name="ab82c2ccce0996793c20ace4b13670711"></a>
+cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>uncompressImage</b> (const unsigned char *bytes, size_t size)</td></tr>
+<tr class="memdesc:ab82c2ccce0996793c20ace4b13670711"><td class="mdescLeft">&#160;</td><td class="mdescRight">Decodes compressed image bytes to a @cv::Mat. <br /></td></tr>
+<tr class="separator:ab82c2ccce0996793c20ace4b13670711"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a749adef593d09b887926afb6ebdb5834" id="r_a749adef593d09b887926afb6ebdb5834"><td class="memItemLeft" align="right" valign="top"><a id="a749adef593d09b887926afb6ebdb5834" name="a749adef593d09b887926afb6ebdb5834"></a>
 std::vector&lt; unsigned char &gt; RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>compressData</b> (const cv::Mat &amp;data)</td></tr>
 <tr class="memdesc:a749adef593d09b887926afb6ebdb5834"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compresses a matrix with zlib; appends rows, cols and type at the end. <br /></td></tr>
@@ -626,6 +632,18 @@ Variables</h2></td></tr>
 <tr class="memitem:a02e773b48c5ac372ce67fe4e040d835d" id="r_a02e773b48c5ac372ce67fe4e040d835d"><td class="memItemLeft" align="right" valign="top">RTABMAP_DEPRECATED typedef <a class="el" href="classrtabmap_1_1SensorEvent.html">SensorEvent</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#a02e773b48c5ac372ce67fe4e040d835d">CameraEvent</a></td></tr>
 <tr class="memdesc:a02e773b48c5ac372ce67fe4e040d835d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Backward compatibility typedef.  <br /></td></tr>
 <tr class="separator:a02e773b48c5ac372ce67fe4e040d835d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af79397e4c11daefaf353d14f943ae479" id="r_af79397e4c11daefaf353d14f943ae479"><td class="memItemLeft" align="right" valign="top">const char&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#af79397e4c11daefaf353d14f943ae479">kCompressedDepthRvlSignature</a> [8] = {'D', 'E', 'P', 'T', 'H', 'R', 'V', 'L'}</td></tr>
+<tr class="memdesc:af79397e4c11daefaf353d14f943ae479"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1Signature.html" title="Represents a node in RTAB-Map&#39;s pose graph.">Signature</a> of the ".rvl" layout (8 bytes, not null-terminated).  <br /></td></tr>
+<tr class="separator:af79397e4c11daefaf353d14f943ae479"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaad2804128bde2d3e29f7e76ef4ccd9d" id="r_aaad2804128bde2d3e29f7e76ef4ccd9d"><td class="memItemLeft" align="right" valign="top">const size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#aaad2804128bde2d3e29f7e76ef4ccd9d">kCompressedDepthRvlHeaderSize</a> = 16</td></tr>
+<tr class="memdesc:aaad2804128bde2d3e29f7e76ef4ccd9d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of the ".rvl" header: signature, uint32 cols, uint32 rows.  <br /></td></tr>
+<tr class="separator:aaad2804128bde2d3e29f7e76ef4ccd9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae70d840d2253bf8e575122336b51ee9b" id="r_ae70d840d2253bf8e575122336b51ee9b"><td class="memItemLeft" align="right" valign="top">const char&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#ae70d840d2253bf8e575122336b51ee9b">kCompressedDepthInvSignature</a> [8] = {'D', 'E', 'P', 'T', 'H', 'I', 'N', 'V'}</td></tr>
+<tr class="memdesc:ae70d840d2253bf8e575122336b51ee9b"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1Signature.html" title="Represents a node in RTAB-Map&#39;s pose graph.">Signature</a> of the inverse depth layout (8 bytes, not null-terminated).  <br /></td></tr>
+<tr class="separator:ae70d840d2253bf8e575122336b51ee9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6fe0f42207f43d29b6aa013e1a57fb6c" id="r_a6fe0f42207f43d29b6aa013e1a57fb6c"><td class="memItemLeft" align="right" valign="top">const size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#a6fe0f42207f43d29b6aa013e1a57fb6c">kCompressedDepthInvHeaderSize</a> = 16</td></tr>
+<tr class="memdesc:a6fe0f42207f43d29b6aa013e1a57fb6c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of the inverse depth header: signature, float depthQuantA, float depthQuantB.  <br /></td></tr>
+<tr class="separator:a6fe0f42207f43d29b6aa013e1a57fb6c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Contributed by e-consystemgit <a href="https://www.e-consystems.com/opensource-linux-webcam-software-application.asp">https://www.e-consystems.com/opensource-linux-webcam-software-application.asp</a> </p>
@@ -767,6 +785,94 @@ Variables</h2></td></tr>
 
 </div>
 </div>
+<a id="ac1d5a5ac072d725e236431b21946dc98" name="ac1d5a5ac072d725e236431b21946dc98"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac1d5a5ac072d725e236431b21946dc98">&#9670;&#160;</a></span>parseImageCompressionFormat()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool RTABMAP_CORE_EXPORT rtabmap::parseImageCompressionFormat </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>format</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::string &amp;&#160;</td>
+          <td class="paramname"><em>codec</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float &amp;&#160;</td>
+          <td class="paramname"><em>maxDepth</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float &amp;&#160;</td>
+          <td class="paramname"><em>quantization</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Parses an image compression format "&lt;codec&gt;[:&lt;maxDepth&gt;[:&lt;quantization&gt;]]". </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">format</td><td>Format, e.g., <code>".jpg"</code>, <code>".png"</code>, <code>".rvl"</code>, <code>".png:10"</code> or <code>".rvl:20:100"</code>. The empty format is valid (general zlib compression, see <a class="el" href="classrtabmap_1_1CompressionThread.html">CompressionThread</a>). </td></tr>
+    <tr><td class="paramname">codec</td><td>Output codec (e.g., <code>".png"</code>). </td></tr>
+    <tr><td class="paramname">maxDepth</td><td>Output maximum depth (m) of the inverse depth format, 0 if not set. </td></tr>
+    <tr><td class="paramname">quantization</td><td>Output depth quantization of the inverse depth format (100 if not set but <code>maxDepth</code> is), 0 if <code>maxDepth</code> is not set. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>false if the format is invalid. The inverse depth parameters are only valid with <code>".png"</code> and <code>".rvl"</code>, and should be positive. </dd></dl>
+
+</div>
+</div>
+<a id="a52beb14eea422420c95fd69bdf3ab9dc" name="a52beb14eea422420c95fd69bdf3ab9dc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a52beb14eea422420c95fd69bdf3ab9dc">&#9670;&#160;</a></span>compressImage()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt; unsigned char &gt; RTABMAP_CORE_EXPORT rtabmap::compressImage </td>
+          <td>(</td>
+          <td class="paramtype">const cv::Mat &amp;&#160;</td>
+          <td class="paramname"><em>image</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>format</em> = <code>&quot;.png&quot;</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Encodes <code>image</code> to a byte buffer (OpenCV <code>imencode</code> or RVL for depth). </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">format</td><td><code>".png"</code>, <code>".jpg"</code> or <code>".rvl"</code> (16UC1 only), optionally followed by <code>":&lt;maxDepth&gt;[:&lt;quantization&gt;]"</code> (see <a class="el" href="namespacertabmap.html#ac1d5a5ac072d725e236431b21946dc98">parseImageCompressionFormat()</a>). For 32FC1 depth images, if <code>maxDepth</code> is set, depth is quantized on 16 bits as inverse depth (as ROS's <code>compressed_depth_image_transport</code>) and compressed with the codec. With A=quantization*(quantization+1) and B=1-A/maxDepth, the precision is ~d^2/(2A), and depth values over <code>maxDepth</code> or under A/(65535-B) are lost (set to 0). For example, ".png:10:100" keeps depth between 0.15 and 10 m with errors of 0.05 mm at 1 m and 5 mm at 10 m. Otherwise, 32FC1 depth images are compressed losslessly as 4-channel 8 bits PNG (legacy format). Other image types ignore the depth parameters. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a id="a67c525e80a7187b3106e5fd76155cabc" name="a67c525e80a7187b3106e5fd76155cabc"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a67c525e80a7187b3106e5fd76155cabc">&#9670;&#160;</a></span>compressedDepthFormat() <span class="overload">[1/3]</span></h2>
 
@@ -784,7 +890,7 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Detects the compression format of depth image bytes. </p>
-<dl class="section return"><dt>Returns</dt><dd><code>".rvl"</code> if the buffer has an RVL signature, otherwise <code>".png"</code>. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd><code>".rvl"</code> if the buffer has an RVL signature, <code>".png:&lt;maxDepth&gt;:&lt;quantization&gt;"</code> or <code>".rvl:&lt;maxDepth&gt;:&lt;quantization&gt;"</code> for inverse depth images (see <a class="el" href="namespacertabmap.html#a52beb14eea422420c95fd69bdf3ab9dc">compressImage()</a>), otherwise <code>".png"</code>. The returned format can be passed back to <a class="el" href="namespacertabmap.html#a52beb14eea422420c95fd69bdf3ab9dc">compressImage()</a> to compress in the same format. </dd></dl>
 
 </div>
 </div>
@@ -1462,6 +1568,78 @@ Variables</h2></td></tr>
 <p>CameraEvent is deprecated. Use <a class="el" href="classrtabmap_1_1SensorEvent.html" title="Event class for sensor data communication in RTAB-Map&#39;s event system.">SensorEvent</a> instead. </p>
 
 <p class="definition">Definition at line <a class="el" href="SensorEvent_8h_source.html#l00207">207</a> of file <a class="el" href="SensorEvent_8h_source.html">SensorEvent.h</a>.</p>
+
+</div>
+</div>
+<a id="af79397e4c11daefaf353d14f943ae479" name="af79397e4c11daefaf353d14f943ae479"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af79397e4c11daefaf353d14f943ae479">&#9670;&#160;</a></span>kCompressedDepthRvlSignature</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const char rtabmap::kCompressedDepthRvlSignature[8] = {'D', 'E', 'P', 'T', 'H', 'R', 'V', 'L'}</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p><a class="el" href="classrtabmap_1_1Signature.html" title="Represents a node in RTAB-Map&#39;s pose graph.">Signature</a> of the ".rvl" layout (8 bytes, not null-terminated). </p>
+
+<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00118">118</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
+
+</div>
+</div>
+<a id="aaad2804128bde2d3e29f7e76ef4ccd9d" name="aaad2804128bde2d3e29f7e76ef4ccd9d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaad2804128bde2d3e29f7e76ef4ccd9d">&#9670;&#160;</a></span>kCompressedDepthRvlHeaderSize</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const size_t rtabmap::kCompressedDepthRvlHeaderSize = 16</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Size of the ".rvl" header: signature, uint32 cols, uint32 rows. </p>
+
+<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00120">120</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
+
+</div>
+</div>
+<a id="ae70d840d2253bf8e575122336b51ee9b" name="ae70d840d2253bf8e575122336b51ee9b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae70d840d2253bf8e575122336b51ee9b">&#9670;&#160;</a></span>kCompressedDepthInvSignature</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const char rtabmap::kCompressedDepthInvSignature[8] = {'D', 'E', 'P', 'T', 'H', 'I', 'N', 'V'}</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p><a class="el" href="classrtabmap_1_1Signature.html" title="Represents a node in RTAB-Map&#39;s pose graph.">Signature</a> of the inverse depth layout (8 bytes, not null-terminated). </p>
+
+<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00122">122</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
+
+</div>
+</div>
+<a id="a6fe0f42207f43d29b6aa013e1a57fb6c" name="a6fe0f42207f43d29b6aa013e1a57fb6c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6fe0f42207f43d29b6aa013e1a57fb6c">&#9670;&#160;</a></span>kCompressedDepthInvHeaderSize</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const size_t rtabmap::kCompressedDepthInvHeaderSize = 16</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Size of the inverse depth header: signature, float depthQuantA, float depthQuantB. </p>
+
+<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00124">124</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
 
 </div>
 </div>

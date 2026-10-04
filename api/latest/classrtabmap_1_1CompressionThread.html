@@ -33,7 +33,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.13</span>
+   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.24.0</span>
    </div>
    <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
@@ -247,20 +247,20 @@ Additional Inherited Members</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Background thread to compress or uncompress images and generic matrices. </p>
-<p>In compress mode, pass a source matrix to the constructor with an optional image format (".png", ".jpg", ".rvl", or empty for zlib data). In uncompress mode, pass compressed bytes and set <code>isImage</code> accordingly. Call <a class="el" href="classUThread.html#a051e9adcf24f92b9c8e31acd06bad88c">UThread::start()</a> then <a class="el" href="classUThread.html#acf33c0e4b656af76da100e7d4f69ed1d">UThread::join()</a> to obtain the result from <a class="el" href="classrtabmap_1_1CompressionThread.html#a6908afb16364f91c7d0744decf6c970d">getCompressedData()</a> or <a class="el" href="classrtabmap_1_1CompressionThread.html#aafdc57cad744cbe94b30a8abfe7711a4">getUncompressedData()</a>.</p>
+<p>In compress mode, pass a source matrix to the constructor with an optional image format (".png", ".jpg", ".rvl", or empty for zlib data, see <a class="el" href="namespacertabmap.html#a52beb14eea422420c95fd69bdf3ab9dc">compressImage()</a> for depth options). In uncompress mode, pass compressed bytes and set <code>isImage</code> accordingly. Call <a class="el" href="classUThread.html#a051e9adcf24f92b9c8e31acd06bad88c">UThread::start()</a> then <a class="el" href="classUThread.html#acf33c0e4b656af76da100e7d4f69ed1d">UThread::join()</a> to obtain the result from <a class="el" href="classrtabmap_1_1CompressionThread.html#a6908afb16364f91c7d0744decf6c970d">getCompressedData()</a> or <a class="el" href="classrtabmap_1_1CompressionThread.html#aafdc57cad744cbe94b30a8abfe7711a4">getUncompressedData()</a>.</p>
 <p>Example compression: </p><div class="fragment"><div class="line">cv::Mat image;</div>
 <div class="line"><a class="code hl_class" href="classrtabmap_1_1CompressionThread.html">CompressionThread</a> ct(image, <span class="stringliteral">&quot;.png&quot;</span>);</div>
 <div class="line">ct.start();</div>
 <div class="line">ct.join();</div>
 <div class="line">cv::Mat bytes = ct.getCompressedData();</div>
-<div class="ttc" id="aclassrtabmap_1_1CompressionThread_html"><div class="ttname"><a href="classrtabmap_1_1CompressionThread.html">rtabmap::CompressionThread</a></div><div class="ttdoc">Background thread to compress or uncompress images and generic matrices.</div><div class="ttdef"><b>Definition</b> <a href="Compression_8h_source.html#l00067">Compression.h:68</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1CompressionThread_html"><div class="ttname"><a href="classrtabmap_1_1CompressionThread.html">rtabmap::CompressionThread</a></div><div class="ttdoc">Background thread to compress or uncompress images and generic matrices.</div><div class="ttdef"><b>Definition</b> <a href="Compression_8h_source.html#l00068">Compression.h:69</a></div></div>
 </div><!-- fragment --><p>Example uncompression: </p><div class="fragment"><div class="line">cv::Mat bytes;</div>
 <div class="line"><a class="code hl_class" href="classrtabmap_1_1CompressionThread.html">CompressionThread</a> ct(bytes, <span class="keyword">true</span>);</div>
 <div class="line">ct.start();</div>
 <div class="line">ct.join();</div>
 <div class="line">cv::Mat image = ct.getUncompressedData();</div>
 </div><!-- fragment --> 
-<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00067">67</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00068">68</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a6bdec4c44e47774291bc9f98b3b5c146" name="a6bdec4c44e47774291bc9f98b3b5c146"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a6bdec4c44e47774291bc9f98b3b5c146">&#9670;&#160;</a></span>CompressionThread() <span class="overload">[1/2]</span></h2>
@@ -292,7 +292,7 @@ Additional Inherited Members</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">mat</td><td>Source image or data matrix to compress. </td></tr>
-    <tr><td class="paramname">format</td><td>Image format: <code>".png"</code>, <code>".jpg"</code>, <code>".rvl"</code>, or empty for zlib (<a class="el" href="namespacertabmap.html#aca82ee9efc46461c648c7ab8999e1d5b">compressData2</a>). </td></tr>
+    <tr><td class="paramname">format</td><td>Image format: <code>".png"</code>, <code>".jpg"</code>, <code>".rvl"</code> (see <a class="el" href="namespacertabmap.html#a52beb14eea422420c95fd69bdf3ab9dc">compressImage()</a>), or empty for zlib (<a class="el" href="namespacertabmap.html#aca82ee9efc46461c648c7ab8999e1d5b">compressData2</a>). </td></tr>
   </table>
   </dd>
 </dl>
@@ -361,7 +361,7 @@ Additional Inherited Members</h2></td></tr>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>Compressed output (<code>CV_8UC1</code>), valid after compress mode completes. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00083">83</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00084">84</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
 
 </div>
 </div>
@@ -389,7 +389,7 @@ Additional Inherited Members</h2></td></tr>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>Uncompressed output, valid after uncompress mode completes. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00085">85</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="Compression_8h_source.html#l00086">86</a> of file <a class="el" href="Compression_8h_source.html">Compression.h</a>.</p>
 
 </div>
 </div>

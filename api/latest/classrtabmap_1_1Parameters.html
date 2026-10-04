@@ -33,7 +33,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.13</span>
+   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.24.0</span>
    </div>
    <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
@@ -435,7 +435,7 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memdesc:a87345250b6e908110f2196ae032ed0aa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of parameter Mem/ImageCompressionFormat , as a string: string.  <br /></td></tr>
 <tr class="separator:a87345250b6e908110f2196ae032ed0aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae33ed5cddc4a5478f73381645791c66" id="r_aae33ed5cddc4a5478f73381645791c66"><td class="memItemLeft" align="right" valign="top">static std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Parameters.html#aae33ed5cddc4a5478f73381645791c66">kMemDepthCompressionFormat</a> ()</td></tr>
-<tr class="memdesc:aae33ed5cddc4a5478f73381645791c66"><td class="mdescLeft">&#160;</td><td class="mdescRight">Key of parameter Mem/DepthCompressionFormat : "Depth image compression format for 16UC1 depth type. It should be \".png\" or \".rvl\". If depth type is 32FC1, \".png\" is used." Default value: ".rvl" (string).  <br /></td></tr>
+<tr class="memdesc:aae33ed5cddc4a5478f73381645791c66"><td class="mdescLeft">&#160;</td><td class="mdescRight">Key of parameter Mem/DepthCompressionFormat : "Depth image compression format. It should be \".png\" or \".rvl\", optionally followed by \":maxDepth[:quantization]\" (e.g., \".rvl:10:100\", quantization is 100 by default) to compress 32FC1 depth images as 16 bits inverse depth with that codec (same quantization than ROS's compressed_depth_image_transport). 16UC1 depth images are always compressed losslessly with the codec. Warning: the inverse depth format is lossy, the precision is ~d^2/(2*q*(q+1)) (q=quantization, e.g., 0.05 mm at 1 m and 5 mm at 10 m with q=100) and depth values over maxDepth or under ~q*(q+1)/65535 meters (0.15 m with q=100) are lost. Without depth parameters, 32FC1 depth images are compressed losslessly in \".png\" format (4 channels 8 bits). Databases with depth images compressed in inverse depth format cannot be opened by rtabmap versions under 0.24." Default value: ".rvl" (string).  <br /></td></tr>
 <tr class="separator:aae33ed5cddc4a5478f73381645791c66"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a910b2ae89d8052dd47a351ec70837fff" id="r_a910b2ae89d8052dd47a351ec70837fff"><td class="memItemLeft" align="right" valign="top">static std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1Parameters.html#a910b2ae89d8052dd47a351ec70837fff">defaultMemDepthCompressionFormat</a> ()</td></tr>
 <tr class="memdesc:a910b2ae89d8052dd47a351ec70837fff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default value of parameter Mem/DepthCompressionFormat : ".rvl" .  <br /></td></tr>
@@ -8906,7 +8906,7 @@ The <a class="el" href="parameters.html">Parameter reference</a> page, which lis
 </table>
 </div><div class="memdoc">
 
-<p>Key of parameter Mem/DepthCompressionFormat : "Depth image compression format for 16UC1 depth type. It should be \".png\" or \".rvl\". If depth type is 32FC1, \".png\" is used." Default value: ".rvl" (string). </p>
+<p>Key of parameter Mem/DepthCompressionFormat : "Depth image compression format. It should be \".png\" or \".rvl\", optionally followed by \":maxDepth[:quantization]\" (e.g., \".rvl:10:100\", quantization is 100 by default) to compress 32FC1 depth images as 16 bits inverse depth with that codec (same quantization than ROS's compressed_depth_image_transport). 16UC1 depth images are always compressed losslessly with the codec. Warning: the inverse depth format is lossy, the precision is ~d^2/(2*q*(q+1)) (q=quantization, e.g., 0.05 mm at 1 m and 5 mm at 10 m with q=100) and depth values over maxDepth or under ~q*(q+1)/65535 meters (0.15 m with q=100) are lost. Without depth parameters, 32FC1 depth images are compressed losslessly in \".png\" format (4 channels 8 bits). Databases with depth images compressed in inverse depth format cannot be opened by rtabmap versions under 0.24." Default value: ".rvl" (string). </p>
 
 <p class="definition">Definition at line <a class="el" href="Parameters_8h_source.html#l00225">225</a> of file <a class="el" href="Parameters_8h_source.html">Parameters.h</a>.</p>
 

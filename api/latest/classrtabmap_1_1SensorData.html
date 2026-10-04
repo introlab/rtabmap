@@ -33,7 +33,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.13</span>
+   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.24.0</span>
    </div>
    <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
@@ -946,7 +946,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <div class="ttc" id="aclassrtabmap_1_1SensorData_html"><div class="ttname"><a href="classrtabmap_1_1SensorData.html">rtabmap::SensorData</a></div><div class="ttdoc">Container class for all sensor data captured at a specific time.</div><div class="ttdef"><b>Definition</b> <a href="SensorData_8h_source.html#l00096">SensorData.h:97</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1SensorData_html_a2476c59283ef2e24d7a3f10301433327"><div class="ttname"><a href="classrtabmap_1_1SensorData.html#a2476c59283ef2e24d7a3f10301433327">rtabmap::SensorData::depthOrRightRaw</a></div><div class="ttdeci">const cv::Mat &amp; depthOrRightRaw() const</div><div class="ttdoc">Returns the raw depth or right stereo image.</div><div class="ttdef"><b>Definition</b> <a href="SensorData_8h_source.html#l00584">SensorData.h:584</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1SensorData_html_a566e5600bc0369f2f88ff0c597cefcfb"><div class="ttname"><a href="classrtabmap_1_1SensorData.html#a566e5600bc0369f2f88ff0c597cefcfb">rtabmap::SensorData::stamp</a></div><div class="ttdeci">double stamp() const</div><div class="ttdoc">Returns the timestamp.</div><div class="ttdef"><b>Definition</b> <a href="SensorData_8h_source.html#l00538">SensorData.h:538</a></div></div>
-<div class="ttc" id="aclassrtabmap_1_1SensorData_html_a6ace7b2b8ebae5f7ab18e159fe6e8a92"><div class="ttname"><a href="classrtabmap_1_1SensorData.html#a6ace7b2b8ebae5f7ab18e159fe6e8a92">rtabmap::SensorData::cameraModels</a></div><div class="ttdeci">const std::vector&lt; CameraModel &gt; &amp; cameraModels() const</div><div class="ttdoc">Returns the camera models.</div><div class="ttdef"><b>Definition</b> <a href="SensorData_8h_source.html#l00735">SensorData.h:735</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1SensorData_html_a6ace7b2b8ebae5f7ab18e159fe6e8a92"><div class="ttname"><a href="classrtabmap_1_1SensorData.html#a6ace7b2b8ebae5f7ab18e159fe6e8a92">rtabmap::SensorData::cameraModels</a></div><div class="ttdeci">const std::vector&lt; CameraModel &gt; &amp; cameraModels() const</div><div class="ttdoc">Returns the camera models.</div><div class="ttdef"><b>Definition</b> <a href="SensorData_8h_source.html#l00737">SensorData.h:737</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1SensorData_html_ae9e44401d0d6faee8fcb801090936fef"><div class="ttname"><a href="classrtabmap_1_1SensorData.html#ae9e44401d0d6faee8fcb801090936fef">rtabmap::SensorData::imageRaw</a></div><div class="ttdeci">const cv::Mat &amp; imageRaw() const</div><div class="ttdoc">Returns the raw RGB/grayscale image.</div><div class="ttdef"><b>Definition</b> <a href="SensorData_8h_source.html#l00577">SensorData.h:577</a></div></div>
 </div><!-- fragment --> </dd></dl>
 
@@ -1961,7 +1961,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Set image data. Detect automatically if raw or compressed. A matrix of type CV_8UC1 with 1 row is considered as compressed. </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Set image data. Detect automatically if raw or compressed. A matrix of type CV_8UC1 with 1 row is considered as compressed. An invalid <code>model</code> (not <a class="el" href="classrtabmap_1_1CameraModel.html#a7b6db41415e085d52bf363d09d5e6d67" title="Checks if the model is valid for 2D-&gt;3D projection.">CameraModel::isValidForProjection()</a>) without any image is a placeholder (e.g., scan-only data): it is not added, so <a class="el" href="classrtabmap_1_1SensorData.html#a6ace7b2b8ebae5f7ab18e159fe6e8a92" title="Returns the camera models.">cameraModels()</a> is empty. </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">clearPreviousData,clear</td><td>previous raw and compressed images before setting the new ones. </td></tr>
   </table>
@@ -2036,7 +2036,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00621">621</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00623">623</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2072,7 +2072,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00627">627</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00629">629</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2108,7 +2108,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00633">633</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00635">635</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2144,7 +2144,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00639">639</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00641">641</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2175,7 +2175,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the depth image if <code>_depthOrRightRaw</code> contains depth data (not a right stereo image). Depth images are CV_16UC1 or CV_32FC1, while right stereo images are CV_8UC1 or CV_8UC3.</p>
 <dl class="section return"><dt>Returns</dt><dd>Depth image if available, empty Mat if right stereo image or empty </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00650">650</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00652">652</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2206,7 +2206,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the right stereo image if <code>_depthOrRightRaw</code> contains stereo data (not a depth image). Right stereo images are CV_8UC1 or CV_8UC3, while depth images are CV_16UC1 or CV_32FC1.</p>
 <dl class="section return"><dt>Returns</dt><dd>Right stereo image if available, empty Mat if depth image or empty </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00661">661</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00663">663</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2416,7 +2416,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the camera models. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to vector of mono camera models </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00735">735</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00737">737</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2446,7 +2446,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the stereo camera models. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to vector of stereo camera models </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00741">741</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00743">743</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2507,7 +2507,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00756">756</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00758">758</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2534,7 +2534,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00757">757</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00759">759</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2623,7 +2623,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns raw ground cells. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to raw ground cells matrix </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00782">782</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00784">784</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2654,7 +2654,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <dl class="section return"><dt>Returns</dt><dd>Const reference to compressed ground cells matrix </dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Use Compression::uncompressData() to uncompress the data. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00789">789</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00791">791</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2684,7 +2684,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns raw obstacle cells. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to raw obstacle cells matrix </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00795">795</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00797">797</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2715,7 +2715,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <dl class="section return"><dt>Returns</dt><dd>Const reference to compressed obstacle cells matrix </dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Use Compression::uncompressData() to uncompress the data. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00802">802</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00804">804</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2745,7 +2745,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns raw empty cells. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to raw empty cells matrix </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00808">808</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00810">810</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2776,7 +2776,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <dl class="section return"><dt>Returns</dt><dd>Const reference to compressed empty cells matrix </dd></dl>
 <dl class="section note"><dt>Note</dt><dd>Use Compression::uncompressData() to uncompress the data. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00815">815</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00817">817</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2806,7 +2806,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the occupancy grid cell size. </p>
 <dl class="section return"><dt>Returns</dt><dd>Cell size in meters </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00821">821</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00823">823</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2836,7 +2836,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the occupancy grid viewpoint. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to viewpoint/origin 3D point </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00827">827</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00829">829</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2911,7 +2911,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the 2D keypoints. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to vector of 2D keypoints </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00845">845</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00847">847</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2941,7 +2941,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the 3D keypoints. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to vector of 3D points (in base_link frame) </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00851">851</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00853">853</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -2971,7 +2971,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the feature descriptors. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to descriptors matrix (one row per keypoint) </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00857">857</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00859">859</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3007,7 +3007,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00863">863</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00865">865</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3043,7 +3043,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00869">869</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00871">871</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3072,7 +3072,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 
 <p>Clears all global descriptors. </p>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00874">874</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00876">876</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3102,7 +3102,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns all global descriptors. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to vector of global descriptors </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00880">880</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00882">882</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3138,7 +3138,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00886">886</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00888">888</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3168,7 +3168,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the ground truth pose. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to ground truth transform </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00892">892</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00894">894</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3215,7 +3215,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00899">899</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00901">901</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3245,7 +3245,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the global pose. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to global pose transform </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00905">905</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00907">907</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3275,7 +3275,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns the global pose covariance. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to pose covariance matrix (6x6, CV_64FC1) </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00911">911</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00913">913</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3311,7 +3311,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00917">917</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00919">919</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3341,7 +3341,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns <a class="el" href="classrtabmap_1_1GPS.html" title="WGS84 GPS fix attached to a sensor sample or graph node.">GPS</a> data. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to <a class="el" href="classrtabmap_1_1GPS.html" title="WGS84 GPS fix attached to a sensor sample or graph node.">GPS</a> data </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00923">923</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00925">925</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3398,7 +3398,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns <a class="el" href="classrtabmap_1_1IMU.html" title="Inertial measurement sample (ROS sensor_msgs/Imu-like fields).">IMU</a> data. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to <a class="el" href="classrtabmap_1_1IMU.html" title="Inertial measurement sample (ROS sensor_msgs/Imu-like fields).">IMU</a> data </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00937">937</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00939">939</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3434,7 +3434,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00943">943</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00945">945</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3470,7 +3470,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00949">949</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00951">951</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3500,7 +3500,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns all environmental sensors. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to map of environmental sensors </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00955">955</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00957">957</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3537,7 +3537,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 </dl>
 <dl class="section note"><dt>Note</dt><dd><a class="el" href="classrtabmap_1_1Landmark.html" title="Optimized pose of a visual landmark (e.g. ArUco/AprilTag) in the map.">Landmark</a> IDs should be positive and non-zero. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00962">962</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00964">964</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>
@@ -3567,7 +3567,7 @@ The class manages memory efficiently by storing either raw or compressed data (o
 <p>Returns landmarks. </p>
 <dl class="section return"><dt>Returns</dt><dd>Const reference to map of landmarks </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00968">968</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="SensorData_8h_source.html#l00970">970</a> of file <a class="el" href="SensorData_8h_source.html">SensorData.h</a>.</p>
 
 </div>
 </div>

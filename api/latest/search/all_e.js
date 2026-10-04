@@ -31,7 +31,7 @@ var searchData=
   ['left_28',['left',['../classrtabmap_1_1StereoCameraModel.html#a064d29601c0ba13fc47584849e26b81b',1,'rtabmap::StereoCameraModel']]],
   ['length_29',['length',['../classUFile.html#a0c42f32c914b349d13103d0397c1b3c1',1,'UFile::length()'],['../classUFile.html#ae1415739da256633ad417ac7d5fc2c11',1,'UFile::length(const std::string &amp;filePath)']]],
   ['level_30',['Level',['../classULogger.html#a4f71cd491aa60029eb6ea4bf79c06218',1,'ULogger']]],
-  ['lidar_31',['lidar',['../classrtabmap_1_1SensorCaptureThread.html#aa6e5a6a53d621cda6e0b7f2ff35d33f0',1,'rtabmap::SensorCaptureThread::lidar()'],['../classrtabmap_1_1Lidar.html#a9d14987cd20918960d6b3705b66241ed',1,'rtabmap::Lidar::Lidar()'],['../classrtabmap_1_1Lidar.html',1,'rtabmap::Lidar']]],
+  ['lidar_31',['lidar',['../classrtabmap_1_1Lidar.html#a9d14987cd20918960d6b3705b66241ed',1,'rtabmap::Lidar::Lidar()'],['../classrtabmap_1_1SensorCaptureThread.html#aa6e5a6a53d621cda6e0b7f2ff35d33f0',1,'rtabmap::SensorCaptureThread::lidar()'],['../classrtabmap_1_1Lidar.html',1,'rtabmap::Lidar']]],
   ['lidarvlp16_32',['LidarVLP16',['../classrtabmap_1_1LidarVLP16.html',1,'rtabmap']]],
   ['likelihood_33',['likelihood',['../classrtabmap_1_1Statistics.html#a4f3492b5cf6ff082d0061c9d7c67536f',1,'rtabmap::Statistics']]],
   ['limitkeypoints_34',['limitKeypoints',['../classrtabmap_1_1Feature2D.html#aa5c0258ede589769bc50c6d6071d595c',1,'rtabmap::Feature2D']]],

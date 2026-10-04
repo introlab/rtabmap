@@ -484,10 +484,12 @@ var namespacertabmap =
     [ "ParametersMap", "namespacertabmap.html#ad08b6f1796a27dd7316c99c385e2cc55", null ],
     [ "ParametersPair", "namespacertabmap.html#a4d38c2e87cb7a46dc4299f7bd4d95a01", null ],
     [ "operator<<", "namespacertabmap.html#a087b7a1b89acb679edee23883653f1a7", null ],
+    [ "parseImageCompressionFormat", "namespacertabmap.html#ac1d5a5ac072d725e236431b21946dc98", null ],
     [ "compressImage", "namespacertabmap.html#a52beb14eea422420c95fd69bdf3ab9dc", null ],
     [ "compressImage2", "namespacertabmap.html#abd9d5523210562abd9b5dc8fa9dbeb99", null ],
     [ "uncompressImage", "namespacertabmap.html#a462f181a147c9f5315f70b0cd89210e5", null ],
     [ "uncompressImage", "namespacertabmap.html#af56ea8b86f7a873959588d35a7ede187", null ],
+    [ "uncompressImage", "namespacertabmap.html#ab82c2ccce0996793c20ace4b13670711", null ],
     [ "compressData", "namespacertabmap.html#a749adef593d09b887926afb6ebdb5834", null ],
     [ "compressData2", "namespacertabmap.html#aca82ee9efc46461c648c7ab8999e1d5b", null ],
     [ "uncompressData", "namespacertabmap.html#a696fffaafe542bfb49fc9ab0da2c66b9", null ],
@@ -506,5 +508,9 @@ var namespacertabmap =
     [ "operator<<", "namespacertabmap.html#aef0e1f1b121a9199e7511becbc8f1e32", null ],
     [ "CameraInfo", "namespacertabmap.html#ac1143b629394a895ca246d256dbc6038", null ],
     [ "CameraThread", "namespacertabmap.html#acd001e2ea3d2e44d9e24faab74d36324", null ],
-    [ "CameraEvent", "namespacertabmap.html#a02e773b48c5ac372ce67fe4e040d835d", null ]
+    [ "CameraEvent", "namespacertabmap.html#a02e773b48c5ac372ce67fe4e040d835d", null ],
+    [ "kCompressedDepthRvlSignature", "namespacertabmap.html#af79397e4c11daefaf353d14f943ae479", null ],
+    [ "kCompressedDepthRvlHeaderSize", "namespacertabmap.html#aaad2804128bde2d3e29f7e76ef4ccd9d", null ],
+    [ "kCompressedDepthInvSignature", "namespacertabmap.html#ae70d840d2253bf8e575122336b51ee9b", null ],
+    [ "kCompressedDepthInvHeaderSize", "namespacertabmap.html#a6fe0f42207f43d29b6aa013e1a57fb6c", null ]
 ];
