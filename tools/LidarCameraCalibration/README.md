@@ -86,12 +86,12 @@ With each of them, two images show the maps the lidar edges are found from, at t
 - `<id>_intensity_1_before.png`, `<id>_intensity_2_after.png`: the lidar's intensity per cell, as used (mean log-intensity, median filtered), from red (dark) to yellow (bright), with the contrast stretched for each image. The intensity edges are where it changes; they should line up with green where the image shows the same change of material.
 - `<id>_normals_1_before.png`, `<id>_normals_2_after.png`: how each cell's surface faces the camera, from yellow (facing it) to red (seen edge on, at a grazing angle). Surfaces at a grazing angle are where depth changes fast without a discontinuity, and where the intensity drops. The normals are computed on the scans voxelized at `--crease_voxel`, so this image is made whether or not creases are used.
 
-For the same node, before (left) and after (right) the correction: the holds stand out in yellow in the intensity, as do the walls' and floor's orientations in the normals; once corrected, the map's edges (blue) lie on the image's (green).
+Before (left) and after (right) the correction: the intensity of the same node, where the holds stand out in yellow, and the normals of another, where the climbing wall seen at a grazing angle is red against the walls facing the camera in yellow. Once corrected, the map's edges (blue) lie on the image's (green).
 
 | Before | After |
 |---|---|
 | ![intensity before](images/1621_intensity_1_before.jpg) | ![intensity after](images/1621_intensity_2_after.jpg) |
-| ![normals before](images/1621_normals_1_before.jpg) | ![normals after](images/1621_normals_2_after.jpg) |
+| ![normals before](images/2093_normals_1_before.jpg) | ![normals after](images/2093_normals_2_after.jpg) |
 
 It is also worth running it again with other values of `--decimation`, `--intensity_jump` or `--voxel` (which voxel filters the scans first, to compare densities): a result that does not move with them is more trustworthy than one that does.
 
