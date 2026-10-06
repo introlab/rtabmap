@@ -3453,13 +3453,18 @@ Transform Memory::computeTransform(
 	   (_registrationPipeline->isScanRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().userDataCompressed().empty()))
 	{
+		// getNodeData() doesn't load global descriptors from the database, keep those in RAM
+		std::vector<GlobalDescriptor> globalDescriptors = fromS.sensorData().globalDescriptors();
 		fromS.sensorData() = getNodeData(fromS.id(), true, true, true, true);
+		fromS.sensorData().setGlobalDescriptors(globalDescriptors);
 	}
 	if(((_reextractLoopClosureFeatures && (_registrationPipeline->isImageRequired() || guess.isNull())) && toS.sensorData().imageCompressed().empty()) ||
 	   (_registrationPipeline->isScanRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().userDataCompressed().empty()))
 	{
+		std::vector<GlobalDescriptor> globalDescriptors = toS.sensorData().globalDescriptors();
 		toS.sensorData() = getNodeData(toS.id(), true, true, true, true);
+		toS.sensorData().setGlobalDescriptors(globalDescriptors);
 	}
 	// uncompress only what we need
 	cv::Mat imgBuf, depthBuf, userBuf;
