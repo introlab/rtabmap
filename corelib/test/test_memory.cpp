@@ -4438,6 +4438,65 @@ TEST_F(MemoryFixture, ComputeIcpTransformMultiRejectsScansTooFarApart)
 }
 
 // ---------------------------------------------------------------------------
+// Memory::computeTransform(): reloading a saved node's data for a registration.
+//
+// Once a node is saved to the database, its compressed data is dropped from RAM,
+// and a registration that needs it (here ICP) reloads it with getNodeData(),
+// which doesn't load global descriptors. The node must keep them: a later
+// Signature::compareTo() asserts that both nodes have the same number of global
+// descriptors (same issue as #1686 in copyData()).
+// ---------------------------------------------------------------------------
+
+TEST(MemoryTest, ComputeTransformKeepsGlobalDescriptorsWhenReloadingData)
+{
+	const std::string dbPath = uniqueDbPath();
+	{
+		Memory memory(icpMemoryParams());
+		ASSERT_TRUE(memory.init(dbPath));
+
+		const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+		const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+		const Transform motion(0.10f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		const LaserScan corner = memoryCorner2D();
+		const cv::Mat descriptor(1, 4, CV_32FC1, cv::Scalar(0.5f)); // normalized
+
+		SensorData first(image);
+		first.setLaserScan(corner);
+		first.addGlobalDescriptor(GlobalDescriptor(1, descriptor));
+		ASSERT_TRUE(memory.update(first, Transform::getIdentity(), covariance));
+		const int oldId = memory.getLastSignatureId();
+
+		SensorData second(image);
+		second.setLaserScan(util3d::transformLaserScan(corner, motion.inverse()));
+		second.addGlobalDescriptor(GlobalDescriptor(1, descriptor));
+		ASSERT_TRUE(memory.update(second, motion, covariance));
+		const int newId = memory.getLastSignatureId();
+
+		// As Rtabmap::process() does after adding a node, with a database on disk.
+		memory.saveLocationData(oldId);
+		memory.emptyTrash();
+		memory.joinTrashThread(); // emptyTrash() is async; wait for the DB write
+		ASSERT_TRUE(memory.getSignature(oldId)->isSaved());
+		ASSERT_TRUE(memory.getSignature(oldId)->sensorData().laserScanCompressed().isEmpty());
+		ASSERT_EQ(memory.getSignature(oldId)->sensorData().globalDescriptors().size(), 1u);
+
+		RegistrationInfo info;
+		memory.computeTransform(oldId, newId, motion, &info);
+
+		const Signature * oldS = memory.getSignature(oldId);
+		const Signature * newS = memory.getSignature(newId);
+		ASSERT_NE(oldS, nullptr);
+		ASSERT_NE(newS, nullptr);
+		EXPECT_FALSE(oldS->sensorData().laserScanCompressed().isEmpty()); // reloaded
+		EXPECT_EQ(oldS->sensorData().globalDescriptors().size(), 1u);
+		EXPECT_NO_THROW(newS->compareTo(*oldS));
+
+		memory.close(false);
+	}
+	UFile::erase(dbPath);
+}
+
+// ---------------------------------------------------------------------------
 // createSignature() reuses the caller's compressed blob instead of
 // re-compressing, but only while the pixels it would store are provably the
 // ones that blob already encodes. Two separate mechanisms keep that true, and
