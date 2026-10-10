@@ -701,7 +701,9 @@ Optimizer</h1>
 <code>3</code> with <code>defined(RTABMAP_CERES)</code><br  />
 <code>0</code> otherwise   </td><td class="markdownTableBodyNone">Graph optimization strategy: 0=TORO, 1=g2o, 2=GTSAM and 3=Ceres.    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone"><a class="anchor" id="param_OptimizerIterations"></a><a class="el" href="classrtabmap_1_1Parameters.html#a8be61aae74f02931c8c224d98629dfc1">Optimizer/Iterations</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>20</code> with <code>defined(RTABMAP_GTSAM) or defined(RTABMAP_G2O) or defined(RTABMAP_CERES)</code><br  />
+<td class="markdownTableBodyNone"><a class="anchor" id="param_OptimizerIterations"></a><a class="el" href="classrtabmap_1_1Parameters.html#a8be61aae74f02931c8c224d98629dfc1">Optimizer/Iterations</a>   </td><td class="markdownTableBodyNone">int   </td><td class="markdownTableBodyNone"><code>20</code> with <code>defined(RTABMAP_GTSAM)</code><br  />
+<code>30</code> with <code>defined(RTABMAP_G2O)</code><br  />
+<code>20</code> with <code>defined(RTABMAP_CERES)</code><br  />
 <code>100</code> otherwise   </td><td class="markdownTableBodyNone">Optimization iterations.    </td></tr>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><a class="anchor" id="param_OptimizerEpsilon"></a><a class="el" href="classrtabmap_1_1Parameters.html#a0da495637cf28437df451e3a9befe09c">Optimizer/Epsilon</a>   </td><td class="markdownTableBodyNone">double   </td><td class="markdownTableBodyNone"><code>0.00001</code> with <code>defined(RTABMAP_GTSAM)</code><br  />
