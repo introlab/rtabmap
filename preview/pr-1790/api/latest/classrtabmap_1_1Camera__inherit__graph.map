@@ -1,0 +1,53 @@
+<map id="rtabmap::Camera" name="rtabmap::Camera">
+<area shape="rect" id="Node000001" title=" " alt="" coords="233,524,369,549"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1CameraDepthAI.html" title=" " alt="" coords="438,5,626,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="302,510,314,408,337,267,352,196,370,131,391,78,415,41,436,27,439,31,419,45,396,80,375,133,357,197,342,268,320,408,308,511"/>
+<area shape="rect" id="Node000004" href="$classrtabmap_1_1CameraFreenect.html" title=" " alt="" coords="436,55,628,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="303,510,317,417,340,291,355,227,373,170,393,123,415,91,434,78,437,82,419,95,398,125,378,172,361,229,345,292,322,417,309,511"/>
+<area shape="rect" id="Node000005" href="$classrtabmap_1_1CameraFreenect2.html" title=" " alt="" coords="432,104,632,129"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="299,510,302,437,316,337,331,283,351,231,379,182,416,140,434,127,437,132,419,144,384,186,356,233,336,285,321,338,307,437,304,510"/>
+<area shape="rect" id="Node000006" href="$classrtabmap_1_1CameraImages.html" title=" " alt="" coords="440,153,624,179"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="300,510,306,445,323,358,337,312,357,267,383,226,416,189,438,175,441,179,419,193,387,229,362,270,342,314,328,360,311,446,306,511"/>
+<area shape="rect" id="Node000009" href="$classrtabmap_1_1CameraK4A.html" title=" " alt="" coords="451,203,613,228"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="302,510,311,453,330,379,344,341,363,303,387,269,416,239,432,228,449,220,451,225,434,233,419,243,391,272,368,306,349,343,335,381,316,454,307,510"/>
+<area shape="rect" id="Node000010" href="$classrtabmap_1_1CameraK4W2.html" title=" " alt="" coords="445,252,619,277"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="304,510,316,462,337,401,369,340,391,312,416,288,443,273,446,277,419,292,395,316,374,343,342,404,321,463,310,511"/>
+<area shape="rect" id="Node000011" href="$classrtabmap_1_1CameraMyntEye.html" title=" " alt="" coords="435,301,629,327"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="308,510,322,471,344,424,375,377,416,337,439,324,442,329,419,341,379,380,349,427,327,473,313,512"/>
+<area shape="rect" id="Node000012" href="$classrtabmap_1_1CameraOpenNI2.html" title=" " alt="" coords="436,351,628,376"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="313,510,352,448,382,414,416,386,443,374,445,378,419,391,385,418,357,451,317,513"/>
+<area shape="rect" id="Node000013" href="$classrtabmap_1_1CameraOpenNICV.html" title=" " alt="" coords="431,400,633,425"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="321,512,362,472,388,452,416,436,449,423,451,428,418,440,391,457,366,476,325,516"/>
+<area shape="rect" id="Node000014" href="$classrtabmap_1_1CameraOpenni.html" title="OpenNI driver for cameras like Kinect for Xbox 360." alt="" coords="441,449,623,475"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="340,516,416,485,463,472,465,477,418,490,342,521"/>
+<area shape="rect" id="Node000015" href="$classrtabmap_1_1CameraOrbbecSDK.html" title=" " alt="" coords="427,499,637,524"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="383,525,427,520,427,525,384,530"/>
+<area shape="rect" id="Node000016" href="$classrtabmap_1_1CameraRealSense.html" title=" " alt="" coords="430,548,634,573"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="384,543,430,547,429,553,383,548"/>
+<area shape="rect" id="Node000017" href="$classrtabmap_1_1CameraRealSense2.html" title=" " alt="" coords="426,597,638,623"/>
+<area shape="poly" id="edge16_Node000001_Node000017" title=" " alt="" coords="342,553,418,583,461,595,459,600,416,589,340,558"/>
+<area shape="rect" id="Node000018" href="$classrtabmap_1_1CameraSeerSense.html" title=" " alt="" coords="430,647,634,672"/>
+<area shape="poly" id="edge17_Node000001_Node000018" title=" " alt="" coords="325,558,366,597,391,617,418,633,448,644,446,649,416,638,388,621,362,601,321,562"/>
+<area shape="rect" id="Node000019" href="$classrtabmap_1_1CameraStereoDC1394.html" title=" " alt="" coords="417,696,647,721"/>
+<area shape="poly" id="edge18_Node000001_Node000019" title=" " alt="" coords="317,560,357,623,385,655,419,682,442,693,439,698,416,687,381,659,352,626,313,563"/>
+<area shape="rect" id="Node000020" href="$classrtabmap_1_1CameraStereoFlyCapture2.html" title=" " alt="" coords="433,746,631,786"/>
+<area shape="poly" id="edge19_Node000001_Node000020" title=" " alt="" coords="313,562,328,600,350,646,380,692,419,732,438,744,435,748,416,736,376,696,345,649,323,602,308,564"/>
+<area shape="rect" id="Node000021" href="$classrtabmap_1_1CameraStereoTara.html" title=" " alt="" coords="429,811,635,836"/>
+<area shape="poly" id="edge20_Node000001_Node000021" title=" " alt="" coords="309,562,319,613,339,676,372,741,393,771,419,796,439,808,437,813,416,800,389,774,367,744,334,678,314,614,304,563"/>
+<area shape="rect" id="Node000022" href="$classrtabmap_1_1CameraStereoVideo.html" title=" " alt="" coords="425,860,639,885"/>
+<area shape="poly" id="edge21_Node000001_Node000022" title=" " alt="" coords="307,563,314,622,332,699,347,740,366,779,390,815,419,847,436,858,433,862,416,851,385,819,361,782,342,742,327,701,309,623,301,564"/>
+<area shape="rect" id="Node000023" href="$classrtabmap_1_1CameraStereoZed.html" title=" " alt="" coords="431,909,633,935"/>
+<area shape="poly" id="edge22_Node000001_Node000023" title=" " alt="" coords="305,563,310,631,326,721,340,769,360,816,386,859,419,896,435,907,432,911,416,900,382,862,355,818,335,771,320,722,304,631,300,563"/>
+<area shape="rect" id="Node000024" href="$classrtabmap_1_1CameraStereoZedOC.html" title=" " alt="" coords="421,959,643,984"/>
+<area shape="poly" id="edge23_Node000001_Node000024" title=" " alt="" coords="309,562,323,649,347,765,380,875,399,917,419,945,435,956,431,961,415,949,394,920,375,877,342,766,318,650,304,563"/>
+<area shape="rect" id="Node000025" href="$classrtabmap_1_1CameraVideo.html" title=" " alt="" coords="445,1008,619,1033"/>
+<area shape="poly" id="edge24_Node000001_Node000025" title=" " alt="" coords="308,563,321,659,344,789,359,855,377,914,397,963,419,995,446,1011,444,1016,416,999,392,965,372,916,354,856,339,790,316,660,303,563"/>
+<area shape="rect" id="Node000026" href="$classrtabmap_1_1DBReader.html" title=" " alt="" coords="457,1057,607,1083"/>
+<area shape="poly" id="edge25_Node000001_Node000026" title=" " alt="" coords="308,563,319,668,341,814,356,887,374,954,395,1008,419,1044,437,1056,457,1064,455,1069,434,1061,415,1048,390,1010,369,956,351,888,335,815,314,669,302,563"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1SensorCapture.html" title="Abstract base class for sensor data capture (cameras, lidars, etc.)" alt="" coords="5,524,185,549"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="199,534,233,534,233,539,199,539"/>
+<area shape="rect" id="Node000007" href="$classrtabmap_1_1CameraRGBDImages.html" title=" " alt="" coords="697,129,919,155"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="638,154,696,149,697,154,638,159"/>
+<area shape="rect" id="Node000008" href="$classrtabmap_1_1CameraStereoImages.html" title=" " alt="" coords="695,179,921,204"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="638,173,695,178,694,184,637,178"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="rtabmap::GFTT_ORB" name="rtabmap::GFTT_ORB">
+<area shape="rect" id="Node000001" title="GFTT corners + ORB descriptors (common default when SURF is unavailable)." alt="" coords="5,152,159,177"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1GFTT.html" title="Good&#45;features&#45;to&#45;track detector (Shi–Tomasi / Harris)." alt="" coords="23,79,141,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="85,118,85,152,79,152,79,118"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1Feature2D.html" title="Abstract 2D feature detector and descriptor extractor for visual SLAM." alt="" coords="6,5,158,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="85,44,85,79,79,79,79,44"/>
+</map>
