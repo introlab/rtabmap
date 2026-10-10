@@ -456,7 +456,7 @@ class RTABMAP_CORE_EXPORT Parameters
 #else
 #ifdef RTABMAP_G2O
     RTABMAP_PARAM(Optimizer, Strategy,        int, 1,          "Graph optimization strategy: 0=TORO, 1=g2o, 2=GTSAM and 3=Ceres.");
-    RTABMAP_PARAM(Optimizer, Iterations,      int, 20,         "Optimization iterations.");
+    RTABMAP_PARAM(Optimizer, Iterations,      int, 30,         "Optimization iterations.");
     RTABMAP_PARAM(Optimizer, Epsilon,         double, 0.0,     "Stop optimizing when the error improvement is less than this value.");
 #else
 #ifdef RTABMAP_CERES
