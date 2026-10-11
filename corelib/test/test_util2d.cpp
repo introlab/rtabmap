@@ -1441,3 +1441,52 @@ TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryPitchTooHighShouldSkip) {
     EXPECT_NEAR(pitch, 0.0f, 1e-5);
     EXPECT_NEAR(yaw, 0.0f, 1e-5);
 }
+TEST(Util2dTest, StereoExposureCompensationBringsTheRightImageCloserToTheLeft)
+{
+	// The same textured scene, the right camera exposing at half the left's.
+	cv::Mat left(120, 160, CV_8UC1);
+	cv::randu(left, cv::Scalar(60), cv::Scalar(200));
+	cv::Mat right;
+	left.convertTo(right, CV_8UC1, 0.5);
+
+	cv::Mat leftOut, rightOut;
+	std::vector<double> gains;
+	ASSERT_TRUE(util2d::stereoExposureCompensation(left, right, leftOut, rightOut, &gains));
+	ASSERT_EQ(gains.size(), 2u);
+	EXPECT_LT(gains[0], 1.0) << "the brighter image is darkened";
+	EXPECT_GT(gains[1], 1.0) << "the darker image is brightened";
+	const double before = cv::mean(left)[0] - cv::mean(right)[0];
+	const double after = cv::mean(leftOut)[0] - cv::mean(rightOut)[0];
+	EXPECT_LT(std::fabs(after), 0.5*std::fabs(before));
+	cv::Mat rightAgain;
+	left.convertTo(rightAgain, CV_8UC1, 0.5);
+	EXPECT_EQ(cv::norm(right, rightAgain, cv::NORM_INF), 0.0) << "the inputs are not modified";
+}
+
+TEST(Util2dTest, StereoExposureCompensationKeepsAColorLeftImage)
+{
+	cv::Mat left(120, 160, CV_8UC3);
+	cv::randu(left, cv::Scalar::all(60), cv::Scalar::all(200));
+	cv::Mat right;
+	cv::cvtColor(left, right, cv::COLOR_BGR2GRAY);
+	right.convertTo(right, CV_8UC1, 0.5);
+
+	cv::Mat leftOut, rightOut;
+	ASSERT_TRUE(util2d::stereoExposureCompensation(left, right, leftOut, rightOut));
+	EXPECT_EQ(leftOut.type(), CV_8UC3);
+	EXPECT_EQ(rightOut.type(), CV_8UC1);
+	EXPECT_GT(cv::mean(rightOut)[0], cv::mean(right)[0]);
+}
+
+TEST(Util2dTest, StereoExposureCompensationNeedsTwo8BitsImagesOfTheSameSize)
+{
+	cv::Mat left(120, 160, CV_8UC1, cv::Scalar(100));
+	cv::Mat right(60, 80, CV_8UC1, cv::Scalar(50));
+	cv::Mat leftOut, rightOut;
+	EXPECT_FALSE(util2d::stereoExposureCompensation(left, right, leftOut, rightOut));
+	EXPECT_EQ(cv::mean(rightOut)[0], 50.0) << "copied as it is";
+
+	cv::Mat left16(120, 160, CV_16UC1, cv::Scalar(1000));
+	cv::Mat right16(120, 160, CV_16UC1, cv::Scalar(500));
+	EXPECT_FALSE(util2d::stereoExposureCompensation(left16, right16, leftOut, rightOut));
+}
