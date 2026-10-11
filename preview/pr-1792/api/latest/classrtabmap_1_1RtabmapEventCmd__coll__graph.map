@@ -1,0 +1,5 @@
+<map id="rtabmap::RtabmapEventCmd" name="rtabmap::RtabmapEventCmd">
+<area shape="rect" id="Node000001" title="Command sent to RtabmapThread, with its parameters." alt="" coords="5,79,216,104"/>
+<area shape="rect" id="Node000002" href="$classUEvent.html" title=" " alt="" coords="76,5,145,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="113,44,113,79,108,79,108,44"/>
+</map>
