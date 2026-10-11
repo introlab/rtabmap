@@ -1,5 +1,11 @@
 var NAVTREEINDEX6 =
 {
+"classrtabmap_1_1Memory.html#a4c555fac41be4b4d44c551c010971dc3":[6,0,0,71,71],
+"classrtabmap_1_1Memory.html#a4c7c344a7f3733a8f30a6e82fbb4f20a":[6,0,0,71,73],
+"classrtabmap_1_1Memory.html#a4c7c344a7f3733a8f30a6e82fbb4f20a":[7,0,1,69,73],
+"classrtabmap_1_1Memory.html#a4d8bfc0b85f270dbb3fc66cde079b63e":[7,0,1,69,49],
+"classrtabmap_1_1Memory.html#a4d8bfc0b85f270dbb3fc66cde079b63e":[6,0,0,71,49],
+"classrtabmap_1_1Memory.html#a5058d8b44e4f76f1fedb76645087a1ac":[7,0,1,69,80],
 "classrtabmap_1_1Memory.html#a5058d8b44e4f76f1fedb76645087a1ac":[6,0,0,71,80],
 "classrtabmap_1_1Memory.html#a51e89ccab2261912b09a5b7178fdd46c":[7,0,1,69,10],
 "classrtabmap_1_1Memory.html#a51e89ccab2261912b09a5b7178fdd46c":[6,0,0,71,10],
@@ -243,11 +249,5 @@ var NAVTREEINDEX6 =
 "classrtabmap_1_1OdometryEvent.html#a19edd3196a5723053ba425186b1f3d33":[6,0,0,77,3],
 "classrtabmap_1_1OdometryEvent.html#a461365124cbdf488d3a05874be8c4bb2":[6,0,0,77,2],
 "classrtabmap_1_1OdometryEvent.html#a461365124cbdf488d3a05874be8c4bb2":[7,0,1,75,2],
-"classrtabmap_1_1OdometryEvent.html#a9d20ed607b8cc697c8aa5ca725e477a5":[7,0,1,75,8],
-"classrtabmap_1_1OdometryEvent.html#a9d20ed607b8cc697c8aa5ca725e477a5":[6,0,0,77,8],
-"classrtabmap_1_1OdometryEvent.html#aaf1fc834b6016a79b28883d20f336020":[6,0,0,77,0],
-"classrtabmap_1_1OdometryEvent.html#aaf1fc834b6016a79b28883d20f336020":[7,0,1,75,0],
-"classrtabmap_1_1OdometryEvent.html#ac29fe21e2ba017148dae0dfd9d8c028c":[7,0,1,75,4],
-"classrtabmap_1_1OdometryEvent.html#ac29fe21e2ba017148dae0dfd9d8c028c":[6,0,0,77,4],
-"classrtabmap_1_1OdometryEvent.html#ac7aaf59c0f005b6ac1497c870179fd25":[7,0,1,75,5]
+"classrtabmap_1_1OdometryEvent.html#a9d20ed607b8cc697c8aa5ca725e477a5":[7,0,1,75,8]
 };

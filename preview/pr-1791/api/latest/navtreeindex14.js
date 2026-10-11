@@ -1,5 +1,11 @@
 var NAVTREEINDEX14 =
 {
+"functions_s.html":[7,3,0,18],
+"functions_t.html":[7,3,0,19],
+"functions_u.html":[7,3,0,20],
+"functions_v.html":[7,3,0,21],
+"functions_vars.html":[7,3,2],
+"functions_w.html":[7,3,0,22],
 "functions_x.html":[7,3,0,23],
 "functions_y.html":[7,3,0,24],
 "functions_z.html":[7,3,0,25],
@@ -243,11 +249,5 @@ var NAVTREEINDEX14 =
 "index.html#autotoc_md2":[0,2],
 "index.html#autotoc_md3":[0,3],
 "index.html#autotoc_md4":[0,4],
-"namespacemembers.html":[6,1,0],
-"namespacemembers.html":[6,1,0,0],
-"namespacemembers_b.html":[6,1,0,1],
-"namespacemembers_c.html":[6,1,0,2],
-"namespacemembers_d.html":[6,1,0,3],
-"namespacemembers_e.html":[6,1,0,4],
-"namespacemembers_f.html":[6,1,0,5]
+"namespacemembers.html":[6,1,0]
 };

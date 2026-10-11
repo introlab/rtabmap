@@ -1,6 +1,9 @@
 var classrtabmap_1_1ImuMotionPredictor =
 [
     [ "ImuMotionPredictor", "classrtabmap_1_1ImuMotionPredictor.html#a765b9d6ae74d6fdcfbcc55e9d28b3feb", null ],
+    [ "gravity", "classrtabmap_1_1ImuMotionPredictor.html#a53a73e2ebf60ff671828732594adc7c4", null ],
+    [ "isGravityEstimated", "classrtabmap_1_1ImuMotionPredictor.html#aa84008cbd4087273e8db74d91d89ec10", null ],
+    [ "gravityWindows", "classrtabmap_1_1ImuMotionPredictor.html#a91c329f153da4c479509e406f6eb5112", null ],
     [ "addImu", "classrtabmap_1_1ImuMotionPredictor.html#a3359e2caff4d42fbcd4137b39aa2ae04", null ],
     [ "addPose", "classrtabmap_1_1ImuMotionPredictor.html#abb4349e5902040e5440f425e0bc39c47", null ],
     [ "reset", "classrtabmap_1_1ImuMotionPredictor.html#a2b8b4cd814ae31ef46899f41992bb1a4", null ],
