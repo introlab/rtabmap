@@ -12,6 +12,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <memory>
 #include <rtabmap/core/IMU.h>
+#include <rtabmap/core/Optimizer.h>
 #include <rtabmap/utilite/UStl.h>
 #include <cmath>
 #include <limits>
@@ -792,4 +793,57 @@ TEST(OdometryTest, InitialOrientationIsTheImuOrientationAtTheFirstFrame)
 		given->process(imu);
 	}
 	EXPECT_NEAR(given->getPose().theta(), 1.0, 1e-6);
+}
+
+TEST(OdometryTest, ScanMapRealignsWithGravity)
+{
+	// Odometry starts with a roll 5 degrees off (an initial pose given with a rotation is
+	// not overridden by the IMU), while the IMU says the sensor is level. Without gravity in
+	// the local scan map, the error stays; with it, the map's keyframes are pulled toward the
+	// IMU's gravity and the odometry's roll converges.
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O) && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+	{
+		GTEST_SKIP() << "Requires g2o or GTSAM";
+	}
+	Trajectory moving;
+	moving.yaw = 0.3;
+	moving.acceleration = 1.0;
+	const double initialRoll = 5.0 * M_PI / 180.0;
+	auto finalRoll = [&](bool scanGravity)
+	{
+		ParametersMap parameters;
+		parameters.insert(ParametersPair(Parameters::kRegStrategy(), "1"));
+		parameters.insert(ParametersPair(Parameters::kIcpVoxelSize(), "0.1"));
+		parameters.insert(ParametersPair(Parameters::kIcpPointToPlane(), "true"));
+		parameters.insert(ParametersPair(Parameters::kIcpPointToPlaneK(), "10"));
+		parameters.insert(ParametersPair(Parameters::kIcpMaxTranslation(), "0"));
+		parameters.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), "0.5"));
+		parameters.insert(ParametersPair(Parameters::kOdomScanKeyFrameThr(), "0.95"));
+		parameters.insert(ParametersPair(Parameters::kOdomF2MScanGravity(), scanGravity?"true":"false"));
+		// Gravity links with Optimizer/GravitySigma's default (0.3 rad)
+		std::unique_ptr<Odometry> odometry(Odometry::create(parameters));
+		odometry->reset(Transform(0, 0, 0, float(initialRoll), 0, float(moving.yaw)));
+		double imuStamp = 0.0;
+		Transform pose;
+		for(int i=1; i<=30; ++i)
+		{
+			const double stamp = 0.1*i;
+			for(; imuStamp <= stamp + kSweep + 0.005; imuStamp += 0.005)
+			{
+				SensorData imu(makeImu(moving, imuStamp), 0, imuStamp);
+				odometry->process(imu);
+			}
+			SensorData data(makeSweep(moving, stamp), cv::Mat(), cv::Mat(), CameraModel(), i, stamp);
+			OdometryInfo info;
+			pose = odometry->process(data, &info);
+			EXPECT_FALSE(pose.isNull()) << "frame " << i << " not registered (scan gravity " << scanGravity << ")";
+		}
+		float roll, pitch, yaw;
+		pose.getEulerAngles(roll, pitch, yaw);
+		return std::fabs(roll);
+	};
+	const double withoutGravity = finalRoll(false);
+	const double withGravity = finalRoll(true);
+	EXPECT_NEAR(withoutGravity, initialRoll, 0.01) << "without gravity, the initial error should stay";
+	EXPECT_LT(withGravity, initialRoll * 0.3) << "with gravity, the roll should converge to the IMU's";
 }

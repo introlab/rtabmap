@@ -16952,7 +16952,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="9" column="1">
+                             <item row="10" column="1">
                               <widget class="QLabel" name="label_357">
                                <property name="text">
                                 <string>[Visual] Local bundle adjustment. See Optimizer panel. This will not work if Optical Flow correspondences strategy is selected in Visual Registration panel.</string>
@@ -16965,7 +16965,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="10" column="1">
+                             <item row="11" column="1">
                               <widget class="QLabel" name="label_358">
                                <property name="text">
                                 <string>[Visual] Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).</string>
@@ -16994,7 +16994,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="13" column="1">
+                             <item row="14" column="1">
                               <widget class="QLabel" name="label_762">
                                <property name="text">
                                 <string>[Visual] Maximum keyframes per feature for bundle adjustment. 0 means not limit.</string>
@@ -17007,14 +17007,14 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="14" column="0">
+                             <item row="15" column="0">
                               <widget class="QCheckBox" name="odom_f2m_bundleUpdateFeatureMapOnAllFrames">
                                <property name="text">
                                 <string/>
                                </property>
                               </widget>
                              </item>
-                             <item row="12" column="1">
+                             <item row="13" column="1">
                               <widget class="QLabel" name="label_761">
                                <property name="text">
                                 <string>[Visual] To create a new keyframe with bundle adjustment, a minimum motion (in pixels) can be required. The motion is computed by the average distance between inliers of the previous keyframe and new frame.</string>
@@ -17076,7 +17076,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="11" column="0">
+                             <item row="12" column="0">
                               <widget class="QDoubleSpinBox" name="odom_f2m_gravitySigma">
                                <property name="suffix">
                                 <string/>
@@ -17098,14 +17098,14 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="10" column="0">
+                             <item row="11" column="0">
                               <widget class="QSpinBox" name="odom_f2m_bundleMaxFrames">
                                <property name="maximum">
                                 <number>999999</number>
                                </property>
                               </widget>
                              </item>
-                             <item row="12" column="0">
+                             <item row="13" column="0">
                               <widget class="QDoubleSpinBox" name="odom_f2m_bundleMinMotion">
                                <property name="suffix">
                                 <string> pixels</string>
@@ -17143,7 +17143,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="11" column="1">
+                             <item row="12" column="1">
                               <widget class="QLabel" name="label_598">
                                <property name="text">
                                 <string>[Visual] Gravity sigma used for bundle adjustment (&lt;0, use same value than Optimizer/GravitySigma parameter)</string>
@@ -17156,7 +17156,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="8" column="1">
+                             <item row="9" column="1">
                               <widget class="QLabel" name="label_765">
                                <property name="text">
                                 <string>[Visual] Depth factor used to initialize depth of features without depth. Depth = Factor * fx.</string>
@@ -17169,7 +17169,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="7" column="1">
+                             <item row="8" column="1">
                               <widget class="QLabel" name="label_524">
                                <property name="text">
                                 <string>[Visual] If a new frame has points without valid depth, they are added to local feature map only if points with valid depth on total points is over this ratio. Setting to 1 means no points without valid depth are added to local feature map.</string>
@@ -17208,7 +17208,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="7" column="0">
+                             <item row="8" column="0">
                               <widget class="QDoubleSpinBox" name="odom_f2m_validDepthRatio">
                                <property name="suffix">
                                 <string/>
@@ -17240,7 +17240,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="13" column="0">
+                             <item row="14" column="0">
                               <widget class="QSpinBox" name="odom_f2m_bundleMaxKeyFramesPerFeature">
                                <property name="maximum">
                                 <number>999999</number>
@@ -17279,7 +17279,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="14" column="1">
+                             <item row="15" column="1">
                               <widget class="QLabel" name="label_7631">
                                <property name="text">
                                 <string>[Visual] Update 3D local feature map on every frames with bundle adjustment. Recommended if Vis/DepthAsMask=false and Mem/UseOdomFeatures=true so that features without depth are better triangulated on every frame (not only on keyframes). If disabled, the feature map is updated only when a new keyframe is added (legacy approach).</string>
@@ -17292,7 +17292,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="9" column="0">
+                             <item row="10" column="0">
                               <widget class="QComboBox" name="odom_f2m_bundleStrategy">
                                <property name="sizeAdjustPolicy">
                                 <enum>QComboBox::AdjustToContents</enum>
@@ -17332,7 +17332,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                               </widget>
                              </item>
-                             <item row="8" column="0">
+                             <item row="9" column="0">
                               <widget class="QDoubleSpinBox" name="odom_f2m_initDepthFactor">
                                <property name="suffix">
                                 <string/>
@@ -17351,6 +17351,26 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                                </property>
                                <property name="value">
                                 <double>0.050000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="7" column="0">
+                              <widget class="QCheckBox" name="odom_f2m_scanGravity">
+                               <property name="text">
+                                <string/>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="7" column="1">
+                              <widget class="QLabel" name="label_odom_f2m_scanGravity">
+                               <property name="text">
+                                <string>[Geometry] With an IMU, keep the local scan map aligned with gravity: the scan keyframes of the local map are kept in a local graph, with their registration links and a gravity link from the IMU orientation at each of them (weighted by the optimizer's gravity sigma), optimized when a keyframe is added. The map is then reassembled from the keyframes at their optimized poses, so roll and pitch don't drift. Requires g2o or GTSAM.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                </property>
                               </widget>
                              </item>

@@ -79,6 +79,9 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	validDepthRatio_(Parameters::defaultOdomF2MValidDepthRatio()),
 	pointToPlaneK_(Parameters::defaultIcpPointToPlaneK()),
 	pointToPlaneRadius_(Parameters::defaultIcpPointToPlaneRadius()),
+	scanGravity_(Parameters::defaultOdomF2MScanGravity()),
+	scanOptimizer_(0),
+	scanKeyFrameSeq_(0),
 	map_(new Signature(-1)),
 	lastFrame_(new Signature(1)),
 	lastFrameOldestNewId_(0),
@@ -109,6 +112,31 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneK(), pointToPlaneK_);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneRadius(), pointToPlaneRadius_);
+	Parameters::parse(parameters, Parameters::kOdomF2MScanGravity(), scanGravity_);
+	if(scanGravity_)
+	{
+		const Optimizer::Type type = Optimizer::isAvailable(Optimizer::kTypeG2O)?Optimizer::kTypeG2O:
+				Optimizer::isAvailable(Optimizer::kTypeGTSAM)?Optimizer::kTypeGTSAM:Optimizer::kTypeUndef;
+		if(type == Optimizer::kTypeUndef)
+		{
+			UWARN("\"%s\" is enabled but neither g2o nor GTSAM is available, the local scan map is "
+					"not aligned with gravity.", Parameters::kOdomF2MScanGravity().c_str());
+			scanGravity_ = false;
+		}
+		else
+		{
+			// Gravity links weighted by Optimizer/GravitySigma
+			scanOptimizer_ = Optimizer::create(type, parameters);
+			if(scanOptimizer_->gravitySigma() <= 0.0f)
+			{
+				UWARN("\"%s\" is enabled but \"%s\" is 0, the local scan map is not aligned with gravity.",
+						Parameters::kOdomF2MScanGravity().c_str(), Parameters::kOptimizerGravitySigma().c_str());
+				delete scanOptimizer_;
+				scanOptimizer_ = 0;
+				scanGravity_ = false;
+			}
+		}
+	}
 
 	UASSERT(bundleMaxFrames_ >= 0);
 	ParametersMap bundleParameters = parameters;
@@ -182,6 +210,7 @@ OdometryF2M::~OdometryF2M()
 	delete map_;
 	delete lastFrame_;
 	delete sba_;
+	delete scanOptimizer_;
 	delete regPipeline_;
 	UDEBUG("");
 }
@@ -196,6 +225,7 @@ void OdometryF2M::reset(const Transform & initialPose)
 	*lastFrame_ = Signature(1);
 	*map_ = Signature(-1);
 	scansBuffer_.clear();
+	scanKeyFrameSeq_ = 0;
 	bundleWordReferences_.clear();
 	bundlePoses_.clear();
 	bundleLinks_.clear();
@@ -203,6 +233,73 @@ void OdometryF2M::reset(const Transform & initialPose)
 	bundlePoseReferences_.clear();
 	bundleSeq_ = 0;
 	lastFrameOldestNewId_ = 0;
+}
+
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr OdometryF2M::assembleScanMap() const
+{
+	// As when the map is trimmed: the oldest keyframe is added whole (what it overlapped
+	// is no longer in the map), the others only with the points they added.
+	pcl::PointCloud<pcl::PointXYZINormal>::Ptr map(new pcl::PointCloud<pcl::PointXYZINormal>);
+	for(const ScanKeyFrame & keyFrame : scansBuffer_)
+	{
+		if(&keyFrame != &scansBuffer_.front() && keyFrame.indices->size())
+		{
+			pcl::PointCloud<pcl::PointXYZINormal> tmp;
+			pcl::copyPointCloud(*keyFrame.cloud, *keyFrame.indices, tmp);
+			*map += tmp;
+		}
+		else
+		{
+			*map += *keyFrame.cloud;
+		}
+	}
+	return map;
+}
+
+bool OdometryF2M::alignScanKeyFramesWithGravity()
+{
+	// Local graph of the keyframes of the scan map: their registration links, and a
+	// gravity link at each one with an IMU orientation. The oldest one is fixed, so as the
+	// map moves on, its orientation converges to the IMU's instead of keeping the first
+	// keyframe's (and the drift since) forever.
+	if(!scanOptimizer_ || scansBuffer_.size() < 2)
+	{
+		return false;
+	}
+	std::map<int, Transform> poses;
+	std::multimap<int, Link> links;
+	int gravityLinks = 0;
+	for(const ScanKeyFrame & keyFrame : scansBuffer_)
+	{
+		poses.insert(std::make_pair(keyFrame.id, keyFrame.pose));
+		if(keyFrame.link.isValid() && poses.find(keyFrame.link.from()) != poses.end())
+		{
+			links.insert(std::make_pair(keyFrame.link.from(), keyFrame.link));
+		}
+		if(!keyFrame.gravity.isNull())
+		{
+			links.insert(std::make_pair(keyFrame.id, Link(keyFrame.id, keyFrame.id, Link::kGravity, keyFrame.gravity)));
+			++gravityLinks;
+		}
+	}
+	if(gravityLinks == 0 || links.size() < poses.size()-1+gravityLinks)
+	{
+		return false;
+	}
+	const std::map<int, Transform> optimized = scanOptimizer_->optimize(scansBuffer_.front().id, poses, links);
+	if(optimized.size() != poses.size())
+	{
+		UWARN("Optimization of the local scan map with gravity failed, it is kept as is.");
+		return false;
+	}
+	for(ScanKeyFrame & keyFrame : scansBuffer_)
+	{
+		const Transform & pose = optimized.at(keyFrame.id);
+		const Transform correction = pose * keyFrame.pose.inverse();
+		keyFrame.cloud = util3d::transformPointCloud(keyFrame.cloud, correction);
+		keyFrame.pose = pose;
+	}
+	return true;
 }
 
 // return not null transform if odometry is correctly computed
@@ -229,6 +326,13 @@ Transform OdometryF2M::computeTransform(
 			Eigen::Quaternionf q = imuT.getQuaternionf();
 			data.setIMU(IMU(cv::Vec4d(q.x(), q.y(), q.z(), q.w()), cv::Mat(), cv::Vec3d(), cv::Mat(), cv::Vec3d(), cv::Mat()));
 		}
+	}
+
+	// IMU orientation at the frame, for the gravity links of the local scan map
+	Transform scanImuT;
+	if(scanOptimizer_ && !imus().empty())
+	{
+		scanImuT = Transform::getTransform(imus(), data.stamp());
 	}
 
 	RegistrationInfo regInfo;
@@ -1162,7 +1266,18 @@ Transform OdometryF2M::computeTransform(
 								copyPointCloud(*normals, *mapCloudNormals);
 
 							} else {
-								scansBuffer_.push_back(std::make_pair(frameCloudNormals, frameCloudNormalsIndices));
+								ScanKeyFrame keyFrame;
+								keyFrame.cloud = frameCloudNormals;
+								keyFrame.indices = frameCloudNormalsIndices;
+								keyFrame.id = ++scanKeyFrameSeq_;
+								keyFrame.pose = newFramePose;
+								keyFrame.gravity = scanImuT;
+								if(!scansBuffer_.empty())
+								{
+									keyFrame.link = Link(scansBuffer_.back().id, keyFrame.id, Link::kNeighbor,
+											scansBuffer_.back().pose.inverse()*newFramePose, regInfo.covariance.inv());
+								}
+								scansBuffer_.push_back(keyFrame);
 
 								//remove points if too big
 								UDEBUG("scansBuffer=%d, mapSize=%d newPoints=%d maxPoints=%d",
@@ -1180,31 +1295,31 @@ Transform OdometryF2M::computeTransform(
 									int i = int(scansBuffer_.size())-1;
 									for(; i>=0; --i)
 									{
-										int pointsToAdd = scansBuffer_[i].second->size()?scansBuffer_[i].second->size():scansBuffer_[i].first->size();
+										int pointsToAdd = scansBuffer_[i].indices->size()?scansBuffer_[i].indices->size():scansBuffer_[i].cloud->size();
 										if((int)mapCloudNormals->size() + pointsToAdd > scanMaximumMapSize_ ||
 										   i == 0)
 										{
-											*mapCloudNormals += *scansBuffer_[i].first;
+											*mapCloudNormals += *scansBuffer_[i].cloud;
 											break;
 										}
 										else
 										{
-											if(scansBuffer_[i].second->size())
+											if(scansBuffer_[i].indices->size())
 											{
 												pcl::PointCloud<pcl::PointXYZINormal> tmp;
-												pcl::copyPointCloud(*scansBuffer_[i].first, *scansBuffer_[i].second, tmp);
+												pcl::copyPointCloud(*scansBuffer_[i].cloud, *scansBuffer_[i].indices, tmp);
 												*mapCloudNormals += tmp;
 											}
 											else
 											{
-												*mapCloudNormals += *scansBuffer_[i].first;
+												*mapCloudNormals += *scansBuffer_[i].cloud;
 											}
 										}
 									}
 									// remove old clouds
 									if(i > 0)
 									{
-										std::vector<std::pair<pcl::PointCloud<pcl::PointXYZINormal>::Ptr, pcl::IndicesPtr> > scansTmp(scansBuffer_.size()-i);
+										std::vector<ScanKeyFrame> scansTmp(scansBuffer_.size()-i);
 										int oi = 0;
 										for(; i<(int)scansBuffer_.size(); ++i)
 										{
@@ -1217,17 +1332,26 @@ Transform OdometryF2M::computeTransform(
 								else
 								{
 									// just append the last cloud
-									if(scansBuffer_.back().second->size())
+									if(scansBuffer_.back().indices->size())
 									{
 										pcl::PointCloud<pcl::PointXYZINormal> tmp;
-										pcl::copyPointCloud(*scansBuffer_.back().first, *scansBuffer_.back().second, tmp);
+										pcl::copyPointCloud(*scansBuffer_.back().cloud, *scansBuffer_.back().indices, tmp);
 										*mapCloudNormals += tmp;
 									}
 									else
 									{
-										*mapCloudNormals += *scansBuffer_.back().first;
+										*mapCloudNormals += *scansBuffer_.back().cloud;
 									}
 								}
+							}
+
+							if(scanMapMaxRange_ <= 0 && alignScanKeyFramesWithGravity())
+							{
+								// The keyframes moved: the map is reassembled from them, and this
+								// frame (the newest keyframe) follows its optimized pose.
+								mapCloudNormals = assembleScanMap();
+								newFramePose = scansBuffer_.back().pose;
+								output = this->getPose().inverse() * newFramePose;
 							}
 
 							if(mapScan.is2d())
@@ -1493,7 +1617,13 @@ Transform OdometryF2M::computeTransform(
 						if (scanMapMaxRange_ > 0 ){
 							UINFO("Local map will be updated using range instead of time with range threshold set at %f", scanMapMaxRange_);
 						} else {
-							scansBuffer_.push_back(std::make_pair(mapCloudNormals, pcl::IndicesPtr(new std::vector<int>)));
+							ScanKeyFrame keyFrame;
+							keyFrame.cloud = mapCloudNormals;
+							keyFrame.indices = pcl::IndicesPtr(new std::vector<int>);
+							keyFrame.id = ++scanKeyFrameSeq_;
+							keyFrame.pose = newFramePose;
+							keyFrame.gravity = scanImuT;
+							scansBuffer_.push_back(keyFrame);
 						}
 						if(lastFrame_->sensorData().laserScanRaw().is2d())
 						{

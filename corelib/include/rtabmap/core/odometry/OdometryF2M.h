@@ -82,7 +82,22 @@ private:
 	Signature * map_;
 	Signature * lastFrame_;
 	int lastFrameOldestNewId_;
-	std::vector<std::pair<pcl::PointCloud<pcl::PointXYZINormal>::Ptr, pcl::IndicesPtr> > scansBuffer_;
+	// The scan keyframes the local scan map is assembled from
+	struct ScanKeyFrame
+	{
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloud; // in odometry frame, at pose
+		pcl::IndicesPtr indices; // points kept in the map (not subtracted), all if empty
+		int id = 0;
+		Transform pose;          // odometry pose of the keyframe
+		Transform gravity;       // IMU orientation at the keyframe (null if not available)
+		Link link;               // registration from the previous keyframe (not set on the first)
+	};
+	std::vector<ScanKeyFrame> scansBuffer_;
+	pcl::PointCloud<pcl::PointXYZINormal>::Ptr assembleScanMap() const;
+	bool alignScanKeyFramesWithGravity();
+	bool scanGravity_;
+	Optimizer * scanOptimizer_;
+	int scanKeyFrameSeq_;
 
 	std::map<int, std::map<int, FeatureBA> > bundleWordReferences_; //<WordId, <FrameId, pt2D+depth>>
 	std::map<int, Transform> bundlePoses_;
