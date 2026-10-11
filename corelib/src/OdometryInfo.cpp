@@ -187,6 +187,12 @@ std::map<std::string, float> OdometryInfo::statistics(const Transform & pose)
 			stats.insert(std::make_pair("Odometry/Vyaw/degps", (yaw*180.0/CV_PI)/interval));
 		}
 	}
+	if(!guess.isNull() && !transform.isNull())
+	{
+		// How far the motion estimated is from the guess it started from
+		stats.insert(std::make_pair("Odometry/Guess_error_lin/m", guess.getDistance(transform)));
+		stats.insert(std::make_pair("Odometry/Guess_error_ang/deg", guess.getAngle(transform)*180.0/CV_PI));
+	}
 	if(!transformGroundTruth.isNull())
 	{
 		if(!transform.isNull())
