@@ -320,40 +320,47 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 {
 	UASSERT_MSG(data.id() >= 0, uFormat("Input data should have ID greater or equal than 0 (id=%d)!", data.id()).c_str());
 
-	// cache imu data
-	if(!data.imu().empty() && !this->canProcessAsyncIMU())
+	if(!data.imu().empty())
 	{
-		if(!(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0))
+		if(!this->canProcessAsyncIMU())
 		{
-			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
-			// orientation includes roll and pitch but not yaw in local transform
-			Transform imuT = Transform(data.imu().localTransform().x(),data.imu().localTransform().y(),data.imu().localTransform().z(), 0,0,data.imu().localTransform().theta()) *
-					orientation*
-					data.imu().localTransform().rotation().inverse();
-
-			if(	this->getPose().r11() == 1.0f && this->getPose().r22() == 1.0f && this->getPose().r33() == 1.0f &&
-				this->framesProcessed() == 0)
+			// cache imu data
+			if(!(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0))
 			{
-				Eigen::Quaterniond imuQuat = imuT.getQuaterniond();
-				Transform previous = this->getPose();
-				Transform newFramePose = Transform(previous.x(), previous.y(), previous.z(), imuQuat.x(), imuQuat.y(), imuQuat.z(), imuQuat.w());
-				UWARN("Updated initial pose from %s to %s with IMU orientation", previous.prettyPrint().c_str(), newFramePose.prettyPrint().c_str());
-				std::map<double, rtabmap::Transform> imus = imus_;
-				this->reset(newFramePose);
-				imus_ = imus;
-			}
+				Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
+				// orientation includes roll and pitch but not yaw in local transform
+				Transform imuT = Transform(data.imu().localTransform().x(),data.imu().localTransform().y(),data.imu().localTransform().z(), 0,0,data.imu().localTransform().theta()) *
+						orientation*
+						data.imu().localTransform().rotation().inverse();
 
-			imus_.insert(std::make_pair(data.stamp(), imuT));
-			if(imus_.size() > 1000)
+				imus_.insert(std::make_pair(data.stamp(), imuT));
+				if(imus_.size() > 1000)
+				{
+					imus_.erase(imus_.begin());
+				}
+
+				imuMotionPredictor_.addImu(data.stamp(), data.imu());
+			}
+			else
 			{
-				imus_.erase(imus_.begin());
+				UWARN("Received IMU doesn't have orientation set! It is ignored.");
 			}
-
-			imuMotionPredictor_.addImu(data.stamp(), data.imu());
 		}
-		else
+
+		// IMU-only update: nothing more to do once the IMU is cached, except for approaches
+		// processing it themselves. A frame that brings its own features carries no image,
+		// and a frame whose scene was empty carries no feature either, so neither says
+		// whether there is a frame at all. The calibration does: it is there when a camera
+		// produced this data.
+		if(data.imageRaw().empty() && data.imageCompressed().empty() &&
+		   data.laserScanRaw().isEmpty() && data.laserScanCompressed().isEmpty() &&
+		   data.cameraModels().empty() && data.stereoCameraModels().empty())
 		{
-			UWARN("Received IMU doesn't have orientation set! It is ignored.");
+			if(this->canProcessAsyncIMU())
+			{
+				this->computeTransform(data, Transform(), info);
+			}
+			return Transform(); // Return null on IMU-only updates
 		}
 	}
 
@@ -598,12 +605,40 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
+	// Initial orientation from the IMU at the first frame's own stamp (unless an initial pose
+	// with a rotation was given). Not from the first IMU sample received, which can be much
+	// older (e.g., IMU buffered while waiting for the first frame), nor from the newest one,
+	// which can be after the stamp (lidar deskewing needs IMU up to the end of the sweep).
+	if(this->framesProcessed() == 0 && !imus_.empty() &&
+	   this->getPose().r11() == 1.0f && this->getPose().r22() == 1.0f && this->getPose().r33() == 1.0f)
+	{
+		// Interpolated at the stamp, or the closest sample if the IMU doesn't cover it (e.g.,
+		// the only sample received is just after the frame)
+		Transform imuAtStamp = Transform::getTransform(imus_, data.stamp());
+		if(imuAtStamp.isNull())
+		{
+			imuAtStamp = data.stamp() < imus_.begin()->first?imus_.begin()->second:imus_.rbegin()->second;
+		}
+		if(!imuAtStamp.isNull())
+		{
+			const Eigen::Quaterniond q = imuAtStamp.getQuaterniond();
+			const Transform previous = this->getPose();
+			const Transform initialPose(previous.x(), previous.y(), previous.z(), q.x(), q.y(), q.z(), q.w());
+			UWARN("Updated initial pose from %s to %s with IMU orientation", previous.prettyPrint().c_str(), initialPose.prettyPrint().c_str());
+			std::map<double, rtabmap::Transform> imus = imus_;
+			ImuMotionPredictor imuMotionPredictor = imuMotionPredictor_;
+			this->reset(initialPose);
+			imus_ = imus;
+			imuMotionPredictor_ = imuMotionPredictor;
+		}
+	}
+
 	// KITTI datasets start with stamp=0
 	double dt = previousStamp_>0.0f || (previousStamp_==0.0f && framesProcessed()==1)?data.stamp() - previousStamp_:0.0;
 	Transform guess = dt>0.0 && guessFromMotion_ && !velocityGuess_.isNull()?Transform::getIdentity():Transform();
 	if(!(dt>0.0 || (dt == 0.0 && velocityGuess_.isNull())))
 	{
-		if(guessFromMotion_ && (!data.imageRaw().empty() || !data.laserScanRaw().isEmpty()))
+		if(guessFromMotion_)
 		{
 			UERROR("Guess from motion is set but dt is invalid! Odometry is then computed without guess. (dt=%f previous transform=%s)", dt, velocityGuess_.prettyPrint().c_str());
 		}
@@ -678,7 +713,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			UWARN("Could not find imu transform at %f", data.stamp());
 		}
 	}
-	else if(!guess.isNull() && (!data.imageRaw().empty() || !data.laserScanRaw().isEmpty())) {
+	else if(!guess.isNull()) {
 		UDEBUG("Using guess from motion %s", guess.prettyPrint().c_str());
 	}
 
@@ -859,21 +894,9 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			}
 		}
 	}
-	// A frame that brings its own features carries no image, and a frame whose scene was
-	// empty carries no feature either, so neither says whether there is a frame at all.
-	// The calibration does: it is there when a camera produced this data.
-	else if(!data.imageRaw().empty() ||
-			!data.cameraModels().empty() ||
-			!data.stereoCameraModels().empty() ||
-			!data.laserScanRaw().isEmpty() ||
-			(this->canProcessAsyncIMU() && !data.imu().empty()))
+	else
 	{
 		t = this->computeTransform(data, guess, info);
-	}
-
-	if(data.imageRaw().empty() && data.laserScanRaw().isEmpty() && !data.imu().empty())
-	{
-		return Transform(); // Return null on IMU-only updates
 	}
 
 	if(info)

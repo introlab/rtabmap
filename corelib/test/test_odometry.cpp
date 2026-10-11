@@ -11,6 +11,10 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <memory>
+#include <rtabmap/core/IMU.h>
+#include <rtabmap/utilite/UStl.h>
+#include <cmath>
+#include <limits>
 #include <string>
 
 using namespace rtabmap;
@@ -583,4 +587,209 @@ TEST(OdometryTest, RefusesAFirstScanTooSmallForTheCorrespondenceRatio)
 	SensorData uncheckedData = makeScanData(corner, 1, 0.0);
 	EXPECT_FALSE(unchecked->process(uncheckedData).isNull())
 			<< "a scan of unknown sweep size was refused";
+}
+
+// ---------------------------------------------------------------------------
+// Lidar deskewing with an IMU (Odom/Deskewing): a sensor moving in a box-shaped room,
+// whose scans are generated point by point from where the sensor was at each point's
+// time, as a spinning lidar measures them.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+const Eigen::Vector3d kRoomMin(-6.0, -4.0, -1.5);
+const Eigen::Vector3d kRoomMax(7.0, 5.0, 2.5);
+const double kSweep = 0.1;     // s, first column to last
+const int kRings = 16;
+const int kColumns = 512;
+const double kGravity = 9.80665;
+
+/// Pose of the sensor at time t, and its acceleration (world frame).
+struct Trajectory
+{
+	double yaw = 0.0;              // rad, heading at t=0
+	double yawRate = 0.0;          // rad/s
+	double acceleration = 0.0;     // m/s^2 along x, from rest at t=0
+	Transform pose(double t) const
+	{
+		return Transform(float(0.5*acceleration*t*t), 0, 0, 0, 0, float(yaw + yawRate*t));
+	}
+	Eigen::Vector3d linearAcceleration() const { return Eigen::Vector3d(acceleration, 0, 0); }
+};
+
+/// The scan of a sweep starting at @p stamp: organized (rings x columns), time on columns.
+LaserScan makeSweep(const Trajectory & trajectory, double stamp)
+{
+	cv::Mat data(kRings, kColumns, CV_32FC(5));
+	for(int u=0; u<kColumns; ++u)
+	{
+		const double dt = kSweep * double(u) / double(kColumns-1);
+		const Transform pose = trajectory.pose(stamp + dt);
+		const Eigen::Matrix3d rotation = pose.toEigen3d().linear();
+		const Eigen::Vector3d origin(pose.x(), pose.y(), pose.z());
+		const double azimuth = 2.0*M_PI*double(u)/double(kColumns);
+		for(int v=0; v<kRings; ++v)
+		{
+			const double elevation = (-15.0 + 30.0*double(v)/double(kRings-1)) * M_PI / 180.0;
+			const Eigen::Vector3d direction(std::cos(elevation)*std::cos(azimuth), std::cos(elevation)*std::sin(azimuth), std::sin(elevation));
+			const Eigen::Vector3d world = rotation * direction;
+			// Distance to the wall the ray hits
+			double range = std::numeric_limits<double>::max();
+			for(int i=0; i<3; ++i)
+			{
+				if(world[i] > 1e-9) range = std::min(range, (kRoomMax[i] - origin[i]) / world[i]);
+				else if(world[i] < -1e-9) range = std::min(range, (kRoomMin[i] - origin[i]) / world[i]);
+			}
+			float * p = data.ptr<float>(v, u);
+			p[0] = float(range*direction.x());
+			p[1] = float(range*direction.y());
+			p[2] = float(range*direction.z());
+			p[3] = 1.0f;
+			p[4] = float(dt);
+		}
+	}
+	return LaserScan(data, kRings*kColumns, 0.0f, LaserScan::kXYZIT, Transform::getIdentity());
+}
+
+/// What the IMU, at the sensor's origin, measures at time t.
+IMU makeImu(const Trajectory & trajectory, double t)
+{
+	const Eigen::Quaterniond q = trajectory.pose(t).getQuaterniond();
+	const Eigen::Vector3d f = q.inverse() * (trajectory.linearAcceleration() + Eigen::Vector3d(0, 0, kGravity));
+	return IMU(cv::Vec4d(q.x(), q.y(), q.z(), q.w()), cv::Mat::eye(3,3,CV_64FC1),
+			cv::Vec3d(0, 0, trajectory.yawRate), cv::Mat::eye(3,3,CV_64FC1),
+			cv::Vec3d(f.x(), f.y(), f.z()), cv::Mat::eye(3,3,CV_64FC1),
+			Transform::getIdentity());
+}
+
+/// RMS distance (m) of the scan's points to the nearest wall, with the sensor at @p pose.
+double wallDistance(const LaserScan & scan, const Transform & pose)
+{
+	double sum = 0.0;
+	int n = 0;
+	for(int i=0; i<scan.size(); ++i)
+	{
+		const float * p = scan.data().ptr<float>(0, i);
+		const Transform world = pose * Transform(p[0], p[1], p[2], 0, 0, 0);
+		const Eigen::Vector3d w(world.x(), world.y(), world.z());
+		double d = std::numeric_limits<double>::max();
+		for(int k=0; k<3; ++k)
+		{
+			d = std::min(d, std::fabs(w[k] - kRoomMin[k]));
+			d = std::min(d, std::fabs(w[k] - kRoomMax[k]));
+		}
+		sum += d*d;
+		++n;
+	}
+	return n?std::sqrt(sum/n):0.0;
+}
+
+/**
+ * Feeds @p frames sweeps, one every 0.1 s from t=0.1, with the IMU at 200 Hz up to the end
+ * of each sweep (as OdometryThread does), and returns the RMS wall distance of the last
+ * sweep as odometry left it in the frame (deskewed or not).
+ */
+double deskewedWallDistance(const Trajectory & trajectory, int frames, const ParametersMap & extra)
+{
+	ParametersMap parameters;
+	parameters.insert(ParametersPair(Parameters::kRegStrategy(), "1"));
+	parameters.insert(ParametersPair(Parameters::kIcpVoxelSize(), "0"));
+	parameters.insert(ParametersPair(Parameters::kIcpPointToPlane(), "true"));
+	parameters.insert(ParametersPair(Parameters::kIcpPointToPlaneK(), "10"));
+	parameters.insert(ParametersPair(Parameters::kIcpMaxTranslation(), "0"));
+	parameters.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), "0.5"));
+	for(const ParametersPair & p : extra) uInsert(parameters, p);
+	std::unique_ptr<Odometry> odometry(Odometry::create(parameters));
+
+	double imuStamp = 0.0;
+	double distance = -1.0;
+	for(int i=1; i<=frames; ++i)
+	{
+		const double stamp = 0.1*i;
+		for(; imuStamp <= stamp + kSweep + 0.005; imuStamp += 0.005)
+		{
+			SensorData imu(makeImu(trajectory, imuStamp), 0, imuStamp);
+			odometry->process(imu);
+		}
+		SensorData data(makeSweep(trajectory, stamp), cv::Mat(), cv::Mat(), CameraModel(), i, stamp);
+		OdometryInfo info;
+		const Transform pose = odometry->process(data, &info);
+		EXPECT_FALSE(pose.isNull()) << "frame " << i << " not registered";
+		distance = wallDistance(data.laserScanRaw(), trajectory.pose(stamp));
+	}
+	return distance;
+}
+
+}  // namespace
+
+TEST(OdometryTest, DeskewsWithTheImuOrientation)
+{
+	// Turning at 2 rad/s: 11 degrees over a sweep, so the far walls are smeared by about a
+	// metre. On the first frame, before any pose, only the IMU orientation is used.
+	Trajectory turning;
+	turning.yawRate = 2.0;
+	ParametersMap off;
+	off.insert(ParametersPair(Parameters::kOdomDeskewing(), "false"));
+	const double skewed = deskewedWallDistance(turning, 1, off);
+	const double deskewed = deskewedWallDistance(turning, 1, ParametersMap());
+	EXPECT_GT(skewed, 0.1) << "the scan should be smeared without deskewing";
+	EXPECT_LT(deskewed, 0.01) << "the points should be back on the walls";
+}
+
+TEST(OdometryTest, DeskewsWithTheImuAccelerationOverTheSmoothingDelay)
+{
+	// Accelerating at 2 m/s^2 from rest. With Odom/GuessSmoothingDelay, the velocity is
+	// carried to each frame with the IMU acceleration, and the prediction integrates it
+	// over the sweep. At 0, the acceleration is not used: the velocity of the last
+	// interval lags behind, and the sweep is still skewed.
+	Trajectory accelerating;
+	accelerating.acceleration = 2.0;
+	// Not facing exactly along x: an IMU orientation whose x, y and z are all zero (the
+	// identity) is read by RTAB-Map's odometry as "not set", and the IMU ignored.
+	accelerating.yaw = 0.3;
+	ParametersMap noDelay;
+	noDelay.insert(ParametersPair(Parameters::kOdomGuessSmoothingDelay(), "0"));
+	ParametersMap delay;
+	delay.insert(ParametersPair(Parameters::kOdomGuessSmoothingDelay(), "0.5"));
+	const double withoutAcceleration = deskewedWallDistance(accelerating, 12, noDelay);
+	const double withAcceleration = deskewedWallDistance(accelerating, 12, delay);
+	EXPECT_LT(withAcceleration, 0.005) << "the points should be back on the walls";
+	EXPECT_GT(withoutAcceleration, withAcceleration * 3.0);
+}
+
+TEST(OdometryTest, InitialOrientationIsTheImuOrientationAtTheFirstFrame)
+{
+	// IMU received for 2 s before the first frame, while the sensor turns at 1 rad/s: the
+	// first frame must start from the orientation at its own stamp, not at the first IMU
+	// sample (2 rad earlier).
+	Trajectory turning;
+	turning.yaw = 0.3;
+	turning.yawRate = 1.0;
+	ParametersMap parameters;
+	parameters.insert(ParametersPair(Parameters::kRegStrategy(), "1"));
+	parameters.insert(ParametersPair(Parameters::kIcpVoxelSize(), "0"));
+	std::unique_ptr<Odometry> odometry(Odometry::create(parameters));
+	const double stamp = 2.0;
+	for(double t = 0.0; t <= stamp + kSweep + 0.005; t += 0.005)
+	{
+		SensorData imu(makeImu(turning, t), 0, t);
+		odometry->process(imu);
+	}
+	SensorData data(makeSweep(turning, stamp), cv::Mat(), cv::Mat(), CameraModel(), 1, stamp);
+	OdometryInfo info;
+	const Transform pose = odometry->process(data, &info);
+	ASSERT_FALSE(pose.isNull());
+	// The IMU was fed up to the end of the sweep (as OdometryThread does), but the orientation
+	// is interpolated at the frame's stamp
+	EXPECT_NEAR(pose.theta(), turning.yaw + turning.yawRate*stamp, 0.002);
+
+	// An initial pose given with a rotation is kept
+	std::unique_ptr<Odometry> given(Odometry::create(parameters));
+	given->reset(Transform(0, 0, 0, 0, 0, 1.0f));
+	for(double t = 0.0; t <= stamp; t += 0.005)
+	{
+		SensorData imu(makeImu(turning, t), 0, t);
+		given->process(imu);
+	}
+	EXPECT_NEAR(given->getPose().theta(), 1.0, 1e-6);
 }
