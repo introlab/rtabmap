@@ -45,7 +45,8 @@ development app.
 During mapping and Data Recording Mode, a loss of tracking after the first usable
 pose now takes priority over ordinary toast messages. The message remains visible
 while tracking is unavailable. Once tracking resumes, an eight-second reminder
-asks the user to revisit previously scanned surroundings. Normal initialization,
+asks the user to revisit previously scanned surroundings. A detected loop closure
+ends that reminder early so its confirmation can be shown. Normal initialization,
 camera preview and model viewing do not produce lost-scan warnings.
 
 This is guidance for preserving overlap, not a fix for ARKit tracking loss or an

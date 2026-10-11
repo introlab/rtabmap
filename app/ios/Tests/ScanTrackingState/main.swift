@@ -36,4 +36,13 @@ expect(state.update(isTracking: true, timestamp: 6), .trackingResumed, "Resumed 
 state.reset()
 expect(state.update(isTracking: true, timestamp: 7), nil, "Stopping during recovery resets its deadline")
 
+expect(state.update(isTracking: false, timestamp: 8), .trackingLost, "Loss is still detected after resetting a reminder")
+state.clearRecoveryReminder()
+expect(state.update(isTracking: false, timestamp: 9), .trackingLost, "Late loop closure cannot clear an active tracking loss")
+expect(state.update(isTracking: true, timestamp: 10), .trackingResumed, "Recovery after loss still requests overlap")
+state.clearRecoveryReminder()
+expect(state.update(isTracking: true, timestamp: 11), nil, "Confirmed loop closure dismisses the overlap reminder")
+expect(state.update(isTracking: true, timestamp: 12), nil, "Dismissed reminder is not restored by the next frame")
+expect(state.update(isTracking: false, timestamp: 13), .trackingLost, "Dismissing a reminder does not erase tracking history")
+
 print("ScanTrackingState: \(checks) checks passed")

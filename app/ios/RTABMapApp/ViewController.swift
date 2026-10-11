@@ -496,6 +496,10 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                         self.showToast(message: "Localized!", seconds: 1);
                     }
                     else {
+                        if self.trackingGuidance == .trackingResumed {
+                            self.scanTrackingState.clearRecoveryReminder()
+                            self.showTrackingGuidance(nil)
+                        }
                         self.showToast(message: "Loop closure detected!", seconds: 1);
                     }
                 }

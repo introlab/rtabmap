@@ -39,6 +39,10 @@ struct ScanTrackingState {
         return nil
     }
 
+    mutating func clearRecoveryReminder() {
+        recoveryDeadline = nil
+    }
+
     mutating func reset() {
         self = ScanTrackingState()
     }
