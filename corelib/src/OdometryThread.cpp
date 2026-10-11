@@ -34,6 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 
+#include <algorithm>
+
 namespace rtabmap {
 
 OdometryThread::OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize) :
@@ -236,13 +238,24 @@ bool OdometryThread::getData(SensorEvent & event)
 	{
 		if(!_dataBuffer.empty())
 		{
-			// Send IMU up to stamp greater than image (OpenVINS needs this).
+			// Send IMU up to stamp greater than image (OpenVINS needs this). For a lidar
+			// scan with a time channel, up to the end of its sweep: deskewing predicts the
+			// pose of every point with the IMU (approaches processing the IMU themselves
+			// get it as before).
+			double imuUntil = _dataBuffer.front().data().stamp();
+			const LaserScan & scan = _dataBuffer.front().data().laserScanRaw();
+			if(!_odometry->canProcessAsyncIMU() && !scan.isEmpty() && scan.hasTime())
+			{
+				imuUntil += std::max(0.0f, std::max(
+						scan.data().ptr<float>(0, 0)[scan.getTimeOffset()],
+						scan.data().ptr<float>(0, scan.size()-1)[scan.getTimeOffset()]));
+			}
 			while(!_imuBuffer.empty())
 			{
 				_odometry->process(_imuBuffer.front());
 				double stamp =_imuBuffer.front().stamp();
 				_imuBuffer.pop_front();
-				if(stamp > _dataBuffer.front().data().stamp()) {
+				if(stamp > imuUntil) {
 					break;
 				}
 			}

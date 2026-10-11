@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/ImuMotionPredictor.h>
 
 namespace rtabmap {
 
@@ -189,6 +190,7 @@ private:
 	std::vector<StereoCameraModel> stereoModels_;
 	std::vector<CameraModel> models_;
 	std::map<double, Transform> imus_;
+	ImuMotionPredictor imuMotionPredictor_; // fed when IMU is received (motion guess and deskewing)
 };
 
 } /* namespace rtabmap */

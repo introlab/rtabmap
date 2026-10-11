@@ -16427,7 +16427,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="14" column="1">
+                      <item row="15" column="1">
                        <widget class="QLabel" name="label_232">
                         <property name="text">
                          <string>Data buffer size (0 means inf).</string>
@@ -16570,7 +16570,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="12" column="0">
+                      <item row="13" column="0">
                        <widget class="QDoubleSpinBox" name="odom_flow_keyframeThr">
                         <property name="maximum">
                          <double>1.000000000000000</double>
@@ -16590,7 +16590,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="0">
+                      <item row="12" column="0">
                        <widget class="QSpinBox" name="odom_VisKeyFrameThr">
                         <property name="maximum">
                          <number>9999</number>
@@ -16600,7 +16600,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="13" column="1">
+                      <item row="14" column="1">
                        <widget class="QLabel" name="label_246">
                         <property name="text">
                          <string>[Geometry] Create a new keyframe when the number of inliers drops under this threshold. Setting value to 0 means that a keyframe is created for each processed frame.</string>
@@ -16613,7 +16613,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="1">
+                      <item row="11" column="1">
                        <widget class="QLabel" name="label_248">
                         <property name="text">
                          <string>Decimation of the RGB image before registration. If depth size is larger than decimated RGB size, depth is decimated to be always at most equal to RGB size. If Visual Registration -&gt; Visual Feature -&gt; Depth as Mask is true and if depth is smaller than decimated RGB, depth may be interpolated to match RGB size for feature detection.</string>
@@ -16709,7 +16709,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="15" column="0">
+                      <item row="16" column="0">
                        <widget class="QPushButton" name="pushButton_testOdometry">
                         <property name="text">
                          <string>Test odometry</string>
@@ -16729,14 +16729,14 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="14" column="0">
+                      <item row="15" column="0">
                        <widget class="QSpinBox" name="odom_dataBufferSize">
                         <property name="maximum">
                          <number>999999</number>
                         </property>
                        </widget>
                       </item>
-                      <item row="12" column="1">
+                      <item row="13" column="1">
                        <widget class="QLabel" name="label_196">
                         <property name="text">
                          <string>[Visual] Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.</string>
@@ -16749,7 +16749,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="0">
+                      <item row="11" column="0">
                        <widget class="QSpinBox" name="odom_imageDecimation">
                         <property name="minimum">
                          <number>1</number>
@@ -16778,7 +16778,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="13" column="0">
+                      <item row="14" column="0">
                        <widget class="QDoubleSpinBox" name="odom_flow_scanKeyframeThr">
                         <property name="maximum">
                          <double>1.000000000000000</double>
@@ -16794,7 +16794,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                       <item row="8" column="1">
                        <widget class="QLabel" name="label_520">
                         <property name="text">
-                         <string>Guess smoothing delay (s). Estimated velocity is averaged based on last transforms up to this maximum delay. This can help to get smoother velocity prediction. Last velocity computed is used directly if a filtering strategy is set or the delay is below the odometry rate.</string>
+                         <string>Guess smoothing delay (s). Estimated velocity is averaged based on last transforms up to this maximum delay. This can help to get smoother velocity prediction. Last velocity computed is used directly if a filtering strategy is set or the delay is below the odometry rate. With an IMU giving orientation and linear acceleration, a delay &gt; 0 also enables the IMU acceleration: the velocity is then corrected by the acceleration measured since, so that it is the velocity at the last frame rather than a delayed average, and the motion guess and lidar deskewing integrate the acceleration from it. Recommended (~0.5 s) with an IMU; with 0, the IMU only gives the orientation. Without IMU, the average is delayed by half this delay: it can make sense for platforms with inertia (e.g., cars at high speed, where one bad frame would otherwise change the predicted velocity a lot), for high frame rates, or when the velocity is used for lidar deskewing, where its noise would feed back into the next poses.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -16831,7 +16831,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="1">
+                      <item row="12" column="1">
                        <widget class="QLabel" name="label_354">
                         <property name="text">
                          <string>[Visual] Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.</string>
@@ -16844,10 +16844,10 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
+                      <item row="10" column="1">
                        <widget class="QLabel" name="label_7461">
                         <property name="text">
-                         <string>Lidar deskewing. If input lidar has time channel, it will be deskewed with a constant motion model (with IMU orientation and/or guess if provided).</string>
+                         <string>Lidar deskewing. If input lidar has time channel, it will be deskewed. With an IMU, the pose of every point is predicted from the previous frame: orientation from the IMU, translation from the velocity (with the IMU acceleration if the guess smoothing delay is &gt; 0). Without IMU, with a constant motion model (or the guess if provided).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -16857,10 +16857,42 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="0">
+                      <item row="10" column="0">
                        <widget class="QCheckBox" name="odom_lidar_deskewing">
                         <property name="text">
                          <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="9" column="0">
+                       <widget class="QDoubleSpinBox" name="odom_imu_gravity">
+                        <property name="suffix">
+                         <string> m/s²</string>
+                        </property>
+                        <property name="decimals">
+                         <number>5</number>
+                        </property>
+                        <property name="maximum">
+                         <double>100.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>9.806650000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="9" column="1">
+                       <widget class="QLabel" name="label_odom_imu_gravity">
+                        <property name="text">
+                         <string>Gravity magnitude removed from the IMU linear acceleration (used with a guess smoothing delay &gt; 0 above). Standard gravity by default. Set it to what the accelerometer reads at rest to compensate for its scale error, or for another gravity than Earth's.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
