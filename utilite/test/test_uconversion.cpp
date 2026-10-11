@@ -201,3 +201,14 @@ TEST(UConversionTest, UFormat)
     EXPECT_NE(result.find("42"), std::string::npos);
 }
 
+TEST(UConversionTest, UFormatLongerThanItsFirstBuffer)
+{
+    // Over the 1024 bytes uFormat first tries: formatted whole, not truncated (MSVC's
+    // checked vsnprintf_s used to abort the process instead).
+    const std::string longText(3000, 'a');
+    std::string result = uFormat("%s %d", longText.c_str(), 42);
+    EXPECT_EQ(result, longText + " 42");
+    result = uFormat("%s", std::string(1023, 'b').c_str());
+    EXPECT_EQ(result, std::string(1023, 'b'));
+}
+

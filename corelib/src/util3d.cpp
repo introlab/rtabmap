@@ -3822,17 +3822,12 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr loadCloud(
 	return util3d::transformPointCloud(cloud, transform);
 }
 
-LaserScan deskew(
+static LaserScan deskewImpl(
 		const LaserScan & input,
 		double inputStamp,
-		const rtabmap::Transform & velocity)
+		const std::function<rtabmap::Transform(double)> & motion,
+		bool slerp)
 {
-	if(velocity.isNull())
-	{
-		UERROR("velocity should be valid!");
-		return LaserScan();
-	}
-
 	if(!input.hasTime())
 	{
 		UERROR("input scan doesn't have a \"time\" channel! Supported formats: \"%s\", \"%s\".",
@@ -3861,33 +3856,28 @@ LaserScan deskew(
 		return LaserScan();
 	}
 
+	// With slerp, the poses of the base frame at the first and last stamps (relative to
+	// the base frame at inputStamp), interpolated in between
 	rtabmap::Transform firstPose;
 	rtabmap::Transform lastPose;
-
-	float vx,vy,vz, vroll,vpitch,vyaw;
-	velocity.getTranslationAndEulerAngles(vx,vy,vz, vroll,vpitch,vyaw);
-
-	//  1- The pose of base frame in odom frame at first stamp
-	//  2- The pose of base frame in odom frame at last stamp
-	double dt1 = firstStamp - inputStamp;
-	double dt2 = lastStamp - inputStamp;
-
-	firstPose = rtabmap::Transform(vx*dt1, vy*dt1, vz*dt1, vroll*dt1, vpitch*dt1, vyaw*dt1);
-	lastPose = rtabmap::Transform(vx*dt2, vy*dt2, vz*dt2, vroll*dt2, vpitch*dt2, vyaw*dt2);
-
-	if(firstPose.isNull())
+	if(slerp)
 	{
-		UERROR("Could not get transform between stamps %f and %f!",
-				firstStamp,
-				inputStamp);
-		return LaserScan();
-	}
-	if(lastPose.isNull())
-	{
-		UERROR("Could not get transform between stamps %f and %f!",
-				lastStamp,
-				inputStamp);
-		return LaserScan();
+		firstPose = motion(firstStamp);
+		lastPose = motion(lastStamp);
+		if(firstPose.isNull())
+		{
+			UERROR("Could not get transform between stamps %f and %f!",
+					firstStamp,
+					inputStamp);
+			return LaserScan();
+		}
+		if(lastPose.isNull())
+		{
+			UERROR("Could not get transform between stamps %f and %f!",
+					lastStamp,
+					inputStamp);
+			return LaserScan();
+		}
 	}
 
 	double stamp;
@@ -3918,7 +3908,12 @@ LaserScan deskew(
 		{
 			const float * inputPtr = input.data().ptr<float>(0, u);
 			stamp = inputStamp + inputPtr[offsetTime];
-			rtabmap::Transform transform = firstPose.interpolate((stamp-firstStamp) / scanTime, lastPose);
+			rtabmap::Transform transform = slerp?firstPose.interpolate((stamp-firstStamp) / scanTime, lastPose):motion(stamp);
+			if(transform.isNull())
+			{
+				UERROR("Could not get transform between stamps %f and %f!", stamp, inputStamp);
+				return LaserScan();
+			}
 
 			for(int v=0; v<input.data().rows; ++v)
 			{
@@ -3960,7 +3955,12 @@ LaserScan deskew(
 		{
 			const float * inputPtr = input.data().ptr<float>(v, 0);
 			stamp = inputStamp + inputPtr[offsetTime];
-			rtabmap::Transform transform = firstPose.interpolate((stamp-firstStamp) / scanTime, lastPose);
+			rtabmap::Transform transform = slerp?firstPose.interpolate((stamp-firstStamp) / scanTime, lastPose):motion(stamp);
+			if(transform.isNull())
+			{
+				UERROR("Could not get transform between stamps %f and %f!", stamp, inputStamp);
+				return LaserScan();
+			}
 
 			for(int u=0; u<input.data().cols; ++u)
 			{
@@ -3994,6 +3994,42 @@ LaserScan deskew(
 	output = cv::Mat(output, cv::Range::all(), cv::Range(0, oi));
 	UDEBUG("Lidar deskewing time=%fs", processingTime.elapsed());
 	return LaserScan(output, input.maxPoints(), input.rangeMax(), outputFormat, input.localTransform());
+}
+
+LaserScan deskew(
+		const LaserScan & input,
+		double inputStamp,
+		const rtabmap::Transform & velocity)
+{
+	if(velocity.isNull())
+	{
+		UERROR("velocity should be valid!");
+		return LaserScan();
+	}
+	float vx,vy,vz, vroll,vpitch,vyaw;
+	velocity.getTranslationAndEulerAngles(vx,vy,vz, vroll,vpitch,vyaw);
+	// The pose of the base frame at a stamp relative to the one at inputStamp, with a
+	// constant velocity: computed at the first and last stamps, interpolated in between
+	auto motion = [&](double stamp)
+	{
+		const double dt = stamp - inputStamp;
+		return rtabmap::Transform(vx*dt, vy*dt, vz*dt, vroll*dt, vpitch*dt, vyaw*dt);
+	};
+	return deskewImpl(input, inputStamp, motion, true);
+}
+
+LaserScan deskew(
+		const LaserScan & input,
+		double inputStamp,
+		const std::function<rtabmap::Transform(double stamp)> & motion,
+		bool slerp)
+{
+	if(!motion)
+	{
+		UERROR("motion should be set!");
+		return LaserScan();
+	}
+	return deskewImpl(input, inputStamp, motion, slerp);
 }
 
 

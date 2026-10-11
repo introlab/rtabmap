@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef UTIL3D_H_
 #define UTIL3D_H_
 
+#include <functional>
 #include "rtabmap/core/rtabmap_core_export.h"
 
 #include <pcl/point_cloud.h>
@@ -1294,6 +1295,27 @@ LaserScan RTABMAP_CORE_EXPORT deskew(
 		const LaserScan & input,
 		double inputStamp,
 		const rtabmap::Transform & velocity);
+
+/**
+ * @brief Deskews a lidar scan with a motion given by the caller.
+ *
+ * Same as the velocity overload, but the motion during the sweep comes from @p motion,
+ * for instance a pose predicted from an IMU.
+ *
+ * @param input      scan with a time channel (`kXYZIT` or `kXYZIRT`)
+ * @param inputStamp stamp of the scan, which the time channel is relative to
+ * @param motion     for a stamp (s) in the sweep, the pose of the scan's base frame at that
+ *                   stamp relative to the base frame at @p inputStamp; a null transform
+ *                   aborts deskewing
+ * @param slerp      call @p motion only for the first and last points and interpolate in
+ *                   between, instead of calling it for every time of the sweep
+ * @return the deskewed scan, empty on error
+ */
+LaserScan RTABMAP_CORE_EXPORT deskew(
+		const LaserScan & input,
+		double inputStamp,
+		const std::function<rtabmap::Transform(double stamp)> & motion,
+		bool slerp = false);
 
 } // namespace util3d
 } // namespace rtabmap
