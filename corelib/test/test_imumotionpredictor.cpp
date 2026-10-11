@@ -37,15 +37,19 @@ rtabmap::IMU measuredImu(const Eigen::Quaterniond & worldToImu,
 
 /// IMU measurements at 200 Hz over [from, to] of an IMU at the base origin, oriented and
 /// accelerating (in its world frame) as given. Without accelerometer, it measures no
-/// linear acceleration at all.
+/// linear acceleration at all. The stamps are on the 200 Hz grid (from must be too).
 void addSamples(ImuMotionPredictor & predictor, double from, double to,
 		const std::function<Eigen::Quaterniond(double)> & orientation,
 		const std::function<Eigen::Vector3d(double)> & acceleration,
 		bool withAccelerometer = true)
 {
-	for(int i=0; from + i*0.005 <= to + 1e-9; ++i)
+	// An integer over 200 rather than from + i*0.005: with FMA (e.g., -march=x86-64-v3),
+	// -0.05 + 10*0.005 gives -1.7e-18, not 0, putting that sample on the wrong side of
+	// a step at t=0.
+	const double first = std::round(from * 200.0);
+	for(int i=0; (first + i) / 200.0 <= to + 1e-9; ++i)
 	{
-		const double t = from + i*0.005;
+		const double t = (first + i) / 200.0;
 		rtabmap::IMU imu = measuredImu(orientation(t), acceleration(t), predictor.gravity(), rtabmap::Transform::getIdentity());
 		if(!withAccelerometer)
 		{
