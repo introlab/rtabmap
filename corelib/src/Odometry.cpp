@@ -161,6 +161,13 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomHolonomic(), _holonomic);
 	Parameters::parse(parameters, Parameters::kOdomGuessMotion(), guessFromMotion_);
 	Parameters::parse(parameters, Parameters::kOdomGuessSmoothingDelay(), guessSmoothingDelay_);
+	{
+		float imuGravity = Parameters::defaultOdomImuGravity();
+		Parameters::parse(parameters, Parameters::kOdomImuGravity(), imuGravity);
+		// The velocity is estimated over the smoothing delay, and the IMU acceleration used
+		// only with one (> 0)
+		imuMotionPredictor_ = ImuMotionPredictor(1.0, guessSmoothingDelay_, imuGravity);
+	}
 	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
 	Parameters::parse(parameters, Parameters::kOdomFilteringStrategy(), _filteringStrategy);
 	Parameters::parse(parameters, Parameters::kOdomParticleSize(), _particleSize);
@@ -228,6 +235,7 @@ void Odometry::reset(const Transform & initialPose)
 	framesProcessed_ = 0;
 	imuLastTransform_.setNull();
 	imus_.clear();
+	imuMotionPredictor_.reset();
 	if(_force3DoF || particleFilters_.size())
 	{
 		float x,y,z, roll,pitch,yaw;
@@ -312,38 +320,47 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 {
 	UASSERT_MSG(data.id() >= 0, uFormat("Input data should have ID greater or equal than 0 (id=%d)!", data.id()).c_str());
 
-	// cache imu data
-	if(!data.imu().empty() && !this->canProcessAsyncIMU())
+	if(!data.imu().empty())
 	{
-		if(!(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0))
+		if(!this->canProcessAsyncIMU())
 		{
-			Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
-			// orientation includes roll and pitch but not yaw in local transform
-			Transform imuT = Transform(data.imu().localTransform().x(),data.imu().localTransform().y(),data.imu().localTransform().z(), 0,0,data.imu().localTransform().theta()) *
-					orientation*
-					data.imu().localTransform().rotation().inverse();
-
-			if(	this->getPose().r11() == 1.0f && this->getPose().r22() == 1.0f && this->getPose().r33() == 1.0f &&
-				this->framesProcessed() == 0)
+			// cache imu data
+			if(!(data.imu().orientation()[0] == 0.0 && data.imu().orientation()[1] == 0.0 && data.imu().orientation()[2] == 0.0))
 			{
-				Eigen::Quaterniond imuQuat = imuT.getQuaterniond();
-				Transform previous = this->getPose();
-				Transform newFramePose = Transform(previous.x(), previous.y(), previous.z(), imuQuat.x(), imuQuat.y(), imuQuat.z(), imuQuat.w());
-				UWARN("Updated initial pose from %s to %s with IMU orientation", previous.prettyPrint().c_str(), newFramePose.prettyPrint().c_str());
-				std::map<double, rtabmap::Transform> imus = imus_;
-				this->reset(newFramePose);
-				imus_ = imus;
+				Transform orientation(0,0,0, data.imu().orientation()[0], data.imu().orientation()[1], data.imu().orientation()[2], data.imu().orientation()[3]);
+				// orientation includes roll and pitch but not yaw in local transform
+				Transform imuT = Transform(data.imu().localTransform().x(),data.imu().localTransform().y(),data.imu().localTransform().z(), 0,0,data.imu().localTransform().theta()) *
+						orientation*
+						data.imu().localTransform().rotation().inverse();
+
+				imus_.insert(std::make_pair(data.stamp(), imuT));
+				if(imus_.size() > 1000)
+				{
+					imus_.erase(imus_.begin());
+				}
+
+				imuMotionPredictor_.addImu(data.stamp(), data.imu());
 			}
-
-			imus_.insert(std::make_pair(data.stamp(), imuT));
-			if(imus_.size() > 1000)
+			else
 			{
-				imus_.erase(imus_.begin());
+				UWARN("Received IMU doesn't have orientation set! It is ignored.");
 			}
 		}
-		else
+
+		// IMU-only update: nothing more to do once the IMU is cached, except for approaches
+		// processing it themselves. A frame that brings its own features carries no image,
+		// and a frame whose scene was empty carries no feature either, so neither says
+		// whether there is a frame at all. The calibration does: it is there when a camera
+		// produced this data.
+		if(data.imageRaw().empty() && data.imageCompressed().empty() &&
+		   data.laserScanRaw().isEmpty() && data.laserScanCompressed().isEmpty() &&
+		   data.cameraModels().empty() && data.stereoCameraModels().empty())
 		{
-			UWARN("Received IMU doesn't have orientation set! It is ignored.");
+			if(this->canProcessAsyncIMU())
+			{
+				this->computeTransform(data, Transform(), info);
+			}
+			return Transform(); // Return null on IMU-only updates
 		}
 	}
 
@@ -588,12 +605,40 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
+	// Initial orientation from the IMU at the first frame's own stamp (unless an initial pose
+	// with a rotation was given). Not from the first IMU sample received, which can be much
+	// older (e.g., IMU buffered while waiting for the first frame), nor from the newest one,
+	// which can be after the stamp (lidar deskewing needs IMU up to the end of the sweep).
+	if(this->framesProcessed() == 0 && !imus_.empty() &&
+	   this->getPose().r11() == 1.0f && this->getPose().r22() == 1.0f && this->getPose().r33() == 1.0f)
+	{
+		// Interpolated at the stamp, or the closest sample if the IMU doesn't cover it (e.g.,
+		// the only sample received is just after the frame)
+		Transform imuAtStamp = Transform::getTransform(imus_, data.stamp());
+		if(imuAtStamp.isNull())
+		{
+			imuAtStamp = data.stamp() < imus_.begin()->first?imus_.begin()->second:imus_.rbegin()->second;
+		}
+		if(!imuAtStamp.isNull())
+		{
+			const Eigen::Quaterniond q = imuAtStamp.getQuaterniond();
+			const Transform previous = this->getPose();
+			const Transform initialPose(previous.x(), previous.y(), previous.z(), q.x(), q.y(), q.z(), q.w());
+			UWARN("Updated initial pose from %s to %s with IMU orientation", previous.prettyPrint().c_str(), initialPose.prettyPrint().c_str());
+			std::map<double, rtabmap::Transform> imus = imus_;
+			ImuMotionPredictor imuMotionPredictor = imuMotionPredictor_;
+			this->reset(initialPose);
+			imus_ = imus;
+			imuMotionPredictor_ = imuMotionPredictor;
+		}
+	}
+
 	// KITTI datasets start with stamp=0
 	double dt = previousStamp_>0.0f || (previousStamp_==0.0f && framesProcessed()==1)?data.stamp() - previousStamp_:0.0;
 	Transform guess = dt>0.0 && guessFromMotion_ && !velocityGuess_.isNull()?Transform::getIdentity():Transform();
 	if(!(dt>0.0 || (dt == 0.0 && velocityGuess_.isNull())))
 	{
-		if(guessFromMotion_ && (!data.imageRaw().empty() || !data.laserScanRaw().isEmpty()))
+		if(guessFromMotion_)
 		{
 			UERROR("Guess from motion is set but dt is invalid! Odometry is then computed without guess. (dt=%f previous transform=%s)", dt, velocityGuess_.prettyPrint().c_str());
 		}
@@ -646,6 +691,17 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 					orientation.r11(), orientation.r12(), orientation.r13(), guess.x(),
 					orientation.r21(), orientation.r22(), orientation.r23(), guess.y(),
 					orientation.r31(), orientation.r32(), orientation.r33(), guess.z());
+			if(guessFromMotion_ && guessSmoothingDelay_ > 0.0f && imuMotionPredictor_.hasPose())
+			{
+				// Translation (and orientation) predicted from the previous pose with the
+				// IMU acceleration, instead of a constant velocity: the velocity is the one
+				// over the smoothing delay, carried to the previous frame with the IMU.
+				Transform predicted = imuMotionPredictor_.predict(data.stamp());
+				if(!predicted.isNull())
+				{
+					guess = _pose.inverse() * predicted;
+				}
+			}
 			if(_force3DoF)
 			{
 				guess = guess.to3DoF();
@@ -657,21 +713,54 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			UWARN("Could not find imu transform at %f", data.stamp());
 		}
 	}
-	else if(!guess.isNull() && (!data.imageRaw().empty() || !data.laserScanRaw().isEmpty())) {
+	else if(!guess.isNull()) {
 		UDEBUG("Using guess from motion %s", guess.prettyPrint().c_str());
 	}
 
 	UTimer time;
 
-	// Deskewing lidar
+	// Deskewing lidar, if the scan has a time spread (not already deskewed: deskewing zeroes
+	// the time channel)
+	const bool scanHasTimeSpread =
+			!data.laserScanRaw().empty() &&
+			data.laserScanRaw().hasTime() &&
+			data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()] !=
+			data.laserScanRaw().data().ptr<float>(0, 0)[data.laserScanRaw().getTimeOffset()];
 	if( _deskewing &&
-		!data.laserScanRaw().empty() &&
-		data.laserScanRaw().hasTime() &&
+		scanHasTimeSpread &&
+		!imus_.empty() &&
+		!imuMotionPredictor_.predict(data.stamp()).isNull())
+	{
+		UDEBUG("Deskewing with IMU begin");
+		// Every point's pose predicted with the IMU since the previous frame: orientation
+		// from the IMU, translation from the velocity (carried with the IMU acceleration
+		// with a smoothing delay). Before the first pose, only the orientation.
+		const Transform referenceInverse = imuMotionPredictor_.predict(data.stamp()).inverse();
+		auto motion = [&](double stamp)
+		{
+			Transform pose = imuMotionPredictor_.predict(stamp);
+			if(pose.isNull())
+			{
+				return pose;
+			}
+			pose = referenceInverse * pose;
+			return _force3DoF?pose.to3DoF():pose;
+		};
+		LaserScan scanDeskewed = util3d::deskew(data.laserScanRaw(), data.stamp(), motion);
+		if(!scanDeskewed.isEmpty())
+		{
+			data.setLaserScan(scanDeskewed);
+		}
+		info->timeDeskewing = time.ticks();
+		UDEBUG("Deskewing end");
+	}
+	else if( _deskewing &&
+		scanHasTimeSpread &&
 		dt > 0 &&
 		!guess.isNull())
 	{
 		UDEBUG("Deskewing begin");
-		// Recompute velocity
+		// Constant velocity
 		float vx,vy,vz, vroll,vpitch,vyaw;
 		guess.getTranslationAndEulerAngles(vx,vy,vz, vroll,vpitch,vyaw);
 
@@ -682,38 +771,6 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		vroll /= dt;
 		vpitch /= dt;
 		vyaw /= dt;
-
-		if(!imus_.empty())
-		{
-			float scanTime =
-				data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()] -
-				data.laserScanRaw().data().ptr<float>(0, 0)[data.laserScanRaw().getTimeOffset()];
-
-			// replace orientation velocity based on IMU (if available)
-			Transform imuFirstScan = Transform::getTransform(imus_,
-					data.stamp() +
-					data.laserScanRaw().data().ptr<float>(0, 0)[data.laserScanRaw().getTimeOffset()]);
-			Transform imuLastScan = Transform::getTransform(imus_,
-					data.stamp() +
-					data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()]);
-			if(!imuFirstScan.isNull() && !imuLastScan.isNull())
-			{
-				Transform orientation = imuFirstScan.inverse() * imuLastScan;
-				orientation.getEulerAngles(vroll, vpitch, vyaw);
-				if(_force3DoF)
-				{
-					vroll=0;
-					vpitch=0;
-					vyaw /= scanTime;
-				}
-				else
-				{
-					vroll /= scanTime;
-					vpitch /= scanTime;
-					vyaw /= scanTime;
-				}
-			}
-		}
 
 		Transform velocity(vx,vy,vz,vroll,vpitch,vyaw);
 		LaserScan scanDeskewed = util3d::deskew(data.laserScanRaw(), data.stamp(), velocity);
@@ -837,21 +894,9 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			}
 		}
 	}
-	// A frame that brings its own features carries no image, and a frame whose scene was
-	// empty carries no feature either, so neither says whether there is a frame at all.
-	// The calibration does: it is there when a camera produced this data.
-	else if(!data.imageRaw().empty() ||
-			!data.cameraModels().empty() ||
-			!data.stereoCameraModels().empty() ||
-			!data.laserScanRaw().isEmpty() ||
-			(this->canProcessAsyncIMU() && !data.imu().empty()))
+	else
 	{
 		t = this->computeTransform(data, guess, info);
-	}
-
-	if(data.imageRaw().empty() && data.laserScanRaw().isEmpty() && !data.imu().empty())
-	{
-		return Transform(); // Return null on IMU-only updates
 	}
 
 	if(info)
@@ -875,6 +920,12 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			}
 			previousGroundTruthPose_ = data.groundTruth();
 		}
+	}
+
+	if(t.isNull())
+	{
+		// Lost: no velocity can be estimated across the reset that follows
+		imuMotionPredictor_.addPose(data.stamp(), Transform());
 	}
 
 	if(!t.isNull())
@@ -1030,6 +1081,21 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		{
 			previousVelocities_.clear();
 			velocityGuess_.setNull();
+		}
+
+		{
+			const Transform newPose = _pose * t;
+			imuMotionPredictor_.addPose(data.stamp(), newPose);
+			if(guessSmoothingDelay_ > 0.0f && !imus_.empty() &&
+			   !velocityGuess_.isNull() && _filteringStrategy != 1 && particleFilters_.empty())
+			{
+				// The translational velocity over the smoothing delay, carried to this
+				// frame with the IMU acceleration (see ImuMotionPredictor), in this frame.
+				const Eigen::Vector3d v = newPose.getQuaterniond().inverse() * imuMotionPredictor_.velocity();
+				float vx,vy,vz, vroll,vpitch,vyaw;
+				velocityGuess_.getTranslationAndEulerAngles(vx,vy,vz, vroll,vpitch,vyaw);
+				velocityGuess_ = Transform(v.x(), v.y(), v.z(), vroll, vpitch, vyaw);
+			}
 		}
 
 		if(info)

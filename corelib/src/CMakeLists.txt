@@ -88,6 +88,7 @@ SET(SRC_FILES
     RegistrationVis.cpp
     
     Odometry.cpp
+    ImuMotionPredictor.cpp
     OdometryThread.cpp
 	OdometryInfo.cpp
     odometry/OdometryF2M.cpp
