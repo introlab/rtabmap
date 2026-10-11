@@ -42,6 +42,7 @@ set(corelib_test_sources
 	test_link.cpp                       #Link.h
 	test_optimizer.cpp                  #Optimizer.h
 	test_gps.cpp                        #GPS.h
+	test_parameters.cpp                 #Parameters.h
 	test_imu.cpp                        #IMU.h
 	test_imufilter.cpp                  #IMUFilter.h
 	test_imumotionpredictor.cpp         #ImuMotionPredictor.h

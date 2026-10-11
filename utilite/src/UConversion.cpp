@@ -338,7 +338,8 @@ std::string uFormatv (const char *fmt, va_list args)
 
         // Try to vsnprintf into our buffer.
 #ifdef _MSC_VER
-    	int needed = vsnprintf_s(buf, size, size, fmt, argsTmp);
+    	// _TRUNCATE: return -1 if it doesn't fit (count=size would call the invalid parameter handler and abort)
+    	int needed = vsnprintf_s(buf, size, _TRUNCATE, fmt, argsTmp);
 #else
     	int needed = vsnprintf (buf, size, fmt, argsTmp);
 #endif
