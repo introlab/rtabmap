@@ -1,5 +1,6 @@
 var NAVTREEINDEX1 =
 {
+"UStl_8h.html#ab1862437019327ce8419569e3c2ea90f":[8,0,2,0,0,0,17,32],
 "UStl_8h.html#ab4e2c55d7930e99514a2315a2c6b4f82":[8,0,2,0,0,0,17,39],
 "UStl_8h.html#ab5ea404864ed672cca3a05435786f4be":[8,0,2,0,0,0,17,10],
 "UStl_8h.html#ac65e613c42858a01f5d4f29446f53cd6":[8,0,2,0,0,0,17,29],
@@ -25,11 +26,11 @@ var NAVTREEINDEX1 =
 "UVariant_8h.html":[8,0,2,0,0,0,23],
 "UVariant_8h_source.html":[8,0,2,0,0,0,23],
 "UWin32_8h_source.html":[8,0,2,0,0,0,1,1],
-"UserDataEvent_8h_source.html":[8,0,1,0,0,0,78],
+"UserDataEvent_8h_source.html":[8,0,1,0,0,0,79],
 "UtiLite_8h_source.html":[8,0,2,0,0,0,21],
-"VWDictionary_8h_source.html":[8,0,1,0,0,0,90],
+"VWDictionary_8h_source.html":[8,0,1,0,0,0,91],
 "Version_8h_source.html":[8,0,0,0,0,0,0,0,1],
-"VisualWord_8h_source.html":[8,0,1,0,0,0,89],
+"VisualWord_8h_source.html":[8,0,1,0,0,0,90],
 "Win32_2UThreadC_8h_source.html":[8,0,2,0,0,0,1,0],
 "annotated.html":[7,0],
 "classUDestroyer.html":[7,0,2],
@@ -248,6 +249,5 @@ var NAVTREEINDEX1 =
 "classrtabmap_1_1BayesFilter.html#a489031236b91dbaba0ff192f90799cd4":[7,0,1,1,11],
 "classrtabmap_1_1BayesFilter.html#a4b476a9fa8b1c67562be4134c936081c":[7,0,1,1,5],
 "classrtabmap_1_1BayesFilter.html#a4b476a9fa8b1c67562be4134c936081c":[6,0,0,3,5],
-"classrtabmap_1_1BayesFilter.html#a60ad13fd18ac4e595359f3c86c430a80":[6,0,0,3,12],
-"classrtabmap_1_1BayesFilter.html#a60ad13fd18ac4e595359f3c86c430a80":[7,0,1,1,12]
+"classrtabmap_1_1BayesFilter.html#a60ad13fd18ac4e595359f3c86c430a80":[6,0,0,3,12]
 };

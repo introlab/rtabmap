@@ -127,22 +127,22 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "BayesFilter_8h_source.html",
-"UStl_8h.html#ab4e2c55d7930e99514a2315a2c6b4f82",
-"classrtabmap_1_1BayesFilter.html#a6d7d48b32c853f46eee9290d5c82cd28",
-"classrtabmap_1_1CameraStereoZed.html#a8c13902c0c25565357e6f7e0a16f0838",
-"classrtabmap_1_1FlannIndex.html",
-"classrtabmap_1_1LaserScan.html#a38f5602d1411c204d54be9b3c7320007a4f3e7340e44a01b48ccaf8e1f8dca3e1",
-"classrtabmap_1_1Memory.html#a76fd8c93220c16fac5843ccc2c0bec3c",
-"classrtabmap_1_1OdometryFovis.html",
-"classrtabmap_1_1OptimizerCeres.html#ad6d6c0a0cdbea0ee5082d3aaa94d8e7a",
-"classrtabmap_1_1Rtabmap.html#a7133d8efa98410eaec68e0199ff98a0c",
-"classrtabmap_1_1SensorCaptureInfo.html#a2cd84bbdd9bd60f906b9b925ab0d302c",
-"classrtabmap_1_1SensorData.html#aef9e0c36efdc8915536c3bc082108689",
-"classrtabmap_1_1Statistics.html#ae3d58759c1cc237b2e297c2c5f608725",
-"classrtabmap_1_1Transform.html#af0020cf4093b8b1a3d1f68ee657b3662",
-"group__ComputeVarianceAndCorrespondences.html#gaf474f9fb6eaaf532e9b18af63b9e1665",
-"namespacemembers_h.html",
-"parameters.html#autotoc_md36"
+"UStl_8h.html#ab1862437019327ce8419569e3c2ea90f",
+"classrtabmap_1_1BayesFilter.html#a60ad13fd18ac4e595359f3c86c430a80",
+"classrtabmap_1_1CameraStereoZed.html#a80088853404d1c4e89b5f29933d7b020",
+"classrtabmap_1_1FeatureBA.html#ad48600a5b6ed17e7713f1485c4317948",
+"classrtabmap_1_1Landmark.html#a1fda87c27ac931dcf9815921b53c1f19",
+"classrtabmap_1_1Memory.html#a4c555fac41be4b4d44c551c010971dc3",
+"classrtabmap_1_1OdometryEvent.html#a9d20ed607b8cc697c8aa5ca725e477a5",
+"classrtabmap_1_1Optimizer.html#a8bb6372ce4c67fd9b8d54f692ac34238",
+"classrtabmap_1_1Rtabmap.html#a5a461ed88e83d2dbebee819ab6690e7a",
+"classrtabmap_1_1SensorCapture.html#a2f940d75366088bfae0164e1803ffe9a",
+"classrtabmap_1_1SensorData.html#accb5f254667af3074993a073a4e1f072",
+"classrtabmap_1_1Statistics.html#a938202c5836ba75d8eb06b0317712d06",
+"classrtabmap_1_1Transform.html#ac3654d3f6802d4b0c17b6110d1eda71a",
+"functions_s.html",
+"namespacemembers.html",
+"pages.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

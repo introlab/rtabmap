@@ -3,7 +3,7 @@ var searchData=
   ['value_0',['value',['../classrtabmap_1_1EnvSensor.html#a27b343c9be68fd326c10157102bb750f',1,'rtabmap::EnvSensor::value()'],['../classUSemaphore.html#a840fadefd8bc873c8bdf34c90d180a3b',1,'USemaphore::value()']]],
   ['variance_1',['variance',['../classrtabmap_1_1RegistrationInfo.html#a95b6903a7b750f9ada14000dc37800dc',1,'rtabmap::RegistrationInfo']]],
   ['variance_20and_20correspondences_20of_20two_20point_20clouds_2',['Compute Variance and Correspondences of Two Point Clouds',['../group__ComputeVarianceAndCorrespondences.html',1,'']]],
-  ['velocity_3',['velocity',['../classrtabmap_1_1OdometryEvent.html#adbac8609d65d32f38d1e724007091398',1,'rtabmap::OdometryEvent']]],
+  ['velocity_3',['velocity',['../classrtabmap_1_1ImuMotionPredictor.html#a18e326faaa67a3602eaf3b4df7a906ff',1,'rtabmap::ImuMotionPredictor::velocity()'],['../classrtabmap_1_1OdometryEvent.html#adbac8609d65d32f38d1e724007091398',1,'rtabmap::OdometryEvent::velocity()']]],
   ['verticalfov_4',['verticalFOV',['../classrtabmap_1_1CameraModel.html#af6226e43afcb69259b137bbe50099537',1,'rtabmap::CameraModel']]],
   ['vhep_5',['VhEp',['../parameters.html#autotoc_md27',1,'']]],
   ['vhstrategy_6',['VhStrategy',['../classrtabmap_1_1Rtabmap.html#afa134603fb0835b84f269e48e7ab568c',1,'rtabmap::Rtabmap']]],

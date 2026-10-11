@@ -65,6 +65,7 @@ var annotated_dup =
       [ "IMU", "classrtabmap_1_1IMU.html", "classrtabmap_1_1IMU" ],
       [ "IMUEvent", "classrtabmap_1_1IMUEvent.html", "classrtabmap_1_1IMUEvent" ],
       [ "IMUFilter", "classrtabmap_1_1IMUFilter.html", "classrtabmap_1_1IMUFilter" ],
+      [ "ImuMotionPredictor", "classrtabmap_1_1ImuMotionPredictor.html", "classrtabmap_1_1ImuMotionPredictor" ],
       [ "IMUThread", "classrtabmap_1_1IMUThread.html", "classrtabmap_1_1IMUThread" ],
       [ "KAZE", "classrtabmap_1_1KAZE.html", null ],
       [ "Landmark", "classrtabmap_1_1Landmark.html", "classrtabmap_1_1Landmark" ],
