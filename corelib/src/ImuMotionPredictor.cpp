@@ -26,7 +26,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <rtabmap/core/ImuMotionPredictor.h>
+#include <rtabmap/utilite/ULogger.h>
 
+#include <algorithm>
 #include <vector>
 
 namespace rtabmap {
@@ -35,14 +37,29 @@ namespace rtabmap {
 // bounded while no odometry pose comes to trim it.
 static const double kMaxBufferDuration = 10.0;
 
+// Gravity estimation (see the class description). The IMU is still over a window if its
+// angular velocity stays under kStillMaxAngularVelocity and the standard deviation of its
+// specific force, on every axis, under kStillMaxAccelerationStd. Those are above the noise
+// and vibrations of an IMU on a robot at rest (e.g., ~0.1 m/s^2 on a drone on the ground,
+// against ~1 m/s^2 in flight), and well under what any acceleration that matters would
+// cause. The gravity is the median over the last kGravityWindows quiet windows.
+static const double kStillWindow = 0.5;              // s
+static const double kStillMaxAngularVelocity = 0.05; // rad/s
+static const double kStillMaxAccelerationStd = 0.15; // m/s^2
+static const size_t kStillMinSamples = 5;
+static const size_t kGravityWindows = 100;
+static const double kStandardGravity = 9.80665;
+
 ImuMotionPredictor::ImuMotionPredictor(double maxPoseInterval, double velocityWindow, double gravity) :
 	maxPoseInterval_(maxPoseInterval),
 	velocityWindow_(velocityWindow),
-	gravity_(gravity),
-	integratedStartIsFinal_(false),
+	gravity_(gravity > 0.0 ? gravity : kStandardGravity),
+	gravityEstimated_(gravity <= 0.0),
+	gravityWindowsCount_(0),
 	poseStamp_(0.0),
 	velocity_(Eigen::Vector3d::Zero()),
-	worldToOdom_(Eigen::Quaterniond::Identity())
+	worldToOdom_(Eigen::Quaterniond::Identity()),
+	integratedStartIsFinal_(false)
 {
 }
 
@@ -63,21 +80,93 @@ void ImuMotionPredictor::addImu(double stamp, const IMU & imu)
 			imu.localTransform().getQuaterniond();
 
 	const cv::Vec3d & f = imu.linearAcceleration();
-	Eigen::Vector3d acceleration = Eigen::Vector3d::Zero();
-	if((f[0] != 0.0 || f[1] != 0.0 || f[2] != 0.0) &&
-	   (imu.linearAccelerationCovariance().empty() || imu.linearAccelerationCovariance().at<double>(0,0) != -1.0))
+	const bool hasAcceleration = (f[0] != 0.0 || f[1] != 0.0 || f[2] != 0.0) &&
+			(imu.linearAccelerationCovariance().empty() || imu.linearAccelerationCovariance().at<double>(0,0) != -1.0);
+	if(hasAcceleration && gravityEstimated_)
 	{
-		// The specific force includes the reaction to gravity, up in the world frame
-		acceleration = worldToImu * Eigen::Vector3d(f[0], f[1], f[2]) - Eigen::Vector3d(0, 0, gravity_);
+		const cv::Vec3d & w = imu.angularVelocity();
+		estimateGravity(stamp, Eigen::Vector3d(f[0], f[1], f[2]), Eigen::Vector3d(w[0], w[1], w[2]).norm());
 	}
-	addSample(stamp, worldToImu * baseToImu.inverse(), acceleration);
+	// The specific force includes the reaction to gravity, up in the world frame: it is
+	// removed when used (accelerationOf())
+	addSample(stamp, worldToImu * baseToImu.inverse(),
+			hasAcceleration ? Eigen::Vector3d(worldToImu * Eigen::Vector3d(f[0], f[1], f[2])) : Eigen::Vector3d::Zero(),
+			hasAcceleration);
 }
 
-void ImuMotionPredictor::addSample(double stamp, const Eigen::Quaterniond & orientation, const Eigen::Vector3d & acceleration)
+void ImuMotionPredictor::estimateGravity(double stamp, const Eigen::Vector3d & specificForce, double angularVelocity)
+{
+	if(!stillWindow_.empty() && stamp < stillWindow_.back().stamp)
+	{
+		// Out of order
+		stillWindow_.clear();
+	}
+	if(!stillWindow_.empty() && stamp - stillWindow_.front().stamp >= kStillWindow)
+	{
+		// The window is complete (windows don't overlap: each sample counts once)
+		if(stillWindow_.size() >= kStillMinSamples)
+		{
+			Eigen::Vector3d mean = Eigen::Vector3d::Zero();
+			double maxAngularVelocity = 0.0;
+			for(size_t i=0; i<stillWindow_.size(); ++i)
+			{
+				mean += stillWindow_[i].specificForce;
+				maxAngularVelocity = std::max(maxAngularVelocity, stillWindow_[i].angularVelocity);
+			}
+			mean /= double(stillWindow_.size());
+			Eigen::Vector3d variance = Eigen::Vector3d::Zero();
+			for(size_t i=0; i<stillWindow_.size(); ++i)
+			{
+				variance += (stillWindow_[i].specificForce - mean).cwiseAbs2();
+			}
+			variance /= double(stillWindow_.size());
+			if(maxAngularVelocity < kStillMaxAngularVelocity &&
+			   variance.maxCoeff() < kStillMaxAccelerationStd*kStillMaxAccelerationStd)
+			{
+				// Not accelerating: the mean specific force is gravity, whatever the
+				// attitude (the norm of the mean, not the mean of the norms, which the
+				// noise would bias up)
+				gravityWindows_.push_back(mean.norm());
+				if(gravityWindows_.size() > kGravityWindows)
+				{
+					gravityWindows_.erase(gravityWindows_.begin());
+				}
+				++gravityWindowsCount_;
+				std::vector<double> sorted = gravityWindows_;
+				std::nth_element(sorted.begin(), sorted.begin() + sorted.size()/2, sorted.end());
+				const double gravity = sorted[sorted.size()/2];
+				if(gravityWindowsCount_ == 1)
+				{
+					UINFO("IMU gravity estimated at %f m/s^2 (the IMU is still)", gravity);
+				}
+				else
+				{
+					UDEBUG("IMU gravity estimated at %f m/s^2 (%d still windows)", gravity, (int)gravityWindowsCount_);
+				}
+				if(gravity != gravity_)
+				{
+					gravity_ = gravity;
+					// The accelerations integrated changed
+					integrated_.clear();
+				}
+			}
+		}
+		stillWindow_.clear();
+	}
+	StillSample sample;
+	sample.stamp = stamp;
+	sample.specificForce = specificForce;
+	sample.angularVelocity = angularVelocity;
+	stillWindow_.push_back(sample);
+}
+
+void ImuMotionPredictor::addSample(double stamp, const Eigen::Quaterniond & orientation,
+		const Eigen::Vector3d & specificForce, bool hasAcceleration)
 {
 	Sample sample;
 	sample.orientation = orientation.normalized();
-	sample.acceleration = acceleration;
+	sample.specificForce = specificForce;
+	sample.hasAcceleration = hasAcceleration;
 	samples_[stamp] = sample;
 	if(!integrated_.empty() && stamp <= integrated_.rbegin()->first)
 	{
@@ -172,6 +261,7 @@ void ImuMotionPredictor::addPose(double stamp, const rtabmap::Transform & pose)
 void ImuMotionPredictor::reset()
 {
 	samples_.clear();
+	stillWindow_.clear();
 	poses_.clear();
 	integrated_.clear();
 	pose_.setNull();
@@ -287,7 +377,7 @@ void ImuMotionPredictor::updateIntegration() const
 		Integrated next;
 		// Same segment as in integrate(), from the previous sample ti to this one:
 		// D(ti+1) = D(ti) + V(ti)*dt + dt^2*(2*a(ti) + a(ti+1))/6, V(ti+1) = V(ti) + dt*(a(ti) + a(ti+1))/2
-		next.acceleration = worldToOdom_ * iter->second.acceleration;
+		next.acceleration = worldToOdom_ * accelerationOf(iter->second);
 		next.position = previous.second.position + previous.second.velocity * dt +
 				dt * dt * (2.0 * previous.second.acceleration + next.acceleration) / 6.0;
 		next.velocity = previous.second.velocity + dt * (previous.second.acceleration + next.acceleration) / 2.0;
@@ -311,20 +401,30 @@ Eigen::Quaterniond ImuMotionPredictor::orientationAt(double stamp) const
 	return before->second.orientation.slerp(ratio, after->second.orientation);
 }
 
+Eigen::Vector3d ImuMotionPredictor::accelerationOf(const Sample & sample) const
+{
+	if(!sample.hasAcceleration)
+	{
+		return Eigen::Vector3d::Zero();
+	}
+	return sample.specificForce - Eigen::Vector3d(0, 0, gravity_);
+}
+
 Eigen::Vector3d ImuMotionPredictor::accelerationAt(double stamp) const
 {
 	std::map<double, Sample>::const_iterator after = samples_.lower_bound(stamp);
 	if(after == samples_.end())
 	{
-		return samples_.rbegin()->second.acceleration;
+		return accelerationOf(samples_.rbegin()->second);
 	}
 	if(after == samples_.begin() || after->first == stamp)
 	{
-		return after->second.acceleration;
+		return accelerationOf(after->second);
 	}
 	std::map<double, Sample>::const_iterator before = std::prev(after);
 	const double ratio = (stamp - before->first) / (after->first - before->first);
-	return before->second.acceleration + ratio * (after->second.acceleration - before->second.acceleration);
+	const Eigen::Vector3d accelerationBefore = accelerationOf(before->second);
+	return accelerationBefore + ratio * (accelerationOf(after->second) - accelerationBefore);
 }
 
 void ImuMotionPredictor::integrate(double from, double to, const Eigen::Quaterniond & rotation,

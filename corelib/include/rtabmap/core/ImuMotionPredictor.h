@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <Eigen/Geometry>
 
 #include <map>
+#include <vector>
 
 namespace rtabmap {
 
@@ -60,6 +61,17 @@ namespace rtabmap {
  * ignored: its centripetal and tangential accelerations are small over the fraction of a
  * second this predicts.
  *
+ * The gravity removed can be estimated from the IMU itself (see the constructor): an
+ * accelerometer can read a few percent off at rest (scale or bias), and that error,
+ * integrated as an acceleration, would bias the predicted velocity along gravity. The
+ * accelerometer is averaged over the windows where it is quiet: with a gyro and an
+ * accelerometer that barely change, the IMU is not accelerating (at rest or at constant
+ * velocity), so it only measures gravity. The IMU must then be held still (or at constant
+ * velocity) for a moment, e.g., before moving: until then, standard gravity is used, and
+ * a steady acceleration without rotation would be taken for gravity. Only the error along
+ * gravity is corrected, which is all of it for an IMU that stays about level; one changing
+ * attitude would need its axes calibrated.
+ *
  * Not thread-safe: a caller sharing it between threads must lock around every call.
  */
 class RTABMAP_CORE_EXPORT ImuMotionPredictor
@@ -81,7 +93,9 @@ public:
 	 *                        velocity itself. 0: the displacement since the previous pose,
 	 *                        without acceleration.
 	 * @param gravity         magnitude (m/s^2) of the gravity removed from the specific force
-	 *                        given to addImu(), standard gravity by default
+	 *                        given to addImu(), standard gravity by default. <= 0: estimated
+	 *                        from the IMU when it is still (see the class description), with
+	 *                        standard gravity until then.
 	 *
 	 * These are fixed for the life of the predictor (there is no setter): changing them
 	 * while it estimates would mix poses and samples taken under different settings.
@@ -93,7 +107,12 @@ public:
 
 	double maxPoseInterval() const {return maxPoseInterval_;}
 	double velocityWindow() const {return velocityWindow_;}
+	/// Gravity (m/s^2) removed from the specific force: the one given, or the estimate
 	double gravity() const {return gravity_;}
+	/// Whether the gravity is estimated from the IMU (see the constructor)
+	bool isGravityEstimated() const {return gravityEstimated_;}
+	/// Number of quiet IMU windows the gravity estimate is from (0: not estimated yet)
+	size_t gravityWindows() const {return gravityWindowsCount_;}
 
 	/**
 	 * @brief Adds an IMU measurement.
@@ -115,7 +134,8 @@ public:
 	 */
 	void addPose(double stamp, const rtabmap::Transform & pose);
 
-	/// Forgets the poses and the IMU samples.
+	/// Forgets the poses and the IMU samples. The gravity estimate is kept: it is the
+	/// sensor's.
 	void reset();
 
 	/**
@@ -140,13 +160,22 @@ public:
 private:
 	// orientation: of the base frame in the IMU's world frame; acceleration: of the base in
 	// that frame, gravity removed
-	void addSample(double stamp, const Eigen::Quaterniond & orientation, const Eigen::Vector3d & acceleration);
+	// specificForce: in that frame too, including the reaction to gravity (see
+	// hasAcceleration)
+	void addSample(double stamp, const Eigen::Quaterniond & orientation,
+			const Eigen::Vector3d & specificForce, bool hasAcceleration);
+	// Gravity estimation, from the IMU's own specific force and angular velocity norm
+	void estimateGravity(double stamp, const Eigen::Vector3d & specificForce, double angularVelocity);
 
 	struct Sample
 	{
 		Eigen::Quaterniond orientation;
-		Eigen::Vector3d acceleration;
+		// Kept with gravity, which is removed when used: the estimate can change
+		Eigen::Vector3d specificForce;
+		bool hasAcceleration;
 	};
+	// Acceleration of a sample, gravity removed (null without acceleration)
+	Eigen::Vector3d accelerationOf(const Sample & sample) const;
 	Eigen::Quaterniond orientationAt(double stamp) const;
 	Eigen::Vector3d accelerationAt(double stamp) const;
 	void integrate(double from, double to, const Eigen::Quaterniond & rotation,
@@ -166,7 +195,20 @@ private:
 	double maxPoseInterval_;
 	double velocityWindow_;
 	double gravity_;
+	bool gravityEstimated_;
 	std::map<double, Sample> samples_;
+
+	// Gravity estimation: the samples of the current window, and the gravity measured over
+	// the last quiet windows
+	struct StillSample
+	{
+		double stamp;
+		Eigen::Vector3d specificForce; // in the IMU frame
+		double angularVelocity;        // norm
+	};
+	std::vector<StillSample> stillWindow_;
+	std::vector<double> gravityWindows_;
+	size_t gravityWindowsCount_;
 	// Recent odometry poses, to estimate the velocity from (see velocityWindow)
 	std::map<double, rtabmap::Transform> poses_;
 

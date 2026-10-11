@@ -375,3 +375,86 @@ TEST(ImuMotionPredictor, ignores_the_acceleration_without_a_velocity_window)
 	EXPECT_NEAR(predictor.velocity().x(), 0.5*a*0.1, 1e-6);
 	EXPECT_NEAR(predictor.predict(0.2).x(), 0.5*a*0.01 + 0.5*a*0.1*0.1, 1e-6);
 }
+
+namespace {
+
+/// An IMU tilted by 0.1 rad in pitch whose accelerometer reads `measuredGravity` at rest,
+/// with a vibration of the given amplitude (m/s^2) on every axis and the given angular
+/// velocity (rad/s, about z).
+rtabmap::IMU tiltedImu(double t, double measuredGravity, double vibration = 0.05, double angularVelocity = 0.0)
+{
+	const Eigen::Quaterniond worldToImu(Eigen::AngleAxisd(0.1, Eigen::Vector3d::UnitY()));
+	const Eigen::Vector3d f = worldToImu.inverse() * Eigen::Vector3d(0, 0, measuredGravity) +
+			vibration * Eigen::Vector3d(std::sin(t*331.0), std::sin(t*457.0), std::sin(t*563.0));
+	return rtabmap::IMU(cv::Vec4d(worldToImu.x(), worldToImu.y(), worldToImu.z(), worldToImu.w()), cv::Mat::eye(3,3,CV_64FC1),
+			cv::Vec3d(0, 0, angularVelocity), cv::Mat::eye(3,3,CV_64FC1),
+			cv::Vec3d(f.x(), f.y(), f.z()), cv::Mat::eye(3,3,CV_64FC1),
+			rtabmap::Transform::getIdentity());
+}
+
+}  // namespace
+
+TEST(ImuMotionPredictor, estimates_the_gravity_while_the_imu_is_still)
+{
+	// An accelerometer reading 9.55 m/s^2 at rest, as the netherdrone's does.
+	ImuMotionPredictor predictor(1.0, 0.5, 0.0);
+	EXPECT_TRUE(predictor.isGravityEstimated());
+	EXPECT_DOUBLE_EQ(predictor.gravity(), 9.80665) << "standard gravity until estimated";
+
+	for(int i=0; i<100; ++i) // 0.5 s at 200 Hz: the first window is not complete yet
+	{
+		predictor.addImu(i*0.005, tiltedImu(i*0.005, 9.55));
+	}
+	EXPECT_EQ(predictor.gravityWindows(), 0u);
+	EXPECT_DOUBLE_EQ(predictor.gravity(), 9.80665);
+
+	for(int i=100; i<=400; ++i)
+	{
+		predictor.addImu(i*0.005, tiltedImu(i*0.005, 9.55));
+	}
+	EXPECT_GE(predictor.gravityWindows(), 3u);
+	EXPECT_NEAR(predictor.gravity(), 9.55, 0.005) << "whatever the attitude";
+
+	// At rest, it doesn't look like falling anymore.
+	predictor.addPose(1.5, rtabmap::Transform::getIdentity());
+	predictor.addPose(2.0, rtabmap::Transform::getIdentity());
+	EXPECT_NEAR(predictor.predict(2.0).z(), 0.0, 1e-3);
+	for(int i=401; i<=460; ++i)
+	{
+		predictor.addImu(i*0.005, tiltedImu(i*0.005, 9.55));
+	}
+	EXPECT_NEAR(predictor.predict(2.3).z(), 0.0, 2e-3);
+
+	// The estimate is the sensor's: a reset keeps it.
+	predictor.reset();
+	EXPECT_NEAR(predictor.gravity(), 9.55, 0.005);
+}
+
+TEST(ImuMotionPredictor, does_not_take_a_moving_imu_for_a_still_one)
+{
+	// Turning (centripetal acceleration, gravity moving between the axes) or vibrating
+	// as in flight: not still, standard gravity is kept.
+	ImuMotionPredictor turning(1.0, 0.5, 0.0);
+	ImuMotionPredictor vibrating(1.0, 0.5, 0.0);
+	for(int i=0; i<=400; ++i)
+	{
+		turning.addImu(i*0.005, tiltedImu(i*0.005, 9.55, 0.05, 0.5));
+		vibrating.addImu(i*0.005, tiltedImu(i*0.005, 9.55, 1.0));
+	}
+	EXPECT_EQ(turning.gravityWindows(), 0u);
+	EXPECT_DOUBLE_EQ(turning.gravity(), 9.80665);
+	EXPECT_EQ(vibrating.gravityWindows(), 0u);
+	EXPECT_DOUBLE_EQ(vibrating.gravity(), 9.80665);
+}
+
+TEST(ImuMotionPredictor, keeps_the_gravity_it_is_given)
+{
+	ImuMotionPredictor predictor;
+	for(int i=0; i<=400; ++i)
+	{
+		predictor.addImu(i*0.005, tiltedImu(i*0.005, 9.55));
+	}
+	EXPECT_FALSE(predictor.isGravityEstimated());
+	EXPECT_EQ(predictor.gravityWindows(), 0u);
+	EXPECT_DOUBLE_EQ(predictor.gravity(), 9.80665);
+}

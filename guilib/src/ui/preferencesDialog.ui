@@ -16866,6 +16866,9 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                       </item>
                       <item row="9" column="0">
                        <widget class="QDoubleSpinBox" name="odom_imu_gravity">
+                        <property name="specialValueText">
+                         <string>Auto</string>
+                        </property>
                         <property name="suffix">
                          <string> m/s²</string>
                         </property>
@@ -16886,7 +16889,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                       <item row="9" column="1">
                        <widget class="QLabel" name="label_odom_imu_gravity">
                         <property name="text">
-                         <string>Gravity magnitude removed from the IMU linear acceleration (used with a guess smoothing delay &gt; 0 above). Standard gravity by default. Set it to what the accelerometer reads at rest to compensate for its scale error, or for another gravity than Earth's.</string>
+                         <string>Gravity magnitude removed from the IMU linear acceleration (used with a guess smoothing delay &gt; 0 above). Standard gravity by default. Set it to what the accelerometer reads at rest to compensate for its scale error, or for another gravity than Earth's. Auto (0): estimated from the IMU while it is still, with standard gravity until then: the robot should then be perfectly still for a moment (e.g., at start).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
