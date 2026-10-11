@@ -1,0 +1,9 @@
+<map id="rtabmap::SensorCaptureThread" name="rtabmap::SensorCaptureThread">
+<area shape="rect" id="Node000001" title="Thread&#45;based sensor data capture and event posting for RTAB&#45;Map." alt="" coords="26,152,251,177"/>
+<area shape="rect" id="Node000002" href="$classUThread.html" title=" " alt="" coords="39,79,116,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="98,113,131,150,127,154,94,116"/>
+<area shape="rect" id="Node000003" href="$classUThreadC_3_01void_01_4.html" title=" " alt="" coords="5,5,149,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="80,44,80,79,75,79,75,44"/>
+<area shape="rect" id="Node000004" href="$classUEventsSender.html" title=" " alt="" coords="141,79,262,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="184,116,151,154,147,150,180,113"/>
+</map>

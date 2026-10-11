@@ -1,0 +1,7 @@
+<map id="rtabmap::CameraOrbbecSDK" name="rtabmap::CameraOrbbecSDK">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,152,215,177"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Camera.html" title=" " alt="" coords="42,79,178,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="113,118,113,152,107,152,107,118"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1SensorCapture.html" title="Abstract base class for sensor data capture (cameras, lidars, etc.)" alt="" coords="20,5,200,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="113,44,113,79,107,79,107,44"/>
+</map>
