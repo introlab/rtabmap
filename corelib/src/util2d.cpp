@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if CV_MAJOR_VERSION >= 3
 #include <opencv2/photo/photo.hpp>
+#include <opencv2/stitching/detail/exposure_compensate.hpp>
 #endif
 
 #if CV_MAJOR_VERSION < 5
@@ -2137,6 +2138,66 @@ cv::Mat exposureFusion(const std::vector<cv::Mat> & images)
 	}
 #endif
 	return fusion;
+}
+
+bool stereoExposureCompensation(
+	const cv::Mat & left,
+	const cv::Mat & right,
+	cv::Mat & leftOut,
+	cv::Mat & rightOut,
+	std::vector<double> * gains)
+{
+	if(gains)
+	{
+		gains->clear();
+	}
+#if CV_MAJOR_VERSION >= 3
+	if(!left.empty() && left.size() == right.size() &&
+	   left.depth() == CV_8U && right.depth() == CV_8U)
+	{
+		// The gains are estimated on images of the same type (e.g., a color left image
+		// with a mono right one, as stereo odometry can keep), then applied to the images
+		// as they are.
+		cv::Mat leftFeed = left;
+		cv::Mat rightFeed = right;
+		if(left.type() != right.type())
+		{
+			if(left.channels() == 3)
+			{
+				cv::cvtColor(left, leftFeed, cv::COLOR_BGR2GRAY);
+			}
+			if(right.channels() == 3)
+			{
+				cv::cvtColor(right, rightFeed, cv::COLOR_BGR2GRAY);
+			}
+		}
+		cv::Ptr<cv::detail::ExposureCompensator> compensator = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN);
+		std::vector<cv::Point> topLeftCorners(2, cv::Point(0,0));
+		std::vector<cv::UMat> images;
+		std::vector<cv::UMat> masks(2, cv::UMat(left.size(), CV_8UC1, cv::Scalar(255)));
+		images.push_back(leftFeed.getUMat(cv::ACCESS_READ));
+		images.push_back(rightFeed.getUMat(cv::ACCESS_READ));
+		compensator->feed(topLeftCorners, images, masks);
+		leftOut = left.clone();
+		compensator->apply(0, cv::Point(0,0), leftOut, masks[0]);
+		rightOut = right.clone();
+		compensator->apply(1, cv::Point(0,0), rightOut, masks[1]);
+		cv::detail::GainCompensator * gainCompensator = (cv::detail::GainCompensator*)compensator.get();
+		UDEBUG("gains = %f %f ", gainCompensator->gains()[0], gainCompensator->gains()[1]);
+		if(gains)
+		{
+			*gains = gainCompensator->gains();
+		}
+		return true;
+	}
+	UWARN("Stereo exposure compensation needs two 8 bits images of the same size (left=%dx%d type=%d, right=%dx%d type=%d)",
+			left.cols, left.rows, left.type(), right.cols, right.rows, right.type());
+#else
+	UWARN("Stereo exposure compensation is only available when rtabmap is built with OpenCV3.");
+#endif
+	leftOut = left.clone();
+	rightOut = right.clone();
+	return false;
 }
 
 void HSVtoRGB( float *r, float *g, float *b, float h, float s, float v )

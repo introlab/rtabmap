@@ -39,7 +39,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/IMUFilter.h"
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/clams/discrete_depth_distortion_model.h"
-#include <opencv2/stitching/detail/exposure_compensate.hpp>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
@@ -831,27 +830,15 @@ void SensorCaptureThread::postUpdate(SensorData * dataPtr, SensorCaptureInfo * i
 	{
 		if(data.stereoCameraModels().size()==1)
 		{
-#if CV_MAJOR_VERSION < 3
-			UWARN("Stereo exposure compensation not implemented for OpenCV version under 3.");
-#else
 			UDEBUG("");
 			UTimer timer;
-			cv::Ptr<cv::detail::ExposureCompensator> compensator = cv::detail::ExposureCompensator::createDefault(cv::detail::ExposureCompensator::GAIN);
-			std::vector<cv::Point> topLeftCorners(2, cv::Point(0,0));
-			std::vector<cv::UMat> images;
-			std::vector<cv::UMat> masks(2, cv::UMat(data.imageRaw().size(), CV_8UC1,  cv::Scalar(255)));
-			images.push_back(data.imageRaw().getUMat(cv::ACCESS_READ));
-			images.push_back(data.rightRaw().getUMat(cv::ACCESS_READ));
-			compensator->feed(topLeftCorners, images, masks);
-			cv::Mat imgLeft = data.imageRaw().clone();
-			compensator->apply(0, cv::Point(0,0), imgLeft, masks[0]);
-			cv::Mat imgRight = data.rightRaw().clone();
-			compensator->apply(1, cv::Point(0,0), imgRight, masks[1]);
-			data.setStereoImage(imgLeft, imgRight, data.stereoCameraModels()[0]);
-			cv::detail::GainCompensator * gainCompensator = (cv::detail::GainCompensator*)compensator.get();
-			UDEBUG("gains = %f %f ", gainCompensator->gains()[0], gainCompensator->gains()[1]);
+			cv::Mat imgLeft;
+			cv::Mat imgRight;
+			if(util2d::stereoExposureCompensation(data.imageRaw(), data.rightRaw(), imgLeft, imgRight))
+			{
+				data.setStereoImage(imgLeft, imgRight, data.stereoCameraModels()[0]);
+			}
 			if(info) info->timeStereoExposureCompensation = timer.ticks();
-#endif
 		}
 		else
 		{
