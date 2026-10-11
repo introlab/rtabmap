@@ -425,6 +425,9 @@ pcl::PointXYZINormal RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" vali
 <tr class="memitem:ae4f056638c16889c7cb1d41ecac2866c" id="r_ae4f056638c16889c7cb1d41ecac2866c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util3d.html#ae4f056638c16889c7cb1d41ecac2866c">deskew</a> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;input, double inputStamp, const <a class="el" href="classrtabmap_1_1Transform.html">rtabmap::Transform</a> &amp;velocity)</td></tr>
 <tr class="memdesc:ae4f056638c16889c7cb1d41ecac2866c"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classrtabmap_1_1Lidar.html">Lidar</a> deskewing.  <br /></td></tr>
 <tr class="separator:ae4f056638c16889c7cb1d41ecac2866c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aadcecdba8a1c53e5700f40f483c27e29" id="r_aadcecdba8a1c53e5700f40f483c27e29"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util3d.html#aadcecdba8a1c53e5700f40f483c27e29">deskew</a> (const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;input, double inputStamp, const std::function&lt; <a class="el" href="classrtabmap_1_1Transform.html">rtabmap::Transform</a>(double stamp)&gt; &amp;motion, bool slerp=false)</td></tr>
+<tr class="memdesc:aadcecdba8a1c53e5700f40f483c27e29"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deskews a lidar scan with a motion given by the caller.  <br /></td></tr>
+<tr class="separator:aadcecdba8a1c53e5700f40f483c27e29"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a58b9802c1fc28b7e8927359173f98de8" id="r_a58b9802c1fc28b7e8927359173f98de8"><td class="memItemLeft" align="right" valign="top">void RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util3d.html#a58b9802c1fc28b7e8927359173f98de8">extractXYZCorrespondences</a> (const std::multimap&lt; int, pcl::PointXYZ &gt; &amp;words1, const std::multimap&lt; int, pcl::PointXYZ &gt; &amp;words2, pcl::PointCloud&lt; pcl::PointXYZ &gt; &amp;cloud1, pcl::PointCloud&lt; pcl::PointXYZ &gt; &amp;cloud2)</td></tr>
 <tr class="memdesc:a58b9802c1fc28b7e8927359173f98de8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Extracts 3D point correspondences between two sets of labeled 3D points.  <br /></td></tr>
 <tr class="separator:a58b9802c1fc28b7e8927359173f98de8"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -4564,7 +4567,7 @@ With <code>fillToBorder</code> enabled, the current implementation only fills up
 </div>
 </div>
 <a id="ae4f056638c16889c7cb1d41ecac2866c" name="ae4f056638c16889c7cb1d41ecac2866c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae4f056638c16889c7cb1d41ecac2866c">&#9670;&#160;</a></span>deskew()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ae4f056638c16889c7cb1d41ecac2866c">&#9670;&#160;</a></span>deskew() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -4625,6 +4628,59 @@ With <code>fillToBorder</code> enabled, the current implementation only fills up
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="aadcecdba8a1c53e5700f40f483c27e29" name="aadcecdba8a1c53e5700f40f483c27e29"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aadcecdba8a1c53e5700f40f483c27e29">&#9670;&#160;</a></span>deskew() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> RTABMAP_CORE_EXPORT rtabmap::util3d::deskew </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a> &amp;&#160;</td>
+          <td class="paramname"><em>input</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>inputStamp</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::function&lt; <a class="el" href="classrtabmap_1_1Transform.html">rtabmap::Transform</a>(double stamp)&gt; &amp;&#160;</td>
+          <td class="paramname"><em>motion</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>slerp</em> = <code>false</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Deskews a lidar scan with a motion given by the caller. </p>
+<p>Same as the velocity overload, but the motion during the sweep comes from <code>motion</code>, for instance a pose predicted from an <a class="el" href="classrtabmap_1_1IMU.html" title="Inertial measurement sample (ROS sensor_msgs/Imu-like fields).">IMU</a>.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">input</td><td>scan with a time channel (<code>kXYZIT</code> or <code>kXYZIRT</code>) </td></tr>
+    <tr><td class="paramname">inputStamp</td><td>stamp of the scan, which the time channel is relative to </td></tr>
+    <tr><td class="paramname">motion</td><td>for a stamp (s) in the sweep, the pose of the scan's base frame at that stamp relative to the base frame at <code>inputStamp</code>; a null transform aborts deskewing </td></tr>
+    <tr><td class="paramname">slerp</td><td>call <code>motion</code> only for the first and last points and interpolate in between, instead of calling it for every time of the sweep </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the deskewed scan, empty on error </dd></dl>
 
 </div>
 </div>

@@ -118,6 +118,7 @@ var namespacertabmap =
       [ "loadScan", "namespacertabmap_1_1util3d.html#aefffe4f3418377f85659e7546668b190", null ],
       [ "loadCloud", "namespacertabmap_1_1util3d.html#a86ba029bd916ab76dd5645ba7e1b2ef8", null ],
       [ "deskew", "namespacertabmap_1_1util3d.html#ae4f056638c16889c7cb1d41ecac2866c", null ],
+      [ "deskew", "namespacertabmap_1_1util3d.html#aadcecdba8a1c53e5700f40f483c27e29", null ],
       [ "extractXYZCorrespondences", "namespacertabmap_1_1util3d.html#a58b9802c1fc28b7e8927359173f98de8", null ],
       [ "extractXYZCorrespondencesRANSAC", "namespacertabmap_1_1util3d.html#ab6a2896e40afacde8cb8b0d10a955e02", null ],
       [ "extractXYZCorrespondences", "namespacertabmap_1_1util3d.html#a0696277eef10a197af8fd5dcba52fc12", null ],
