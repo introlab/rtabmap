@@ -160,7 +160,6 @@ private:
 	bool _force3DoF;
 	bool _holonomic;
 	bool guessFromMotion_;
-	bool guessImuAcceleration_;
 	float guessSmoothingDelay_;
 	int _filteringStrategy;
 	int _particleSize;
@@ -191,7 +190,7 @@ private:
 	std::vector<StereoCameraModel> stereoModels_;
 	std::vector<CameraModel> models_;
 	std::map<double, Transform> imus_;
-	ImuMotionPredictor imuMotionPredictor_; // used with Odom/GuessImuAcceleration only
+	ImuMotionPredictor imuMotionPredictor_; // fed when IMU is received (motion guess and deskewing)
 };
 
 } /* namespace rtabmap */

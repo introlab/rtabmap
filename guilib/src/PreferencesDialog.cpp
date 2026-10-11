@@ -1504,7 +1504,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_flow_scanKeyframeThr->setObjectName(Parameters::kOdomScanKeyFrameThr().c_str());
 	_ui->odom_flow_guessMotion->setObjectName(Parameters::kOdomGuessMotion().c_str());
 	_ui->odom_guess_smoothing_delay->setObjectName(Parameters::kOdomGuessSmoothingDelay().c_str());
-	_ui->odom_guess_imu_acceleration->setObjectName(Parameters::kOdomGuessImuAcceleration().c_str());
 	_ui->odom_imu_gravity->setObjectName(Parameters::kOdomImuGravity().c_str());
 	_ui->odom_imageDecimation->setObjectName(Parameters::kOdomImageDecimation().c_str());
 	_ui->odom_alignWithGround->setObjectName(Parameters::kOdomAlignWithGround().c_str());

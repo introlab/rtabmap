@@ -66,16 +66,20 @@ class RTABMAP_CORE_EXPORT ImuMotionPredictor
 {
 public:
 	/**
-	 * Without acceleration in the IMU samples, the position follows the last velocity
+	 * The IMU acceleration is used only with a velocity window (> 0): over a single frame,
+	 * the velocity is too noisy to be carried forward with it. Without it (window of 0, or
+	 * no acceleration in the IMU samples), the position follows the last velocity
 	 * (constant velocity model).
 	 *
 	 * @param maxPoseInterval odometry poses older (s) than this are not used to estimate
 	 *                        the velocity, which is null without one
 	 * @param velocityWindow  the velocity is estimated from the displacement since the
-	 *                        newest pose at least this old (s). Over a single frame
-	 *                        interval, the noise of the odometry poses would be of the order
-	 *                        of the velocity itself; with the acceleration, a longer window
-	 *                        still gives the velocity at the last pose, not an average.
+	 *                        newest pose at least this old (s), corrected by the
+	 *                        acceleration measured since, so that it is the velocity at the
+	 *                        last pose, not an average. Over a single frame interval, the
+	 *                        noise of the odometry poses would be of the order of the
+	 *                        velocity itself. 0: the displacement since the previous pose,
+	 *                        without acceleration.
 	 * @param gravity         magnitude (m/s^2) of the gravity removed from the specific force
 	 *                        given to addImu(), standard gravity by default
 	 *

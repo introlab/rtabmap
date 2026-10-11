@@ -2114,3 +2114,41 @@ TEST(Util3dTest, DeskewValidScan) {
     // empty scan
     EXPECT_TRUE(util3d::deskew(LaserScan(), inputStamp, velocity).empty());
 }
+
+TEST(Util3dTest, DeskewWithMotion) {
+    // Three points measured at y=0, 1 s before, at and 1 s after the scan stamp, while the
+    // base moves along y as (t-stamp)^2: a motion no constant velocity describes.
+    cv::Mat data = cv::Mat::zeros(1, 3, CV_32FC(5));
+    float * dataPtr = (float*)data.data;
+    dataPtr[0] = 1;  dataPtr[4] = -1;
+    dataPtr[5] = 1;  dataPtr[9] = 0;
+    dataPtr[10] = 1; dataPtr[14] = 1;
+    LaserScan scan(data, 3, 10.0f, LaserScan::kXYZIT);
+    const double inputStamp = 1000.0;
+
+    std::vector<double> stamps;
+    auto motion = [&](double stamp) {
+        stamps.push_back(stamp);
+        const double dt = stamp - inputStamp;
+        return Transform(0.0, dt*dt, 0.0, 0.0, 0.0, 0.0);
+    };
+
+    // Asked for every point time, each point is moved by its own pose
+    LaserScan result = util3d::deskew(scan, inputStamp, motion);
+    ASSERT_EQ(result.size(), 3);
+    EXPECT_EQ(stamps.size(), 3u);
+    EXPECT_FLOAT_EQ(result.field(0, 1), 1.0f);
+    EXPECT_FLOAT_EQ(result.field(1, 1), 0.0f);
+    EXPECT_FLOAT_EQ(result.field(2, 1), 1.0f);
+
+    // With slerp, only the ends are asked for, the middle point is interpolated between them
+    stamps.clear();
+    result = util3d::deskew(scan, inputStamp, motion, true);
+    ASSERT_EQ(result.size(), 3);
+    EXPECT_EQ(stamps.size(), 2u);
+    EXPECT_FLOAT_EQ(result.field(1, 1), 1.0f);
+
+    // A failing motion, or none
+    EXPECT_TRUE(util3d::deskew(scan, inputStamp, [](double) { return Transform(); }).empty());
+    EXPECT_TRUE(util3d::deskew(scan, inputStamp, std::function<Transform(double)>()).empty());
+}

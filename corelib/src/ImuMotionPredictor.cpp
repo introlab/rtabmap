@@ -133,7 +133,8 @@ void ImuMotionPredictor::addPose(double stamp, const rtabmap::Transform & pose)
 				pose.y() - reference->second.y(),
 				pose.z() - reference->second.z());
 
-		if(!samples_.empty() &&
+		if(velocityWindow_ > 0.0 &&
+		   !samples_.empty() &&
 		   samples_.begin()->first <= reference->first &&
 		   samples_.rbegin()->first >= stamp)
 		{
@@ -147,7 +148,7 @@ void ImuMotionPredictor::addPose(double stamp, const rtabmap::Transform & pose)
 		}
 		else
 		{
-			// Average velocity over the interval (the samples don't cover it)
+			// Average velocity over the interval (no window, or the samples don't cover it)
 			velocity = displacement / interval;
 		}
 	}
@@ -202,7 +203,11 @@ rtabmap::Transform ImuMotionPredictor::predict(double stamp) const
 	// D(t) is the displacement due to the change of velocity since t0, V(s) = integral_t0^s a(u) du.
 	Eigen::Vector3d position(pose_.x(), pose_.y(), pose_.z()); // p0
 	position += velocity_ * (stamp - poseStamp_);               // + v0*(t-t0)
-	if(stamp >= poseStamp_)
+	if(velocityWindow_ <= 0.0)
+	{
+		// No acceleration without a velocity window: constant velocity
+	}
+	else if(stamp >= poseStamp_)
 	{
 		// + D(t). D and V are kept at every sample stamp since t0 (integrated_), so only
 		// the part from the last sample ti <= t is integrated here, with dt = t-ti:

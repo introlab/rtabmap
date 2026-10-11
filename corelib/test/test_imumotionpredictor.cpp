@@ -352,3 +352,18 @@ TEST(ImuMotionPredictor, holds_the_acceleration_at_the_pose_until_a_newer_sample
 	}
 	EXPECT_NEAR(reference.predict(0.3).x(), incremental.predict(0.3).x(), 1e-9);
 }
+
+TEST(ImuMotionPredictor, ignores_the_acceleration_without_a_velocity_window)
+{
+	// From rest with a constant 2 m/s^2: with a window of 0, the velocity is the one of the
+	// last interval and is kept constant, as without IMU.
+	const double a = 2.0;
+	ImuMotionPredictor predictor(1.0, 0.0);
+	addSamples(predictor, -0.05, 0.3,
+			[](double) { return Eigen::Quaterniond::Identity(); },
+			[&](double t) { return Eigen::Vector3d(t < 0.0 ? 0.0 : a, 0, 0); });
+	predictor.addPose(0.0, pose(Eigen::Vector3d::Zero(), 0));
+	predictor.addPose(0.1, pose(Eigen::Vector3d(0.5*a*0.01, 0, 0), 0));
+	EXPECT_NEAR(predictor.velocity().x(), 0.5*a*0.1, 1e-6);
+	EXPECT_NEAR(predictor.predict(0.2).x(), 0.5*a*0.01 + 0.5*a*0.1*0.1, 1e-6);
+}
