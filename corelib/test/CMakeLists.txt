@@ -44,6 +44,7 @@ set(corelib_test_sources
 	test_gps.cpp                        #GPS.h
 	test_imu.cpp                        #IMU.h
 	test_imufilter.cpp                  #IMUFilter.h
+	test_imumotionpredictor.cpp         #ImuMotionPredictor.h
 	test_imuthread.cpp                  #IMUThread.h
 	test_landmark.cpp                   #Landmark.h
 	test_localgrid.cpp                  #LocalGrid.h

@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/ImuMotionPredictor.h>
 
 namespace rtabmap {
 
@@ -159,6 +160,7 @@ private:
 	bool _force3DoF;
 	bool _holonomic;
 	bool guessFromMotion_;
+	bool guessImuAcceleration_;
 	float guessSmoothingDelay_;
 	int _filteringStrategy;
 	int _particleSize;
@@ -189,6 +191,7 @@ private:
 	std::vector<StereoCameraModel> stereoModels_;
 	std::vector<CameraModel> models_;
 	std::map<double, Transform> imus_;
+	ImuMotionPredictor imuMotionPredictor_; // used with Odom/GuessImuAcceleration only
 };
 
 } /* namespace rtabmap */

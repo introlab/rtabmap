@@ -134,6 +134,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_force3DoF(Parameters::defaultRegForce3DoF()),
 		_holonomic(Parameters::defaultOdomHolonomic()),
 		guessFromMotion_(Parameters::defaultOdomGuessMotion()),
+		guessImuAcceleration_(Parameters::defaultOdomGuessImuAcceleration()),
 		guessSmoothingDelay_(Parameters::defaultOdomGuessSmoothingDelay()),
 		_filteringStrategy(Parameters::defaultOdomFilteringStrategy()),
 		_particleSize(Parameters::defaultOdomParticleSize()),
@@ -160,7 +161,15 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kRegForce3DoF(), _force3DoF);
 	Parameters::parse(parameters, Parameters::kOdomHolonomic(), _holonomic);
 	Parameters::parse(parameters, Parameters::kOdomGuessMotion(), guessFromMotion_);
+	Parameters::parse(parameters, Parameters::kOdomGuessImuAcceleration(), guessImuAcceleration_);
 	Parameters::parse(parameters, Parameters::kOdomGuessSmoothingDelay(), guessSmoothingDelay_);
+	if(guessImuAcceleration_)
+	{
+		float imuGravity = Parameters::defaultOdomImuGravity();
+		Parameters::parse(parameters, Parameters::kOdomImuGravity(), imuGravity);
+		// The velocity is estimated over the smoothing delay
+		imuMotionPredictor_ = ImuMotionPredictor(1.0, guessSmoothingDelay_, imuGravity);
+	}
 	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
 	Parameters::parse(parameters, Parameters::kOdomFilteringStrategy(), _filteringStrategy);
 	Parameters::parse(parameters, Parameters::kOdomParticleSize(), _particleSize);
@@ -228,6 +237,7 @@ void Odometry::reset(const Transform & initialPose)
 	framesProcessed_ = 0;
 	imuLastTransform_.setNull();
 	imus_.clear();
+	imuMotionPredictor_.reset();
 	if(_force3DoF || particleFilters_.size())
 	{
 		float x,y,z, roll,pitch,yaw;
@@ -339,6 +349,11 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			if(imus_.size() > 1000)
 			{
 				imus_.erase(imus_.begin());
+			}
+
+			if(guessImuAcceleration_)
+			{
+				imuMotionPredictor_.addImu(data.stamp(), data.imu());
 			}
 		}
 		else
@@ -646,6 +661,16 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 					orientation.r11(), orientation.r12(), orientation.r13(), guess.x(),
 					orientation.r21(), orientation.r22(), orientation.r23(), guess.y(),
 					orientation.r31(), orientation.r32(), orientation.r33(), guess.z());
+			if(guessFromMotion_ && guessImuAcceleration_ && imuMotionPredictor_.hasPose())
+			{
+				// Translation (and orientation) predicted from the previous pose with the
+				// IMU acceleration, instead of a constant velocity.
+				Transform predicted = imuMotionPredictor_.predict(data.stamp());
+				if(!predicted.isNull())
+				{
+					guess = _pose.inverse() * predicted;
+				}
+			}
 			if(_force3DoF)
 			{
 				guess = guess.to3DoF();
@@ -877,6 +902,12 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
+	if(t.isNull() && guessImuAcceleration_)
+	{
+		// Lost: no velocity can be estimated across the reset that follows
+		imuMotionPredictor_.addPose(data.stamp(), Transform());
+	}
+
 	if(!t.isNull())
 	{
 		_resetCurrentCount = _resetCountdown;
@@ -1030,6 +1061,21 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		{
 			previousVelocities_.clear();
 			velocityGuess_.setNull();
+		}
+
+		if(guessImuAcceleration_)
+		{
+			const Transform newPose = _pose * t;
+			imuMotionPredictor_.addPose(data.stamp(), newPose);
+			if(!velocityGuess_.isNull() && _filteringStrategy != 1 && particleFilters_.empty())
+			{
+				// The translational velocity over the smoothing delay, carried to this
+				// frame with the IMU acceleration (see ImuMotionPredictor), in this frame.
+				const Eigen::Vector3d v = newPose.getQuaterniond().inverse() * imuMotionPredictor_.velocity();
+				float vx,vy,vz, vroll,vpitch,vyaw;
+				velocityGuess_.getTranslationAndEulerAngles(vx,vy,vz, vroll,vpitch,vyaw);
+				velocityGuess_ = Transform(v.x(), v.y(), v.z(), vroll, vpitch, vyaw);
+			}
 		}
 
 		if(info)
