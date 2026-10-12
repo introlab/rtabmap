@@ -23645,6 +23645,11 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                              <string>FLANN KdTree Single</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>LightGlue (ONNX)</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="0" column="1">

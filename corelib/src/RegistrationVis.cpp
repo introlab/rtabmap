@@ -63,19 +63,27 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	#include "python/PyMatcher.h"
 #endif
 
+#ifdef RTABMAP_ONNXRUNTIME
+	#include "onnx/LightGlueOnnx.h"
+#endif
+
 namespace rtabmap {
 
 // The dictionary strategy a Vis/CorNNType value stands for. Vis/CorNNType
 // shares the values of Kp/NNStrategy for the strategies the dictionary
 // implements, and extends them with matching approaches of its own, hence the
 // mapping. Return VWDictionary::kNNUndef for the values RegistrationVis handles
-// itself (BruteForceCrossCheck, SuperGlue, GMS).
+// itself (BruteForceCrossCheck, SuperGlue, GMS, LightGlue ONNX).
 static VWDictionary::NNStrategy nnStrategyFromCorNNType(int nnType)
 {
 	// 0 to 4 are the dictionary strategies themselves, 5, 6 and 7 are the
 	// approaches RegistrationVis implements (BruteForceCrossCheck, SuperGlue
 	// and GMS), and the ones after them are dictionary strategies again, at an
-	// offset of the three above.
+	// offset of the three above, except 10 (LightGlue ONNX).
+	if(nnType == 10)
+	{
+		return VWDictionary::kNNUndef;
+	}
 	if(nnType >= 0 && nnType <= VWDictionary::kNNBruteForceGPU)
 	{
 		return (VWDictionary::NNStrategy)nnType;
@@ -106,6 +114,8 @@ std::string RegistrationVis::getNNTypeName(int nnType)
 		return "PY MATCHER";
 	case 7:
 		return "GMS";
+	case 10:
+		return "LIGHTGLUE ONNX";
 	default:
 		return "Unknown";
 	}
@@ -152,6 +162,10 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 #ifdef RTABMAP_PYTHON
 		,
 		_pyMatcher(0)
+#endif
+#ifdef RTABMAP_ONNXRUNTIME
+		,
+		_lightGlueOnnx(0)
 #endif
 {
 	_featureParameters = Parameters::getDefaultParameters();
@@ -277,6 +291,56 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	}
 #endif
 
+	if(_nnType == 10)
+	{
+#ifndef RTABMAP_ONNXRUNTIME
+		UWARN("%s is set to 10 but RTAB-Map is not built with ONNX Runtime support, using default %d.",
+				Parameters::kVisCorNNType().c_str(), Parameters::defaultVisCorNNType());
+		_nnType = Parameters::defaultVisCorNNType();
+#else
+		std::string path = _lightGlueOnnx?_lightGlueOnnx->modelPath():Parameters::defaultLightGlueModelPath();
+		float threshold = _lightGlueOnnx?_lightGlueOnnx->threshold():Parameters::defaultLightGlueThreshold();
+		int provider = _lightGlueOnnx?_lightGlueOnnx->provider():Parameters::defaultLightGlueProvider();
+		bool fp16 = _lightGlueOnnx?_lightGlueOnnx->tensorRTFp16():Parameters::defaultLightGlueTensorRTFp16();
+		std::string cachePath = _lightGlueOnnx?_lightGlueOnnx->tensorRTCachePath():Parameters::defaultLightGlueTensorRTCachePath();
+		int maxKeypoints = _lightGlueOnnx?_lightGlueOnnx->tensorRTMaxKeypoints():Parameters::defaultLightGlueTensorRTMaxKeypoints();
+		Parameters::parse(parameters, Parameters::kLightGlueModelPath(), path);
+		Parameters::parse(parameters, Parameters::kLightGlueThreshold(), threshold);
+		Parameters::parse(parameters, Parameters::kLightGlueProvider(), provider);
+		Parameters::parse(parameters, Parameters::kLightGlueTensorRTFp16(), fp16);
+		Parameters::parse(parameters, Parameters::kLightGlueTensorRTCachePath(), cachePath);
+		Parameters::parse(parameters, Parameters::kLightGlueTensorRTMaxKeypoints(), maxKeypoints);
+		if(path.empty())
+		{
+			UERROR("%s parameter should be set to use LightGlue matching (%s=10), using default %d.",
+					Parameters::kLightGlueModelPath().c_str(),
+					Parameters::kVisCorNNType().c_str(),
+					Parameters::defaultVisCorNNType());
+			_nnType = Parameters::defaultVisCorNNType();
+		}
+		else if(!_lightGlueOnnx ||
+				path != _lightGlueOnnx->modelPath() ||
+				threshold != _lightGlueOnnx->threshold() ||
+				provider != _lightGlueOnnx->provider() ||
+				fp16 != _lightGlueOnnx->tensorRTFp16() ||
+				cachePath != _lightGlueOnnx->tensorRTCachePath() ||
+				maxKeypoints != _lightGlueOnnx->tensorRTMaxKeypoints())
+		{
+			delete _lightGlueOnnx;
+			_lightGlueOnnx = new LightGlueOnnx(path, threshold, provider, fp16, cachePath, maxKeypoints);
+			if(!_lightGlueOnnx->isValid())
+			{
+				UERROR("LightGlue ONNX model could not be loaded (%s=%s), using default %s=%d.",
+						Parameters::kLightGlueModelPath().c_str(), path.c_str(),
+						Parameters::kVisCorNNType().c_str(), Parameters::defaultVisCorNNType());
+				delete _lightGlueOnnx;
+				_lightGlueOnnx = 0;
+				_nnType = Parameters::defaultVisCorNNType();
+			}
+		}
+#endif
+	}
+
 	// override feature parameters
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
@@ -364,6 +428,9 @@ RegistrationVis::~RegistrationVis()
 	delete _detectorTo;
 #ifdef RTABMAP_PYTHON
 	delete _pyMatcher;
+#endif
+#ifdef RTABMAP_ONNXRUNTIME
+	delete _lightGlueOnnx;
 #endif
 }
 
@@ -1457,11 +1524,14 @@ Transform RegistrationVis::computeTransformationImpl(
 					// match between all descriptors
 					std::list<int> fromWordIds;
 					std::list<int> toWordIds;
+					bool learnedMatcher = false;
 #ifdef RTABMAP_PYTHON
-					if(_nnType == 5 || (_nnType == 6 && _pyMatcher) || _nnType==7)
-#else
-					if(_nnType == 5 || _nnType == 7) // bruteforce cross check or GMS
+					learnedMatcher = learnedMatcher || (_nnType == 6 && _pyMatcher);
 #endif
+#ifdef RTABMAP_ONNXRUNTIME
+					learnedMatcher = learnedMatcher || (_nnType == 10 && _lightGlueOnnx);
+#endif
+					if(_nnType == 5 || _nnType == 7 || learnedMatcher) // bruteforce cross check, GMS, SuperGlue/LightGlue
 					{
 						std::vector<int> fromWordIdsV(descriptorsFrom.rows);
 						for (int i = 0; i < descriptorsFrom.rows; ++i)
@@ -1478,27 +1548,53 @@ Transform RegistrationVis::computeTransformationImpl(
 						{
 							std::vector<int> toWordIdsV(descriptorsTo.rows, 0);
 							std::vector<cv::DMatch> matches;
-#ifdef RTABMAP_PYTHON
-							if(_nnType == 6 && _pyMatcher &&
-								descriptorsTo.cols == descriptorsFrom.cols &&
-								descriptorsTo.rows == (int)kptsTo.size() &&
-								descriptorsTo.type() == CV_32F &&
-								descriptorsFrom.type() == CV_32F &&
-								descriptorsFrom.rows == (int)kptsFrom.size() &&
-								models.size() == 1)
+							bool matched = false;
+#ifdef RTABMAP_ONNXRUNTIME
+							if(_nnType == 10 && _lightGlueOnnx)
 							{
-								UDEBUG("Python matching");
-								matches = _pyMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, models[0].imageSize());
+								if(descriptorsTo.cols == descriptorsFrom.cols &&
+									descriptorsTo.rows == (int)kptsTo.size() &&
+									descriptorsTo.type() == CV_32F &&
+									descriptorsFrom.type() == CV_32F &&
+									descriptorsFrom.rows == (int)kptsFrom.size() &&
+									!models.empty() && models[0].imageWidth() > 0 && models[0].imageHeight() > 0)
+								{
+									// Multi-camera: keypoints are in the coordinates of the cameras'
+									// images side by side, so give LightGlue that image's size.
+									cv::Size imageSize = models[0].imageSize();
+									imageSize.width *= (int)models.size();
+									UDEBUG("LightGlue ONNX matching (%d camera(s), image size %dx%d)", (int)models.size(), imageSize.width, imageSize.height);
+									matches = _lightGlueOnnx->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, imageSize);
+									matched = true;
+								}
+								else
+								{
+									UWARN("Invalid inputs for LightGlue matching (desc type=%d, only float descriptors supported, calibration with image size required), doing bruteforce matching instead.", descriptorsFrom.type());
+								}
 							}
-							else
+#endif
+#ifdef RTABMAP_PYTHON
+							if(!matched && _nnType == 6 && _pyMatcher)
 							{
-								if(_nnType == 6 && _pyMatcher)
+								if(descriptorsTo.cols == descriptorsFrom.cols &&
+									descriptorsTo.rows == (int)kptsTo.size() &&
+									descriptorsTo.type() == CV_32F &&
+									descriptorsFrom.type() == CV_32F &&
+									descriptorsFrom.rows == (int)kptsFrom.size() &&
+									models.size() == 1)
+								{
+									UDEBUG("Python matching");
+									matches = _pyMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, models[0].imageSize());
+									matched = true;
+								}
+								else
 								{
 									UDEBUG("Invalid inputs for Python matching (desc type=%d, only float descriptors supported, multicam not supported), doing bruteforce matching instead.", descriptorsFrom.type());
 								}
-#else
-							{
+							}
 #endif
+							if(!matched)
+							{
 								bool doCrossCheck = true;
 #ifdef HAVE_OPENCV_XFEATURES2D
 #if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION==3 && CV_MINOR_VERSION >=4 && CV_SUBMINOR_VERSION >= 1)

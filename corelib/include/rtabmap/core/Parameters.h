@@ -783,7 +783,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Vis, GridRows,                  int,   1,     uFormat("Number of rows of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, GridCols,                  int,   1,     uFormat("Number of columns of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, CorType,                   int,   0,     "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
-    RTABMAP_PARAM(Vis, CorNNType,                 int,   1,     uFormat("[%s=0] FLANN Linear=0, FLANN KdTree=1, FLANN LSH=2, Brute Force=3, Brute Force GPU=4, Brute Force Cross Check=5, SuperGlue=6, GMS=7, FLANN KdTree Single=8, NanoFLANN KdTree=9. Used for features matching approach.", kVisCorType().c_str()));
+    RTABMAP_PARAM(Vis, CorNNType,                 int,   1,     uFormat("[%s=0] FLANN Linear=0, FLANN KdTree=1, FLANN LSH=2, Brute Force=3, Brute Force GPU=4, Brute Force Cross Check=5, SuperGlue=6, GMS=7, FLANN KdTree Single=8, NanoFLANN KdTree=9, LightGlue (ONNX)=10. Used for features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorNNDR,                   float, 0.8,   uFormat("[%s=0] NNDR: nearest neighbor distance ratio. Used for knn features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessWinSize,           int,   40,    uFormat("[%s=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessMatchToProjection, bool,  false, uFormat("[%s=0] Match frame's corners to source's projected points (when guess transform is provided) instead of projected points to frame's corners.", kVisCorType().c_str()));
@@ -807,6 +807,13 @@ class RTABMAP_CORE_EXPORT Parameters
 	RTABMAP_PARAM(PyMatcher, Threshold,      float, 0.2,   "Used by SuperGlue.");
 	RTABMAP_PARAM(PyMatcher, Cuda,           bool, true,   "Used by SuperGlue.");
 	RTABMAP_PARAM_STR(PyMatcher, Model,        "indoor",   "For SuperGlue, set only \"indoor\" or \"outdoor\". For OANet, set path to one of the pth file (e.g., \"OANet/model/gl3d/sift-4000/model_best.pth\").");
+
+    RTABMAP_PARAM_STR(LightGlue, ModelPath,         "",    uFormat("[%s=10] [Required] Path to a LightGlue ONNX model (*.onnx), see corelib/src/python/rtabmap_export_lightglue_onnx.py to create one. Requires RTAB-Map built with ONNX Runtime.", kVisCorNNType().c_str()));
+    RTABMAP_PARAM(LightGlue, Threshold,             float, 0.1, "Match confidence threshold (LightGlue's filter_threshold).");
+    RTABMAP_PARAM(LightGlue, Provider,              int,   1,   "ONNX Runtime execution provider: 0=CPU, 1=CUDA, 2=TensorRT. Falls back to CUDA, then CPU, if not available in the ONNX Runtime build.");
+    RTABMAP_PARAM(LightGlue, TensorRTFp16,          bool,  false, uFormat("[%s=2] Build the TensorRT engine in FP16.", kLightGlueProvider().c_str()));
+    RTABMAP_PARAM_STR(LightGlue, TensorRTCachePath, "",    uFormat("[%s=2] Directory where TensorRT engines are cached, so that they are built only once (it can take minutes). Empty to disable the cache.", kLightGlueProvider().c_str()));
+    RTABMAP_PARAM(LightGlue, TensorRTMaxKeypoints,  int,   2048, uFormat("[%s=2] Maximum keypoints per image of the TensorRT engine's optimization profile.", kLightGlueProvider().c_str()));
 
 	RTABMAP_PARAM(GMS, WithRotation,         bool, false,   "Take rotation transformation into account.");
 	RTABMAP_PARAM(GMS, WithScale,            bool, false,   "Take scale transformation into account.");
