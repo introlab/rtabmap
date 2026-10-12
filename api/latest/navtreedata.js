@@ -142,7 +142,7 @@ var NAVTREEINDEX =
 "classrtabmap_1_1Transform.html#ac3654d3f6802d4b0c17b6110d1eda71a",
 "functions_s.html",
 "namespacemembers.html",
-"pages.html"
+"namespaces.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

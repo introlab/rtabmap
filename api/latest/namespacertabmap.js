@@ -27,6 +27,7 @@ var namespacertabmap =
       [ "depthBleedingFiltering", "namespacertabmap_1_1util2d.html#a7788d4dabf084959aa69162d5dbb2d2e", null ],
       [ "brightnessAndContrastAuto", "namespacertabmap_1_1util2d.html#a89ec90b2659c764ba22b5c36d729c8f8", null ],
       [ "exposureFusion", "namespacertabmap_1_1util2d.html#ac38e8ed586d24c4b9fe72d64afeb9583", null ],
+      [ "stereoExposureCompensation", "namespacertabmap_1_1util2d.html#a618f530b70cbdbd4e287bb760147538d", null ],
       [ "HSVtoRGB", "namespacertabmap_1_1util2d.html#ac29ac5b8bed26a5299d378708170dd11", null ],
       [ "NMS", "namespacertabmap_1_1util2d.html#aafa9a426c8e7dd0359adf40e1b45ee1c", null ],
       [ "SSC", "namespacertabmap_1_1util2d.html#aa6957971e17f27bb066efe036d80fd46", null ],

@@ -1,5 +1,6 @@
 var NAVTREEINDEX16 =
 {
+"namespaces.html":[6,0],
 "pages.html":[],
 "parameters.html":[2],
 "parameters.html#autotoc_md10":[2,1],
