@@ -266,9 +266,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Kp, NndrRatio,                float, 0.8,   "NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
 #if CV_MAJOR_VERSION > 2 && !defined(HAVE_OPENCV_XFEATURES2D)
     // OpenCV>2 without xFeatures2D module doesn't have BRIEF
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 8,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat");
+    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 8,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat 17=ALIKED");
 #else
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat");
+    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat 17=ALIKED");
 #endif
     RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,      bool, true,   "Use of the td-idf strategy to compute the likelihood.");
     RTABMAP_PARAM(Kp, Parallelized,             bool, true,   "If the dictionary update and signature creation were parallelized.");
@@ -383,6 +383,12 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(SuperPointRpautrat, NMS,           bool,  true,  "If true, non-maximum suppression is applied to detected keypoints.");
     RTABMAP_PARAM(SuperPointRpautrat, NMSRadius,     int,  4,      uFormat("[%s=true] Minimum distance (pixels) between keypoints.", kSuperPointRpautratNMS().c_str()));
     RTABMAP_PARAM(SuperPointRpautrat, Cuda,          bool, true,   "Use Cuda device for Torch, otherwise CPU device is used by default.");
+
+    RTABMAP_PARAM_STR(ALIKED, ModelPath,         "",    "[Required] Path to an ALIKED ONNX model (*.onnx) for the camera resolution, see corelib/src/python/rtabmap_export_aliked_onnx.py to create one. Requires RTAB-Map built with ONNX Runtime.");
+    RTABMAP_PARAM(ALIKED, Threshold,             float, 0.2,   "Detection score threshold.");
+    RTABMAP_PARAM(ALIKED, Provider,              int,   1,     "ONNX Runtime execution provider: 0=CPU, 1=CUDA, 2=TensorRT. Falls back to CUDA, then CPU, if not available in the ONNX Runtime build.");
+    RTABMAP_PARAM(ALIKED, TensorRTFp16,          bool,  false, uFormat("[%s=2] Build the TensorRT engine in FP16. Faster, but the score map loses precision for the non-maximum suppression and FP16 detects different keypoints than FP32.", kALIKEDProvider().c_str()));
+    RTABMAP_PARAM_STR(ALIKED, TensorRTCachePath, "",    uFormat("[%s=2] Directory where TensorRT engines are cached, so that they are built only once (it can take minutes). Empty to disable the cache.", kALIKEDProvider().c_str()));
 
     RTABMAP_PARAM_STR(PyDetector, Path,       "",           "Path to python script file (see available ones in rtabmap/corelib/src/python/*). See the header to see where the script should be copied.");
 	RTABMAP_PARAM(PyDetector, Cuda,           bool, true,   "Use cuda.");
@@ -766,9 +772,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Vis, Iterations,               int,    300,   "Maximum iterations to compute the transform.");
 #if CV_MAJOR_VERSION > 2 && !defined(HAVE_OPENCV_XFEATURES2D)
     // OpenCV>2 without xFeatures2D module doesn't have BRIEF
-    RTABMAP_PARAM(Vis, FeatureType, int, 8, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat");
+    RTABMAP_PARAM(Vis, FeatureType, int, 8, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat 17=ALIKED");
 #else
-    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat");
+    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat 17=ALIKED");
 #endif
     RTABMAP_PARAM(Vis, MaxFeatures,               int,   1000,  "0 no limits.");
     RTABMAP_PARAM(Vis, SSC,                       bool,  false, "If true, SSC (Suppression via Square Covering) is applied to limit keypoints.");

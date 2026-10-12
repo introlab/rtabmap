@@ -119,6 +119,7 @@ namespace rtabmap {
 class ORBextractor;
 class SPDetector;
 class SPDetectorRpautrat;
+class AlikedOnnxDetector;
 
 class Stereo;
 #if CV_MAJOR_VERSION < 3
@@ -163,6 +164,7 @@ public:
 		kFeatureSurfDaisy=14,  //new 0.20.6
 		kFeaturePyDetector=15, //new 0.20.8
 		kFeatureSuperPointRpautrat=16, // new 0.23.3
+		kFeatureAlikedOnnx=17,
 		kFeatureEnd}; // Sentinel: always keep last. Used to iterate through types.
 
 	/** @return Human-readable name for @p type (e.g. `"ORB"`, `"GFTT+BRIEF"`). */
@@ -203,6 +205,8 @@ public:
 			return "PyDetector";
 		case kFeatureSuperPointRpautrat:
 			return "SUPERPOINT-RPAUTRAT";
+		case kFeatureAlikedOnnx:
+			return "ALIKED";
 		default:
 			return "Unknown";
 		}
@@ -717,6 +721,34 @@ private:
 	bool nms_;
 	int minDistance_;
 	bool cuda_;
+};
+
+/** @brief ALIKED via ONNX Runtime (RTAB-Map must be built with ONNX Runtime). */
+class RTABMAP_CORE_EXPORT AlikedOnnx : public Feature2D
+{
+public:
+	AlikedOnnx(const ParametersMap & parameters = ParametersMap());
+	virtual ~AlikedOnnx();
+
+	virtual void parseParameters(const ParametersMap & parameters) override;
+	virtual Feature2D::Type getType() const override { return kFeatureAlikedOnnx; }
+	virtual bool isGpuAvailable() const override;
+
+private:
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) override;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const override;
+
+	cv::Ptr<AlikedOnnxDetector> aliked_;
+	// ALIKED computes the descriptors of its own keypoints: those of the last
+	// detection, looked up for the keypoints kept by generateKeypoints().
+	std::vector<cv::KeyPoint> lastKeypoints_;
+	cv::Mat lastDescriptors_;
+
+	std::string path_;
+	float threshold_;
+	int provider_;
+	bool tensorRTFp16_;
+	std::string tensorRTCachePath_;
 };
 
 /** @brief GFTT corners + DAISY descriptors (OpenCV 3+ xfeatures2d). */

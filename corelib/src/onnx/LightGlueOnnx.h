@@ -13,20 +13,16 @@
 #include <string>
 #include <vector>
 
-namespace Ort {
-struct Env;
-struct Session;
-}
 
 namespace rtabmap
 {
+
+class OnnxSession;
 
 // Feature matcher of Vis/CorNNType=10
 class RTABMAP_CORE_EXPORT LightGlueOnnx
 {
 public:
-	enum Provider {kCPU=0, kCUDA=1, kTensorRT=2};
-
 	LightGlueOnnx(
 			const std::string & modelPath,
 			float threshold,
@@ -51,7 +47,7 @@ public:
 	const std::string & modelPath() const {return modelPath_;}
 	float threshold() const {return threshold_;}
 	int provider() const {return provider_;} // as requested
-	int activeProvider() const {return activeProvider_;} // after falling back to what is available
+	int activeProvider() const; // after falling back to what is available
 	bool tensorRTFp16() const {return tensorRTFp16_;}
 	const std::string & tensorRTCachePath() const {return tensorRTCachePath_;}
 	int tensorRTMaxKeypoints() const {return tensorRTMaxKeypoints_;}
@@ -61,13 +57,11 @@ private:
 	std::string modelPath_;
 	float threshold_;
 	int provider_;
-	int activeProvider_;
 	bool tensorRTFp16_;
 	std::string tensorRTCachePath_;
 	int tensorRTMaxKeypoints_;
 	int descriptorDim_;
-	std::unique_ptr<Ort::Env> env_;
-	std::unique_ptr<Ort::Session> session_;
+	std::shared_ptr<OnnxSession> session_;
 };
 
 }

@@ -1,10 +1,9 @@
 #include "LightGlueOnnx.h"
+#include "OnnxSession.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UFile.h>
-#include <rtabmap/utilite/UDirectory.h>
 
 #include <onnxruntime_cxx_api.h>
 
@@ -13,57 +12,6 @@
 
 namespace rtabmap
 {
-
-namespace {
-
-bool providerAvailable(const std::string & name)
-{
-	std::vector<std::string> providers = Ort::GetAvailableProviders();
-	return std::find(providers.begin(), providers.end(), name) != providers.end();
-}
-
-void appendCUDA(Ort::SessionOptions & options)
-{
-	const OrtApi & api = Ort::GetApi();
-	OrtCUDAProviderOptionsV2 * cudaOptions = nullptr;
-	Ort::ThrowOnError(api.CreateCUDAProviderOptions(&cudaOptions));
-	options.AppendExecutionProvider_CUDA_V2(*cudaOptions);
-	api.ReleaseCUDAProviderOptions(cudaOptions);
-}
-
-void appendTensorRT(Ort::SessionOptions & options, bool fp16, const std::string & cachePath, int maxKeypoints, int dim)
-{
-	// Explicit optimization profile: with dynamic numbers of keypoints, TensorRT
-	// would otherwise rebuild its engine every time a larger input comes in.
-	auto shapes = [dim](int n) {
-		return uFormat("kpts0:1x%dx2,kpts1:1x%dx2,desc0:1x%dx%d,desc1:1x%dx%d", n, n, n, dim, n, dim);
-	};
-	std::string minShapes = shapes(2);
-	std::string optShapes = shapes(std::min(maxKeypoints, 1024));
-	std::string maxShapes = shapes(maxKeypoints);
-	std::vector<const char*> keys = {"trt_fp16_enable", "trt_profile_min_shapes", "trt_profile_opt_shapes", "trt_profile_max_shapes"};
-	std::vector<const char*> values = {fp16?"1":"0", minShapes.c_str(), optShapes.c_str(), maxShapes.c_str()};
-	if(!cachePath.empty())
-	{
-		keys.push_back("trt_engine_cache_enable"); values.push_back("1");
-		keys.push_back("trt_engine_cache_path"); values.push_back(cachePath.c_str());
-		keys.push_back("trt_timing_cache_enable"); values.push_back("1");
-		keys.push_back("trt_timing_cache_path"); values.push_back(cachePath.c_str());
-	}
-	const OrtApi & api = Ort::GetApi();
-	OrtTensorRTProviderOptionsV2 * trtOptions = nullptr;
-	Ort::ThrowOnError(api.CreateTensorRTProviderOptions(&trtOptions));
-	OrtStatus * status = api.UpdateTensorRTProviderOptions(trtOptions, keys.data(), values.data(), keys.size());
-	if(status)
-	{
-		api.ReleaseTensorRTProviderOptions(trtOptions);
-		Ort::ThrowOnError(status);
-	}
-	options.AppendExecutionProvider_TensorRT_V2(*trtOptions);
-	api.ReleaseTensorRTProviderOptions(trtOptions);
-}
-
-} // namespace
 
 LightGlueOnnx::LightGlueOnnx(
 		const std::string & modelPath,
@@ -75,92 +23,60 @@ LightGlueOnnx::LightGlueOnnx(
 	modelPath_(modelPath),
 	threshold_(threshold),
 	provider_(provider),
-	activeProvider_(provider),
 	tensorRTFp16_(tensorRTFp16),
 	tensorRTCachePath_(tensorRTCachePath),
 	tensorRTMaxKeypoints_(std::max(tensorRTMaxKeypoints, 2)),
 	descriptorDim_(0)
 {
-	const std::string path = uReplaceChar(modelPath_, '~', UDirectory::homeDir());
-	const std::string cachePath = uReplaceChar(tensorRTCachePath_, '~', UDirectory::homeDir());
 	UDEBUG("modelPath=%s threshold=%f provider=%d fp16=%d cache=%s maxKeypoints=%d",
-			path.c_str(), threshold_, provider_, tensorRTFp16_?1:0, cachePath.c_str(), tensorRTMaxKeypoints_);
-	if(!UFile::exists(path))
+			modelPath_.c_str(), threshold_, provider_, tensorRTFp16_?1:0, tensorRTCachePath_.c_str(), tensorRTMaxKeypoints_);
+
+	// The descriptor size is needed for the TensorRT shapes, read it from the model first
+	std::vector<std::string> inputNames, outputNames;
+	std::vector<std::vector<int64_t> > inputShapes, outputShapes;
+	if(!OnnxSession::readShapes(modelPath_, inputNames, inputShapes, outputNames, outputShapes))
 	{
-		UERROR("LightGlue ONNX model \"%s\" not found! See corelib/src/python/rtabmap_export_lightglue_onnx.py to create one.", path.c_str());
+		UERROR("LightGlue ONNX model \"%s\" not found or invalid! See corelib/src/python/rtabmap_export_lightglue_onnx.py to create one.", modelPath_.c_str());
+		return;
+	}
+	for(size_t i=0; i<inputNames.size(); ++i)
+	{
+		if(inputNames[i] == "desc0" && inputShapes[i].size() == 3)
+		{
+			descriptorDim_ = (int)inputShapes[i][2];
+		}
+	}
+	if(descriptorDim_ <= 0)
+	{
+		UERROR("\"%s\" doesn't look like a LightGlue model exported by rtabmap_export_lightglue_onnx.py (input \"desc0\" [1,N,D] not found).", modelPath_.c_str());
 		return;
 	}
 
-	try
+	auto shapes = [this](int n) {
+		return uFormat("kpts0:1x%dx2,kpts1:1x%dx2,desc0:1x%dx%d,desc1:1x%dx%d", n, n, n, descriptorDim_, n, descriptorDim_);
+	};
+	std::vector<std::string> profile;
+	profile.push_back(shapes(2));
+	profile.push_back(shapes(std::min(tensorRTMaxKeypoints_, 1024)));
+	profile.push_back(shapes(tensorRTMaxKeypoints_));
+	session_ = OnnxSession::get("LightGlue", modelPath_, provider_, tensorRTFp16_, tensorRTCachePath_, profile);
+	if(!session_->isValid())
 	{
-		env_.reset(new Ort::Env(ORT_LOGGING_LEVEL_WARNING, "rtabmap_lightglue"));
-		Ort::SessionOptions options;
-		options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-
-		// The descriptor size is needed for the TensorRT shapes, read it from the model on CPU first
-		{
-			Ort::Session probe(*env_, path.c_str(), Ort::SessionOptions());
-			Ort::AllocatorWithDefaultOptions allocator;
-			for(size_t i=0; i<probe.GetInputCount(); ++i)
-			{
-				if(std::string(probe.GetInputNameAllocated(i, allocator).get()) == "desc0")
-				{
-					std::vector<int64_t> shape = probe.GetInputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape();
-					descriptorDim_ = shape.size() == 3 ? (int)shape[2] : 0;
-				}
-			}
-		}
-		if(descriptorDim_ <= 0)
-		{
-			UERROR("\"%s\" doesn't look like a LightGlue model exported by rtabmap_export_lightglue_onnx.py (input \"desc0\" [1,N,D] not found).", path.c_str());
-			env_.reset();
-			return;
-		}
-
-		if(activeProvider_ == kTensorRT && !providerAvailable("TensorrtExecutionProvider"))
-		{
-			UWARN("TensorRT is not available in this ONNX Runtime build, using CUDA instead.");
-			activeProvider_ = kCUDA;
-		}
-		if(activeProvider_ == kCUDA && !providerAvailable("CUDAExecutionProvider"))
-		{
-			UWARN("CUDA is not available in this ONNX Runtime build, using CPU instead.");
-			activeProvider_ = kCPU;
-		}
-		if(activeProvider_ == kTensorRT)
-		{
-			if(!cachePath.empty() && !UDirectory::exists(cachePath))
-			{
-				UDirectory::makeDir(cachePath);
-			}
-			appendTensorRT(options, tensorRTFp16_, cachePath, tensorRTMaxKeypoints_, descriptorDim_);
-			appendCUDA(options); // for the nodes TensorRT doesn't support
-		}
-		else if(activeProvider_ == kCUDA)
-		{
-			appendCUDA(options);
-		}
-
-		UTimer timer;
-		session_.reset(new Ort::Session(*env_, path.c_str(), options));
-		UINFO("LightGlue ONNX model \"%s\" loaded (%d-D descriptors, provider=%s%s) in %fs",
-				path.c_str(), descriptorDim_,
-				activeProvider_==kTensorRT?"TensorRT":activeProvider_==kCUDA?"CUDA":"CPU",
-				activeProvider_==kTensorRT&&tensorRTFp16_?" FP16":"",
-				timer.ticks());
-	}
-	catch(const Ort::Exception & e)
-	{
-		UERROR("Failed to load LightGlue ONNX model \"%s\": %s", path.c_str(), e.what());
 		session_.reset();
-		env_.reset();
+	}
+	else
+	{
+		UINFO("LightGlue ONNX: %d-D descriptors, provider=%s", descriptorDim_, session_->providerName().c_str());
 	}
 }
 
 LightGlueOnnx::~LightGlueOnnx()
 {
-	session_.reset();
-	env_.reset();
+}
+
+int LightGlueOnnx::activeProvider() const
+{
+	return session_.get()?session_->activeProvider():provider_;
 }
 
 std::vector<cv::DMatch> LightGlueOnnx::match(
@@ -191,7 +107,7 @@ std::vector<cv::DMatch> LightGlueOnnx::match(
 	{
 		return matches;
 	}
-	if(activeProvider_ == kTensorRT && (m > tensorRTMaxKeypoints_ || n > tensorRTMaxKeypoints_))
+	if(activeProvider() == OnnxSession::kTensorRT && (m > tensorRTMaxKeypoints_ || n > tensorRTMaxKeypoints_))
 	{
 		UWARN("%d/%d keypoints are more than the TensorRT profile's maximum (%d), increase LightGlue/TensorRTMaxKeypoints.",
 				m, n, tensorRTMaxKeypoints_);
@@ -252,7 +168,7 @@ std::vector<cv::DMatch> LightGlueOnnx::match(
 		const char * inputNames[] = {"kpts0", "kpts1", "desc0", "desc1"};
 		const char * outputNames[] = {"matches0", "mscores0"};
 
-		std::vector<Ort::Value> outputs = session_->Run(Ort::RunOptions{nullptr}, inputNames, inputs.data(), inputs.size(), outputNames, 2);
+		std::vector<Ort::Value> outputs = session_->session().Run(Ort::RunOptions{nullptr}, inputNames, inputs.data(), inputs.size(), outputNames, 2);
 		UDEBUG("LightGlue inference time = %fs", timer.ticks());
 
 		const int64_t * matches0 = outputs[0].GetTensorData<int64_t>();

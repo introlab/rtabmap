@@ -245,7 +245,9 @@ IF(ONNXRUNTIME_FOUND)
 	)
 	SET(SRC_FILES
 		${SRC_FILES}
+		onnx/OnnxSession.cpp
 		onnx/LightGlueOnnx.cpp
+		onnx/AlikedOnnxDetector.cpp
 	)
 	SET(INCLUDE_DIRS
 		${ONNXRUNTIME_INCLUDE_DIRS}
