@@ -1581,15 +1581,19 @@ Transform RegistrationVis::computeTransformationImpl(
 									descriptorsTo.type() == CV_32F &&
 									descriptorsFrom.type() == CV_32F &&
 									descriptorsFrom.rows == (int)kptsFrom.size() &&
-									models.size() == 1)
+									!models.empty())
 								{
-									UDEBUG("Python matching");
-									matches = _pyMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, models[0].imageSize());
+									// Multi-camera: keypoints are in the coordinates of the panorama made of
+									// the cameras' images side by side, so pass the panorama's size.
+									cv::Size imageSize = models[0].imageSize();
+									imageSize.width *= (int)models.size();
+									UDEBUG("Python matching (%d camera(s), image size %dx%d)", (int)models.size(), imageSize.width, imageSize.height);
+									matches = _pyMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, imageSize);
 									matched = true;
 								}
 								else
 								{
-									UDEBUG("Invalid inputs for Python matching (desc type=%d, only float descriptors supported, multicam not supported), doing bruteforce matching instead.", descriptorsFrom.type());
+									UWARN("Invalid inputs for Python matching (desc type=%d, only float descriptors supported, calibration required), doing bruteforce matching instead.", descriptorsFrom.type());
 								}
 							}
 #endif
