@@ -8,6 +8,9 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+#if CV_MAJOR_VERSION > 4
+#include <opencv2/geometry.hpp> // getPerspectiveTransform()
+#endif
 
 using namespace rtabmap;
 
