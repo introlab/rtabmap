@@ -3,9 +3,14 @@
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/Version.h> // RTABMAP_APRILTAG, RTABMAP_APRILTAG_WITH_ARUCO
+#include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+#if CV_MAJOR_VERSION > 4
+#include <opencv2/geometry.hpp> // getPerspectiveTransform()
+#endif
 
 using namespace rtabmap;
 
@@ -490,4 +495,274 @@ TEST(MarkerDetectorTest, RejectsImageWiderThanSingleCameraModel)
 	cv::Mat wide(kImageHeight, kImageWidth*2, CV_8UC1, cv::Scalar(255));
 
 	EXPECT_TRUE(detector.detect(wide, testCameraModel()).empty());
+}
+
+// ---------------------------------------------------------------------------
+// Marker frame convention, for every strategy and dictionary
+//
+// Whatever the strategy (OpenCV aruco or AprilTag library) and dictionary, the
+// returned marker frame should follow OpenCV's convention, relative to the marker
+// image as rendered by OpenCV: origin at the center, x to the right, y up and z
+// out of the marker (toward the camera looking at it).
+// ---------------------------------------------------------------------------
+namespace {
+
+#ifdef RTABMAP_TEST_HAVE_ARUCO
+struct StrategyDictionary
+{
+	int strategy;
+	int dictionary;
+};
+
+std::vector<StrategyDictionary> allStrategiesAndDictionaries()
+{
+	// OpenCV: DICT_4X4_50 (0) ... DICT_7X7_1000 (15), DICT_ARUCO_ORIGINAL (16),
+	// DICT_APRILTAG_16h5 ... DICT_APRILTAG_36h11 (17-20), DICT_ARUCO_MIP_36h12 (21, OpenCV >= 4.8)
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 8)
+	const int lastDictionary = 21;
+#else
+	const int lastDictionary = 20;
+#endif
+	std::vector<StrategyDictionary> cases;
+	for(int dict=0; dict<=lastDictionary; ++dict)
+	{
+		cases.push_back({0, dict});
+	}
+#ifdef RTABMAP_APRILTAG
+	for(int dict=0; dict<=lastDictionary; ++dict)
+	{
+		const bool isAprilTag = dict >= 17 && dict <= 20;
+#ifndef RTABMAP_APRILTAG_WITH_ARUCO
+		if(!isAprilTag) continue;
+#endif
+		if(dict == 16) continue; // ARUCO_ORIGINAL is not supported by the AprilTag library
+		cases.push_back({1, dict});
+	}
+#endif
+	return cases;
+}
+
+cv::Mat renderDictionaryMarker(int dictionary, int id, int sidePixels)
+{
+	cv::Mat marker;
+#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)
+	cv::aruco::generateImageMarker(
+			cv::aruco::getPredefinedDictionary(cv::aruco::PredefinedDictionaryType(dictionary)),
+			id, sidePixels, marker);
+#else
+	cv::aruco::drawMarker(
+			cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionary)),
+			id, sidePixels, marker);
+#endif
+	return marker;
+}
+
+// Renders the marker of side 1 m at pose `cameraToMarker` (optical frame, x right,
+// y up and z out of the marker image) by projecting its outer corners with the test
+// camera. With `officialAprilTag`, the image is the one of the official AprilTag
+// images (apriltag-imgs), which is OpenCV's AprilTag image rotated by 180 deg.
+cv::Mat renderMarkerAtPose(int dictionary, int id, const Transform & cameraToMarker, bool officialAprilTag = false)
+{
+	const int side = 400; // rendered large, then warped down
+	cv::Mat marker = renderDictionaryMarker(dictionary, id, side);
+	if(officialAprilTag)
+	{
+		cv::rotate(marker, marker, cv::ROTATE_180);
+	}
+
+	// Marker image corners, in pixel-center coordinates: top-left, top-right,
+	// bottom-right, bottom-left; i.e. (-x,+y), (+x,+y), (+x,-y), (-x,-y) in the marker frame.
+	const cv::Point2f src[4] = {
+			cv::Point2f(-0.5f, -0.5f),
+			cv::Point2f(side-0.5f, -0.5f),
+			cv::Point2f(side-0.5f, side-0.5f),
+			cv::Point2f(-0.5f, side-0.5f)};
+	const float corners[4][2] = {{-0.5f, 0.5f}, {0.5f, 0.5f}, {0.5f, -0.5f}, {-0.5f, -0.5f}};
+	const CameraModel model = testCameraModel();
+	cv::Point2f dst[4];
+	for(int i=0; i<4; ++i)
+	{
+		cv::Point3f p = util3d::transformPoint(cv::Point3f(corners[i][0], corners[i][1], 0), cameraToMarker);
+		dst[i].x = model.fx()*p.x/p.z + model.cx();
+		dst[i].y = model.fy()*p.y/p.z + model.cy();
+	}
+
+	cv::Mat image;
+	cv::warpPerspective(marker, image, cv::getPerspectiveTransform(src, dst),
+			cv::Size(kImageWidth, kImageHeight), cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(255));
+	return image;
+}
+
+float rotationErrorDeg(const Transform & a, const Transform & b)
+{
+	Eigen::Matrix3f r = a.toEigen3f().rotation().transpose() * b.toEigen3f().rotation();
+	return Eigen::AngleAxisf(r).angle() * 180.0f / float(M_PI);
+}
+
+std::string caseName(const StrategyDictionary & c)
+{
+	return uFormat("strategy=%d dictionary=%d", c.strategy, c.dictionary);
+}
+
+ParametersMap strategyParams(const StrategyDictionary & c, int aprilTagUpright = 0)
+{
+	ParametersMap params = markerParams(1.0f);
+	params.insert(ParametersPair(Parameters::kMarkerAprilTagUpright(), uNumber2Str(aprilTagUpright)));
+	params.insert(ParametersPair(Parameters::kMarkerStrategy(), uNumber2Str(c.strategy)));
+	params.insert(ParametersPair(Parameters::kMarkerDictionary(), uNumber2Str(c.dictionary)));
+	return params;
+}
+#endif
+
+} // namespace
+
+TEST(MarkerDetectorTest, MarkerFrameIsXRightYUpZTowardCameraForAllStrategies)
+{
+#ifndef RTABMAP_TEST_HAVE_ARUCO
+	GTEST_SKIP() << "RTAB-Map not built with OpenCV aruco/objdetect marker detection";
+#else
+	// Upright marker of 1 m facing the camera, 5 m straight ahead.
+	const Transform cameraToMarker(
+			1,  0,  0, 0,
+			0, -1,  0, 0,
+			0,  0, -1, 5);
+	for(const StrategyDictionary & c : allStrategiesAndDictionaries())
+	{
+		SCOPED_TRACE(caseName(c));
+		MarkerDetector detector(strategyParams(c));
+		const cv::Mat image = renderMarkerAtPose(c.dictionary, 0, cameraToMarker);
+		std::map<int, MarkerInfo> detections = detector.detect(image, testCameraModel());
+		ASSERT_EQ(detections.count(0), 1u);
+		const Transform & pose = detections.at(0).pose(); // optical frame (identity local transform)
+
+		EXPECT_NEAR(pose.x(), 0.0f, 0.05);
+		EXPECT_NEAR(pose.y(), 0.0f, 0.05);
+		EXPECT_NEAR(pose.z(), 5.0f, 0.1);
+
+		// Marker axes expressed in the optical frame (x right, y down, z forward).
+		const Eigen::Matrix3f R = pose.toEigen3f().rotation();
+		const Eigen::Vector3f xAxis = R.col(0), yAxis = R.col(1), zAxis = R.col(2);
+		EXPECT_GT(xAxis.x(), 0.99f) << "marker x should point right, got " << xAxis.transpose();
+		EXPECT_LT(yAxis.y(), -0.99f) << "marker y should point up, got " << yAxis.transpose();
+		EXPECT_LT(zAxis.z(), -0.99f) << "marker z should point toward the camera, got " << zAxis.transpose();
+	}
+#endif
+}
+
+TEST(MarkerDetectorTest, TiltedMarkerPoseMatchesGroundTruthForAllStrategies)
+{
+#ifndef RTABMAP_TEST_HAVE_ARUCO
+	GTEST_SKIP() << "RTAB-Map not built with OpenCV aruco/objdetect marker detection";
+#else
+	// Off-center marker, rotated about each of its axes, so that any axis swap or
+	// sign flip (not only a 180 deg flip) shows up as a large rotation error.
+	const Transform facingCamera(
+			1,  0,  0, 0.4f,
+			0, -1,  0, -0.3f,
+			0,  0, -1, 4.0f);
+	const Transform cameraToMarker = facingCamera * Transform(0, 0, 0, 20.0f*M_PI/180.0f, -25.0f*M_PI/180.0f, 30.0f*M_PI/180.0f);
+	for(const StrategyDictionary & c : allStrategiesAndDictionaries())
+	{
+		SCOPED_TRACE(caseName(c));
+		MarkerDetector detector(strategyParams(c));
+		const cv::Mat image = renderMarkerAtPose(c.dictionary, 0, cameraToMarker);
+		std::map<int, MarkerInfo> detections = detector.detect(image, testCameraModel());
+		ASSERT_EQ(detections.count(0), 1u);
+		const Transform & pose = detections.at(0).pose();
+
+		EXPECT_LT(rotationErrorDeg(cameraToMarker, pose), 5.0f)
+				<< "expected " << cameraToMarker.prettyPrint() << ", got " << pose.prettyPrint();
+		EXPECT_LT((pose.toEigen3f().translation() - cameraToMarker.toEigen3f().translation()).norm(), 0.1f)
+				<< "expected " << cameraToMarker.prettyPrint() << ", got " << pose.prettyPrint();
+	}
+#endif
+}
+
+TEST(MarkerDetectorTest, AprilTagUprightSelectsOpenCVOrOfficialOrientation)
+{
+#ifndef RTABMAP_TEST_HAVE_ARUCO
+	GTEST_SKIP() << "RTAB-Map not built with OpenCV aruco/objdetect marker detection";
+#else
+	// Same tilted pose as above, but relative to the official AprilTag image.
+	const Transform facingCamera(
+			1,  0,  0, 0.4f,
+			0, -1,  0, -0.3f,
+			0,  0, -1, 4.0f);
+	const Transform cameraToMarker = facingCamera * Transform(0, 0, 0, 20.0f*M_PI/180.0f, -25.0f*M_PI/180.0f, 30.0f*M_PI/180.0f);
+	const Transform rotated180 = cameraToMarker * Transform(0, 0, 0, 0, 0, M_PI);
+	for(const StrategyDictionary & c : allStrategiesAndDictionaries())
+	{
+		SCOPED_TRACE(caseName(c));
+		const bool isAprilTag = c.dictionary >= 17 && c.dictionary <= 20;
+		const cv::Mat official = renderMarkerAtPose(c.dictionary, 0, cameraToMarker, isAprilTag);
+
+		// 1=Official: the frame follows the official image.
+		MarkerDetector officialDetector(strategyParams(c, 1));
+		std::map<int, MarkerInfo> detections = officialDetector.detect(official, testCameraModel());
+		ASSERT_EQ(detections.count(0), 1u);
+		EXPECT_LT(rotationErrorDeg(cameraToMarker, detections.at(0).pose()), 5.0f)
+				<< "expected " << cameraToMarker.prettyPrint() << ", got " << detections.at(0).pose().prettyPrint();
+
+		// 0=OpenCV (default): on the same official AprilTag image, the frame is
+		// rotated by 180 deg around its z axis. ArUco dictionaries are not affected.
+		MarkerDetector opencvDetector(strategyParams(c, 0));
+		detections = opencvDetector.detect(official, testCameraModel());
+		ASSERT_EQ(detections.count(0), 1u);
+		const Transform & expected = isAprilTag ? rotated180 : cameraToMarker;
+		EXPECT_LT(rotationErrorDeg(expected, detections.at(0).pose()), 5.0f)
+				<< "expected " << expected.prettyPrint() << ", got " << detections.at(0).pose().prettyPrint();
+	}
+#endif
+}
+
+TEST(MarkerDetectorTest, FirstCornerIsTopLeftOfRequestedUprightForAllStrategies)
+{
+#ifndef RTABMAP_TEST_HAVE_ARUCO
+	GTEST_SKIP() << "RTAB-Map not built with OpenCV aruco/objdetect marker detection";
+#else
+	// The first corner is not returned, but cv::aruco::drawDetectedMarkers() marks it
+	// with a small red square on the debug image (the red x axis drawn from the center
+	// ends in the middle of the right side, away from the corners). Upright marker of
+	// 1 m at 5 m: it spans 100x100 pixels centered in the image.
+	const Transform cameraToMarker(
+			1,  0,  0, 0,
+			0, -1,  0, 0,
+			0,  0, -1, 5);
+	const int half = 50;
+	const cv::Point imageCorners[4] = {
+			cv::Point(kImageWidth/2-half, kImageHeight/2-half),  // top-left
+			cv::Point(kImageWidth/2+half, kImageHeight/2-half),  // top-right
+			cv::Point(kImageWidth/2+half, kImageHeight/2+half),  // bottom-right
+			cv::Point(kImageWidth/2-half, kImageHeight/2+half)}; // bottom-left
+	for(const StrategyDictionary & c : allStrategiesAndDictionaries())
+	{
+		const bool isAprilTag = c.dictionary >= 17 && c.dictionary <= 20;
+		for(int upright=0; upright<=1; ++upright)
+		{
+			SCOPED_TRACE(caseName(c) + uFormat(" upright=%d", upright));
+			MarkerDetector detector(strategyParams(c, upright));
+			cv::Mat debugImage;
+			std::map<int, MarkerInfo> detections = detector.detect(
+					renderMarkerAtPose(c.dictionary, 0, cameraToMarker, isAprilTag && upright==1),
+					testCameraModel(), cv::Mat(), std::map<int, float>(), &debugImage);
+			ASSERT_EQ(detections.count(0), 1u);
+			ASSERT_EQ(debugImage.type(), CV_8UC3);
+
+			for(int i=0; i<4; ++i)
+			{
+				cv::Rect window(imageCorners[i] - cv::Point(6, 6), cv::Size(13, 13));
+				cv::Mat red; // BGR, anti-aliased
+				cv::inRange(debugImage(window), cv::Scalar(0,0,200), cv::Scalar(60,60,255), red);
+				if(i == 0)
+				{
+					EXPECT_GT(cv::countNonZero(red), 0) << "first corner not on the top-left";
+				}
+				else
+				{
+					EXPECT_EQ(cv::countNonZero(red), 0) << "first corner found on corner " << i << " (0=top-left, clockwise)";
+				}
+			}
+		}
+	}
+#endif
 }
