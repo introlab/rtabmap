@@ -1,0 +1,11 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" href="$classrtabmap_1_1GlobalMap.html" title="Abstract base for assembling per&#45;node LocalGrid data into a global map." alt="" coords="5,80,160,105"/>
+<area shape="rect" id="Node000001" href="$classrtabmap_1_1CloudMap.html" title=" " alt="" coords="224,5,375,31"/>
+<area shape="poly" id="edge21_Node000000_Node000001" title=" " alt="" coords="124,72,207,39,245,28,247,33,209,45,126,77"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1GridMap.html" title=" " alt="" coords="229,55,369,80"/>
+<area shape="poly" id="edge22_Node000000_Node000002" title=" " alt="" coords="173,79,229,73,230,78,174,85"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1OccupancyGrid.html" title=" " alt="" coords="208,104,391,129"/>
+<area shape="poly" id="edge23_Node000000_Node000003" title=" " alt="" coords="174,100,208,104,208,109,173,105"/>
+<area shape="rect" id="Node000004" href="$classrtabmap_1_1OctoMap.html" title=" " alt="" coords="228,153,371,179"/>
+<area shape="poly" id="edge24_Node000000_Node000004" title=" " alt="" coords="128,108,209,138,250,151,249,156,207,143,126,113"/>
+</map>
