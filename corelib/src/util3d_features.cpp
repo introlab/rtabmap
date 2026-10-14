@@ -394,9 +394,14 @@ std::map<int, cv::Point3f> generateWords3DMono(
 					std::map<int, cv::Point3f>::iterator iter = words3D.find(indexes[i]);
 					if(iter!=words3D.end() && util3d::isFinite(iter->second))
 					{
-						iter->second.x *= scale;
-						iter->second.y *= scale;
-						iter->second.z *= scale;
+						// The points were already transformed by cameraModel.localTransform() at
+						// insertion time above, so they include its translation (e.g. a camera
+						// lever arm relative to the base frame). Only the camera-frame part of the
+						// points must be scaled, so the translation is kept unscaled:
+						//   scale*(R*X + t) + (1-scale)*t  ==  scale*R*X + t
+						iter->second.x = iter->second.x*scale + (1.0f-scale)*cameraModel.localTransform().x();
+						iter->second.y = iter->second.y*scale + (1.0f-scale)*cameraModel.localTransform().y();
+						iter->second.z = iter->second.z*scale + (1.0f-scale)*cameraModel.localTransform().z();
 					}
 				}
 			}
