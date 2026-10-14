@@ -89,6 +89,7 @@ private:
 	float maxRange_;
 	float minRange_;
 	int dictionaryId_;
+	int aprilTagUpright_;
 #if ((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)
   cv::Ptr<cv::aruco::ArucoDetector> arucoDetector_;

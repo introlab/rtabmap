@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
+#include <algorithm>
 
 #if CV_MAJOR_VERSION > 4
 #include <opencv2/geometry.hpp>
@@ -201,6 +202,7 @@ MarkerDetector::MarkerDetector(const ParametersMap & parameters) :
 	maxRange_(Parameters::defaultMarkerMaxRange()),
 	minRange_(Parameters::defaultMarkerMinRange()),
 	dictionaryId_(Parameters::defaultMarkerDictionary()),
+	aprilTagUpright_(Parameters::defaultMarkerAprilTagUpright()),
 	apriltagLibDetector_(NULL),
 	apriltagLibFamily_(NULL)
 {
@@ -247,6 +249,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMarkerMaxRange(), maxRange_);
 	Parameters::parse(parameters, Parameters::kMarkerMinRange(), minRange_);
 	Parameters::parse(parameters, Parameters::kMarkerDictionary(), dictionaryId_);
+	Parameters::parse(parameters, Parameters::kMarkerAprilTagUpright(), aprilTagUpright_);
 	
 	if(parameters.find(Parameters::kMarkerLengths()) != parameters.end())
 	{
@@ -348,7 +351,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 
 	
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
-	if(dictionaryId_ = 17 && strategy_ == 0)
+	if(dictionaryId_ >= 17 && dictionaryId_ <=20 && strategy_ == 0)
 	{
 		UERROR("Cannot set AprilTag dictionary. OpenCV version should be at least 3.4.2, "
 				"current version is %s. Setting %s to default (%d)",
@@ -357,7 +360,8 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 				Parameters::defaultMarkerDictionary());
 		dictionaryId_ = Parameters::defaultMarkerDictionary();
 	}
-#elif CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
+#endif
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
 	if(dictionaryId_ == 21 && strategy_ == 0)
 	{
 		UERROR("Cannot set ARUCO_MIP_36h12 dictionary. OpenCV version should be at least 4.8.0, "
@@ -625,14 +629,19 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 					Transform t(MATD_EL(pose.R, 0, 0), MATD_EL(pose.R, 0, 1), MATD_EL(pose.R, 0, 2), MATD_EL(pose.t, 0, 0),
 								MATD_EL(pose.R, 1, 0), MATD_EL(pose.R, 1, 1), MATD_EL(pose.R, 1, 2), MATD_EL(pose.t, 1, 0),
 								MATD_EL(pose.R, 2, 0), MATD_EL(pose.R, 2, 1), MATD_EL(pose.R, 2, 2), MATD_EL(pose.t, 2, 0));
-					poses.push_back(t*Transform(-1,0,0,0, 0,1,0,0, 0,0,-1,0)); // Flip tag to match same frame than OpenCV (+x->-x, +z->-z)
+					// AprilTag frame (x right, y down, z into the tag) to OpenCV
+					// frame (x right, y up, z out of the tag), relative to the
+					// AprilTag library's upright (see MarkerAprilTag/Upright below).
+					poses.push_back(t*Transform(1,0,0,0, 0,-1,0,0, 0,0,-1,0));
 
+					// AprilTag corners are bottom-left first, counter-clockwise; reorder
+					// them like OpenCV: top-left first, clockwise.
 					corners.push_back(std::vector<cv::Point2f>(4));
 					for(int i=0; i<4; ++i)
 					{
 						// reconvert in original stitched image
-						corners.back()[i].x = det->p[i][0]+offsetX;
-						corners.back()[i].y = det->p[i][1];
+						corners.back()[i].x = det->p[3-i][0]+offsetX;
+						corners.back()[i].y = det->p[3-i][1];
 					}
 					ids.push_back(det->id);
 					cams.push_back(cameraIndex);
@@ -755,6 +764,21 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 #else
 	UERROR("RTAB-Map is not built with \"aruco\" module from OpenCV.");
 #endif
+	}
+
+	// The poses above are relative to the upright of the library used: all
+	// libraries agree for ArUco dictionaries, but OpenCV's AprilTag dictionaries
+	// have their top on the bottom of the official AprilTag images (which the
+	// AprilTag library uses). Rotate them if the requested upright is the other one.
+	const bool isAprilTagDictionary = dictionaryId_ >= 17 && dictionaryId_ <= 20; // DICT_APRILTAG_16h5 ... DICT_APRILTAG_36h11
+	const bool officialUpright = strategy_ == kStrategyApriltag;
+	if(isAprilTagDictionary && officialUpright != (aprilTagUpright_ == 1))
+	{
+		for(size_t i=0; i<poses.size(); ++i)
+		{
+			poses[i] = poses[i] * Transform(-1,0,0,0, 0,-1,0,0, 0,0,1,0); // 180 deg around z
+			std::rotate(corners[i].begin(), corners[i].begin()+2, corners[i].end()); // first corner on the top-left of the requested upright
+		}
 	}
 
 	// Estimate scale and fill up output detections
