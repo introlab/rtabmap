@@ -446,10 +446,16 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 		}
 		apriltagLibFamily_  = createAprilTagPredefinedDictionary(dictFamily);
 		UASSERT_MSG(apriltagLibFamily_ != NULL, uFormat("AprilTag library cannot be used with dictionary type %d", (int)dictionaryId_).c_str());
+		// Correct up to 2 bit errors (AprilTag's default), but not more than the
+		// family can unambiguously correct (half its minimum Hamming distance),
+		// otherwise markers can be decoded with a wrong id (e.g., ArUco 4x4 with h=2).
+		apriltag_family_t * family = (apriltag_family_t*)apriltagLibFamily_;
+		int maxBitsCorrected = std::min(2, std::max(0, ((int)family->h-1)/2));
+		UDEBUG("AprilTag family %s (min Hamming distance=%d): correcting up to %d bit errors", family->name, (int)family->h, maxBitsCorrected);
 		errno = 0;
-		apriltag_detector_add_family(((apriltag_detector_t*)apriltagLibDetector_), (apriltag_family_t*)apriltagLibFamily_);
+		apriltag_detector_add_family_bits(((apriltag_detector_t*)apriltagLibDetector_), family, maxBitsCorrected);
 		if (errno == ENOMEM) {
-			UFATAL("Unable to add family to detector due to insufficient memory to allocate the tag-family decoder with the default maximum hamming value of 2. Try choosing an alternative tag family.");
+			UFATAL("Unable to add family to detector due to insufficient memory to allocate the tag-family decoder with a maximum hamming value of %d. Try choosing an alternative tag family.", maxBitsCorrected);
 		}
 	}
 #else
