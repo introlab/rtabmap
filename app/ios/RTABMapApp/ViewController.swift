@@ -42,6 +42,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private var mMaxFeatures: Int = 0
     private var mLoopThr = 0.11
     private var mDataRecording = false
+    private var scanTrackingState = ScanTrackingState()
+    private var trackingGuidance: ScanTrackingState.Guidance?
+    private var toastDismissal: DispatchWorkItem?
     
     private var mReviewRequested = false
     
@@ -148,15 +151,41 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     }
     
     func showToast(message : String, seconds: Double){
-        if(!self.toastLabel.isHidden)
+        if(!self.toastLabel.isHidden || trackingGuidance != nil)
         {
             return;
         }
         self.toastLabel.text = message
         self.toastLabel.isHidden = false
-        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + seconds) {
+        toastDismissal?.cancel()
+        let dismissal = DispatchWorkItem { [weak self] in
+            guard let self = self, self.trackingGuidance == nil else { return }
             self.toastLabel.isHidden = true
         }
+        toastDismissal = dismissal
+        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + seconds, execute: dismissal)
+    }
+
+    private func showTrackingGuidance(_ guidance: ScanTrackingState.Guidance?) {
+        guard guidance != trackingGuidance else { return }
+        trackingGuidance = guidance
+        // A toast queued before tracking was lost must not hide this warning.
+        toastDismissal?.cancel()
+        toastDismissal = nil
+        toastLabel.text = guidance?.message
+        toastLabel.isHidden = guidance == nil
+        if let message = guidance?.message {
+            UIAccessibility.post(notification: .announcement, argument: message)
+        }
+    }
+
+    private func showScanningTips(outdoors: Bool) {
+        let message = outdoors
+            ? "Keep the object still. Scan in even light; direct sunlight and shiny or dark surfaces can leave gaps. Move slowly around both sides with overlap. Include nearby posts or textured ground to help tracking. Inspect thin bars and openings before finishing."
+            : "Start at a distinctive corner. Move slowly around the room with overlapping views of walls, floor and furniture. Revisit the start before finishing. Avoid pointing only at a blank wall, glass or a mirror. Inspect missing surfaces from another angle."
+        let alert = UIAlertController(title: outdoors ? "Outdoor Objects" : "Rooms", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     func resetNoTouchTimer(_ showHud: Bool = false) {
@@ -467,6 +496,10 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                         self.showToast(message: "Localized!", seconds: 1);
                     }
                     else {
+                        if self.trackingGuidance == .trackingResumed {
+                            self.scanTrackingState.clearRecoveryReminder()
+                            self.showTrackingGuidance(nil)
+                        }
                         self.showToast(message: "Loop closure detected!", seconds: 1);
                     }
                 }
@@ -680,6 +713,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         
         if(mState != state)
         {
+            scanTrackingState.reset()
+            showTrackingGuidance(nil)
             mState = state;
             resetNoTouchTimer(true)
             return
@@ -948,6 +983,14 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         ])
                 
         var fileMenuChildren: [UIMenuElement] = []
+        fileMenuChildren.append(UIMenu(title: "Scanning Tips", image: UIImage(systemName: "questionmark.circle"), children: [
+            UIAction(title: "Rooms", handler: { _ in
+                self.showScanningTips(outdoors: false)
+            }),
+            UIAction(title: "Outdoor Objects", handler: { _ in
+                self.showScanningTips(outdoors: true)
+            })
+        ]))
         fileMenuChildren.append(UIAction(title: "New Mapping Session", image: UIImage(systemName: "plus.app"), attributes: actionNewScanEnabled ? [] : .disabled, state: .off, handler: { _ in
             self.newScan()
         }))
@@ -1203,10 +1246,24 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             rtabmap?.postOdometryEvent(frame: frame, orientation: rotation, viewport: self.view.frame.size)
         }
         
-        if !status.isEmpty {
-            DispatchQueue.main.async {
+        let timestamp = frame.timestamp
+        DispatchQueue.main.async {
+            if self.mState == .STATE_MAPPING {
+                let guidance = self.scanTrackingState.update(isTracking: accept, timestamp: timestamp)
+                self.showTrackingGuidance(guidance)
+            }
+            if !status.isEmpty {
                 self.showToast(message: status, seconds: 2)
             }
+        }
+    }
+
+    func sessionWasInterrupted(_ session: ARSession) {
+        DispatchQueue.main.async {
+            guard self.mState == .STATE_MAPPING else { return }
+            // Interruption may stop frames entirely, so show guidance immediately.
+            let guidance = self.scanTrackingState.update(isTracking: false, timestamp: 0)
+            self.showTrackingGuidance(guidance)
         }
     }
     
