@@ -423,9 +423,9 @@ int main(int argc, char * argv[])
 				dataFrom.getWordsDescriptors().type()!=CV_32F;
 		QString nnTypeName = (pyMatcherOnBinaryFeatures?
 				RegistrationVis::getNNTypeName(5):reg.getNNTypeName()).c_str();
-		// 5, 6 and 7 are the approaches RegistrationVis matches with itself,
+		// 5, 6, 7 and 10 are the approaches RegistrationVis matches with itself,
 		// the others search for the k nearest neighbors and do the ratio test.
-		const bool nndrUsed = reg.getNNType()<5 || reg.getNNType()>7;
+		const bool nndrUsed = (reg.getNNType()<5 || reg.getNNType()>7) && reg.getNNType()!=10;
 		if(reg.getNNType()==6 && !pyMatcherOnBinaryFeatures)
 		{
 			// the script actually used is more telling than the generic name

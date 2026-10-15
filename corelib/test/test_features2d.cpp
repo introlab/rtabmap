@@ -383,13 +383,15 @@ inline std::string superpointRpautratModel()
 }
 
 // Detector types iterated by the Generate* tests. PyDetector needs a
-// user-supplied script (skipped). SuperPoint variants need libtorch
+// user-supplied script (skipped). ALIKED needs an ONNX model exported for
+// the image size (skipped). SuperPoint variants need libtorch
 // weights + (for Rpautrat) a Python model file; included when those
 // assets are on disk.
 bool isGenericGenerateCandidate(Feature2D::Type t)
 {
 	if(!Feature2D::isAvailable(t)) return false;
 	if(t == Feature2D::kFeaturePyDetector) return false;
+	if(t == Feature2D::kFeatureAlikedOnnx) return false;
 	if(t == Feature2D::kFeatureSuperPointTorch)
 	{
 		return UFile::exists(superpointTorchModel());

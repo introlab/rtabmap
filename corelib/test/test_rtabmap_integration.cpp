@@ -2615,6 +2615,13 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			continue;
 		}
 
+		if(detectorType == Feature2D::kFeatureAlikedOnnx)
+		{
+			std::cerr << "[skip] detector " << typeName
+					<< " requires an ONNX model exported for the image size (ALIKED/ModelPath)\n";
+			continue;
+		}
+
 		// SuperPoint variants need traced *.pt weights (plus a Python
 		// model file for the Rpautrat backend). The fetch_test_data.sh
 		// script writes them under data/tests/; skip cleanly if absent.
