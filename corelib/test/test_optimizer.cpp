@@ -708,10 +708,11 @@ TEST_P(CircleGraphTest, NoisyInitialGuessConvergesToTruth)
 	//     perturbed. The priors pull each pose back to truth.
 	//
 	//   gravity-only (gravitySigma > 0, priorsIgnored == true):
-	//     Gravity ties only roll/pitch to world up; yaw remains gauge-free.
-	//     So the roots (id 1, kCircleN) get roll/pitch perturbed but their
-	//     yaw is left at truth -- the optimizer's gauge fix in yaw depends
-	//     on the root staying at truth. Non-roots also get yaw perturbed;
+	//     Gravity ties only roll/pitch to world up; yaw (rotation around
+	//     gravity) remains gauge-free. So the roots (id 1, kCircleN) are only
+	//     tilted around a horizontal axis, leaving their yaw at truth -- the
+	//     optimizer's gauge fix in yaw depends on the root staying at truth.
+	//     Non-roots also get yaw perturbed;
 	//     the chain of links propagates the root's true yaw and the relative
 	//     yaw constraints pull the non-roots back.
 	//
@@ -727,29 +728,31 @@ TEST_P(CircleGraphTest, NoisyInitialGuessConvergesToTruth)
 		const float dRoll        = 3.0f * deg;
 		const float dPitch       = 4.0f * deg;
 		const float dYawNonRoot  = 5.0f * deg;
-		const float dYawRoot     = priorsOnly ? 5.0f * deg : 0.0f;
-		// On gravity-only roots, perturb only ONE of roll/pitch (drop pitch).
-		// Perturbing both induces a small geometric yaw drift on the root that
-		// gravity can't recover (yaw is gauge-free in that mode): after
-		// gravity rotates the tilted local Z back to world Z, the local X-axis
-		// settles at a slightly different XY direction, and that yaw twist
-		// propagates around the chain. Pure roll alone (or pure pitch alone)
-		// keeps the local X-axis in the XY plane, so no drift.
-		const float dPitchRoot   = gravityOnly ? 0.0f : dPitch;
-		// World-frame perturbation on non-roots: pre-multiplied onto each
-		// pose's transform so roll/pitch deltas act about world axes (what
-		// gravity observes). On roots we post-multiply (body-frame) so the
-		// root's truth position is preserved -- in gravity-only mode the
-		// optimizer holds root setFixed in position, and a world-frame
-		// pre-multiply would shift it about the world origin and drag the
-		// whole chain along.
+		// On gravity-only roots, tilt around a single horizontal world axis.
+		// Composing separate roll and pitch rotations would add a small
+		// rotation around gravity (yaw), which gravity can't recover (yaw is
+		// gauge-free in that mode) and which would propagate around the chain.
+		const Eigen::Vector3d tiltAxis(dRoll, dPitch, 0.0);
+		const Transform rootTilt = Transform::fromEigen3d(Eigen::Affine3d(
+				Eigen::AngleAxisd(tiltAxis.norm(), tiltAxis.normalized())));
+		const Transform rootPerturbation = gravityOnly ? rootTilt : Transform(0.0f, 0.0f, 0.0f, dRoll, dPitch, 5.0f * deg);
+		// World-frame perturbation: pre-multiplied onto each pose's rotation
+		// so roll/pitch deltas act about world axes (what gravity observes).
+		// On roots, the rotation is applied around the root's position so its
+		// truth position is preserved -- in gravity-only mode the optimizer
+		// holds root fixed in position, and a world-frame pre-multiply would
+		// shift it about the world origin and drag the whole chain along.
 		for(int i = 1; i <= kCircleN; ++i)
 		{
 			const bool isRoot = (i == 1 || i == kCircleN);
-			const float dPi   = isRoot ? dPitchRoot   : dPitch;
-			const float dYaw  = isRoot ? dYawRoot     : dYawNonRoot;
-			const Transform R(0.0f, 0.0f, 0.0f, dRoll, dPi, dYaw);
-			g.poses[i] = isRoot ? g.poses.at(i) * R : R * g.poses.at(i);
+			if(isRoot)
+			{
+				g.poses[i] = g.poses.at(i).translation() * rootPerturbation * g.poses.at(i).rotation();
+			}
+			else
+			{
+				g.poses[i] = Transform(0.0f, 0.0f, 0.0f, dRoll, dPitch, dYawNonRoot) * g.poses.at(i);
+			}
 		}
 	}
 
