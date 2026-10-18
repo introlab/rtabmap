@@ -8,6 +8,7 @@
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/RegistrationInfo.h>
+#include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/StereoCameraModel.h>
@@ -19,6 +20,7 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/ULogger.h>
 #include "TestUtils.h"
+#include <opencv2/imgproc.hpp>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -4864,4 +4866,66 @@ TEST(MemoryTest, DecodesCompressedImagesToRectifyThem)
 				memcmp(stored.data, compressed.data, compressed.total()) == 0;
 		EXPECT_EQ(sameBytes, alreadyRectified);
 	}
+}
+
+// Mem/StereoFromMotion on RGB-only input: words3D triangulated from odometry
+// must be parallel to wordsKpts (words3D[kptIdx] is the 3D point of
+// wordsKpts[kptIdx]), like every consumer of Signature::getWords3() assumes.
+// The scene is a fronto-parallel textured plane at depth Z: moving the camera
+// by +tx along its x axis shifts the image left by fx*tx/Z pixels.
+TEST(MemoryTest, StereoFromMotionWords3DAreIndexedByKeypoint)
+{
+	const float fx = 300.0f;
+	const float cx = 160.0f;
+	const float cy = 120.0f;
+	const float Z = 2.0f;
+	const int shift = 20; // pixels
+	const float tx = shift * Z / fx;
+
+	cv::Mat scene(240, 320 + shift, CV_8UC1);
+	cv::theRNG().state = 42;
+	cv::randu(scene, cv::Scalar(0), cv::Scalar(255));
+	cv::GaussianBlur(scene, scene, cv::Size(5, 5), 1.5);
+	const cv::Mat imageA = scene(cv::Rect(0, 0, 320, 240)).clone();
+	const cv::Mat imageB = scene(cv::Rect(shift, 0, 320, 240)).clone();
+
+	// Identity local transform: base frame == optical frame
+	const CameraModel model(fx, fx, cx, cy, Transform::getIdentity(), 0, cv::Size(320, 240));
+
+	ParametersMap params;
+	params[Parameters::kMemStereoFromMotion()] = "true";
+	params[Parameters::kMemRehearsalSimilarity()] = "1.0"; // keep both nodes
+	params[Parameters::kMemBadSignaturesIgnored()] = "false";
+	params[Parameters::kKpMaxFeatures()] = "200";
+	params[Parameters::kKpDetectorStrategy()] = "8"; // GFTT/ORB
+	params[Parameters::kGFTTMinDistance()] = "7";
+	Memory memory(params);
+	ASSERT_TRUE(memory.init(""));
+
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	ASSERT_TRUE(memory.update(SensorData(imageA, model), Transform::getIdentity(), covariance));
+	ASSERT_TRUE(memory.update(SensorData(imageB, model), Transform(tx, 0, 0, 0, 0, 0), covariance));
+
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	ASSERT_GT(s->getWords().size(), 8u);
+	ASSERT_EQ(s->getWords3().size(), s->getWordsKpts().size());
+
+	int triangulated = 0;
+	for(std::multimap<int, int>::const_iterator iter=s->getWords().begin(); iter!=s->getWords().end(); ++iter)
+	{
+		const cv::Point3f & pt = s->getWords3()[iter->second];
+		if(!util3d::isFinite(pt))
+		{
+			continue;
+		}
+		++triangulated;
+		// words3D are in base frame of the node, here == camera frame
+		const cv::Point2f & kpt = s->getWordsKpts()[iter->second].pt;
+		ASSERT_GT(pt.z, 0.0f) << "word " << iter->first << " kpt " << iter->second;
+		EXPECT_NEAR(fx * pt.x / pt.z + cx, kpt.x, 2.0f) << "word " << iter->first << " kpt " << iter->second;
+		EXPECT_NEAR(fx * pt.y / pt.z + cy, kpt.y, 2.0f) << "word " << iter->first << " kpt " << iter->second;
+		EXPECT_NEAR(pt.z, Z, 0.2f * Z) << "word " << iter->first << " kpt " << iter->second;
+	}
+	EXPECT_GT(triangulated, 20);
 }
