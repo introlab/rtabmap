@@ -4871,23 +4871,30 @@ TEST(MemoryTest, DecodesCompressedImagesToRectifyThem)
 // Mem/StereoFromMotion on RGB-only input: words3D triangulated from odometry
 // must be parallel to wordsKpts (words3D[kptIdx] is the 3D point of
 // wordsKpts[kptIdx]), like every consumer of Signature::getWords3() assumes.
-// The scene is a fronto-parallel textured plane at depth Z: moving the camera
-// by +tx along its x axis shifts the image left by fx*tx/Z pixels.
+// The scene is made of fronto-parallel textured horizontal bands at different
+// depths (a single plane is degenerate for the five-point algorithm): moving
+// the camera by +tx along its x axis shifts each band left by fx*tx/Z pixels,
+// without occlusions between the bands.
 TEST(MemoryTest, StereoFromMotionWords3DAreIndexedByKeypoint)
 {
 	const float fx = 300.0f;
 	const float cx = 160.0f;
 	const float cy = 120.0f;
-	const float Z = 2.0f;
-	const int shift = 20; // pixels
-	const float tx = shift * Z / fx;
+	const float tx = 0.6f;
+	const int bandHeight = 60;
+	const int bandShifts[4] = {100, 24, 60, 40}; // pixels, depths of 1.8, 7.5, 3 and 4.5 m
+	const int maxShift = 100;
 
-	cv::Mat scene(240, 320 + shift, CV_8UC1);
+	cv::Mat scene(240, 320 + maxShift, CV_8UC1);
 	cv::theRNG().state = 42;
 	cv::randu(scene, cv::Scalar(0), cv::Scalar(255));
 	cv::GaussianBlur(scene, scene, cv::Size(5, 5), 1.5);
 	const cv::Mat imageA = scene(cv::Rect(0, 0, 320, 240)).clone();
-	const cv::Mat imageB = scene(cv::Rect(shift, 0, 320, 240)).clone();
+	cv::Mat imageB(240, 320, CV_8UC1);
+	for(int b=0; b<4; ++b)
+	{
+		scene(cv::Rect(bandShifts[b], b*bandHeight, 320, bandHeight)).copyTo(imageB(cv::Rect(0, b*bandHeight, 320, bandHeight)));
+	}
 
 	// Identity local transform: base frame == optical frame
 	const CameraModel model(fx, fx, cx, cy, Transform::getIdentity(), 0, cv::Size(320, 240));
@@ -4896,6 +4903,9 @@ TEST(MemoryTest, StereoFromMotionWords3DAreIndexedByKeypoint)
 	params[Parameters::kMemStereoFromMotion()] = "true";
 	params[Parameters::kMemRehearsalSimilarity()] = "1.0"; // keep both nodes
 	params[Parameters::kMemBadSignaturesIgnored()] = "false";
+	// Deterministic matching (kd-trees are randomized)
+	params[Parameters::kKpNNStrategy()] = "0"; // FLANN Linear
+	params[Parameters::kVisCorNNType()] = "0"; // FLANN Linear
 	Memory memory(params);
 	ASSERT_TRUE(memory.init(""));
 
@@ -4912,17 +4922,20 @@ TEST(MemoryTest, StereoFromMotionWords3DAreIndexedByKeypoint)
 	for(std::multimap<int, int>::const_iterator iter=s->getWords().begin(); iter!=s->getWords().end(); ++iter)
 	{
 		const cv::Point3f & pt = s->getWords3()[iter->second];
-		if(!util3d::isFinite(pt))
+		const cv::Point2f & kpt = s->getWordsKpts()[iter->second].pt;
+		const int band = int(kpt.y) / bandHeight;
+		if(!util3d::isFinite(pt) ||
+		   int(kpt.y) % bandHeight < 8 || int(kpt.y) % bandHeight >= bandHeight - 8) // ignore band borders
 		{
 			continue;
 		}
 		++triangulated;
 		// words3D are in base frame of the node, here == camera frame
-		const cv::Point2f & kpt = s->getWordsKpts()[iter->second].pt;
 		ASSERT_GT(pt.z, 0.0f) << "word " << iter->first << " kpt " << iter->second;
 		EXPECT_NEAR(fx * pt.x / pt.z + cx, kpt.x, 2.0f) << "word " << iter->first << " kpt " << iter->second;
 		EXPECT_NEAR(fx * pt.y / pt.z + cy, kpt.y, 2.0f) << "word " << iter->first << " kpt " << iter->second;
-		EXPECT_NEAR(pt.z, Z, 0.2f * Z) << "word " << iter->first << " kpt " << iter->second;
+		const float depth = fx * tx / bandShifts[band];
+		EXPECT_NEAR(pt.z, depth, 0.1f * depth) << "word " << iter->first << " kpt " << iter->second;
 	}
 	EXPECT_GT(triangulated, 20);
 }
