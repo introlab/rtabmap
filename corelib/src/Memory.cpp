@@ -6561,9 +6561,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			// words3D should have the same size than words if not empty
 			float bad_point = std::numeric_limits<float>::quiet_NaN ();
 			UASSERT(words3D.size() == 0 || words.size() == words3D.size());
-			bool words3DWasEmpty = words3D.empty();
 			int added3DPointsWithoutDepth = 0;
-			if(words3DWasEmpty)
+			if(words3D.empty())
 			{
 				// words3D must be parallel to wordsKpts (indexed by kptIdx = iter->second),
 				// as expected by all consumers (e.g. DBDriverSqlite3: getWords3()[w->second]).
