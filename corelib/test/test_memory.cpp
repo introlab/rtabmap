@@ -4896,9 +4896,6 @@ TEST(MemoryTest, StereoFromMotionWords3DAreIndexedByKeypoint)
 	params[Parameters::kMemStereoFromMotion()] = "true";
 	params[Parameters::kMemRehearsalSimilarity()] = "1.0"; // keep both nodes
 	params[Parameters::kMemBadSignaturesIgnored()] = "false";
-	params[Parameters::kKpMaxFeatures()] = "200";
-	params[Parameters::kKpDetectorStrategy()] = "8"; // GFTT/ORB
-	params[Parameters::kGFTTMinDistance()] = "7";
 	Memory memory(params);
 	ASSERT_TRUE(memory.init(""));
 
