@@ -1799,6 +1799,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->MarkerStrategy->setCurrentIndex(Parameters::defaultMarkerStrategy());
 	updateAvailableMarkerDictionaries();
 	_ui->MarkerDictionary->setObjectName(Parameters::kMarkerDictionary().c_str());
+	_ui->MarkerAprilTagUpright->setObjectName(Parameters::kMarkerAprilTagUpright().c_str());
 	_ui->MarkerLength->setObjectName(Parameters::kMarkerLength().c_str());
 	_ui->MarkerLengths->setObjectName(Parameters::kMarkerLengths().c_str());
 	_ui->MarkerMaxDepthError->setObjectName(Parameters::kMarkerMaxDepthError().c_str());
