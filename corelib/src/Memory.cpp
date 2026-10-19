@@ -6561,24 +6561,17 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			// words3D should have the same size than words if not empty
 			float bad_point = std::numeric_limits<float>::quiet_NaN ();
 			UASSERT(words3D.size() == 0 || words.size() == words3D.size());
-			bool words3DWasEmpty = words3D.empty();
 			int added3DPointsWithoutDepth = 0;
+			if(words3D.empty())
+			{
+				// words3D must be parallel to wordsKpts (indexed by kptIdx = iter->second),
+				// as expected by all consumers (e.g. DBDriverSqlite3: getWords3()[w->second]).
+				words3D.resize(words.size(), cv::Point3f(bad_point,bad_point,bad_point));
+			}
 			for(std::multimap<int, int>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
 				std::map<int, cv::Point3f>::iterator jter=inliers.find(iter->first);
-				if(words3DWasEmpty)
-				{
-					if(jter != inliers.end())
-					{
-						words3D.push_back(jter->second);
-						++added3DPointsWithoutDepth;
-					}
-					else
-					{
-						words3D.push_back(cv::Point3f(bad_point,bad_point,bad_point));
-					}
-				}
-				else if(!util3d::isFinite(words3D[iter->second]) && jter != inliers.end())
+				if(!util3d::isFinite(words3D[iter->second]) && jter != inliers.end())
 				{
 					words3D[iter->second] = jter->second;
 					++added3DPointsWithoutDepth;
