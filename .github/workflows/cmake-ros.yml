@@ -1,17 +1,12 @@
 name: CMake-ROS
 
+# No paths filters on the triggers: the `changes` job below filters pushes and
+# pull requests, so the required check still reports (one that never does
+# blocks the PR) and the path list lives in one place.
 on:
   push:
     branches: 
       - master
-    paths-ignore: &platform_only
-      - '.github/workflows/android.yml'
-      - '.github/workflows/ios.yml'
-      - 'app/android/**'
-      - 'app/ios/**'
-      - 'docker/noble/android/**'
-  # No paths-ignore on pull requests: the `changes` job below filters them, so
-  # the required check still reports (a check that never does blocks the PR).
   pull_request:
     branches:
       - '**'
@@ -26,24 +21,27 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Required checks must always report, so pull requests are filtered here
-  # instead of with a paths filter on the trigger: jobs not affected by the
+  # Required checks must always report, so pushes and pull requests are
+  # filtered here instead of on the trigger: jobs not affected by the
   # change are skipped, which counts as passing, and only ros-ci below
-  # is required by the ruleset. The merge queue and pushes always build.
+  # is required by the ruleset. The merge queue and dispatches always build.
   changes:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: read
     outputs:
-      relevant: ${{ github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true' }}
+      relevant: ${{ steps.filter.outputs.relevant == 'true' || (github.event_name != 'pull_request' && github.event_name != 'push') }}
     steps:
+      # Pull requests are diffed through the API; a push needs the git history.
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
       - uses: dorny/paths-filter@v3
         id: filter
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
         with:
           # Every changed file must match all patterns, i.e. anything but these.
           predicate-quantifier: every
-          # Keep in sync with paths-ignore under `push` above.
           filters: |
             relevant:
               - '**'
