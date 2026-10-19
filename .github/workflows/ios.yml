@@ -16,6 +16,7 @@ on:
     branches:
       - '**'
     paths: *ios_paths
+  merge_group:
   workflow_dispatch:
 
 concurrency:
@@ -112,4 +113,4 @@ jobs:
           path: RTABMapApp-unsigned.ipa
           compression-level: 0
           if-no-files-found: error
-          retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+          retention-days: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 1 || 90 }}
