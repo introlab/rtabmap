@@ -97,7 +97,10 @@ jobs:
             DEVELOPMENT_TEAM="" \
             build
 
+      # The .ipa only feeds the artifact below; neither is needed in the merge
+      # queue, where the build itself is the check.
       - name: Package app (unsigned .ipa)
+        if: github.event_name != 'merge_group'
         run: |
           set -eux
           APP_DIR="build/Build/Products/Release-iphoneos"
@@ -107,10 +110,11 @@ jobs:
           zip -q -r RTABMapApp-unsigned.ipa Payload
 
       - name: Upload app artifact
+        if: github.event_name != 'merge_group'
         uses: actions/upload-artifact@v4
         with:
           name: RTABMapApp-ios-unsigned
           path: RTABMapApp-unsigned.ipa
           compression-level: 0
           if-no-files-found: error
-          retention-days: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 1 || 90 }}
+          retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
