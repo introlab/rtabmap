@@ -3434,6 +3434,53 @@ bool Rtabmap::process(
 						rejectLocalization = true;
 					}
 
+					// Graph repair: if the same old loop closure is responsible of the
+					// rejection two times in a row, try to remove it (see RGBD/OptimizeMaxErrorRepairRadius)
+					Link repairLink;
+					std::pair<int, int> repairLinkIds(0,0);
+					if(!rejectLocalization && _optimizationMaxError > 0.0f && _optimizationMaxErrorRepairRadius > 0.0)
+					{
+						std::set<std::pair<int, int> > newLinks;
+						for(std::multimap<int, Link>::iterator iter=localizationLinks.begin(); iter!=localizationLinks.end(); ++iter)
+						{
+							newLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
+						}
+						repairLink = findLoopClosureToRepair(maxGraphErrors, optPoses, edgeConstraintsOut, newLinks);
+						if(repairLink.isValid())
+						{
+							repairLinkIds = std::make_pair(repairLink.from(), repairLink.to());
+							if(repairLinkIds == _lastRejectedLoopClosureIds &&
+							   graph::findLink(edgeConstraintsOut, repairLinkIds.first, repairLinkIds.second) != edgeConstraintsOut.end())
+							{
+								UWARN("We detected 2 consecutive loop closure rejections because of the same loop closure link (%d->%d), trying optimization again without that link...",
+									repairLinkIds.first, repairLinkIds.second);
+
+								UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
+								_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
+								graph::MaxGraphErrors repairErrors = maxGraphErrors;
+								removedLinks = repairGraph(
+									repairLink,
+									repairErrors,
+									optPoses,
+									edgeConstraintsOut,
+									optimizationError,
+									optimizationIterations,
+									locOptCovariance,
+									newLinks);
+								_graphOptimizer->setPriorsIgnored(priorsIgnored); // set back
+
+								if(removedLinks.empty())
+								{
+									UWARN("Optimization failed when trying to repair the graph.");
+								}
+								else
+								{
+									maxGraphErrors = repairErrors;
+								}
+							}
+						}
+					}
+
 					if(maxGraphErrors.linearLink.isValid())
 					{
 						maxGraphErrorsLinearIds = std::make_pair(maxGraphErrors.linearLink.from(), maxGraphErrors.linearLink.to());
@@ -3446,56 +3493,25 @@ bool Rtabmap::process(
 								_optimizationMaxError);
 						if(_optimizationMaxError > 0.0f && maxGraphErrors.linearRatio > _optimizationMaxError)
 						{
-							if( _optimizationMaxErrorRepairRadius > 0.0 &&
-								maxGraphErrorsLinearIds == _lastRejectedLoopClosureIds &&
-								graph::findLink(edgeConstraintsOut, maxGraphErrorsLinearIds.first, maxGraphErrorsLinearIds.second) != edgeConstraintsOut.end())
+							UWARN("Rejecting localization (%d <-> %d) in this "
+									"iteration because a wrong loop closure has been "
+									"detected after graph optimization, resulting in "
+									"a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). The "
+									"maximum error ratio parameter \"%s\" is %f of std deviation.",
+									localizationLinks.rbegin()->second.from(),
+									localizationLinks.rbegin()->second.to(),
+									maxGraphErrors.linearRatio,
+									maxGraphErrors.linearLink.from(),
+									maxGraphErrors.linearLink.to(),
+									maxGraphErrors.linearLink.type(),
+									maxGraphErrors.linear,
+									sqrt(maxGraphErrors.linearLink.transVariance()),
+									Parameters::kRGBDOptimizeMaxError().c_str(),
+									_optimizationMaxError);
+							rejectLocalization = true;
+							if(repairLink.isValid())
 							{
-								UWARN("We detected 2 consecutive loop closure rejections because of the same loop closure link (%d->%d), trying optimization again without that link...",
-									maxGraphErrorsLinearIds.first, maxGraphErrorsLinearIds.second);
-	
-								UDEBUG("priorsIgnored was %s", priorsIgnored?"true":"false");
-								_graphOptimizer->setPriorsIgnored(false); //temporary set false to use priors above to fix nodes of the map
-								removedLinks = repairGraph(
-									maxGraphErrors,
-									optPoses,
-									edgeConstraintsOut,
-									optimizationError,
-									optimizationIterations,
-									locOptCovariance);
-								_graphOptimizer->setPriorsIgnored(priorsIgnored); // set back
-	
-								if(removedLinks.empty())
-								{
-									UWARN("Optimization failed when trying to repair the graph.");
-									rejectLocalization = true;
-								}
-							}
-							else {
-								rejectLocalization = true;
-							}
-	
-							if(rejectLocalization)
-							{
-								UWARN("Rejecting localization (%d <-> %d) in this "
-										"iteration because a wrong loop closure has been "
-										"detected after graph optimization, resulting in "
-										"a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). The "
-										"maximum error ratio parameter \"%s\" is %f of std deviation.",
-										localizationLinks.rbegin()->second.from(),
-										localizationLinks.rbegin()->second.to(),
-										maxGraphErrors.linearRatio,
-										maxGraphErrors.linearLink.from(),
-										maxGraphErrors.linearLink.to(),
-										maxGraphErrors.linearLink.type(),
-										maxGraphErrors.linear,
-										sqrt(maxGraphErrors.linearLink.transVariance()),
-										Parameters::kRGBDOptimizeMaxError().c_str(),
-										_optimizationMaxError);
-								
-								if(maxGraphErrors.linearLink.type() != Link::kNeighbor)
-								{
-									_lastRejectedLoopClosureIds = maxGraphErrorsLinearIds;
-								}
+								_lastRejectedLoopClosureIds = repairLinkIds;
 							}
 						}
 						else if(_optimizationMaxError == 0.0f && maxGraphErrors.linearRatio>100 && !_graphOptimizer->isRobust())
@@ -3540,6 +3556,10 @@ bool Rtabmap::process(
 									Parameters::kRGBDOptimizeMaxError().c_str(),
 									_optimizationMaxError);
 							rejectLocalization = true;
+							if(repairLink.isValid())
+							{
+								_lastRejectedLoopClosureIds = repairLinkIds;
+							}
 						}
 						else if(_optimizationMaxError == 0.0f && maxGraphErrors.angularRatio>100 && !_graphOptimizer->isRobust())
 						{
@@ -3971,34 +3991,41 @@ bool Rtabmap::process(
 				}
 
 				bool reject = false;
-				if(maxGraphErrors.linearLink.isValid())
+				// Graph repair: if the same old loop closure is responsible of the
+				// rejection two times in a row, try to remove it (see RGBD/OptimizeMaxErrorRepairRadius)
+				Link repairLink;
+				std::pair<int, int> repairLinkIds(0,0);
+				if(_optimizationMaxError > 0.0f && _optimizationMaxErrorRepairRadius > 0.0)
 				{
-					maxGraphErrorsLinearIds = std::make_pair(maxGraphErrors.linearLink.from(), maxGraphErrors.linearLink.to());
-					UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxGraphErrors.linear, maxGraphErrors.linearLink.from(), maxGraphErrors.linearLink.to(), maxGraphErrors.linearLink.transVariance(), maxGraphErrors.linear/sqrt(maxGraphErrors.linearLink.transVariance()));
-					if(_optimizationMaxError > 0.0f && maxGraphErrors.linearRatio > _optimizationMaxError)
+					std::set<std::pair<int, int> > newLinks(loopClosureLinksAdded.begin(), loopClosureLinksAdded.end());
+					repairLink = findLoopClosureToRepair(maxGraphErrors, poses, constraints, newLinks);
+					if(repairLink.isValid())
 					{
-						if( _optimizationMaxErrorRepairRadius > 0.0 &&
-							maxGraphErrorsLinearIds == _lastRejectedLoopClosureIds &&
-							graph::findLink(constraints, maxGraphErrorsLinearIds.first, maxGraphErrorsLinearIds.second) != constraints.end())
+						repairLinkIds = std::make_pair(repairLink.from(), repairLink.to());
+						if(repairLinkIds == _lastRejectedLoopClosureIds &&
+						   graph::findLink(constraints, repairLinkIds.first, repairLinkIds.second) != constraints.end())
 						{
 							UWARN("We detected 2 consecutive loop closure rejections because of the same loop closure link (%d->%d), trying optimization again without that link...",
-								maxGraphErrorsLinearIds.first, maxGraphErrorsLinearIds.second);
+								repairLinkIds.first, repairLinkIds.second);
 
+							graph::MaxGraphErrors repairErrors = maxGraphErrors;
 							std::list<std::pair<int, int> > removedLinks = repairGraph(
-								maxGraphErrors,
+								repairLink,
+								repairErrors,
 								poses,
 								constraints,
 								optimizationError,
 								optimizationIterations,
-								covariance);
+								covariance,
+								newLinks);
 
 							if(removedLinks.empty())
 							{
 								UWARN("Optimization failed when trying to repair the graph.");
-								reject = true;
 							}
 							else
 							{
+								maxGraphErrors = repairErrors;
 								for(auto link: removedLinks)
 								{
 									UWARN("Removing link %d->%d from memory", link.first, link.second);
@@ -4009,33 +4036,35 @@ bool Rtabmap::process(
 								maxGraphErrorsRemovedCount = removedLinks.size();
 							}
 						}
-						else {
-							reject = true;
-						}
+					}
+				}
 
-						if(reject)
+				if(maxGraphErrors.linearLink.isValid())
+				{
+					maxGraphErrorsLinearIds = std::make_pair(maxGraphErrors.linearLink.from(), maxGraphErrors.linearLink.to());
+					UINFO("Max optimization linear error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxGraphErrors.linear, maxGraphErrors.linearLink.from(), maxGraphErrors.linearLink.to(), maxGraphErrors.linearLink.transVariance(), maxGraphErrors.linear/sqrt(maxGraphErrors.linearLink.transVariance()));
+					if(_optimizationMaxError > 0.0f && maxGraphErrors.linearRatio > _optimizationMaxError)
+					{
+						UWARN("Rejecting all added loop closures (%d, first is %d <-> %d) in this "
+							"iteration because a wrong loop closure has been "
+							"detected after graph optimization, resulting in "
+							"a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). The "
+							"maximum error ratio parameter \"%s\" is %f of std deviation.",
+							(int)loopClosureLinksAdded.size(),
+							loopClosureLinksAdded.front().first,
+							loopClosureLinksAdded.front().second,
+							maxGraphErrors.linearRatio,
+							maxGraphErrors.linearLink.from(),
+							maxGraphErrors.linearLink.to(),
+							maxGraphErrors.linearLink.type(),
+							maxGraphErrors.linear,
+							sqrt(maxGraphErrors.linearLink.transVariance()),
+							Parameters::kRGBDOptimizeMaxError().c_str(),
+							_optimizationMaxError);
+						reject = true;
+						if(repairLink.isValid())
 						{
-							UWARN("Rejecting all added loop closures (%d, first is %d <-> %d) in this "
-								"iteration because a wrong loop closure has been "
-								"detected after graph optimization, resulting in "
-								"a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f m, stddev=%f). The "
-								"maximum error ratio parameter \"%s\" is %f of std deviation.",
-								(int)loopClosureLinksAdded.size(),
-								loopClosureLinksAdded.front().first,
-								loopClosureLinksAdded.front().second,
-								maxGraphErrors.linearRatio,
-								maxGraphErrors.linearLink.from(),
-								maxGraphErrors.linearLink.to(),
-								maxGraphErrors.linearLink.type(),
-								maxGraphErrors.linear,
-								sqrt(maxGraphErrors.linearLink.transVariance()),
-								Parameters::kRGBDOptimizeMaxError().c_str(),
-								_optimizationMaxError);
-
-							if(maxGraphErrors.linearLink.type() != Link::kNeighbor)
-							{
-								_lastRejectedLoopClosureIds = maxGraphErrorsLinearIds;
-							}
+							_lastRejectedLoopClosureIds = repairLinkIds;
 						}
 					}
 					else if(_optimizationMaxError == 0.0f && maxGraphErrors.linearRatio>100 && !_graphOptimizer->isRobust())
@@ -4076,6 +4105,10 @@ bool Rtabmap::process(
 							  Parameters::kRGBDOptimizeMaxError().c_str(),
 							  _optimizationMaxError);
 						reject = true;
+						if(repairLink.isValid())
+						{
+							_lastRejectedLoopClosureIds = repairLinkIds;
+						}
 					}
 					else if(_optimizationMaxError == 0.0f && maxGraphErrors.angularRatio>100 && !_graphOptimizer->isRobust())
 					{
@@ -5587,31 +5620,118 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	return optimizedPoses;
 }
 
+// Returns the old loop closure to remove to repair the graph when the
+// optimization error is too high (see RGBD/OptimizeMaxErrorRepairRadius), or
+// an invalid link if there is none. The link with the highest error ratio
+// (linear or angular) over RGBD/OptimizeMaxError is selected. If it is a
+// neighbor (odometry) link, it cannot be removed: this happens when a wrong
+// loop closure has a very small variance, the optimizer satisfies it and its
+// error goes on the adjacent neighbor links (#1784). In that case, the loop
+// closure with the highest error ratio around the neighbor link (under
+// RGBD/OptimizeMaxErrorRepairRadius) is returned instead. Loop closures added
+// in this iteration (newLinks) are never returned.
+Link Rtabmap::findLoopClosureToRepair(
+	const graph::MaxGraphErrors & maxGraphErrors,
+	const std::map<int, Transform> & poses,
+	const std::multimap<int, Link> & constraints,
+	const std::set<std::pair<int, int> > & newLinks) const
+{
+	Link maxErrorLink;
+	if(maxGraphErrors.linearLink.isValid() && maxGraphErrors.linearRatio > _optimizationMaxError &&
+	   (!maxGraphErrors.angularLink.isValid() || maxGraphErrors.linearRatio >= maxGraphErrors.angularRatio))
+	{
+		maxErrorLink = maxGraphErrors.linearLink;
+	}
+	else if(maxGraphErrors.angularLink.isValid() && maxGraphErrors.angularRatio > _optimizationMaxError)
+	{
+		maxErrorLink = maxGraphErrors.angularLink;
+	}
+	if(!maxErrorLink.isValid() ||
+	   newLinks.find(std::make_pair(maxErrorLink.from(), maxErrorLink.to())) != newLinks.end() ||
+	   newLinks.find(std::make_pair(maxErrorLink.to(), maxErrorLink.from())) != newLinks.end())
+	{
+		return Link();
+	}
+	if(maxErrorLink.type() != Link::kNeighbor && maxErrorLink.type() != Link::kNeighborMerged)
+	{
+		return maxErrorLink;
+	}
+
+	std::map<int, Transform>::const_iterator center = poses.find(maxErrorLink.from());
+	if(center == poses.end())
+	{
+		return Link();
+	}
+	Link candidate;
+	float candidateRatio = -1.0f;
+	for(std::multimap<int, Link>::const_iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+	{
+		const Link & link = iter->second;
+		if(link.from() == link.to() ||
+		   link.type() == Link::kNeighbor ||
+		   link.type() == Link::kNeighborMerged ||
+		   newLinks.find(std::make_pair(link.from(), link.to())) != newLinks.end() ||
+		   newLinks.find(std::make_pair(link.to(), link.from())) != newLinks.end())
+		{
+			continue;
+		}
+		std::map<int, Transform>::const_iterator fromPose = poses.find(link.from());
+		std::map<int, Transform>::const_iterator toPose = poses.find(link.to());
+		if(fromPose == poses.end() || toPose == poses.end() ||
+		   std::min(center->second.getDistance(fromPose->second),
+		            center->second.getDistance(toPose->second)) >= _optimizationMaxErrorRepairRadius)
+		{
+			continue;
+		}
+		std::multimap<int, Link> single;
+		single.insert(*iter);
+		graph::MaxGraphErrors errors = graph::computeMaxGraphErrors(poses, single, _graphOptimizer->isSlam2d());
+		float ratio = std::max(errors.linearRatio, errors.angularRatio);
+		if(ratio > candidateRatio)
+		{
+			candidate = link;
+			candidateRatio = ratio;
+		}
+	}
+	if(candidate.isValid())
+	{
+		UWARN("Highest error is on neighbor link %d->%d, the loop closure %d->%d (error ratio=%f) "
+			  "around it is considered instead for graph repair.",
+			  maxErrorLink.from(), maxErrorLink.to(), candidate.from(), candidate.to(), candidateRatio);
+	}
+	return candidate;
+}
+
+// Remove linkToRemove from the graph, then other old loop closures with high
+// error under RGBD/OptimizeMaxErrorRepairRadius of it, until both linear and
+// angular error ratios are under RGBD/OptimizeMaxError.
 // If repairing works, all input arguments are updated accordingly to new graph
 // Returns IDs of the links removed from constraints
 std::list<std::pair<int, int> > Rtabmap::repairGraph(
+	const Link & linkToRemove,
 	graph::MaxGraphErrors & maxGraphErrors,
 	std::map<int, Transform> & poses,
 	std::multimap<int, Link> & constraints,
 	double & optimizationError,
 	int & optimizationIterations,
-	cv::Mat & optimizationCovariance)
+	cv::Mat & optimizationCovariance,
+	const std::set<std::pair<int, int> > & newLinks)
 {
-	UASSERT(maxGraphErrors.linearLink.isValid());
-	UASSERT(graph::findLink(constraints, maxGraphErrors.linearLink.from(), maxGraphErrors.linearLink.to()) != constraints.end());
+	UASSERT(linkToRemove.isValid());
+	UASSERT(graph::findLink(constraints, linkToRemove.from(), linkToRemove.to()) != constraints.end());
 
-	int originalMaxErrorLinkFrom = maxGraphErrors.linearLink.from();
-	int originalMaxErrorLinkTo = maxGraphErrors.linearLink.to();
+	int originalMaxErrorLinkFrom = linkToRemove.from();
+	int originalMaxErrorLinkTo = linkToRemove.to();
 
-	graph::MaxGraphErrors subMaxGraphErrors = maxGraphErrors;
+	Link nextLinkToRemove = linkToRemove;
 	std::list<std::pair<int, int> > removedLinks;
 	std::map<int, Transform> subPoses = poses;
 	std::multimap<int, Link> subConstraints = constraints;
-	while(subMaxGraphErrors.linearLink.isValid() && subMaxGraphErrors.linearRatio > _optimizationMaxError)
+	while(nextLinkToRemove.isValid())
 	{
-		removedLinks.push_back(std::make_pair(subMaxGraphErrors.linearLink.from(), subMaxGraphErrors.linearLink.to()));
-		subConstraints.erase(graph::findLink(subConstraints, subMaxGraphErrors.linearLink.from(), subMaxGraphErrors.linearLink.to()));
-		subMaxGraphErrors.linearLink = Link();
+		removedLinks.push_back(std::make_pair(nextLinkToRemove.from(), nextLinkToRemove.to()));
+		subConstraints.erase(graph::findLink(subConstraints, nextLinkToRemove.from(), nextLinkToRemove.to()));
+		nextLinkToRemove = Link();
 
 		// Get connected graph just to check if a node got disconnected (localization mode)
 		std::map<int, Transform> posesOut;
@@ -5672,36 +5792,39 @@ std::list<std::pair<int, int> > Rtabmap::repairGraph(
 		}
 		else
 		{
-			subMaxGraphErrors = graph::computeMaxGraphErrors(
+			graph::MaxGraphErrors subMaxGraphErrors = graph::computeMaxGraphErrors(
 					subPoses,
 					subConstraintsOut);
 			if(!subMaxGraphErrors.linearLink.isValid())
 			{
 				UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
 			}
-			else if(subMaxGraphErrors.linearRatio > _optimizationMaxError)
+			else if(subMaxGraphErrors.linearRatio > _optimizationMaxError ||
+			        subMaxGraphErrors.angularRatio > _optimizationMaxError)
 			{
-				float distance = poses.at(originalMaxErrorLinkFrom).getDistance(poses.at(subMaxGraphErrors.linearLink.from()));
-				if(subMaxGraphErrors.linearLink.type() != Link::kNeighbor && distance < _optimizationMaxErrorRepairRadius)
+				Link link = findLoopClosureToRepair(subMaxGraphErrors, subPoses, subConstraintsOut, newLinks);
+				float distance = link.isValid()?poses.at(originalMaxErrorLinkFrom).getDistance(poses.at(link.from())):0.0f;
+				if(link.isValid() && distance < _optimizationMaxErrorRepairRadius)
 				{
-					UWARN("Optimization error is still high (%f, on link %d->%d type=%d) after removing the loop closure with the highest error. "
-						"As it is close (%f m < %s=%f m) to original loop closure with high error (%d->%d), we will reject again this one to see if it helps.",
-						subMaxGraphErrors.linearRatio, subMaxGraphErrors.linearLink.from(), subMaxGraphErrors.linearLink.to(), subMaxGraphErrors.linearLink.type(),
+					UWARN("Optimization error is still high (linear=%f, angular=%f) after removing the loop closure with the highest error. "
+						"As the loop closure %d->%d (type=%d) is close (%f m < %s=%f m) to original loop closure with high error (%d->%d), we will reject again this one to see if it helps.",
+						subMaxGraphErrors.linearRatio, subMaxGraphErrors.angularRatio, link.from(), link.to(), link.type(),
 						distance, Parameters::kRGBDOptimizeMaxErrorRepairRadius().c_str(), _optimizationMaxErrorRepairRadius,
 						originalMaxErrorLinkFrom, originalMaxErrorLinkTo);
+					nextLinkToRemove = link;
 				}
 				else
 				{
-					UWARN("Optimization error is still high (%f, on link %d->%d) after removing loop closure with highest error.",
-						subMaxGraphErrors.linearRatio, subMaxGraphErrors.linearLink.from(), subMaxGraphErrors.linearLink.to());
-					subMaxGraphErrors.linearLink = Link();
+					UWARN("Optimization error is still high (linear=%f on link %d->%d, angular=%f on link %d->%d) after removing loop closure with highest error.",
+						subMaxGraphErrors.linearRatio, subMaxGraphErrors.linearLink.from(), subMaxGraphErrors.linearLink.to(),
+						subMaxGraphErrors.angularRatio, subMaxGraphErrors.angularLink.from(), subMaxGraphErrors.angularLink.to());
 				}
 			}
 			else
 			{
-				UWARN("Optimization error is lower (%f, on link %d->%d) after removing loop "
+				UWARN("Optimization error is lower (linear=%f, angular=%f) after removing loop "
 					"closure with highest error. We will remove the old link (%d->%d collaterals=%ld) and accept the new one.",
-					subMaxGraphErrors.linearRatio, subMaxGraphErrors.linearLink.from(), subMaxGraphErrors.linearLink.to(),
+					subMaxGraphErrors.linearRatio, subMaxGraphErrors.angularRatio,
 					removedLinks.front().first, removedLinks.front().second,
 					removedLinks.size()-1);
 
