@@ -87,6 +87,7 @@ struct ReplayResult
 	int odomLost = 0;            // odometry returned a null pose
 	int loopClosuresAccepted = 0;
 	int loopClosuresRejected = 0;  // sum of frames with Loop/RejectedHypothesis=1
+	int graphRepairRemovedLinks = 0; // sum of Loop/Optimization_max_error_removed_count (RGBD/OptimizeMaxErrorRepairRadius)
 	int proximityDetections = 0;
 	Transform lastOdomPose;
 	// Latest Gt/translational_rmse from Rtabmap statistics (negative = never
@@ -571,7 +572,11 @@ ReplayResult replayDatabaseWithStoredOdom(
 		// boundaries uses the frame above.
 		bool triggerNewMapOnSessionStart = false,
 		// Filled with the number of sessions replayed: one plus the boundaries triggered on.
-		int * sessionsReplayed = 0)
+		int * sessionsReplayed = 0,
+		// When >0, switchedParameters are applied with Rtabmap::parseParameters()
+		// once this number of frames has been processed.
+		int switchParametersAfterFrame = -1,
+		const ParametersMap & switchedParameters = ParametersMap())
 {
 	ReplayResult result;
 
@@ -716,6 +721,11 @@ ReplayResult replayDatabaseWithStoredOdom(
 		{
 			rtabmap.triggerNewMap();
 		}
+		if(switchParametersAfterFrame > 0
+				&& result.framesProcessed == switchParametersAfterFrame)
+		{
+			rtabmap.parseParameters(switchedParameters);
+		}
 		const Statistics & stats = rtabmap.getStatistics();
 		if(stats.loopClosureId() > 0)
 		{
@@ -734,6 +744,11 @@ ReplayResult replayDatabaseWithStoredOdom(
 		if(rejIt != stats.data().end() && rejIt->second > 0.5f)
 		{
 			++result.loopClosuresRejected;
+		}
+		const auto removedIt = stats.data().find(Statistics::kLoopOptimization_max_error_removed_count());
+		if(removedIt != stats.data().end())
+		{
+			result.graphRepairRemovedLinks += (int)removedIt->second;
 		}
 		const auto rmseIt = stats.data().find(Statistics::kGtTranslational_rmse());
 		if(rmseIt != stats.data().end())
@@ -781,6 +796,7 @@ ReplayResult replayDatabaseWithStoredOdom(
 			<< " framesIntermediate=" << result.framesIntermediate
 			<< " loops=" << result.loopClosuresAccepted
 			<< " loopsRejected=" << result.loopClosuresRejected
+			<< " repairRemovedLinks=" << result.graphRepairRemovedLinks
 			<< " proximity=" << result.proximityDetections
 			<< " localGraph=" << result.finalLocalGraphSize
 			<< " globalGraph=" << result.finalGlobalGraphSize
@@ -2003,6 +2019,119 @@ TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereo)
 }
 
 // ---------------------------------------------------------------------------
+// Graph repair (RGBD/OptimizeMaxErrorRepairRadius) on the same robust-graph-
+// optimization DB. The first 80 frames are replayed without any safeguard
+// (Optimizer/Robust=false, RGBD/OptimizeMaxError=0), so the wrong loop
+// closures of this DB get accepted in the graph. RGBD/OptimizeMaxError is
+// then enabled: the next good loop closures are rejected because of the old
+// wrong ones. Without repair, they keep being rejected and the graph stays
+// wrong. With repair, the old wrong loop closures responsible of two
+// consecutive rejections are removed from the graph, which ends up close to
+// the golden trajectory.
+// ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereoRepair)
+{
+	const std::string srcPath = testDataPath("robust_graph_optimization_stereo.db");
+	SKIP_IF_MISSING(srcPath);
+
+	struct Variant {
+		Optimizer::Type optType;
+		float repairRadius;
+		const char * label;
+	};
+	const std::vector<Variant> variants = {
+		{Optimizer::kTypeG2O,   3.0f, "g2o-repair3"     },
+		{Optimizer::kTypeG2O,   0.0f, "g2o-norepair"    },
+		{Optimizer::kTypeGTSAM, 3.0f, "gtsam-repair3"   },
+		{Optimizer::kTypeGTSAM, 0.0f, "gtsam-norepair"  },
+	};
+	const int kEnableMaxErrorAfterFrame = 80;
+
+	const std::string goldenPath = testDataPath("robust_graph_optimization_stereo_gt.g2o");
+	std::map<int, Transform> goldenPoses;
+	std::multimap<int, Link> goldenLinks;
+	ASSERT_TRUE(graph::importPoses(
+			goldenPath, /*format=*/4, goldenPoses, &goldenLinks))
+			<< "Failed to load golden poses from " << goldenPath;
+
+	int variantsTested = 0;
+	for(const Variant & v : variants)
+	{
+		if(!Optimizer::isAvailable(v.optType))
+		{
+			std::cerr << "[skip] " << v.label << " (optimizer unavailable)\n";
+			continue;
+		}
+		SCOPED_TRACE(std::string(v.label));
+
+		ParametersMap params = baseRtabmapParams();
+		uInsert(params, ParametersPair(Parameters::kOptimizerStrategy(),
+				uNumber2Str(static_cast<int>(v.optType))));
+		uInsert(params, ParametersPair(Parameters::kOptimizerRobust(), "false"));
+		uInsert(params, ParametersPair(Parameters::kRGBDOptimizeMaxError(), "0"));
+		uInsert(params, ParametersPair(Parameters::kRGBDOptimizeMaxErrorRepairRadius(),
+				uNumber2Str(v.repairRadius)));
+		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
+		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
+		uInsert(params, ParametersPair(Parameters::kMemBinDataKept(), "false"));
+		uInsert(params, ParametersPair(Parameters::kKpFlannRebalancingFactor(), "1"));
+		uInsert(params, ParametersPair(Parameters::kRtabmapDetectionRate(), "0"));
+
+		ParametersMap enableMaxError;
+		enableMaxError.insert(ParametersPair(Parameters::kRGBDOptimizeMaxError(), "3"));
+
+		const std::string workDb = test::tempPath(uFormat(
+				"rtabmap_integration_RobustGraphOptimizationStereoRepair_%s.db", v.label));
+		std::cerr << "Working DB for " << v.label << ": " << workDb << "\n";
+
+		const ReplayResult result = replayDatabaseWithStoredOdom(
+				srcPath, workDb, params,
+				/*triggerNewMapAfterFrame=*/-1,
+				/*overrideOdomAngularVariance=*/-1.0,
+				/*overrideOdomLinearVariance=*/-1.0,
+				/*scanMaxRange=*/0.0f,
+				/*triggerNewMapOnSessionStart=*/false,
+				/*sessionsReplayed=*/0,
+				kEnableMaxErrorAfterFrame,
+				enableMaxError);
+
+		ASSERT_GT(result.framesProcessed, kEnableMaxErrorAfterFrame) << v.label << " produced too few frames";
+		ASSERT_GT(result.finalGlobalGraphSize, 0) << v.label << " produced empty graph";
+
+		float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
+		float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
+		graph::calcRMSE(goldenPoses, result.finalGlobalPoses,
+				tRmse, tMean, tMed, tStd, tMin, tMax,
+				rRmse, rMean, rMed, rStd, rMin, rMax,
+				/*align2D=*/false);
+		std::cerr << "[" << v.label << "] "
+				  << "repair removed links=" << result.graphRepairRemovedLinks << ", "
+				  << "trans rmse=" << tRmse << "m max=" << tMax << "m, "
+				  << "rot rmse=" << rRmse << "deg max=" << rMax << "deg\n";
+
+		if(v.repairRadius > 0.0f)
+		{
+			EXPECT_GT(result.graphRepairRemovedLinks, 0)
+					<< v.label << " no link removed by graph repair";
+			EXPECT_LT(tRmse, 0.05f)
+					<< v.label << " translational RMSE too large; expected near golden after repair";
+			EXPECT_LT(rRmse, 1.5f)
+					<< v.label << " rotational RMSE too large; expected near golden after repair";
+		}
+		else
+		{
+			// Without repair, the wrong loop closures accepted before
+			// enabling RGBD/OptimizeMaxError stay in the graph (~2 m RMSE).
+			EXPECT_EQ(result.graphRepairRemovedLinks, 0);
+			EXPECT_GT(tRmse, 0.5f)
+					<< v.label << " expected the wrong loop closures to remain in the graph without repair";
+		}
+		++variantsTested;
+	}
+	ASSERT_GT(variantsTested, 0) << "no compatible optimizer was available";
+}
+
+// ---------------------------------------------------------------------------
 // 3-iteration loop with GPS metadata. Replays the session frame-by-frame
 // with the stored odom, sweeping Rtabmap/LoopGPS on/off. GPS-aided loop
 // closure detection filters candidates by GPS proximity; with it off the
@@ -2985,3 +3114,4 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			<< "across any detector; data/samples or the BoW pipeline may "
 			<< "no longer be exercising the BadSignatures path";
 }
+
