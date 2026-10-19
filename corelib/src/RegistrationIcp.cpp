@@ -245,6 +245,26 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 
 	bool pointToPlane = _pointToPlane;
 
+	// Resolve the CCCoreLib fallback first, so that the libpointmatcher ICP below
+	// is created if the strategy falls back to libpointmatcher (issue #1800)
+#ifndef RTABMAP_CCCORELIB
+	if(_strategy==kIcpCCCoreLib)
+	{
+#ifdef RTABMAP_POINTMATCHER
+		_strategy = kIcpPointMatcher;
+#else
+		_strategy = kIcpPCL;
+#endif
+		UWARN("Parameter %s is set to 2 but RTAB-Map has not been built with CCCoreLib support. Setting to %d.", Parameters::kIcpStrategy().c_str(), _strategy);
+	}
+#else
+	if(_strategy==2 && _pointToPlane)
+	{
+		UWARN("%s cannot be used with %s=2 (CCCoreLib), setting %s to false", Parameters::kIcpPointToPlane().c_str(), Parameters::kIcpStrategy().c_str(), Parameters::kIcpPointToPlane().c_str());
+		_pointToPlane = false;
+	}
+#endif
+
 #ifndef RTABMAP_POINTMATCHER
 	if(_strategy==kIcpPointMatcher)
 	{
@@ -375,24 +395,6 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 			params.clear();
 		}
 		pointToPlane = icp->errorMinimizer->className.compare("PointToPlaneErrorMinimizer")==0;
-	}
-#endif
-
-#ifndef RTABMAP_CCCORELIB
-	if(_strategy==kIcpCCCoreLib)
-	{
-#ifdef RTABMAP_POINTMATCHER
-		_strategy = kIcpPointMatcher;
-#else
-		_strategy = kIcpPCL;
-#endif
-		UWARN("Parameter %s is set to 2 but RTAB-Map has not been built with CCCoreLib support. Setting to %d.", Parameters::kIcpStrategy().c_str(), _strategy);
-	}
-#else
-	if(_strategy==2 && _pointToPlane)
-	{
-		UWARN("%s cannot be used with %s=2 (CCCoreLib), setting %s to false", Parameters::kIcpPointToPlane().c_str(), Parameters::kIcpStrategy().c_str(), Parameters::kIcpPointToPlane().c_str());
-		_pointToPlane = false;
 	}
 #endif
 

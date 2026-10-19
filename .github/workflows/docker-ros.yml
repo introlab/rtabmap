@@ -29,6 +29,7 @@ on:
     branches:
       - '**'
     paths-ignore: *platform_only
+  merge_group:
   workflow_dispatch:
 
 concurrency:
@@ -151,7 +152,7 @@ jobs:
         name: Login to DockerHub
         # Only needed when pushing; skipped on pull requests (secrets are
         # unavailable for fork PRs and we don't push there anyway).
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -161,7 +162,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' }}
           platforms: ${{ matrix.docker_platform }}
           file: ./docker/${{ matrix.docker_dir }}/Dockerfile
           build-args: |
@@ -173,7 +174,7 @@ jobs:
   docker_manifest:
     needs: docker
     # Nothing to join on pull requests, where the per-arch tags are never pushed.
-    if: ${{ !cancelled() && !failure() && github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
+    if: ${{ !cancelled() && !failure() && github.event_name != 'pull_request' && github.event_name != 'merge_group' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
     runs-on: ubuntu-26.04
 
     strategy:
