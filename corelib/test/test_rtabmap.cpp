@@ -2550,6 +2550,10 @@ TEST(RtabmapTest, ProcessRejectsBadLoopClosureInLocalizationModeViaOptimizeMaxEr
 // that neighbor link with the highest error is then considered for repair.
 // Depending on the optimizer, that error is mostly linear (GTSAM) or angular
 // (g2o), so this covers both linear and angular repair triggers.
+// With g2o, the poses optimized with the stiff bad link are so distorted that
+// re-optimizing from them after removing it converges to a local minimum: the
+// repair succeeds only when re-optimizing from an initial guess propagated
+// through the remaining links.
 static void runProcessRepairsGraphAfterRepeatedBadLoopClosure(int optimizerStrategy, bool gtsamIncremental = false, bool stiffBadLink = false)
 {
 	ParametersMap params = badLoopClosureParams();
@@ -2559,13 +2563,6 @@ static void runProcessRepairsGraphAfterRepeatedBadLoopClosure(int optimizerStrat
 		params[Parameters::kGTSAMIncremental()] = "true";
 	}
 	params[Parameters::kRGBDOptimizeMaxError()] = "0.0"; // disabled in phase 1
-	if(stiffBadLink)
-	{
-		// The stiff bad link distorts a lot the graph (with g2o, the error
-		// goes mostly on the orientation of the neighbor links), more
-		// iterations are needed to converge back after removing it.
-		params[Parameters::kOptimizerIterations()] = "200";
-	}
 	params[Parameters::kRGBDOptimizeMaxErrorRepairRadius()] = "0.0";
 	params[Parameters::kRtabmapLoopThr()] = "0.05";
 	params[Parameters::kBayesVirtualPlacePriorThr()] = "0.1";
@@ -2620,7 +2617,11 @@ static void runProcessRepairsGraphAfterRepeatedBadLoopClosure(int optimizerStrat
 	// Phase 2: enable OptimizeMaxError + repair.
 	ParametersMap params2 = params;
 	params2[Parameters::kRGBDOptimizeMaxError()] = "1.0";
-	params2[Parameters::kRGBDOptimizeMaxErrorRepairRadius()] = "1.0";
+	// With the stiff bad link, the error can spread further along the chain
+	// (with g2o, mostly on the orientation of the neighbor links), so a larger
+	// radius is used to find the bad link from the neighbor link with the
+	// highest error.
+	params2[Parameters::kRGBDOptimizeMaxErrorRepairRadius()] = stiffBadLink ? "3.0" : "1.0";
 	rtabmap.parseParameters(params2);
 
 	// Back up smoothly from N8 (odom x=7) toward N3 (odom x=2).

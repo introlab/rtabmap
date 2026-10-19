@@ -5777,14 +5777,68 @@ std::list<std::pair<int, int> > Rtabmap::repairGraph(
 			}
 		}
 
+		std::map<int, Transform> guessPoses = subPoses;
 		subPoses = _graphOptimizer->optimize(
 			fromId,
-			subPoses,
+			guessPoses,
 			subConstraintsOut,
 			subOptimizationCovariance,
 			0,
 			&subOptimizationError,
 			&subOptimizationIterations);
+
+		graph::MaxGraphErrors subMaxGraphErrors;
+		if(!subPoses.empty())
+		{
+			subMaxGraphErrors = graph::computeMaxGraphErrors(
+					subPoses,
+					subConstraintsOut);
+		}
+		if(subPoses.empty() ||
+		   subMaxGraphErrors.linearRatio > _optimizationMaxError ||
+		   subMaxGraphErrors.angularRatio > _optimizationMaxError)
+		{
+			// The poses used as initial guess have been optimized with the removed
+			// link, they may be too distorted for the optimizer to converge back
+			// (local minimum). Try again with an initial guess propagated from
+			// the root through the remaining links (neighbor links first), like
+			// on first optimization (see Optimizer::getConnectedGraph()).
+			std::map<int, Transform> propagatedPoses;
+			std::multimap<int, Link> propagatedLinks;
+			_graphOptimizer->getConnectedGraph(fromId, guessPoses, subConstraintsOut, propagatedPoses, propagatedLinks);
+			cv::Mat propagatedCovariance;
+			double propagatedError = 0.0;
+			int propagatedIterations = 0;
+			std::map<int, Transform> propagatedOptimizedPoses = _graphOptimizer->optimize(
+				fromId,
+				propagatedPoses,
+				subConstraintsOut,
+				propagatedCovariance,
+				0,
+				&propagatedError,
+				&propagatedIterations);
+			if(!propagatedOptimizedPoses.empty())
+			{
+				graph::MaxGraphErrors propagatedMaxGraphErrors = graph::computeMaxGraphErrors(
+						propagatedOptimizedPoses,
+						subConstraintsOut);
+				if(propagatedMaxGraphErrors.linearLink.isValid() &&
+				   (subPoses.empty() ||
+				    std::max(propagatedMaxGraphErrors.linearRatio, propagatedMaxGraphErrors.angularRatio) <
+				    std::max(subMaxGraphErrors.linearRatio, subMaxGraphErrors.angularRatio)))
+				{
+					UWARN("Optimization error is lower (linear=%f, angular=%f) when restarting from "
+						"an initial guess propagated from node %d through the remaining links (was linear=%f, angular=%f).",
+						propagatedMaxGraphErrors.linearRatio, propagatedMaxGraphErrors.angularRatio, fromId,
+						subMaxGraphErrors.linearRatio, subMaxGraphErrors.angularRatio);
+					subPoses = propagatedOptimizedPoses;
+					subMaxGraphErrors = propagatedMaxGraphErrors;
+					subOptimizationCovariance = propagatedCovariance;
+					subOptimizationError = propagatedError;
+					subOptimizationIterations = propagatedIterations;
+				}
+			}
+		}
 
 		if(subPoses.empty())
 		{
@@ -5792,9 +5846,6 @@ std::list<std::pair<int, int> > Rtabmap::repairGraph(
 		}
 		else
 		{
-			graph::MaxGraphErrors subMaxGraphErrors = graph::computeMaxGraphErrors(
-					subPoses,
-					subConstraintsOut);
 			if(!subMaxGraphErrors.linearLink.isValid())
 			{
 				UWARN("Could not compute graph errors! Wrong loop closures could be accepted!");
