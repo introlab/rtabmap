@@ -261,6 +261,12 @@ std::map<int, cv::Point3f> generateWords3DMono(
 			}
 		}
 		Transform cameraTransformGuess = cameraTransform;
+		// Camera motion (pose of the next camera in the ref camera frame) with unit
+		// translation, from recoverPose(). Points and motion are kept in camera frame
+		// up to scale until the scale is known, then cameraModel.localTransform() is
+		// applied, so that its translation (e.g. a camera lever arm relative to the
+		// base frame) is not scaled.
+		Transform cameraMotion;
 		if(!E.empty())
 		{
 			UDEBUG("essential inliers=%d/%d", essentialInliers, (int)status.size());
@@ -274,12 +280,12 @@ std::map<int, cv::Point3f> generateWords3DMono(
 				P.at<double>(1,3) = t.at<double>(1);
 				P.at<double>(2,3) = t.at<double>(2);
 
-				cameraTransform = Transform(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), t.at<double>(0),
+				cameraMotion = Transform(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), t.at<double>(0),
 						R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), t.at<double>(1),
-						R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), t.at<double>(2));
-				UDEBUG("t (cam frame)=%s", cameraTransform.prettyPrint().c_str());
+						R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), t.at<double>(2)).inverse();
+				UDEBUG("t (cam frame)=%s", cameraMotion.prettyPrint().c_str());
 				UDEBUG("base->cam=%s", cameraModel.localTransform().prettyPrint().c_str());
-				cameraTransform = cameraModel.localTransform() * cameraTransform.inverse() * cameraModel.localTransform().inverse();
+				cameraTransform = cameraModel.localTransform() * cameraMotion * cameraModel.localTransform().inverse();
 				UDEBUG("t (base frame)=%s", cameraTransform.prettyPrint().c_str());
 
 				UASSERT((int)indexes.size() == pts4D.cols && pts4D.rows == 4 && status.size() == indexes.size());
@@ -290,7 +296,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 						pts4D.col(i) /= pts4D.at<double>(3,i);
 						if(pts4D.at<double>(2,i) > 0)
 						{
-							words3D.insert(std::make_pair(indexes[i], util3d::transformPoint(cv::Point3f(pts4D.at<double>(0,i), pts4D.at<double>(1,i), pts4D.at<double>(2,i)), cameraModel.localTransform())));
+							words3D.insert(std::make_pair(indexes[i], cv::Point3f(pts4D.at<double>(0,i), pts4D.at<double>(1,i), pts4D.at<double>(2,i))));
 						}
 					}
 				}
@@ -307,19 +313,31 @@ std::map<int, cv::Point3f> generateWords3DMono(
 
 			// estimate the scale and variance
 			float scale = 1.0f;
-			if(!cameraTransformGuess.isNull())
+			if(!cameraTransformGuess.isNull() && !cameraMotion.isNull())
 			{
-				scale = cameraTransformGuess.getNorm()/cameraTransform.getNorm();
+				// compare translations in camera frame, cameraMotion has unit translation
+				Transform cameraMotionGuess = cameraModel.localTransform().inverse() * cameraTransformGuess * cameraModel.localTransform();
+				scale = cameraMotionGuess.getNorm()/cameraMotion.getNorm();
 			}
 			float variance = 1.0f;
 
 			std::vector<cv::Point3f> inliersRef;
 			std::vector<cv::Point3f> inliersRefGuess;
-			if(!refGuess3D.empty())
+			if(!refGuess3D.empty() && !cameraMotion.isNull())
 			{
+				// refGuess3D are in base frame, bring them in camera frame like words3D
+				std::map<int, cv::Point3f> refGuess3DCam;
+				Transform baseToCam = cameraModel.localTransform().inverse();
+				for(std::map<int, cv::Point3f>::const_iterator iter=refGuess3D.begin(); iter!=refGuess3D.end(); ++iter)
+				{
+					if(util3d::isFinite(iter->second) && (iter->second.x != 0 || iter->second.y != 0 || iter->second.z != 0))
+					{
+						refGuess3DCam.insert(refGuess3DCam.end(), std::make_pair(iter->first, util3d::transformPoint(iter->second, baseToCam)));
+					}
+				}
 				util3d::findCorrespondences(
 						words3D,
-						refGuess3D,
+						refGuess3DCam,
 						inliersRef,
 						inliersRefGuess,
 						0);
@@ -333,8 +351,8 @@ std::map<int, cv::Point3f> generateWords3DMono(
 					std::multimap<float, float> scales; // <variance, scale>
 					for(unsigned int i=0; i<inliersRef.size(); ++i)
 					{
-						// using x as depth, assuming we are in global referential
-						float s = inliersRefGuess.at(i).x/inliersRef.at(i).x;
+						// using z as depth, we are in camera frame
+						float s = inliersRefGuess.at(i).z/inliersRef.at(i).z;
 						std::vector<float> errorSqrdDists(inliersRef.size());
 						for(unsigned int j=0; j<inliersRef.size(); ++j)
 						{
@@ -381,22 +399,20 @@ std::map<int, cv::Point3f> generateWords3DMono(
 						(int)words3D.size(), (int)refGuess3D.size());
 			}
 
-			if(scale!=1.0f)
+			if(!cameraMotion.isNull())
 			{
-				// Adjust output transform and points based on scale found
-				cameraTransform.x()*=scale;
-				cameraTransform.y()*=scale;
-				cameraTransform.z()*=scale;
+				// Adjust output transform and points based on scale found, then
+				// transform them in base frame
+				cameraMotion.x()*=scale;
+				cameraMotion.y()*=scale;
+				cameraMotion.z()*=scale;
+				cameraTransform = cameraModel.localTransform() * cameraMotion * cameraModel.localTransform().inverse();
 
-				UASSERT(indexes.size() == newCorners.size());
-				for(unsigned int i=0; i<indexes.size(); ++i)
+				for(std::map<int, cv::Point3f>::iterator iter=words3D.begin(); iter!=words3D.end(); ++iter)
 				{
-					std::map<int, cv::Point3f>::iterator iter = words3D.find(indexes[i]);
-					if(iter!=words3D.end() && util3d::isFinite(iter->second))
+					if(util3d::isFinite(iter->second))
 					{
-						iter->second.x *= scale;
-						iter->second.y *= scale;
-						iter->second.z *= scale;
+						iter->second = util3d::transformPoint(iter->second*scale, cameraModel.localTransform());
 					}
 				}
 			}
