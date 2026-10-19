@@ -14,6 +14,7 @@ on:
     branches:
       - '**'
     paths-ignore: *platform_only
+  merge_group:
   workflow_dispatch:
 
 env:
@@ -286,7 +287,7 @@ jobs:
     - name: Build Windows Package
       shell: pwsh
       run: |
-        if ("${{ github.event_name }}" -eq "pull_request") {
+        if ("${{ github.event_name }}" -eq "pull_request" -or "${{ github.event_name }}" -eq "merge_group") {
           cpack --config build/CPackConfig.cmake -G ZIP -B build
         } else {
           cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
@@ -305,10 +306,10 @@ jobs:
           build/RTABMap-*.zip
         compression-level: 0
         if-no-files-found: warn
-        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+        retention-days: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 1 || 90 }}
 
     - name: Upload RTABMap Artifacts (Installer)
-      if: github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
       uses: actions/upload-artifact@v4
       with:
         name: RTABMap-Binaries-${{ matrix.build_name }}-exe
@@ -316,4 +317,4 @@ jobs:
           build/RTABMap-*.exe
         compression-level: 0
         if-no-files-found: warn
-        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+        retention-days: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 1 || 90 }}
