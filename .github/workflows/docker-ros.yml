@@ -25,10 +25,11 @@ on:
       - 'app/android/**'
       - 'app/ios/**'
       - 'docker/noble/android/**'
+  # No paths-ignore on pull requests: the `changes` job below filters them, so
+  # the required check still reports (a check that never does blocks the PR).
   pull_request:
     branches:
       - '**'
-    paths-ignore: *platform_only
   merge_group:
   workflow_dispatch:
 
@@ -37,6 +38,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Required checks must always report, so pull requests are filtered here
+  # instead of with a paths filter on the trigger: jobs not affected by the
+  # change are skipped, which counts as passing, and only docker-ros-ci below
+  # is required by the ruleset. The merge queue and pushes always build.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      relevant: ${{ github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          # Every changed file must match all patterns, i.e. anything but these.
+          predicate-quantifier: every
+          # Keep in sync with paths-ignore under `push` above.
+          filters: |
+            relevant:
+              - '**'
+              - '!.github/workflows/android.yml'
+              - '!.github/workflows/ios.yml'
+              - '!app/android/**'
+              - '!app/ios/**'
+              - '!docker/noble/android/**'
+
   docker_deps:
 
     # The ###-deps images used to be too flaky to build here at all (seg faults,
@@ -121,11 +149,11 @@ jobs:
             introlab3it/rtabmap:${{ matrix.docker_dir }}-deps-arm64
 
   docker:
-    needs: docker_deps_manifest
+    needs: [changes, docker_deps_manifest]
     # Run even when the deps jobs are skipped (they are, on pull requests):
     # the runtime Dockerfiles then pull the :*-deps manifest already on Docker Hub.
     # A manual dispatch is honored only on master, the only ref we push from.
-    if: ${{ !cancelled() && !failure() && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
+    if: ${{ !cancelled() && !failure() && needs.changes.outputs.relevant == 'true' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
     runs-on: ${{ matrix.runner }}
 
     strategy:
@@ -226,3 +254,14 @@ jobs:
           docker buildx imagetools create "${tag_args[@]}" \
             introlab3it/rtabmap:${{ matrix.docker_dir }}-amd64 \
             introlab3it/rtabmap:${{ matrix.docker_dir }}-arm64
+
+  # The only check of this workflow the ruleset requires: a matrix job skipped
+  # by `if` does not report its per-entry names, so those cannot be required.
+  docker-ros-ci:
+    needs: [changes, docker_deps, docker_deps_manifest, docker, docker_manifest]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

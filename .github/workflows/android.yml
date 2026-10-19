@@ -23,10 +23,11 @@ on:
       - 'app/**'
       - 'docker/noble/android/**'
       - '.github/workflows/android.yml'
+  # No paths filter on pull requests: the `changes` job below filters them, so
+  # the required check still reports (a check that never does blocks the PR).
   pull_request:
     branches:
       - '**'
-    paths: *android_paths
   merge_group:
   workflow_dispatch:
 
@@ -35,9 +36,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Required checks must always report, so pull requests are filtered here
+  # instead of with a paths filter on the trigger: jobs not affected by the
+  # change are skipped, which counts as passing, and only android-ci below
+  # is required by the ruleset. The merge queue and pushes always build.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      relevant: ${{ github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          # Keep in sync with paths under `push` above.
+          filters: |
+            relevant:
+              - 'CMakeLists.txt'
+              - 'Version.h.in'
+              - 'RTABMapConfig.cmake.in'
+              - 'cmake_uninstall.cmake.in'
+              - 'cmake_modules/**'
+              - 'utilite/**'
+              - 'corelib/**'
+              - 'app/**'
+              - 'docker/noble/android/**'
+              - '.github/workflows/android.yml'
+
   docker:
+    needs: changes
     # A manual dispatch is honored only on master, the only ref we push from.
-    if: ${{ github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master' }}
+    if: ${{ needs.changes.outputs.relevant == 'true' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -93,3 +124,14 @@ jobs:
           tags: ${{ matrix.docker_tags }}
           cache-from: type=registry,ref=introlab3it/rtabmap:${{ matrix.docker_tag }}
           cache-to: type=inline
+
+  # The only check of this workflow the ruleset requires: a matrix job skipped
+  # by `if` does not report its per-entry names, so those cannot be required.
+  android-ci:
+    needs: [changes, docker]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
