@@ -15,20 +15,16 @@ name: docker-ros
 # That is also why focal can sit in this matrix: a 20.04 userland runs fine on
 # a newer host kernel, and ros:noetic-perception publishes a native arm64 image.
 
+# No paths filters on the triggers: the `changes` job below filters pushes and
+# pull requests, so the required check still reports (one that never does
+# blocks the PR) and the path list lives in one place.
 on:
   push:
     branches:
       - 'master'
-    paths-ignore: &platform_only
-      - '.github/workflows/android.yml'
-      - '.github/workflows/ios.yml'
-      - 'app/android/**'
-      - 'app/ios/**'
-      - 'docker/noble/android/**'
   pull_request:
     branches:
       - '**'
-    paths-ignore: *platform_only
   merge_group:
   workflow_dispatch:
 
@@ -37,6 +33,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Required checks must always report, so pushes and pull requests are
+  # filtered here instead of on the trigger: jobs not affected by the
+  # change are skipped, which counts as passing, and only docker-ros-ci below
+  # is required by the ruleset. The merge queue and dispatches always build.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant == 'true' || (github.event_name != 'pull_request' && github.event_name != 'push') }}
+    steps:
+      # Pull requests are diffed through the API; a push needs the git history.
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        with:
+          # Every changed file must match all patterns, i.e. anything but these.
+          predicate-quantifier: every
+          filters: |
+            relevant:
+              - '**'
+              - '!.github/workflows/android.yml'
+              - '!.github/workflows/ios.yml'
+              - '!app/android/**'
+              - '!app/ios/**'
+              - '!docker/noble/android/**'
+
   docker_deps:
 
     # The ###-deps images used to be too flaky to build here at all (seg faults,
@@ -50,7 +76,8 @@ jobs:
     # focal is deliberately absent: its ROS1/noetic deps are frozen, so
     # :focal-deps is built by hand on the rare occasion it changes. The focal
     # runtime image below still builds here, FROM the published :focal-deps.
-    if: github.ref == 'refs/heads/master'
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true' && github.ref == 'refs/heads/master'
 
     runs-on: ${{ matrix.runner }}
 
@@ -93,11 +120,11 @@ jobs:
           cache-to: type=inline
 
   docker_deps_manifest:
-    needs: docker_deps
+    needs: [changes, docker_deps]
     # Same gate as docker_deps, so both are skipped together on pull requests
     # (github.ref is refs/pull/<n>/merge there): the per-arch -deps tags this
     # joins are only ever pushed from master.
-    if: ${{ !cancelled() && !failure() && github.ref == 'refs/heads/master' }}
+    if: ${{ !cancelled() && !failure() && needs.changes.outputs.relevant == 'true' && github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-26.04
 
     strategy:
@@ -121,11 +148,11 @@ jobs:
             introlab3it/rtabmap:${{ matrix.docker_dir }}-deps-arm64
 
   docker:
-    needs: docker_deps_manifest
+    needs: [changes, docker_deps_manifest]
     # Run even when the deps jobs are skipped (they are, on pull requests):
     # the runtime Dockerfiles then pull the :*-deps manifest already on Docker Hub.
     # A manual dispatch is honored only on master, the only ref we push from.
-    if: ${{ !cancelled() && !failure() && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
+    if: ${{ !cancelled() && !failure() && needs.changes.outputs.relevant == 'true' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
     runs-on: ${{ matrix.runner }}
 
     strategy:
@@ -172,9 +199,9 @@ jobs:
           cache-to: type=inline
 
   docker_manifest:
-    needs: docker
+    needs: [changes, docker]
     # Nothing to join on pull requests, where the per-arch tags are never pushed.
-    if: ${{ !cancelled() && !failure() && github.event_name != 'pull_request' && github.event_name != 'merge_group' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
+    if: ${{ !cancelled() && !failure() && needs.changes.outputs.relevant == 'true' && github.event_name != 'pull_request' && github.event_name != 'merge_group' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
     runs-on: ubuntu-26.04
 
     strategy:
@@ -226,3 +253,14 @@ jobs:
           docker buildx imagetools create "${tag_args[@]}" \
             introlab3it/rtabmap:${{ matrix.docker_dir }}-amd64 \
             introlab3it/rtabmap:${{ matrix.docker_dir }}-arm64
+
+  # The only check of this workflow the ruleset requires: a matrix job skipped
+  # by `if` does not report its per-entry names, so those cannot be required.
+  docker-ros-ci:
+    needs: [changes, docker_deps, docker_deps_manifest, docker, docker_manifest]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
