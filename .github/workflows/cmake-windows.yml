@@ -1,19 +1,15 @@
 name: CMake-Windows
 
+# No paths filters on the triggers: the `changes` job below filters pushes and
+# pull requests, so the required check still reports (one that never does
+# blocks the PR) and the path list lives in one place.
 on:
   push:
     branches: 
       - master
-    paths-ignore: &platform_only
-      - '.github/workflows/android.yml'
-      - '.github/workflows/ios.yml'
-      - 'app/android/**'
-      - 'app/ios/**'
-      - 'docker/noble/android/**'
   pull_request:
     branches:
       - '**'
-    paths-ignore: *platform_only
   merge_group:
   workflow_dispatch:
 
@@ -25,8 +21,40 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Required checks must always report, so pushes and pull requests are
+  # filtered here instead of on the trigger: jobs not affected by the
+  # change are skipped, which counts as passing, and only windows-ci below
+  # is required by the ruleset. The merge queue and dispatches always build.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant == 'true' || (github.event_name != 'pull_request' && github.event_name != 'push') }}
+    steps:
+      # Pull requests are diffed through the API; a push needs the git history.
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        with:
+          # Every changed file must match all patterns, i.e. anything but these.
+          predicate-quantifier: every
+          filters: |
+            relevant:
+              - '**'
+              - '!.github/workflows/android.yml'
+              - '!.github/workflows/ios.yml'
+              - '!app/android/**'
+              - '!app/ios/**'
+              - '!docker/noble/android/**'
+
   build:
     name: ${{ matrix.build_name }}
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -341,3 +369,14 @@ jobs:
         compression-level: 0
         if-no-files-found: warn
         retention-days: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 1 || 90 }}
+
+  # The only check of this workflow the ruleset requires: a matrix job skipped
+  # by `if` does not report its per-entry names, so those cannot be required.
+  windows-ci:
+    needs: [changes, build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
