@@ -33,7 +33,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.24.2</span>
+   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.23.14</span>
    </div>
    <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
@@ -187,9 +187,6 @@ cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><
 <tr class="memitem:ac38e8ed586d24c4b9fe72d64afeb9583" id="r_ac38e8ed586d24c4b9fe72d64afeb9583"><td class="memItemLeft" align="right" valign="top">cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html#ac38e8ed586d24c4b9fe72d64afeb9583">exposureFusion</a> (const std::vector&lt; cv::Mat &gt; &amp;images)</td></tr>
 <tr class="memdesc:ac38e8ed586d24c4b9fe72d64afeb9583"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs exposure fusion on a set of input images.  <br /></td></tr>
 <tr class="separator:ac38e8ed586d24c4b9fe72d64afeb9583"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a618f530b70cbdbd4e287bb760147538d" id="r_a618f530b70cbdbd4e287bb760147538d"><td class="memItemLeft" align="right" valign="top">bool RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html#a618f530b70cbdbd4e287bb760147538d">stereoExposureCompensation</a> (const cv::Mat &amp;left, const cv::Mat &amp;right, cv::Mat &amp;leftOut, cv::Mat &amp;rightOut, std::vector&lt; double &gt; *gains=0)</td></tr>
-<tr class="memdesc:a618f530b70cbdbd4e287bb760147538d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Equalizes the exposure of the left and right images of a stereo camera.  <br /></td></tr>
-<tr class="separator:a618f530b70cbdbd4e287bb760147538d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac29ac5b8bed26a5299d378708170dd11" id="r_ac29ac5b8bed26a5299d378708170dd11"><td class="memItemLeft" align="right" valign="top">void RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html#ac29ac5b8bed26a5299d378708170dd11">HSVtoRGB</a> (float *r, float *g, float *b, float h, float s, float v)</td></tr>
 <tr class="memdesc:ac29ac5b8bed26a5299d378708170dd11"><td class="mdescLeft">&#160;</td><td class="mdescRight">Converts a color from HSV (Hue, Saturation, Value) to RGB.  <br /></td></tr>
 <tr class="separator:ac29ac5b8bed26a5299d378708170dd11"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1461,66 +1458,6 @@ The disparity map is returned in floating point format, where the value represen
 <dl class="section return"><dt>Returns</dt><dd>A fused color image (CV_8UC3) with enhanced exposure. If OpenCV version is below 3, the function returns a clone of the first image in the input vector.</dd></dl>
 <dl class="section note"><dt>Note</dt><dd>The output image is normalized to 8-bit color (0–255). Exposure fusion requires OpenCV 3.0 or later.</dd></dl>
 <dl class="section warning"><dt>Warning</dt><dd>If OpenCV version is lower than 3, exposure fusion is not performed and a warning is issued. </dd></dl>
-
-</div>
-</div>
-<a id="a618f530b70cbdbd4e287bb760147538d" name="a618f530b70cbdbd4e287bb760147538d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a618f530b70cbdbd4e287bb760147538d">&#9670;&#160;</a></span>stereoExposureCompensation()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">bool RTABMAP_CORE_EXPORT rtabmap::util2d::stereoExposureCompensation </td>
-          <td>(</td>
-          <td class="paramtype">const cv::Mat &amp;&#160;</td>
-          <td class="paramname"><em>left</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const cv::Mat &amp;&#160;</td>
-          <td class="paramname"><em>right</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">cv::Mat &amp;&#160;</td>
-          <td class="paramname"><em>leftOut</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">cv::Mat &amp;&#160;</td>
-          <td class="paramname"><em>rightOut</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">std::vector&lt; double &gt; *&#160;</td>
-          <td class="paramname"><em>gains</em> = <code>0</code>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Equalizes the exposure of the left and right images of a stereo camera. </p>
-<p>Their gains are estimated with cv::detail::GainCompensator, assuming both images see the same scene, and applied to each one. <a class="el" href="classrtabmap_1_1Stereo.html" title="Sparse stereo matching using block matching.">Stereo</a> correspondences (e.g., by optical flow) assume the same brightness in both images: with cameras exposing differently, most of them would be rejected.</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">left</td><td>Left image (8 bits, mono or color). </td></tr>
-    <tr><td class="paramname">right</td><td>Right image (8 bits, mono or color), of the same size. </td></tr>
-    <tr><td class="paramname">leftOut</td><td>Compensated left image (can be the same as <code>left</code>). </td></tr>
-    <tr><td class="paramname">rightOut</td><td>Compensated right image (can be the same as <code>right</code>). </td></tr>
-    <tr><td class="paramname">gains</td><td>If not null, the gains applied to the left and right images. </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>false (and the images copied as they are) if not compensated: images of different sizes or not 8 bits, or OpenCV version under 3. </dd></dl>
 
 </div>
 </div>
