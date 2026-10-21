@@ -926,13 +926,20 @@ private:
 			std::multimap<int, Link> * constraints = 0,
 			double * error = 0,
 			int * iterationsDone = 0) const;
+	Link findLoopClosureToRepair(
+		const graph::MaxGraphErrors & maxGraphErrors,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & constraints,
+		const std::set<std::pair<int, int> > & newLinks) const;
 	std::list<std::pair<int, int> > repairGraph(
+		const Link & linkToRemove,
 		graph::MaxGraphErrors & maxGraphErrors,
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> & constraints,
 		double & optimizationError,
 		int & optimizationIterations,
-		cv::Mat & optimizationCovariance);
+		cv::Mat & optimizationCovariance,
+		const std::set<std::pair<int, int> > & newLinks);
 	void updateGoalIndex();
 	bool computePath(int targetNode, std::map<int, Transform> nodes, const std::multimap<int, rtabmap::Link> & constraints);
 

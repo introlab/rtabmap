@@ -2543,7 +2543,18 @@ TEST(RtabmapTest, ProcessRejectsBadLoopClosureInLocalizationModeViaOptimizeMaxEr
 // both place the bad link as the dominant max-error edge across both phase-2
 // iterations. TORO's simpler gradient solver does not converge the same way
 // and the test does not hold for it (see ProcessRepairsGraphAfterRepeatedBadLoopClosure*).
-static void runProcessRepairsGraphAfterRepeatedBadLoopClosure(int optimizerStrategy, bool gtsamIncremental = false)
+//
+// With stiffBadLink=true, the planted link has a very small variance instead
+// (#1784): the optimizer satisfies it and the max error goes on the adjacent
+// neighbor (odometry) links, which cannot be removed. The loop closure around
+// that neighbor link with the highest error is then considered for repair.
+// Depending on the optimizer, that error is mostly linear (GTSAM) or angular
+// (g2o), so this covers both linear and angular repair triggers.
+// With g2o, the poses optimized with the stiff bad link are so distorted that
+// re-optimizing from them after removing it converges to a local minimum: the
+// repair succeeds only when re-optimizing from an initial guess propagated
+// through the remaining links.
+static void runProcessRepairsGraphAfterRepeatedBadLoopClosure(int optimizerStrategy, bool gtsamIncremental = false, bool stiffBadLink = false)
 {
 	ParametersMap params = badLoopClosureParams();
 	params[Parameters::kOptimizerStrategy()] = uNumber2Str(optimizerStrategy);
@@ -2600,13 +2611,17 @@ static void runProcessRepairsGraphAfterRepeatedBadLoopClosure(int optimizerStrat
 	// phase-2 iterations -> _lastRejectedLoopClosureIds stays on (N8,N2)
 	// -> repair fires on the second iteration.
 	const Link badLink(8, 2, Link::kGlobalClosure, Transform::getIdentity(),
-			cv::Mat::eye(6, 6, CV_64FC1) * 1.0);
+			cv::Mat::eye(6, 6, CV_64FC1) * (stiffBadLink ? 10000.0 : 1.0));
 	ASSERT_TRUE(rtabmap.addLink(badLink));
 
 	// Phase 2: enable OptimizeMaxError + repair.
 	ParametersMap params2 = params;
 	params2[Parameters::kRGBDOptimizeMaxError()] = "1.0";
-	params2[Parameters::kRGBDOptimizeMaxErrorRepairRadius()] = "1.0";
+	// With the stiff bad link, the error can spread further along the chain
+	// (with g2o, mostly on the orientation of the neighbor links), so a larger
+	// radius is used to find the bad link from the neighbor link with the
+	// highest error.
+	params2[Parameters::kRGBDOptimizeMaxErrorRepairRadius()] = stiffBadLink ? "3.0" : "1.0";
 	rtabmap.parseParameters(params2);
 
 	// Back up smoothly from N8 (odom x=7) toward N3 (odom x=2).
@@ -2631,10 +2646,19 @@ static void runProcessRepairsGraphAfterRepeatedBadLoopClosure(int optimizerStrat
 		auto itTo = s.find(Statistics::kLoopOptimization_max_error_to_id());
 		ASSERT_NE(itFrom, s.end());
 		ASSERT_NE(itTo, s.end());
-		// The max-error edge must be the planted (N8,N2) loop so the second
-		// iteration sees the same edge -> _lastRejectedLoopClosureIds matches.
-		EXPECT_EQ(int(itFrom->second), 2);
-		EXPECT_EQ(int(itTo->second), 8);
+		if(stiffBadLink)
+		{
+			// The max-error edge is a neighbor link next to the planted link
+			EXPECT_EQ(std::abs(int(itFrom->second) - int(itTo->second)), 1)
+					<< "max error edge " << itFrom->second << "->" << itTo->second;
+		}
+		else
+		{
+			// The max-error edge must be the planted (N8,N2) loop so the second
+			// iteration sees the same edge -> _lastRejectedLoopClosureIds matches.
+			EXPECT_EQ(int(itFrom->second), 2);
+			EXPECT_EQ(int(itTo->second), 8);
+		}
 	}
 
 	// N14: unique features intermediate (forward step). Doesn't trigger a
@@ -2698,6 +2722,24 @@ TEST(RtabmapTest, ProcessRepairsGraphAfterRepeatedBadLoopClosureGTSAMIncremental
 	// as the dominant max-error edge across both rejection iterations so the
 	// repair branch fires.
 	runProcessRepairsGraphAfterRepeatedBadLoopClosure(Optimizer::kTypeGTSAM, /*gtsamIncremental=*/true);
+}
+
+TEST(RtabmapTest, ProcessRepairsGraphAfterRepeatedStiffBadLoopClosureG2O)
+{
+	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		GTEST_SKIP() << "g2o optimizer not available in this build";
+	}
+	runProcessRepairsGraphAfterRepeatedBadLoopClosure(Optimizer::kTypeG2O, false, /*stiffBadLink=*/true);
+}
+
+TEST(RtabmapTest, ProcessRepairsGraphAfterRepeatedStiffBadLoopClosureGTSAM)
+{
+	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+	{
+		GTEST_SKIP() << "GTSAM optimizer not available in this build";
+	}
+	runProcessRepairsGraphAfterRepeatedBadLoopClosure(Optimizer::kTypeGTSAM, false, /*stiffBadLink=*/true);
 }
 
 // ---------------------------------------------------------------------------
