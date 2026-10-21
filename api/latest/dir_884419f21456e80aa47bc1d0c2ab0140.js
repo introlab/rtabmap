@@ -35,6 +35,7 @@ var dir_884419f21456e80aa47bc1d0c2ab0140 =
     [ "Image.h", "Image_8h_source.html", null ],
     [ "IMU.h", "IMU_8h_source.html", null ],
     [ "IMUFilter.h", "IMUFilter_8h_source.html", null ],
+    [ "ImuMotionPredictor.h", "ImuMotionPredictor_8h_source.html", null ],
     [ "IMUThread.h", "IMUThread_8h_source.html", null ],
     [ "Landmark.h", "Landmark_8h_source.html", null ],
     [ "LaserScan.h", "LaserScan_8h_source.html", null ],
