@@ -89,6 +89,26 @@ if !errorlevel! GEQ 8 (
     pause
     exit /b !errorlevel!
 )
+:: Kinect20.dll is a VS2012 build and imports MSVCR110.dll/MSVCP110.dll, which
+:: recent Windows images (e.g. GitHub's windows-2022) don't ship. Stage them beside
+:: Kinect20.dll so the export, and the package built from it, are self-contained.
+:: The Kinect SDK v2 installer puts the VC++ 2012 x64 runtime in System32; from a
+:: 32-bit shell the 64-bit System32 is only reachable through Sysnative.
+set "VCRT110_DIR=%SystemRoot%\System32"
+if exist "%SystemRoot%\Sysnative\msvcr110.dll" set "VCRT110_DIR=%SystemRoot%\Sysnative"
+for %%f in (msvcr110.dll msvcp110.dll) do (
+    if not exist "!VCRT110_DIR!\%%f" (
+        echo Error: %%f not found in !VCRT110_DIR!. Install the Visual C++ 2012 Redistributable x64: https://www.microsoft.com/en-us/download/details.aspx?id=30679
+        pause
+        exit /b 1
+    )
+)
+robocopy "%VCRT110_DIR%" "%K4W2_ROOT%\bin" msvcr110.dll msvcp110.dll /XO >nul
+if !errorlevel! GEQ 8 (
+    echo Error: Robocopy failed with exit code !errorlevel!
+    pause
+    exit /b !errorlevel!
+)
 
 :: orbbec SDK2
 echo [+] Building OrbbecSDK_v2...
