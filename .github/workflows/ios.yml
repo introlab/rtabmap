@@ -1,21 +1,16 @@
 name: iOS
 
+# No paths filters on the triggers: the `changes` job below filters pushes and
+# pull requests, so the required check still reports (one that never does
+# blocks the PR) and the path list lives in one place.
 on:
   push:
     branches:
       - master
-    paths: &ios_paths
-      - '.github/workflows/ios.yml'
-      - 'app/ios/**'
-      - 'app/android/jni/**'
-      - 'corelib/**'
-      - 'utilite/**'
-      - 'cmake_modules/**'
-      - 'CMakeLists.txt'
   pull_request:
     branches:
       - '**'
-    paths: *ios_paths
+  merge_group:
   workflow_dispatch:
 
 concurrency:
@@ -29,8 +24,39 @@ env:
   XCODE_VERSION: '26.5'
 
 jobs:
+  # Required checks must always report, so pushes and pull requests are
+  # filtered here instead of on the trigger: jobs not affected by the
+  # change are skipped, which counts as passing, and only ios-ci below
+  # is required by the ruleset. The merge queue and dispatches always build.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant == 'true' || (github.event_name != 'pull_request' && github.event_name != 'push') }}
+    steps:
+      # Pull requests are diffed through the API; a push needs the git history.
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        with:
+          filters: |
+            relevant:
+              - '.github/workflows/ios.yml'
+              - 'app/ios/**'
+              - 'app/android/jni/**'
+              - 'corelib/**'
+              - 'utilite/**'
+              - 'cmake_modules/**'
+              - 'CMakeLists.txt'
+
   build:
     name: build-ios
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     # macos-26 (Tahoe) ships Xcode 26.x, matching the toolchain used to build the prebuilt libraries.
     runs-on: macos-26
 
@@ -96,7 +122,10 @@ jobs:
             DEVELOPMENT_TEAM="" \
             build
 
+      # The .ipa only feeds the artifact below; neither is needed in the merge
+      # queue, where the build itself is the check.
       - name: Package app (unsigned .ipa)
+        if: github.event_name != 'merge_group'
         run: |
           set -eux
           APP_DIR="build/Build/Products/Release-iphoneos"
@@ -106,6 +135,7 @@ jobs:
           zip -q -r RTABMapApp-unsigned.ipa Payload
 
       - name: Upload app artifact
+        if: github.event_name != 'merge_group'
         uses: actions/upload-artifact@v4
         with:
           name: RTABMapApp-ios-unsigned
@@ -113,3 +143,14 @@ jobs:
           compression-level: 0
           if-no-files-found: error
           retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+
+  # The only check of this workflow the ruleset requires: a matrix job skipped
+  # by `if` does not report its per-entry names, so those cannot be required.
+  ios-ci:
+    needs: [changes, build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
