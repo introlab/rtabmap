@@ -109,7 +109,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr transformPointCloud(
 		const Transform & transform)
 {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::transformPointCloud(*cloud, *output, transform.toEigen4f());
+	if(!cloud->empty()) // PCL 1.12 divides by width=0 on empty clouds (PointCloudLibrary/pcl#5113)
+	{
+		pcl::transformPointCloud(*cloud, *output, transform.toEigen4f());
+	}
 	return output;
 }
 pcl::PointCloud<pcl::PointXYZI>::Ptr transformPointCloud(
@@ -117,7 +120,10 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr transformPointCloud(
 		const Transform & transform)
 {
 	pcl::PointCloud<pcl::PointXYZI>::Ptr output(new pcl::PointCloud<pcl::PointXYZI>);
-	pcl::transformPointCloud(*cloud, *output, transform.toEigen4f());
+	if(!cloud->empty()) // PCL 1.12 divides by width=0 on empty clouds (PointCloudLibrary/pcl#5113)
+	{
+		pcl::transformPointCloud(*cloud, *output, transform.toEigen4f());
+	}
 	return output;
 }
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformPointCloud(
@@ -125,7 +131,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformPointCloud(
 		const Transform & transform)
 {
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
-	pcl::transformPointCloud(*cloud, *output, transform.toEigen4f());
+	if(!cloud->empty()) // PCL 1.12 divides by width=0 on empty clouds (PointCloudLibrary/pcl#5113)
+	{
+		pcl::transformPointCloud(*cloud, *output, transform.toEigen4f());
+	}
 	return output;
 }
 pcl::PointCloud<pcl::PointNormal>::Ptr transformPointCloud(
@@ -133,7 +142,10 @@ pcl::PointCloud<pcl::PointNormal>::Ptr transformPointCloud(
 		const Transform & transform)
 {
 	pcl::PointCloud<pcl::PointNormal>::Ptr output(new pcl::PointCloud<pcl::PointNormal>);
-	pcl::transformPointCloudWithNormals(*cloud, *output, transform.toEigen4f());
+	if(!cloud->empty()) // PCL 1.12 divides by width=0 on empty clouds (PointCloudLibrary/pcl#5113)
+	{
+		pcl::transformPointCloudWithNormals(*cloud, *output, transform.toEigen4f());
+	}
 	return output;
 }
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformPointCloud(
@@ -141,7 +153,10 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformPointCloud(
 		const Transform & transform)
 {
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-	pcl::transformPointCloudWithNormals(*cloud, *output, transform.toEigen4f());
+	if(!cloud->empty()) // PCL 1.12 divides by width=0 on empty clouds (PointCloudLibrary/pcl#5113)
+	{
+		pcl::transformPointCloudWithNormals(*cloud, *output, transform.toEigen4f());
+	}
 	return output;
 }
 pcl::PointCloud<pcl::PointXYZINormal>::Ptr transformPointCloud(
@@ -149,7 +164,10 @@ pcl::PointCloud<pcl::PointXYZINormal>::Ptr transformPointCloud(
 		const Transform & transform)
 {
 	pcl::PointCloud<pcl::PointXYZINormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZINormal>);
-	pcl::transformPointCloudWithNormals(*cloud, *output, transform.toEigen4f());
+	if(!cloud->empty()) // PCL 1.12 divides by width=0 on empty clouds (PointCloudLibrary/pcl#5113)
+	{
+		pcl::transformPointCloudWithNormals(*cloud, *output, transform.toEigen4f());
+	}
 	return output;
 }
 

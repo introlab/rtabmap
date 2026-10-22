@@ -138,6 +138,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_workingMemIntermediateNodesCount(0),
 	_stMemIntermediateNodesCount(0),
 	_allNodesInWM(true),
+	_saved2DMapOutdated(false),
+	_savedOptimizedMeshOutdated(false),
 	_receivingOdometryFeatures(false),
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
@@ -2187,6 +2189,9 @@ void Memory::clear()
 {
 	UDEBUG("");
 
+	_saved2DMapOutdated = false;
+	_savedOptimizedMeshOutdated = false;
+
 	// empty the STM
 	while(_stMem.size())
 	{
@@ -2660,6 +2665,57 @@ std::map<int, Transform> Memory::loadOptimizedPoses(Transform * lastlocalization
 				  Parameters::kMemInitWMWithAllNodes().c_str());
 			return std::map<int, Transform>();
 		}
+
+		// Make sure that all nodes in working memory linked to the optimized
+		// graph are in it. The optimized poses are saved only on clean shutdown,
+		// so after an unclean shutdown, newer nodes may have been saved without
+		// the optimized graph being updated (#1772). Intermediate nodes are
+		// ignored, and disconnected sessions are not reachable from the graph.
+		std::list<int> toVisit;
+		std::set<int> visited;
+		for(std::map<int, Transform>::iterator iter=poses.lower_bound(1); iter!=poses.end(); ++iter)
+		{
+			toVisit.push_back(iter->first);
+			visited.insert(iter->first);
+		}
+		std::vector<int> missingIds;
+		while(!toVisit.empty())
+		{
+			// All visited nodes are in WM: the optimized poses were checked
+			// above and only linked nodes in WM are added
+			const Signature * s = this->getSignature(toVisit.front());
+			UASSERT_MSG(s != 0, uFormat("Node %d not found in memory", toVisit.front()).c_str());
+			toVisit.pop_front();
+			for(std::multimap<int, Link>::const_iterator iter=s->getLinks().begin(); iter!=s->getLinks().end(); ++iter)
+			{
+				int id = iter->first;
+				if(id > 0 &&
+				   _workingMem.find(id) != _workingMem.end() &&
+				   visited.insert(id).second)
+				{
+					toVisit.push_back(id);
+					const Signature * linked = this->getSignature(id);
+					if(linked && linked->getWeight() != -1)
+					{
+						missingIds.push_back(id);
+					}
+				}
+			}
+		}
+		if(!missingIds.empty())
+		{
+			std::sort(missingIds.begin(), missingIds.end());
+			UWARN("%d node(s) in working memory linked to the saved optimized graph (%d poses) "
+				  "are not in it (e.g., node %d), the saved optimized graph is outdated (the "
+				  "database may not have been closed properly). Returning empty optimized "
+				  "poses to force re-update, the saved 2D map and optimized mesh are also ignored.",
+				  (int)missingIds.size(),
+				  (int)poses.size(),
+				  missingIds.front());
+			_saved2DMapOutdated = true;
+			_savedOptimizedMeshOutdated = true;
+			return std::map<int, Transform>();
+		}
 		return poses;
 
 	}
@@ -2671,6 +2727,7 @@ void Memory::save2DMap(const cv::Mat & map, float xMin, float yMin, float cellSi
 	if(_dbDriver && !this->isReadOnly())
 	{
 		_dbDriver->save2DMap(map, xMin, yMin, cellSize);
+		_saved2DMapOutdated = false;
 	}
 	else
 	{
@@ -2684,6 +2741,11 @@ cv::Mat Memory::load2DMap(float & xMin, float & yMin, float & cellSize) const
 {
 	if(_dbDriver)
 	{
+		if(_saved2DMapOutdated)
+		{
+			UWARN("Saved 2D map is ignored as it was created from an outdated optimized graph.");
+			return cv::Mat();
+		}
 		return _dbDriver->load2DMap(xMin, yMin, cellSize);
 	}
 	return cv::Mat();
@@ -2702,6 +2764,7 @@ void Memory::saveOptimizedMesh(
 	if(_dbDriver)
 	{
 		_dbDriver->saveOptimizedMesh(cloud, polygons, texCoords, textures);
+		_savedOptimizedMeshOutdated = false;
 	}
 }
 
@@ -2716,6 +2779,11 @@ cv::Mat Memory::loadOptimizedMesh(
 {
 	if(_dbDriver)
 	{
+		if(_savedOptimizedMeshOutdated)
+		{
+			UWARN("Saved optimized mesh is ignored as it was created from an outdated optimized graph.");
+			return cv::Mat();
+		}
 		return _dbDriver->loadOptimizedMesh(polygons, texCoords, textures);
 	}
 	return cv::Mat();
@@ -6561,24 +6629,17 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			// words3D should have the same size than words if not empty
 			float bad_point = std::numeric_limits<float>::quiet_NaN ();
 			UASSERT(words3D.size() == 0 || words.size() == words3D.size());
-			bool words3DWasEmpty = words3D.empty();
 			int added3DPointsWithoutDepth = 0;
+			if(words3D.empty())
+			{
+				// words3D must be parallel to wordsKpts (indexed by kptIdx = iter->second),
+				// as expected by all consumers (e.g. DBDriverSqlite3: getWords3()[w->second]).
+				words3D.resize(words.size(), cv::Point3f(bad_point,bad_point,bad_point));
+			}
 			for(std::multimap<int, int>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
 				std::map<int, cv::Point3f>::iterator jter=inliers.find(iter->first);
-				if(words3DWasEmpty)
-				{
-					if(jter != inliers.end())
-					{
-						words3D.push_back(jter->second);
-						++added3DPointsWithoutDepth;
-					}
-					else
-					{
-						words3D.push_back(cv::Point3f(bad_point,bad_point,bad_point));
-					}
-				}
-				else if(!util3d::isFinite(words3D[iter->second]) && jter != inliers.end())
+				if(!util3d::isFinite(words3D[iter->second]) && jter != inliers.end())
 				{
 					words3D[iter->second] = jter->second;
 					++added3DPointsWithoutDepth;

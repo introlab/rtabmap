@@ -885,6 +885,9 @@ private:
 	int _workingMemIntermediateNodesCount; // number of nodes with weight==-1 currently in _workingMem
 	int _stMemIntermediateNodesCount; // number of nodes with weight==-1 currently in _stMem
 	bool _allNodesInWM;
+	// Saved 2D map/optimized mesh were created from an outdated optimized graph (see loadOptimizedPoses())
+	mutable bool _saved2DMapOutdated;
+	mutable bool _savedOptimizedMeshOutdated;
 	bool _receivingOdometryFeatures;
 	GPS _gpsOrigin;
 	std::vector<CameraModel> _rectCameraModels;
