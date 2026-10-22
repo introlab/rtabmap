@@ -471,44 +471,47 @@ $(document).ready(function(){initNavTree('Memory_8h_source.html',''); initResiza
 <div class="line"><a id="l00885" name="l00885"></a><span class="lineno">  885</span>  <span class="keywordtype">int</span> _workingMemIntermediateNodesCount; <span class="comment">// number of nodes with weight==-1 currently in _workingMem</span></div>
 <div class="line"><a id="l00886" name="l00886"></a><span class="lineno">  886</span>  <span class="keywordtype">int</span> _stMemIntermediateNodesCount; <span class="comment">// number of nodes with weight==-1 currently in _stMem</span></div>
 <div class="line"><a id="l00887" name="l00887"></a><span class="lineno">  887</span>  <span class="keywordtype">bool</span> _allNodesInWM;</div>
-<div class="line"><a id="l00888" name="l00888"></a><span class="lineno">  888</span>  <span class="keywordtype">bool</span> _receivingOdometryFeatures;</div>
-<div class="line"><a id="l00889" name="l00889"></a><span class="lineno">  889</span>  <a class="code hl_class" href="classrtabmap_1_1GPS.html">GPS</a> _gpsOrigin;</div>
-<div class="line"><a id="l00890" name="l00890"></a><span class="lineno">  890</span>  std::vector&lt;CameraModel&gt; _rectCameraModels;</div>
-<div class="line"><a id="l00891" name="l00891"></a><span class="lineno">  891</span>  std::vector&lt;StereoCameraModel&gt; _rectStereoCameraModels;</div>
-<div class="line"><a id="l00892" name="l00892"></a><span class="lineno">  892</span>  std::vector&lt;double&gt; _odomMaxInf;</div>
-<div class="line"><a id="l00893" name="l00893"></a><span class="lineno">  893</span> </div>
-<div class="line"><a id="l00894" name="l00894"></a><span class="lineno">  894</span>  std::map&lt;int, Signature *&gt; _signatures; <span class="comment">// TODO : check if a signature is already added? although it is not supposed to occur...</span></div>
-<div class="line"><a id="l00895" name="l00895"></a><span class="lineno">  895</span>  std::set&lt;int&gt; _stMem; <span class="comment">// id</span></div>
-<div class="line"><a id="l00896" name="l00896"></a><span class="lineno">  896</span>  std::map&lt;int, double&gt; _workingMem; <span class="comment">// id,age</span></div>
-<div class="line"><a id="l00897" name="l00897"></a><span class="lineno">  897</span>  std::map&lt;int, Transform&gt; _groundTruths;</div>
-<div class="line"><a id="l00898" name="l00898"></a><span class="lineno">  898</span>  std::map&lt;int, std::string&gt; _labels;</div>
-<div class="line"><a id="l00899" name="l00899"></a><span class="lineno">  899</span>  std::map&lt;int, std::set&lt;int&gt; &gt; _landmarksIndex; <span class="comment">// &lt; -landmarkId, nodeIds &gt;</span></div>
-<div class="line"><a id="l00900" name="l00900"></a><span class="lineno">  900</span>    std::map&lt;int, float&gt; _landmarksSize;           <span class="comment">// +landmarkId</span></div>
-<div class="line"><a id="l00901" name="l00901"></a><span class="lineno">  901</span> </div>
-<div class="line"><a id="l00902" name="l00902"></a><span class="lineno">  902</span>  <span class="comment">//Keypoint stuff</span></div>
-<div class="line"><a id="l00903" name="l00903"></a><span class="lineno">  903</span>  <a class="code hl_class" href="classrtabmap_1_1VWDictionary.html">VWDictionary</a> * _vwd;</div>
-<div class="line"><a id="l00904" name="l00904"></a><span class="lineno">  904</span>  <a class="code hl_class" href="classrtabmap_1_1Feature2D.html">Feature2D</a> * _feature2D;</div>
-<div class="line"><a id="l00905" name="l00905"></a><span class="lineno">  905</span>  <span class="keywordtype">float</span> _badSignRatio;</div>
-<div class="line"><a id="l00906" name="l00906"></a><span class="lineno">  906</span>  <span class="keywordtype">bool</span> _tfIdfLikelihoodUsed;</div>
-<div class="line"><a id="l00907" name="l00907"></a><span class="lineno">  907</span>  <span class="keywordtype">bool</span> _parallelized;</div>
-<div class="line"><a id="l00908" name="l00908"></a><span class="lineno">  908</span> </div>
-<div class="line"><a id="l00909" name="l00909"></a><span class="lineno">  909</span>  <a class="code hl_class" href="classrtabmap_1_1Registration.html">Registration</a> * _registrationPipeline;</div>
-<div class="line"><a id="l00910" name="l00910"></a><span class="lineno">  910</span>  <a class="code hl_class" href="classrtabmap_1_1RegistrationIcp.html">RegistrationIcp</a> * _registrationIcpMulti;</div>
-<div class="line"><a id="l00911" name="l00911"></a><span class="lineno">  911</span>  <a class="code hl_class" href="classrtabmap_1_1RegistrationVis.html">RegistrationVis</a> * _registrationVis;</div>
-<div class="line"><a id="l00912" name="l00912"></a><span class="lineno">  912</span> </div>
-<div class="line"><a id="l00913" name="l00913"></a><span class="lineno">  913</span>  <a class="code hl_class" href="classrtabmap_1_1LocalGridMaker.html">LocalGridMaker</a> * _localMapMaker;</div>
-<div class="line"><a id="l00914" name="l00914"></a><span class="lineno">  914</span> </div>
-<div class="line"><a id="l00915" name="l00915"></a><span class="lineno">  915</span>  <a class="code hl_class" href="classrtabmap_1_1MarkerDetector.html">MarkerDetector</a> * _markerDetector;</div>
-<div class="line"><a id="l00916" name="l00916"></a><span class="lineno">  916</span> </div>
-<div class="line"><a id="l00917" name="l00917"></a><span class="lineno">  917</span>  <a class="code hl_class" href="classrtabmap_1_1GlobalDescriptorExtractor.html">GlobalDescriptorExtractor</a> * _globalDescriptorExtractor;</div>
-<div class="line"><a id="l00918" name="l00918"></a><span class="lineno">  918</span> </div>
-<div class="line"><a id="l00919" name="l00919"></a><span class="lineno">  919</span>  <span class="keywordtype">bool</span> _dummyDictionary;</div>
-<div class="line"><a id="l00920" name="l00920"></a><span class="lineno">  920</span>};</div>
-</div>
+<div class="line"><a id="l00888" name="l00888"></a><span class="lineno">  888</span>  <span class="comment">// Saved 2D map/optimized mesh were created from an outdated optimized graph (see loadOptimizedPoses())</span></div>
+<div class="line"><a id="l00889" name="l00889"></a><span class="lineno">  889</span>  <span class="keyword">mutable</span> <span class="keywordtype">bool</span> _saved2DMapOutdated;</div>
+<div class="line"><a id="l00890" name="l00890"></a><span class="lineno">  890</span>  <span class="keyword">mutable</span> <span class="keywordtype">bool</span> _savedOptimizedMeshOutdated;</div>
+<div class="line"><a id="l00891" name="l00891"></a><span class="lineno">  891</span>  <span class="keywordtype">bool</span> _receivingOdometryFeatures;</div>
+<div class="line"><a id="l00892" name="l00892"></a><span class="lineno">  892</span>  <a class="code hl_class" href="classrtabmap_1_1GPS.html">GPS</a> _gpsOrigin;</div>
+<div class="line"><a id="l00893" name="l00893"></a><span class="lineno">  893</span>  std::vector&lt;CameraModel&gt; _rectCameraModels;</div>
+<div class="line"><a id="l00894" name="l00894"></a><span class="lineno">  894</span>  std::vector&lt;StereoCameraModel&gt; _rectStereoCameraModels;</div>
+<div class="line"><a id="l00895" name="l00895"></a><span class="lineno">  895</span>  std::vector&lt;double&gt; _odomMaxInf;</div>
+<div class="line"><a id="l00896" name="l00896"></a><span class="lineno">  896</span> </div>
+<div class="line"><a id="l00897" name="l00897"></a><span class="lineno">  897</span>  std::map&lt;int, Signature *&gt; _signatures; <span class="comment">// TODO : check if a signature is already added? although it is not supposed to occur...</span></div>
+<div class="line"><a id="l00898" name="l00898"></a><span class="lineno">  898</span>  std::set&lt;int&gt; _stMem; <span class="comment">// id</span></div>
+<div class="line"><a id="l00899" name="l00899"></a><span class="lineno">  899</span>  std::map&lt;int, double&gt; _workingMem; <span class="comment">// id,age</span></div>
+<div class="line"><a id="l00900" name="l00900"></a><span class="lineno">  900</span>  std::map&lt;int, Transform&gt; _groundTruths;</div>
+<div class="line"><a id="l00901" name="l00901"></a><span class="lineno">  901</span>  std::map&lt;int, std::string&gt; _labels;</div>
+<div class="line"><a id="l00902" name="l00902"></a><span class="lineno">  902</span>  std::map&lt;int, std::set&lt;int&gt; &gt; _landmarksIndex; <span class="comment">// &lt; -landmarkId, nodeIds &gt;</span></div>
+<div class="line"><a id="l00903" name="l00903"></a><span class="lineno">  903</span>    std::map&lt;int, float&gt; _landmarksSize;           <span class="comment">// +landmarkId</span></div>
+<div class="line"><a id="l00904" name="l00904"></a><span class="lineno">  904</span> </div>
+<div class="line"><a id="l00905" name="l00905"></a><span class="lineno">  905</span>  <span class="comment">//Keypoint stuff</span></div>
+<div class="line"><a id="l00906" name="l00906"></a><span class="lineno">  906</span>  <a class="code hl_class" href="classrtabmap_1_1VWDictionary.html">VWDictionary</a> * _vwd;</div>
+<div class="line"><a id="l00907" name="l00907"></a><span class="lineno">  907</span>  <a class="code hl_class" href="classrtabmap_1_1Feature2D.html">Feature2D</a> * _feature2D;</div>
+<div class="line"><a id="l00908" name="l00908"></a><span class="lineno">  908</span>  <span class="keywordtype">float</span> _badSignRatio;</div>
+<div class="line"><a id="l00909" name="l00909"></a><span class="lineno">  909</span>  <span class="keywordtype">bool</span> _tfIdfLikelihoodUsed;</div>
+<div class="line"><a id="l00910" name="l00910"></a><span class="lineno">  910</span>  <span class="keywordtype">bool</span> _parallelized;</div>
+<div class="line"><a id="l00911" name="l00911"></a><span class="lineno">  911</span> </div>
+<div class="line"><a id="l00912" name="l00912"></a><span class="lineno">  912</span>  <a class="code hl_class" href="classrtabmap_1_1Registration.html">Registration</a> * _registrationPipeline;</div>
+<div class="line"><a id="l00913" name="l00913"></a><span class="lineno">  913</span>  <a class="code hl_class" href="classrtabmap_1_1RegistrationIcp.html">RegistrationIcp</a> * _registrationIcpMulti;</div>
+<div class="line"><a id="l00914" name="l00914"></a><span class="lineno">  914</span>  <a class="code hl_class" href="classrtabmap_1_1RegistrationVis.html">RegistrationVis</a> * _registrationVis;</div>
+<div class="line"><a id="l00915" name="l00915"></a><span class="lineno">  915</span> </div>
+<div class="line"><a id="l00916" name="l00916"></a><span class="lineno">  916</span>  <a class="code hl_class" href="classrtabmap_1_1LocalGridMaker.html">LocalGridMaker</a> * _localMapMaker;</div>
+<div class="line"><a id="l00917" name="l00917"></a><span class="lineno">  917</span> </div>
+<div class="line"><a id="l00918" name="l00918"></a><span class="lineno">  918</span>  <a class="code hl_class" href="classrtabmap_1_1MarkerDetector.html">MarkerDetector</a> * _markerDetector;</div>
+<div class="line"><a id="l00919" name="l00919"></a><span class="lineno">  919</span> </div>
+<div class="line"><a id="l00920" name="l00920"></a><span class="lineno">  920</span>  <a class="code hl_class" href="classrtabmap_1_1GlobalDescriptorExtractor.html">GlobalDescriptorExtractor</a> * _globalDescriptorExtractor;</div>
 <div class="line"><a id="l00921" name="l00921"></a><span class="lineno">  921</span> </div>
-<div class="line"><a id="l00922" name="l00922"></a><span class="lineno">  922</span>} <span class="comment">// namespace rtabmap</span></div>
-<div class="line"><a id="l00923" name="l00923"></a><span class="lineno">  923</span> </div>
-<div class="line"><a id="l00924" name="l00924"></a><span class="lineno">  924</span><span class="preprocessor">#endif </span><span class="comment">/* MEMORY_H_ */</span><span class="preprocessor"></span></div>
+<div class="line"><a id="l00922" name="l00922"></a><span class="lineno">  922</span>  <span class="keywordtype">bool</span> _dummyDictionary;</div>
+<div class="line"><a id="l00923" name="l00923"></a><span class="lineno">  923</span>};</div>
+</div>
+<div class="line"><a id="l00924" name="l00924"></a><span class="lineno">  924</span> </div>
+<div class="line"><a id="l00925" name="l00925"></a><span class="lineno">  925</span>} <span class="comment">// namespace rtabmap</span></div>
+<div class="line"><a id="l00926" name="l00926"></a><span class="lineno">  926</span> </div>
+<div class="line"><a id="l00927" name="l00927"></a><span class="lineno">  927</span><span class="preprocessor">#endif </span><span class="comment">/* MEMORY_H_ */</span><span class="preprocessor"></span></div>
 <div class="ttc" id="aUStl_8h_html"><div class="ttname"><a href="UStl_8h.html">UStl.h</a></div><div class="ttdoc">Wrappers of STL for convenient functions.</div></div>
 <div class="ttc" id="aclassrtabmap_1_1DBDriver_html"><div class="ttname"><a href="classrtabmap_1_1DBDriver.html">rtabmap::DBDriver</a></div><div class="ttdoc">Abstract database driver for RTAB-Map maps (signatures, links, words, statistics).</div><div class="ttdef"><b>Definition</b> <a href="DBDriver_8h_source.html#l00071">DBDriver.h:72</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1Feature2D_html"><div class="ttname"><a href="classrtabmap_1_1Feature2D.html">rtabmap::Feature2D</a></div><div class="ttdoc">Abstract 2D feature detector and descriptor extractor for visual SLAM.</div><div class="ttdef"><b>Definition</b> <a href="Features2d_8h_source.html#l00145">Features2d.h:145</a></div></div>
