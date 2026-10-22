@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <rtabmap/core/Rtabmap.h>
+#include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/GlobalDescriptor.h>
 #include <rtabmap/core/GPS.h>
 #include <rtabmap/core/Landmark.h>
@@ -17,10 +18,12 @@
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UStl.h>
 #include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iterator>
+#include <memory>
 #include <random>
 #include <set>
 #include <sstream>
@@ -4111,4 +4114,144 @@ TEST_F(RtabmapFixture, NoGroundTruthStatisticsWithoutGroundTruth)
 	ASSERT_TRUE(process());
 	const std::map<std::string, float> & stats = rtabmap_->getStatistics().data();
 	EXPECT_TRUE(stats.find(Statistics::kGtTranslational_rmse()) == stats.end());
+}
+
+// ---------------------------------------------------------------------------
+// Saved optimized graph cache validation (#1772)
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Overwrite the optimized graph and 2D map caches of a closed database, as
+// they would be after a session closed cleanly before the last nodes were
+// added (the caches are saved only on clean shutdown).
+void overwriteSavedCaches(const std::string & dbPath, const std::map<int, Transform> & poses)
+{
+	std::unique_ptr<DBDriver> driver(DBDriver::create());
+	ASSERT_TRUE(driver->openConnection(dbPath));
+	driver->saveOptimizedPoses(poses, poses.empty()?Transform():poses.rbegin()->second);
+	driver->save2DMap(cv::Mat(4, 4, CV_8SC1, cv::Scalar(0)), -1.0f, -1.0f, 0.5f);
+	driver->closeConnection();
+}
+
+std::map<int, Transform> loadSavedPoses(const std::string & dbPath)
+{
+	std::unique_ptr<DBDriver> driver(DBDriver::create());
+	EXPECT_TRUE(driver->openConnection(dbPath));
+	std::map<int, Transform> poses = driver->loadOptimizedPoses();
+	driver->closeConnection(false);
+	return poses;
+}
+
+} // namespace
+
+// After an unclean shutdown, nodes linked to the graph may have been saved
+// without the optimized graph cache being updated: the cache must be
+// rejected, the graph re-optimized and the saved 2D map ignored.
+TEST(RtabmapTest, InitRejectsSavedOptimizedGraphMissingLinkedNodes)
+{
+	const std::string dbPath = uniqueDbPath();
+	const std::vector<int> ids = buildSixNodeMap(dbPath);
+	std::map<int, Transform> stalePoses;
+	for(int i = 0; i < 3; ++i)
+	{
+		stalePoses.insert(std::make_pair(ids[i], Transform(float(i), 0, 0, 0, 0, 0)));
+	}
+	overwriteSavedCaches(dbPath, stalePoses);
+	{
+		ParametersMap params = defaultRtabmapParams();
+		params[Parameters::kMemIncrementalMemory()] = "false";
+		Rtabmap rtabmap;
+		rtabmap.init(params, dbPath);
+
+		const std::map<int, Transform> & poses = rtabmap.getLocalOptimizedPoses();
+		for(size_t i = 0; i < ids.size(); ++i)
+		{
+			EXPECT_EQ(poses.count(ids[i]), 1u) << "node " << ids[i] << " missing from the optimized graph";
+		}
+		float xMin, yMin, cellSize;
+		EXPECT_TRUE(rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty())
+				<< "2D map created from the outdated optimized graph should be ignored";
+
+		// A map saved during this session is valid again
+		rtabmap.getMemory()->save2DMap(cv::Mat(4, 4, CV_8SC1, cv::Scalar(0)), -1.0f, -1.0f, 0.5f);
+		EXPECT_FALSE(rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty());
+		rtabmap.close(false);
+	}
+	UFile::erase(dbPath.c_str());
+}
+
+// An up-to-date cache is used as is, with its 2D map.
+TEST(RtabmapTest, InitAcceptsCompleteSavedOptimizedGraph)
+{
+	const std::string dbPath = uniqueDbPath();
+	const std::vector<int> ids = buildSixNodeMap(dbPath);
+	std::map<int, Transform> savedPoses;
+	for(size_t i = 0; i < ids.size(); ++i)
+	{
+		// offset to distinguish them from re-optimized poses
+		savedPoses.insert(std::make_pair(ids[i], Transform(float(i), 1.0f, 0, 0, 0, 0)));
+	}
+	overwriteSavedCaches(dbPath, savedPoses);
+	{
+		ParametersMap params = defaultRtabmapParams();
+		params[Parameters::kMemIncrementalMemory()] = "false";
+		Rtabmap rtabmap;
+		rtabmap.init(params, dbPath);
+
+		const std::map<int, Transform> & poses = rtabmap.getLocalOptimizedPoses();
+		ASSERT_EQ(poses.size(), savedPoses.size());
+		for(const auto & pose : savedPoses)
+		{
+			ASSERT_EQ(poses.count(pose.first), 1u);
+			EXPECT_NEAR(poses.at(pose.first).y(), 1.0f, 1e-5f) << "node " << pose.first;
+		}
+		float xMin, yMin, cellSize;
+		EXPECT_FALSE(rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty());
+		rtabmap.close(false);
+	}
+	UFile::erase(dbPath.c_str());
+}
+
+// Nodes of a session not linked to the saved graph are legitimately not in
+// it: the cache must not be rejected because of them.
+TEST(RtabmapTest, InitAcceptsSavedOptimizedGraphWithDisconnectedSession)
+{
+	const std::string dbPath = uniqueDbPath();
+	const std::vector<int> ids = buildSixNodeMap(dbPath);
+	{
+		// Second mapping session, not linked to the first one
+		cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+		cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+		Rtabmap rtabmap;
+		rtabmap.init(defaultRtabmapParams(), dbPath);
+		for(int i = 0; i < 3; ++i)
+		{
+			SensorData data(image);
+			data.setId(100 + i);
+			EXPECT_TRUE(rtabmap.process(data, Transform(float(i), 5.0f, 0, 0, 0, 0), covariance));
+		}
+		rtabmap.close(true);
+	}
+	// Keep only the second session in the saved graph, like a localization
+	// session saves only the graph connected to the current map
+	std::map<int, Transform> savedPoses = loadSavedPoses(dbPath);
+	for(size_t i = 0; i < ids.size(); ++i)
+	{
+		ASSERT_EQ(savedPoses.erase(ids[i]), 1u);
+	}
+	ASSERT_FALSE(savedPoses.empty());
+	overwriteSavedCaches(dbPath, savedPoses);
+	{
+		ParametersMap params = defaultRtabmapParams();
+		params[Parameters::kMemIncrementalMemory()] = "false";
+		Rtabmap rtabmap;
+		rtabmap.init(params, dbPath);
+
+		EXPECT_EQ(uKeys(rtabmap.getLocalOptimizedPoses()), uKeys(savedPoses));
+		float xMin, yMin, cellSize;
+		EXPECT_FALSE(rtabmap.getMemory()->load2DMap(xMin, yMin, cellSize).empty());
+		rtabmap.close(false);
+	}
+	UFile::erase(dbPath.c_str());
 }
