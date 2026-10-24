@@ -237,11 +237,25 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			}
 			else
 			{
-				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Variances(
-						(gtsam::Vector(6) <<
-								(hasGravityConstraints?2:1e-2), (hasGravityConstraints?2:1e-2), (hasGPSPrior?1e-2:1e-9), // roll, pitch, fixed yaw if there are no priors
-								(hasGPSPrior?2:1e-2), hasGPSPrior?2:1e-2, hasGPSPrior?2:1e-2 // xyz
-								).finished());
+				// The yaw to fix (if there are no priors) is the rotation around gravity, while
+				// roll and pitch are free if there are gravity constraints. As gtsam Pose3 prior
+				// error is expressed in the local frame of the root, build the rotation information
+				// around the up vector in root frame, otherwise if the root is not upright
+				// (e.g., phone held vertically), yaw would be loosely constrained.
+				Eigen::Vector3d up = initialPose.toEigen4d().block<3,3>(0,0).transpose() * Eigen::Vector3d::UnitZ();
+				std::multimap<int, Link>::const_iterator rootGravity = graph::findLink(edgeConstraints, rootId, rootId, false, Link::kGravity);
+				if(hasGravityConstraints && rootGravity != edgeConstraints.end())
+				{
+					// Use the measured up vector instead, in case the root's estimate is not aligned with gravity
+					up = rootGravity->second.transform().toEigen4d().block<3,3>(0,0).transpose() * Eigen::Vector3d::UnitZ();
+				}
+				const Eigen::Matrix3d upProj = up * up.transpose();
+				Eigen::Matrix<double, 6, 6> priorInf = Eigen::Matrix<double, 6, 6>::Zero();
+				priorInf.block<3,3>(0,0) =
+						upProj / (hasGPSPrior?1e-2:1e-9) + // yaw
+						(Eigen::Matrix3d::Identity() - upProj) / (hasGravityConstraints?2:1e-2); // roll, pitch
+				priorInf.block<3,3>(3,3) = Eigen::Matrix3d::Identity() / (hasGPSPrior?2:1e-2); // xyz
+				gtsam::SharedNoiseModel priorNoise = gtsam::noiseModel::Gaussian::Information(priorInf);
 				graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
 				addedPrior.push_back(ConstraintToFactor(rootId, rootId, -1));
 			}

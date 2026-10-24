@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Version.h>
 #include <rtabmap/core/optimizer/OptimizerG2O.h>
+#include <rtabmap/core/Graph.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
 #include <rtabmap/core/util3d.h>
@@ -521,9 +522,20 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				pose.translation() = a.translation();
 				e->setMeasurement(pose);
 				e->setParameterId(0, PARAM_OFFSET);
+				// Fix yaw (rotation around gravity), pitch and roll not fixed. As the prior
+				// error is expressed in the local frame of the root, build the rotation
+				// information around the up vector in root frame, otherwise if the root
+				// is not upright (e.g., phone held vertically), yaw would be loosely constrained.
+				Eigen::Vector3d up = a.linear().transpose() * Eigen::Vector3d::UnitZ();
+				std::multimap<int, Link>::const_iterator rootGravity = graph::findLink(edgeConstraints, rootId, rootId, false, Link::kGravity);
+				if(rootGravity != edgeConstraints.end())
+				{
+					// Use the measured up vector instead, in case the root's estimate is not aligned with gravity
+					up = rootGravity->second.transform().toEigen3d().linear().transpose() * Eigen::Vector3d::UnitZ();
+				}
+				const Eigen::Matrix3d upProj = up * up.transpose();
 				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity()*10e6;
-				// pitch and roll not fixed
-				information(3,3) = information(4,4) = 1;
+				information.block<3,3>(3,3) = upProj*10e6 + (Eigen::Matrix3d::Identity() - upProj);
 				e->setInformation(information);
 				if (!optimizer.addEdge(e))
 				{
