@@ -68,6 +68,9 @@ jobs:
         with:
           xcode-version: ${{ env.XCODE_VERSION }}
 
+      - name: Test scan tracking recovery
+        run: bash app/ios/Tests/run-scan-tracking-tests.sh
+
       - name: Versions
         run: |
           xcodebuild -version
