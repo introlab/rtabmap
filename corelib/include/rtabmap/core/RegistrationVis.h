@@ -40,6 +40,9 @@ class Feature2D;
 #ifdef RTABMAP_PYTHON
 class PyMatcher;
 #endif
+#ifdef RTABMAP_ONNXRUNTIME
+class LightGlueOnnx;
+#endif
 
 /**
  * @class RegistrationVis
@@ -145,6 +148,9 @@ private:
 
 #ifdef RTABMAP_PYTHON
 	PyMatcher * _pyMatcher;
+#endif
+#ifdef RTABMAP_ONNXRUNTIME
+	LightGlueOnnx * _lightGlueOnnx;
 #endif
 };
 

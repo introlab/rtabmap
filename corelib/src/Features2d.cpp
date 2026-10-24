@@ -54,6 +54,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "python/PyDetector.h"
 #endif
 
+#ifdef RTABMAP_ONNXRUNTIME
+#include "onnx/AlikedOnnxDetector.h"
+#endif
+
 #if CV_MAJOR_VERSION < 3
 #include "opencv/Orb.h"
 #ifdef HAVE_OPENCV_GPU
@@ -674,6 +678,9 @@ bool Feature2D::isAvailable(Feature2D::Type type)
 #ifndef RTABMAP_PYTHON
 	if(type == kFeaturePyDetector) return false;
 #endif
+#ifndef RTABMAP_ONNXRUNTIME
+	if(type == kFeatureAlikedOnnx) return false;
+#endif
 	return true;
 }
 Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parameters)
@@ -803,6 +810,11 @@ case Feature2D::kFeatureSuperPointTorch:
 case Feature2D::kFeatureSuperPointRpautrat:
     feature2D = new SuperPointRpautrat(parameters);
     break;
+#endif
+#ifdef RTABMAP_ONNXRUNTIME
+	case Feature2D::kFeatureAlikedOnnx:
+		feature2D = new AlikedOnnx(parameters);
+		break;
 #endif
 	case Feature2D::kFeatureSurfFreak:
 		feature2D = new SURF_FREAK(parameters);
@@ -2937,6 +2949,173 @@ cv::Mat SuperPointRpautrat::generateDescriptorsImpl(const cv::Mat & image, std::
 	return descriptors;
 #else
 	UWARN("RTAB-Map is not built with Torch support so SuperPoint Rpautrat feature cannot be used!");
+	return cv::Mat();
+#endif
+}
+
+
+//////////////////////////
+//ALIKED (ONNX Runtime)
+//////////////////////////
+AlikedOnnx::AlikedOnnx(const ParametersMap & parameters) :
+		path_(Parameters::defaultALIKEDModelPath()),
+		threshold_(Parameters::defaultALIKEDThreshold()),
+		provider_(Parameters::defaultALIKEDProvider()),
+		tensorRTFp16_(Parameters::defaultALIKEDTensorRTFp16()),
+		tensorRTCachePath_(Parameters::defaultALIKEDTensorRTCachePath())
+{
+	parseParameters(parameters);
+}
+
+AlikedOnnx::~AlikedOnnx()
+{
+}
+
+bool AlikedOnnx::isGpuAvailable() const
+{
+#ifdef RTABMAP_ONNXRUNTIME
+	return provider_ > 0;
+#else
+	return false;
+#endif
+}
+
+void AlikedOnnx::parseParameters(const ParametersMap & parameters)
+{
+	Feature2D::parseParameters(parameters);
+
+	std::string previousPath = path_;
+	float previousThreshold = threshold_;
+	int previousProvider = provider_;
+	bool previousFp16 = tensorRTFp16_;
+	std::string previousCachePath = tensorRTCachePath_;
+	Parameters::parse(parameters, Parameters::kALIKEDModelPath(), path_);
+	Parameters::parse(parameters, Parameters::kALIKEDThreshold(), threshold_);
+	Parameters::parse(parameters, Parameters::kALIKEDProvider(), provider_);
+	Parameters::parse(parameters, Parameters::kALIKEDTensorRTFp16(), tensorRTFp16_);
+	Parameters::parse(parameters, Parameters::kALIKEDTensorRTCachePath(), tensorRTCachePath_);
+
+#ifdef RTABMAP_ONNXRUNTIME
+	if(path_.empty())
+	{
+		UERROR("%s parameter should be set to use ALIKED features.", Parameters::kALIKEDModelPath().c_str());
+		aliked_.release();
+	}
+	else if(aliked_.get() == 0 ||
+		path_ != previousPath ||
+		threshold_ != previousThreshold ||
+		provider_ != previousProvider ||
+		tensorRTFp16_ != previousFp16 ||
+		tensorRTCachePath_ != previousCachePath)
+	{
+		aliked_ = cv::Ptr<AlikedOnnxDetector>(new AlikedOnnxDetector(path_, threshold_, provider_, tensorRTFp16_, tensorRTCachePath_));
+	}
+#else
+	UWARN("RTAB-Map is not built with ONNX Runtime support so ALIKED features cannot be used!");
+#endif
+}
+
+std::vector<cv::KeyPoint> AlikedOnnx::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)
+{
+#ifdef RTABMAP_ONNXRUNTIME
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	lastKeypoints_.clear();
+	lastDescriptors_ = cv::Mat();
+	if(roi.x!=0 || roi.y !=0 || roi.width!=image.cols || roi.height!=image.rows)
+	{
+		UERROR("ALIKED: Not supporting ROI (%d,%d,%d,%d). Make sure %s, %s, %s, %s, %s, %s are all set to default values.",
+				roi.x, roi.y, roi.width, roi.height,
+				Parameters::kKpRoiRatios().c_str(),
+				Parameters::kVisRoiRatios().c_str(),
+				Parameters::kVisGridRows().c_str(),
+				Parameters::kVisGridCols().c_str(),
+				Parameters::kKpGridRows().c_str(),
+				Parameters::kKpGridCols().c_str());
+		return std::vector<cv::KeyPoint>();
+	}
+	if(aliked_.get() && aliked_->isValid())
+	{
+		aliked_->detect(image, mask, lastKeypoints_, lastDescriptors_);
+	}
+	return lastKeypoints_;
+#else
+	UWARN("RTAB-Map is not built with ONNX Runtime support so ALIKED features cannot be used!");
+	return std::vector<cv::KeyPoint>();
+#endif
+}
+
+namespace {
+// Index of the keypoint of "candidates" at the same position as "keypoint"
+// (or within maxDistance pixels, if it was refined since), -1 if none.
+int findKeypoint(const std::vector<cv::KeyPoint> & candidates, const cv::KeyPoint & keypoint, float maxDistance)
+{
+	int best = -1;
+	float bestDistance = maxDistance*maxDistance;
+	for(size_t i=0; i<candidates.size(); ++i)
+	{
+		const float dx = candidates[i].pt.x - keypoint.pt.x;
+		const float dy = candidates[i].pt.y - keypoint.pt.y;
+		const float d = dx*dx + dy*dy;
+		if(d == 0.0f)
+		{
+			return (int)i;
+		}
+		if(d <= bestDistance)
+		{
+			bestDistance = d;
+			best = (int)i;
+		}
+	}
+	return best;
+}
+}
+
+cv::Mat AlikedOnnx::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+#ifdef RTABMAP_ONNXRUNTIME
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+	if(keypoints.empty() || aliked_.get() == 0 || !aliked_->isValid())
+	{
+		return descriptors;
+	}
+	descriptors = cv::Mat::zeros((int)keypoints.size(), aliked_->descriptorDim(), CV_32FC1);
+	// ALIKED computes descriptors only for the keypoints it detects: look them up
+	// in the last detection, or detect again on this image if they are not there
+	// (keypoints given by the caller, or of another image).
+	std::vector<cv::KeyPoint> otherKeypoints;
+	cv::Mat otherDescriptors;
+	int missing = 0;
+	for(size_t i=0; i<keypoints.size(); ++i)
+	{
+		int index = findKeypoint(lastKeypoints_, keypoints[i], 1.0f);
+		if(index >= 0)
+		{
+			lastDescriptors_.row(index).copyTo(descriptors.row(i));
+			continue;
+		}
+		if(otherKeypoints.empty())
+		{
+			aliked_->detect(image, cv::Mat(), otherKeypoints, otherDescriptors);
+		}
+		index = findKeypoint(otherKeypoints, keypoints[i], 1.0f);
+		if(index >= 0)
+		{
+			otherDescriptors.row(index).copyTo(descriptors.row(i));
+		}
+		else
+		{
+			++missing;
+		}
+	}
+	if(missing)
+	{
+		UWARN("ALIKED: %d/%d keypoints were not detected by ALIKED on this image, their descriptors are null.",
+				missing, (int)keypoints.size());
+	}
+	return descriptors;
+#else
+	UWARN("RTAB-Map is not built with ONNX Runtime support so ALIKED features cannot be used!");
 	return cv::Mat();
 #endif
 }
