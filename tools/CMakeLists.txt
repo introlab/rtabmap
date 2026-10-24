@@ -17,6 +17,7 @@ ADD_SUBDIRECTORY( Info )
 ADD_SUBDIRECTORY( CleanupLocalGrids )
 ADD_SUBDIRECTORY( GlobalBundleAdjustment )
 ADD_SUBDIRECTORY( ReduceGraph )
+ADD_SUBDIRECTORY( LidarCameraCalibration )
 
 IF(OPENCV_NONFREE_FOUND)
 ADD_SUBDIRECTORY( VocabularyComparison )
