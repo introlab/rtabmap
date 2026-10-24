@@ -54,7 +54,8 @@ jobs:
               - 'cmake_modules/**'
               - 'utilite/**'
               - 'corelib/**'
-              - 'app/**'
+              - 'app/android/**'
+              - 'app/CMakeLists.txt'
               - 'docker/noble/android/**'
               - '.github/workflows/android.yml'
 
