@@ -48,6 +48,7 @@ jobs:
               - '.github/workflows/ios.yml'
               - 'app/ios/**'
               - 'app/android/jni/**'
+              - 'app/CMakeLists.txt'
               - 'corelib/**'
               - 'utilite/**'
               - 'cmake_modules/**'
