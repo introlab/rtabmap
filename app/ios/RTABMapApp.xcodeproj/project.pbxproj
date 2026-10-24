@@ -92,6 +92,7 @@
 		4EE016C3259BE464008CCE65 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4EE016BF259BE464008CCE65 /* Main.storyboard */; };
 		4EE016C4259BE464008CCE65 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4EE016C1259BE464008CCE65 /* LaunchScreen.storyboard */; };
 		4EE016C7259BE46F008CCE65 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4EE016C6259BE46F008CCE65 /* Assets.xcassets */; };
+		4EF47AD8308D4FD400CAA660 /* LibraryAlertController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EF47AD7308D4FBB00CAA660 /* LibraryAlertController.swift */; };
 		4EFD0B97259D501E00575D88 /* line.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4EFD0B63259D501E00575D88 /* line.cpp */; };
 		4EFD0B98259D501E00575D88 /* util.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4EFD0B64259D501E00575D88 /* util.cpp */; };
 		4EFD0B99259D501E00575D88 /* obj_loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4EFD0B65259D501E00575D88 /* obj_loader.cpp */; };
@@ -196,6 +197,7 @@
 		4EE016C2259BE464008CCE65 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = RTABMapApp/Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		4EE016C6259BE46F008CCE65 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = RTABMapApp/Assets.xcassets; sourceTree = "<group>"; };
 		4EE016E1259BE96A008CCE65 /* RTABMapApp-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "RTABMapApp-Bridging-Header.h"; path = "RTABMapApp/RTABMapApp-Bridging-Header.h"; sourceTree = "<group>"; };
+		4EF47AD7308D4FBB00CAA660 /* LibraryAlertController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryAlertController.swift; sourceTree = "<group>"; };
 		4EFAA9422CAE4E960055DA51 /* liblas.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liblas.a; path = RTABMapApp/Libraries/lib/liblas.a; sourceTree = "<group>"; };
 		4EFD0B2B259D4DE900575D88 /* libboost_filesystem.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libboost_filesystem.a; path = RTABMapApp/Libraries/lib/libboost_filesystem.a; sourceTree = "<group>"; };
 		4EFD0B2C259D4DE900575D88 /* libboost_program_options.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libboost_program_options.a; path = RTABMapApp/Libraries/lib/libboost_program_options.a; sourceTree = "<group>"; };
@@ -478,6 +480,7 @@
 				4EE016E1259BE96A008CCE65 /* RTABMapApp-Bridging-Header.h */,
 				4EE016B0259BE441008CCE65 /* SceneDelegate.swift */,
 				4EE016AF259BE441008CCE65 /* ViewController.swift */,
+				4EF47AD7308D4FBB00CAA660 /* LibraryAlertController.swift */,
 				4EE016BF259BE464008CCE65 /* Main.storyboard */,
 				4EE016C1259BE464008CCE65 /* LaunchScreen.storyboard */,
 				4EE016BC259BE45C008CCE65 /* Info.plist */,
@@ -855,6 +858,7 @@
 				4E2C516825A63119005CEDBD /* VerticalScrollerView.swift in Sources */,
 				4EE016B3259BE441008CCE65 /* ViewController.swift in Sources */,
 				4E2C516725A63119005CEDBD /* DatabaseView.swift in Sources */,
+				4EF47AD8308D4FD400CAA660 /* LibraryAlertController.swift in Sources */,
 				4EFD0BAA259D501E00575D88 /* triangle.cpp in Sources */,
 				4EFD0B9D259D501E00575D88 /* segment_drawable.cpp in Sources */,
 				4EE016B4259BE441008CCE65 /* SceneDelegate.swift in Sources */,

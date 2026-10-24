@@ -78,6 +78,8 @@ class DatabaseView: UIView {
     // Create the cover image view
     coverImageView = UIImageView()
     coverImageView.translatesAutoresizingMaskIntoConstraints = false
+	coverImageView.contentMode = .scaleAspectFill
+	coverImageView.clipsToBounds = true
     
     valueObservation = coverImageView.observe(\.image, options: [.new]) { [unowned self] observed, change in
       if change.newValue is UIImage {
@@ -94,12 +96,15 @@ class DatabaseView: UIView {
         (try! URL(fileURLWithPath: databasePath).resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate!.getFormattedDate(format: "yyyy-MM-dd HH:mm:ss"))
     textLabel.textColor = .white
     textLabel.textAlignment = .left
+    textLabel.setContentHuggingPriority(.required, for: .vertical)
+    textLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+    textLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
 
     //Stack View
     let stackView   = UIStackView()
     stackView.axis  = NSLayoutConstraint.Axis.horizontal
     stackView.distribution  = UIStackView.Distribution.fill
-    stackView.alignment = UIStackView.Alignment.center
+    stackView.alignment = UIStackView.Alignment.fill
     stackView.spacing   = 8.0
 
     stackView.addArrangedSubview(coverImageView)
@@ -116,12 +121,11 @@ class DatabaseView: UIView {
     addSubview(indicatorView)
     
     NSLayoutConstraint.activate([
-      stackView.leftAnchor.constraint(equalTo: self.leftAnchor),
-      stackView.rightAnchor.constraint(equalTo: self.rightAnchor),
       stackView.topAnchor.constraint(equalTo: self.topAnchor),
       stackView.bottomAnchor.constraint(equalTo: self.bottomAnchor),
       stackView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
-      coverImageView.widthAnchor.constraint(equalToConstant: 180 - 5),
+      stackView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
+      coverImageView.widthAnchor.constraint(equalTo: self.widthAnchor, multiplier: 0.5, constant: -5),
       indicatorView.centerXAnchor.constraint(equalTo: coverImageView.centerXAnchor),
       indicatorView.centerYAnchor.constraint(equalTo: coverImageView.centerYAnchor)
       ])
