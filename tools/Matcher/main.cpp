@@ -62,6 +62,7 @@ void showUsage()
 			"   rtabmap-matcher --Vis/CorNNDR 0.8 from.png to.png\n"
 			"   rtabmap-matcher --Vis/FeatureType 11 --SuperPoint/ModelPath \"superpoint.pt\" --Vis/CorNNType 6 --PyMatcher/Path \"~/SuperGluePretrainedNetwork/rtabmap_superglue.py\" from.png to.png\n"
 			"   rtabmap-matcher --Vis/FeatureType 1 --Vis/CorNNType 6 --PyMatcher/Path \"~/OANet/demo/rtabmap_oanet.py\" --PyMatcher/Model \"~/OANet/model/gl3d/sift-4000/model_best.pth\" from.png to.png\n"
+			"   rtabmap-matcher --Vis/FeatureType 17 --OnnxDetector/ModelPath \"superpoint.onnx\" --Vis/CorNNType 10 --OnnxMatcher/ModelPath \"superpoint_lightglue.onnx\" from.png to.png\n"
 			"   rtabmap-matcher --calibration calib.yaml --from_depth from_depth.png --to_depth to_depth.png from.png to.png\n"
 			"   rtabmap-matcher --calibration calibFrom.yaml --calibration_to calibTo.yaml --from_depth from_depth.png --to_depth to_depth.png from.png to.png\n"
 			"   rtabmap-matcher --calibration calib.yaml --Vis/FeatureType 2 --Vis/MaxFeatures 10000 --Vis/CorNNType 7 from.png to.png\n"
@@ -399,37 +400,39 @@ int main(int argc, char * argv[])
 		// Visualization
 		//////////////////
 
-		if(reg.getNNType()==6 &&
-		   !dataFrom.getWordsDescriptors().empty() &&
-		   dataFrom.getWordsDescriptors().type()!=CV_32F)
+		// PyMatcher and OnnxMatcher cannot match binary features, RegistrationVis
+		// falls back to brute force with cross check.
+		const bool learnedMatcher = reg.getNNType()==6 || reg.getNNType()==10;
+		const bool learnedMatcherOnBinaryFeatures =
+				learnedMatcher &&
+				!dataFrom.getWordsDescriptors().empty() &&
+				dataFrom.getWordsDescriptors().type()!=CV_32F;
+		if(learnedMatcherOnBinaryFeatures)
 		{
-			UWARN("PyMatcher is selected for matching but binary features "
+			UWARN("%s is selected for matching but binary features "
 				  "are not compatible. BruteForce with CrossCheck (%s=5) "
-				  "has been used instead.", Parameters::kVisCorNNType().c_str());
+				  "has been used instead.", reg.getNNTypeName().c_str(), Parameters::kVisCorNNType().c_str());
 		}
 
 		QApplication app(argc, argv);
 		QDialog dialog;
 		float reprojError = Parameters::defaultVisPnPReprojError();
 		std::string pyMatcherPath;
+		std::string onnxMatcherPath;
 		Parameters::parse(parameters, Parameters::kVisPnPReprojError(), reprojError);
 		Parameters::parse(parameters, Parameters::kPyMatcherPath(), pyMatcherPath);
+		Parameters::parse(parameters, Parameters::kOnnxMatcherModelPath(), onnxMatcherPath);
 
-		// PyMatcher cannot match binary features, RegistrationVis falls back to
-		// brute force with cross check (see the warning above).
-		const bool pyMatcherOnBinaryFeatures =
-				reg.getNNType()==6 &&
-				!dataFrom.getWordsDescriptors().empty() &&
-				dataFrom.getWordsDescriptors().type()!=CV_32F;
-		QString nnTypeName = (pyMatcherOnBinaryFeatures?
+		QString nnTypeName = (learnedMatcherOnBinaryFeatures?
 				RegistrationVis::getNNTypeName(5):reg.getNNTypeName()).c_str();
-		// 5, 6 and 7 are the approaches RegistrationVis matches with itself,
+		// 5, 6, 7 and 10 are the approaches RegistrationVis matches with itself,
 		// the others search for the k nearest neighbors and do the ratio test.
-		const bool nndrUsed = reg.getNNType()<5 || reg.getNNType()>7;
-		if(reg.getNNType()==6 && !pyMatcherOnBinaryFeatures)
+		const bool nndrUsed = reg.getNNType()<5 || (reg.getNNType()>7 && reg.getNNType()!=10);
+		if(learnedMatcher && !learnedMatcherOnBinaryFeatures)
 		{
-			// the script actually used is more telling than the generic name
-			nnTypeName = QString(uSplit(UFile::getName(pyMatcherPath), '.').front().c_str()).replace("rtabmap_", "");
+			// the script or model actually used is more telling than the generic name
+			const std::string & path = reg.getNNType()==6?pyMatcherPath:onnxMatcherPath;
+			nnTypeName = QString(uSplit(UFile::getName(path), '.').front().c_str()).replace("rtabmap_", "");
 		}
 
 		dialog.setWindowTitle(QString("Matches (%1/%2) %3 sec [%4=%5 (%6) %7=%8 (%9)%10 %11=%12 (%13) %14=%15]")

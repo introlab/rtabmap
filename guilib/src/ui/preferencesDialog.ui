@@ -11383,6 +11383,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <string>Superpoint Rpautrat</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>OnnxDetector</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="15" column="1">
@@ -11982,12 +11987,12 @@ Lower the ratio -&gt; higher the precision.</string>
                          </item>
                          <item>
                           <property name="text">
-                           <string>NanoFLANN KdTree</string>
+                           <string>FLANN KdTree Single</string>
                           </property>
                          </item>
                          <item>
                           <property name="text">
-                           <string>FLANN KdTree Single</string>
+                           <string>NanoFLANN KdTree</string>
                           </property>
                          </item>
                         </widget>
@@ -12642,6 +12647,11 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                           <string>PyDescriptor</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>OnnxDescriptor</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="0" column="1">
@@ -12970,6 +12980,97 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                        </item>
                        <item>
                         <spacer name="verticalSpacer_881">
+                         <property name="orientation">
+                          <enum>Qt::Vertical</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>0</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_onnxdescriptor">
+                      <property name="title">
+                       <string>OnnxDescriptor</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_onnxdescriptor">
+                       <item>
+                        <widget class="QLabel" name="label_onnxdescriptor_info">
+                         <property name="text">
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Global descriptor running an ONNX model with &lt;a href=&quot;https://onnxruntime.ai&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;ONNX Runtime&lt;/span&gt;&lt;/a&gt; (e.g., NetVLAD). The model takes an RGB image and returns the descriptor: see &lt;a href=&quot;https://github.com/introlab/rtabmap/tree/master/corelib/src/onnx&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;corelib/src/onnx&lt;/span&gt;&lt;/a&gt; for the expected input/output and the export script. The execution provider and the TensorRT options (Onnx/*) are set in the OnnxDetector panel. RTAB-Map must be built with ONNX Runtime support to use this feature.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="openExternalLinks">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_onnxdescriptor" columnstretch="0,0,1">
+                        <item row="0" column="0">
+                         <widget class="QToolButton" name="toolButton_onnxdescriptor_model_path">
+                          <property name="text">
+                           <string>...</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="0" column="1">
+                         <widget class="QLineEdit" name="lineEdit_onnxdescriptor_model_path"/>
+                        </item>
+                        <item row="0" column="2">
+                         <widget class="QLabel" name="label_onnxdescriptor_model_path">
+                          <property name="text">
+                           <string>[Required] Path to the ONNX model (*.onnx).</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="textInteractionFlags">
+                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="1">
+                         <widget class="QSpinBox" name="spinBox_onnxdescriptor_dim">
+                          <property name="minimum">
+                           <number>0</number>
+                          </property>
+                          <property name="maximum">
+                           <number>999999</number>
+                          </property>
+                          <property name="value">
+                           <number>0</number>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="1" column="2">
+                         <widget class="QLabel" name="label_onnxdescriptor_dim">
+                          <property name="text">
+                           <string>Keep only the first values of the descriptor (re-normalized), 0 keeps the whole descriptor.</string>
+                          </property>
+                          <property name="wordWrap">
+                           <bool>true</bool>
+                          </property>
+                          <property name="textInteractionFlags">
+                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                          </property>
+                         </widget>
+                        </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <spacer name="verticalSpacer_onnxdescriptor">
                          <property name="orientation">
                           <enum>Qt::Vertical</enum>
                          </property>
@@ -23664,12 +23765,17 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                            </item>
                            <item>
                             <property name="text">
+                             <string>FLANN KdTree Single</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
                              <string>NanoFLANN KdTree</string>
                             </property>
                            </item>
                            <item>
                             <property name="text">
-                             <string>FLANN KdTree Single</string>
+                             <string>OnnxMatcher</string>
                             </property>
                            </item>
                           </widget>
@@ -23940,6 +24046,103 @@ Lower the ratio -&gt; higher the precision.</string>
                           </item>
                           <item>
                            <spacer name="verticalSpacer_86">
+                            <property name="orientation">
+                             <enum>Qt::Vertical</enum>
+                            </property>
+                            <property name="sizeHint" stdset="0">
+                             <size>
+                              <width>0</width>
+                              <height>0</height>
+                             </size>
+                            </property>
+                           </spacer>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QGroupBox" name="groupBox_onnxmatcher">
+                         <property name="title">
+                          <string>OnnxMatcher</string>
+                         </property>
+                         <layout class="QVBoxLayout" name="verticalLayout_onnxmatcher">
+                          <item>
+                           <widget class="QLabel" name="label_onnxmatcher_info">
+                            <property name="text">
+                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Feature matcher running an ONNX model with &lt;a href=&quot;https://onnxruntime.ai&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;ONNX Runtime&lt;/span&gt;&lt;/a&gt; (e.g., LightGlue). The model takes the keypoints and descriptors of the two images and returns the matches, like the matchers exported by &lt;a href=&quot;https://github.com/fabio-sim/LightGlue-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;LightGlue-ONNX&lt;/span&gt;&lt;/a&gt;: see &lt;a href=&quot;https://github.com/introlab/rtabmap/tree/master/corelib/src/onnx&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;corelib/src/onnx&lt;/span&gt;&lt;/a&gt; for the expected inputs/outputs of the model, the export scripts and where to download models. &lt;span style=&quot; font-weight:600;&quot;&gt;Important&lt;/span&gt;: Only float descriptors are allowed and the model should have been trained with the descriptors of the feature type used (e.g., SuperPoint-LightGlue with SuperPoint). The execution provider and the TensorRT options (Onnx/*) are set in the OnnxDetector panel. RTAB-Map must be built with ONNX Runtime support to use this feature.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                            <property name="openExternalLinks">
+                             <bool>true</bool>
+                            </property>
+                            <property name="textInteractionFlags">
+                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <layout class="QGridLayout" name="gridLayout_onnxmatcher" columnstretch="0,0,1">
+                            <item row="0" column="0">
+                             <widget class="QToolButton" name="toolButton_onnxmatcher_model_path">
+                              <property name="text">
+                               <string>...</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="0" column="1">
+                             <widget class="QLineEdit" name="lineEdit_onnxmatcher_model_path"/>
+                            </item>
+                            <item row="0" column="2">
+                             <widget class="QLabel" name="label_onnxmatcher_model_path">
+                              <property name="text">
+                               <string>[Required] Path to the ONNX model (*.onnx).</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="1" column="1">
+                             <widget class="QDoubleSpinBox" name="doubleSpinBox_onnxmatcher_threshold">
+                              <property name="decimals">
+                               <number>3</number>
+                              </property>
+                              <property name="minimum">
+                               <double>0.000000000000000</double>
+                              </property>
+                              <property name="maximum">
+                               <double>1.000000000000000</double>
+                              </property>
+                              <property name="singleStep">
+                               <double>0.010000000000000</double>
+                              </property>
+                              <property name="value">
+                               <double>0.100000000000000</double>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="1" column="2">
+                             <widget class="QLabel" name="label_onnxmatcher_threshold">
+                              <property name="text">
+                               <string>Minimum score of a match (when the model outputs match scores).</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item>
+                           <spacer name="verticalSpacer_onnxmatcher">
                             <property name="orientation">
                              <enum>Qt::Vertical</enum>
                             </property>
@@ -24770,6 +24973,11 @@ Lower the ratio -&gt; higher the precision.</string>
                            <item>
                             <property name="text">
                              <string>SuperPoint Rpautrat</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>OnnxDetector</string>
                             </property>
                            </item>
                           </widget>
@@ -29476,6 +29684,182 @@ p, li { white-space: pre-wrap; }
                  </item>
                  <item>
                   <spacer name="verticalSpacer_91">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>4561</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="page_102">
+                <layout class="QVBoxLayout" name="verticalLayout_onnxdetector">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_onnxdetector2">
+                   <property name="title">
+                    <string>OnnxDetector</string>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_onnxdetector2">
+                    <item>
+                     <widget class="QLabel" name="label_onnxdetector_info">
+                      <property name="text">
+                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Feature detector and descriptor running an ONNX model with &lt;a href=&quot;https://onnxruntime.ai&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;ONNX Runtime&lt;/span&gt;&lt;/a&gt; (e.g., SuperPoint, ALIKED, DISK). The model takes a grayscale image and returns keypoints, scores and descriptors, like the extractors exported by &lt;a href=&quot;https://github.com/fabio-sim/LightGlue-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;LightGlue-ONNX&lt;/span&gt;&lt;/a&gt;: see &lt;a href=&quot;https://github.com/introlab/rtabmap/tree/master/corelib/src/onnx&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;corelib/src/onnx&lt;/span&gt;&lt;/a&gt; for the expected inputs/outputs of the model, the export scripts and where to download models. The execution provider and the TensorRT options (Onnx/*) are set in the OnnxDetector panel. RTAB-Map must be built with ONNX Runtime support to use this feature.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="openExternalLinks">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QGridLayout" name="gridLayout_onnxdetector" columnstretch="0,0,1">
+                      <item row="0" column="0">
+                       <widget class="QToolButton" name="toolButton_onnxdetector_model_path">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLineEdit" name="lineEdit_onnxdetector_model_path"/>
+                      </item>
+                      <item row="0" column="2">
+                       <widget class="QLabel" name="label_onnxdetector_model_path">
+                        <property name="text">
+                         <string>[Required] Path to the ONNX model (*.onnx).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QDoubleSpinBox" name="doubleSpinBox_onnxdetector_threshold">
+                        <property name="decimals">
+                         <number>4</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.001000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="2">
+                       <widget class="QLabel" name="label_onnxdetector_threshold">
+                        <property name="text">
+                         <string>Keep only keypoints with a score above this threshold (0 means that only the threshold inside the model is used).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QComboBox" name="comboBox_onnx_provider">
+                        <item>
+                         <property name="text">
+                          <string>CPU</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>CUDA</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>TensorRT</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="2" column="2">
+                       <widget class="QLabel" name="label_onnx_provider">
+                        <property name="text">
+                         <string>ONNX Runtime execution provider, shared by OnnxDetector and OnnxMatcher. A provider not available in the ONNX Runtime library falls back to CPU.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QCheckBox" name="checkBox_onnx_trt_fp16">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="2">
+                       <widget class="QLabel" name="label_onnx_trt_fp16">
+                        <property name="text">
+                         <string>[TensorRT] Build the TensorRT engine in FP16.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QToolButton" name="toolButton_onnx_trt_cache_path">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLineEdit" name="lineEdit_onnx_trt_cache_path"/>
+                      </item>
+                      <item row="4" column="2">
+                       <widget class="QLabel" name="label_onnx_trt_cache_path">
+                        <property name="text">
+                         <string>[TensorRT] Directory where the TensorRT engines are cached (building an engine takes minutes, empty means no cache).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_onnxdetector">
                    <property name="orientation">
                     <enum>Qt::Vertical</enum>
                    </property>

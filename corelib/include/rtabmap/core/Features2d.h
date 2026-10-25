@@ -163,6 +163,7 @@ public:
 		kFeatureSurfDaisy=14,  //new 0.20.6
 		kFeaturePyDetector=15, //new 0.20.8
 		kFeatureSuperPointRpautrat=16, // new 0.23.3
+		kFeatureOnnxDetector=17, // new 0.24.2
 		kFeatureEnd}; // Sentinel: always keep last. Used to iterate through types.
 
 	/** @return Human-readable name for @p type (e.g. `"ORB"`, `"GFTT+BRIEF"`). */
@@ -203,6 +204,8 @@ public:
 			return "PyDetector";
 		case kFeatureSuperPointRpautrat:
 			return "SUPERPOINT-RPAUTRAT";
+		case kFeatureOnnxDetector:
+			return "OnnxDetector";
 		default:
 			return "Unknown";
 		}

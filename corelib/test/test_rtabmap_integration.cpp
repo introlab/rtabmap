@@ -2710,6 +2710,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 	const std::string superpointTorchModel      = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_v1.pt";
 	const std::string superpointRpautratWeights = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_v6_from_tf.pth";
 	const std::string superpointRpautratModel   = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_pytorch.py";
+	const std::string onnxDetectorModel         = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/disk.onnx";
 
 	// One pass per detector: prefer GPU if available, otherwise CPU. To
 	// keep wall-clock low, the two BoW likelihood variants (default raw
@@ -2764,6 +2765,13 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 					<< " (run scripts/fetch_test_data.sh)\n";
 			continue;
 		}
+		if(detectorType == Feature2D::kFeatureOnnxDetector && !UFile::exists(onnxDetectorModel))
+		{
+			std::cerr << "[skip] detector " << typeName
+					<< " missing model: " << onnxDetectorModel
+					<< " (run scripts/fetch_test_data.sh)\n";
+			continue;
+		}
 
 		// Probe GPU availability once per detector. Build the temp instance
 		// with the same asset paths the actual run uses; otherwise SuperPoint
@@ -2779,6 +2787,10 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			{
 				probeParams[Parameters::kSuperPointRpautratWeightsPath()] = superpointRpautratWeights;
 				probeParams[Parameters::kSuperPointRpautratModelPath()]   = superpointRpautratModel;
+			}
+			else if(detectorType == Feature2D::kFeatureOnnxDetector)
+			{
+				probeParams[Parameters::kOnnxDetectorModelPath()] = onnxDetectorModel;
 			}
 			std::unique_ptr<Feature2D> probe(Feature2D::create(detectorType, probeParams));
 			if(probe) gpuAvailable = probe->isGpuAvailable();
@@ -2844,6 +2856,11 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			params[Parameters::kSuperPointRpautratWeightsPath()] = superpointRpautratWeights;
 			params[Parameters::kSuperPointRpautratModelPath()]   = superpointRpautratModel;
 			params[Parameters::kSuperPointRpautratCuda()]        = gpuFlag;
+		}
+		else if(detectorType == Feature2D::kFeatureOnnxDetector)
+		{
+			params[Parameters::kOnnxDetectorModelPath()] = onnxDetectorModel;
+			params[Parameters::kOnnxProvider()]          = useGpu ? "1" : "0";
 		}
 		else if(useGpu)
 		{

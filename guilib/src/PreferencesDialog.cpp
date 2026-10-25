@@ -329,6 +329,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_globalDescriptorExtractor->setItemData(1, 0, Qt::UserRole - 1);
 #endif
 
+#ifndef RTABMAP_ONNXRUNTIME
+	_ui->comboBox_detector_strategy->setItemData(17, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(17, 0, Qt::UserRole - 1);
+	_ui->reextract_nn->setItemData(10, 0, Qt::UserRole - 1);
+	_ui->comboBox_globalDescriptorExtractor->setItemData(2, 0, Qt::UserRole - 1);
+#endif
+
 #if !defined(HAVE_OPENCV_XFEATURES2D) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION<4 || CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<1))
 	_ui->reextract_nn->setItemData(7, 0, Qt::UserRole - 1);
 #endif
@@ -1274,6 +1281,21 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->toolButton_pydetector_path, SIGNAL(clicked()), this, SLOT(changePyDetectorPath()));
 	_ui->checkBox_pydetector_cuda->setObjectName(Parameters::kPyDetectorCuda().c_str());
 
+	// OnnxDetector
+	_ui->lineEdit_onnxdetector_model_path->setObjectName(Parameters::kOnnxDetectorModelPath().c_str());
+	connect(_ui->toolButton_onnxdetector_model_path, SIGNAL(clicked()), this, SLOT(changeOnnxDetectorModelPath()));
+	_ui->doubleSpinBox_onnxdetector_threshold->setObjectName(Parameters::kOnnxDetectorThreshold().c_str());
+	// ONNX Runtime options shared with OnnxMatcher
+	_ui->comboBox_onnx_provider->setObjectName(Parameters::kOnnxProvider().c_str());
+	_ui->checkBox_onnx_trt_fp16->setObjectName(Parameters::kOnnxTensorRTFp16().c_str());
+	_ui->lineEdit_onnx_trt_cache_path->setObjectName(Parameters::kOnnxTensorRTCachePath().c_str());
+	connect(_ui->toolButton_onnx_trt_cache_path, SIGNAL(clicked()), this, SLOT(changeOnnxTensorRTCachePath()));
+
+	// OnnxMatcher
+	_ui->lineEdit_onnxmatcher_model_path->setObjectName(Parameters::kOnnxMatcherModelPath().c_str());
+	connect(_ui->toolButton_onnxmatcher_model_path, SIGNAL(clicked()), this, SLOT(changeOnnxMatcherModelPath()));
+	_ui->doubleSpinBox_onnxmatcher_threshold->setObjectName(Parameters::kOnnxMatcherThreshold().c_str());
+
 	// GMS
 	_ui->checkBox_gms_withRotation->setObjectName(Parameters::kGMSWithRotation().c_str());
 	_ui->checkBox_gms_withScale->setObjectName(Parameters::kGMSWithScale().c_str());
@@ -1283,6 +1305,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->lineEdit_pydescriptor_path->setObjectName(Parameters::kPyDescriptorPath().c_str());
 	connect(_ui->toolButton_pydescriptor_path, SIGNAL(clicked()), this, SLOT(changePyDescriptorPath()));
 	_ui->pydescriptor_dim->setObjectName(Parameters::kPyDescriptorDim().c_str());
+
+	// OnnxDescriptor
+	_ui->lineEdit_onnxdescriptor_model_path->setObjectName(Parameters::kOnnxDescriptorModelPath().c_str());
+	connect(_ui->toolButton_onnxdescriptor_model_path, SIGNAL(clicked()), this, SLOT(changeOnnxDescriptorModelPath()));
+	_ui->spinBox_onnxdescriptor_dim->setObjectName(Parameters::kOnnxDescriptorDim().c_str());
 
 	// verifyHypotheses
 	_ui->groupBox_vh_epipolar2->setObjectName(Parameters::kVhEpEnabled().c_str());
@@ -5713,11 +5740,13 @@ void PreferencesDialog::updateFeatureMatchingVisibility()
 {
 	_ui->groupBox_pymatcher->setVisible(_ui->reextract_nn->currentIndex() == 6);
 	_ui->groupBox_gms->setVisible(_ui->reextract_nn->currentIndex() == 7);
+	_ui->groupBox_onnxmatcher->setVisible(_ui->reextract_nn->currentIndex() == 10);
 }
 
 void PreferencesDialog::updateGlobalDescriptorVisibility()
 {
 	_ui->groupBox_pydescriptor->setVisible(_ui->comboBox_globalDescriptorExtractor->currentIndex() == 1);
+	_ui->groupBox_onnxdescriptor->setVisible(_ui->comboBox_globalDescriptorExtractor->currentIndex() == 2);
 }
 
 void PreferencesDialog::updateAvailableMarkerDictionaries()
@@ -6109,6 +6138,42 @@ void PreferencesDialog::changePyDetectorPath()
 	{
 		_ui->lineEdit_pydetector_path->setText(path);
 	}
+}
+
+void PreferencesDialog::changeOnnxModelPath(QLineEdit * lineEdit)
+{
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"),
+			lineEdit->text().isEmpty()?this->getWorkingDirectory():lineEdit->text(), tr("ONNX model (*.onnx)"));
+	if(!path.isEmpty())
+	{
+		lineEdit->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOnnxTensorRTCachePath()
+{
+	QLineEdit * lineEdit = _ui->lineEdit_onnx_trt_cache_path;
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select TensorRT cache directory"),
+			lineEdit->text().isEmpty()?this->getWorkingDirectory():lineEdit->text());
+	if(!path.isEmpty())
+	{
+		lineEdit->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOnnxDetectorModelPath()
+{
+	changeOnnxModelPath(_ui->lineEdit_onnxdetector_model_path);
+}
+
+void PreferencesDialog::changeOnnxMatcherModelPath()
+{
+	changeOnnxModelPath(_ui->lineEdit_onnxmatcher_model_path);
+}
+
+void PreferencesDialog::changeOnnxDescriptorModelPath()
+{
+	changeOnnxModelPath(_ui->lineEdit_onnxdescriptor_model_path);
 }
 
 void PreferencesDialog::updateSourceGrpVisibility()

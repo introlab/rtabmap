@@ -32,6 +32,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "python/PyDescriptor.h"
 #endif
 
+#ifdef RTABMAP_ONNXRUNTIME
+#include "onnx/OnnxDescriptor.h"
+#endif
 namespace rtabmap {
 
 GlobalDescriptorExtractor::GlobalDescriptorExtractor(const ParametersMap & parameters)
@@ -56,6 +59,13 @@ GlobalDescriptorExtractor * GlobalDescriptorExtractor::create(GlobalDescriptorEx
 		type = GlobalDescriptorExtractor::kUndef;
 	}
 #endif
+#ifndef RTABMAP_ONNXRUNTIME
+	if(type == GlobalDescriptorExtractor::kOnnxDescriptor)
+	{
+		UWARN("OnnxDescriptor cannot be used as rtabmap is not built with ONNX Runtime support.");
+		type = GlobalDescriptorExtractor::kUndef;
+	}
+#endif
 
 	GlobalDescriptorExtractor * GlobalDescriptorExtractor = 0;
 	switch(type)
@@ -63,6 +73,11 @@ GlobalDescriptorExtractor * GlobalDescriptorExtractor::create(GlobalDescriptorEx
 #ifdef RTABMAP_PYTHON
 	case GlobalDescriptorExtractor::kPyDescriptor:
 		GlobalDescriptorExtractor = new PyDescriptor(parameters);
+		break;
+#endif
+#ifdef RTABMAP_ONNXRUNTIME
+	case GlobalDescriptorExtractor::kOnnxDescriptor:
+		GlobalDescriptorExtractor = new OnnxDescriptor(parameters);
 		break;
 #endif
 	default:

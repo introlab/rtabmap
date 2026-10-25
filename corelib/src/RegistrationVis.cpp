@@ -62,6 +62,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef RTABMAP_PYTHON
 	#include "python/PyMatcher.h"
 #endif
+#ifdef RTABMAP_ONNXRUNTIME
+	#include "onnx/OnnxMatcher.h"
+	#include "onnx/OnnxSession.h"
+#endif
 
 namespace rtabmap {
 
@@ -69,20 +73,20 @@ namespace rtabmap {
 // shares the values of Kp/NNStrategy for the strategies the dictionary
 // implements, and extends them with matching approaches of its own, hence the
 // mapping. Return VWDictionary::kNNUndef for the values RegistrationVis handles
-// itself (BruteForceCrossCheck, SuperGlue, GMS).
+// itself (BruteForceCrossCheck, PyMatcher, GMS, OnnxMatcher).
 static VWDictionary::NNStrategy nnStrategyFromCorNNType(int nnType)
 {
-	// 0 to 4 are the dictionary strategies themselves, 5, 6 and 7 are the
-	// approaches RegistrationVis implements (BruteForceCrossCheck, SuperGlue
-	// and GMS), and the ones after them are dictionary strategies again, at an
-	// offset of the three above.
+	// 0 to 4 are the dictionary strategies themselves, 5, 6, 7 and 10 are the
+	// approaches RegistrationVis implements (BruteForceCrossCheck, PyMatcher,
+	// GMS and OnnxMatcher), and the others are dictionary strategies again, at
+	// an offset of the approaches before them.
 	if(nnType >= 0 && nnType <= VWDictionary::kNNBruteForceGPU)
 	{
 		return (VWDictionary::NNStrategy)nnType;
 	}
-	if(nnType > 7)
+	if(nnType > 7 && nnType != 10)
 	{
-		const int strategy = nnType - 3;
+		const int strategy = nnType - (nnType > 10?4:3);
 		if(strategy < VWDictionary::kNNUndef)
 		{
 			return (VWDictionary::NNStrategy)strategy;
@@ -106,6 +110,8 @@ std::string RegistrationVis::getNNTypeName(int nnType)
 		return "PY MATCHER";
 	case 7:
 		return "GMS";
+	case 10:
+		return "ONNX MATCHER";
 	default:
 		return "Unknown";
 	}
@@ -152,6 +158,10 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 #ifdef RTABMAP_PYTHON
 		,
 		_pyMatcher(0)
+#endif
+#ifdef RTABMAP_ONNXRUNTIME
+		,
+		_onnxMatcher(0)
 #endif
 {
 	_featureParameters = Parameters::getDefaultParameters();
@@ -276,6 +286,45 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 		_nnType = Parameters::defaultVisCorNNType();
 	}
 #endif
+	else if(_nnType == 10)
+	{
+#ifndef RTABMAP_ONNXRUNTIME
+		UWARN("%s is set to 10 but RTAB-Map is not built with ONNX Runtime support, using default %d.",
+				Parameters::kVisCorNNType().c_str(), Parameters::defaultVisCorNNType());
+		_nnType = Parameters::defaultVisCorNNType();
+#else
+		std::string path = _onnxMatcher?_onnxMatcher->modelPath():Parameters::defaultOnnxMatcherModelPath();
+		float matchThr = _onnxMatcher?_onnxMatcher->matchThreshold():Parameters::defaultOnnxMatcherThreshold();
+		int provider = _onnxMatcher?_onnxMatcher->provider():Parameters::defaultOnnxProvider();
+		bool fp16 = _onnxMatcher?_onnxMatcher->tensorRTFp16():Parameters::defaultOnnxTensorRTFp16();
+		std::string cachePath = _onnxMatcher?_onnxMatcher->tensorRTCachePath():Parameters::defaultOnnxTensorRTCachePath();
+		Parameters::parse(parameters, Parameters::kOnnxMatcherModelPath(), path);
+		Parameters::parse(parameters, Parameters::kOnnxMatcherThreshold(), matchThr);
+		Parameters::parse(parameters, Parameters::kOnnxProvider(), provider);
+		Parameters::parse(parameters, Parameters::kOnnxTensorRTFp16(), fp16);
+		Parameters::parse(parameters, Parameters::kOnnxTensorRTCachePath(), cachePath);
+		if(cachePath.empty() && provider == (int)OnnxSession::kProviderTensorRT)
+		{
+			cachePath = OnnxSession::defaultTensorRTCachePath(parameters);
+		}
+		if(path.empty())
+		{
+			UERROR("%s parameter should be set to use ONNX matching (%s=10), using default %d.",
+					Parameters::kOnnxMatcherModelPath().c_str(),
+					Parameters::kVisCorNNType().c_str(),
+					Parameters::defaultVisCorNNType());
+			_nnType = Parameters::defaultVisCorNNType();
+		}
+		else
+		{
+			// The new matcher is created before the old one is deleted so that
+			// the session they share (same model and options) is not reloaded.
+			OnnxMatcher * matcher = new OnnxMatcher(path, matchThr, provider, fp16, cachePath);
+			delete _onnxMatcher;
+			_onnxMatcher = matcher;
+		}
+#endif
+	}
 
 	// override feature parameters
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
@@ -364,6 +413,9 @@ RegistrationVis::~RegistrationVis()
 	delete _detectorTo;
 #ifdef RTABMAP_PYTHON
 	delete _pyMatcher;
+#endif
+#ifdef RTABMAP_ONNXRUNTIME
+	delete _onnxMatcher;
 #endif
 }
 
@@ -1457,11 +1509,16 @@ Transform RegistrationVis::computeTransformationImpl(
 					// match between all descriptors
 					std::list<int> fromWordIds;
 					std::list<int> toWordIds;
+					// The learned matchers (PyMatcher, OnnxMatcher) need float
+					// descriptors and the image size, brute force is used otherwise.
+					bool learnedMatcher = false;
 #ifdef RTABMAP_PYTHON
-					if(_nnType == 5 || (_nnType == 6 && _pyMatcher) || _nnType==7)
-#else
-					if(_nnType == 5 || _nnType == 7) // bruteforce cross check or GMS
+					learnedMatcher = learnedMatcher || (_nnType == 6 && _pyMatcher);
 #endif
+#ifdef RTABMAP_ONNXRUNTIME
+					learnedMatcher = learnedMatcher || (_nnType == 10 && _onnxMatcher);
+#endif
+					if(_nnType == 5 || _nnType == 7 || learnedMatcher) // bruteforce cross check, GMS or learned matcher
 					{
 						std::vector<int> fromWordIdsV(descriptorsFrom.rows);
 						for (int i = 0; i < descriptorsFrom.rows; ++i)
@@ -1478,27 +1535,58 @@ Transform RegistrationVis::computeTransformationImpl(
 						{
 							std::vector<int> toWordIdsV(descriptorsTo.rows, 0);
 							std::vector<cv::DMatch> matches;
-#ifdef RTABMAP_PYTHON
-							if(_nnType == 6 && _pyMatcher &&
+							bool matched = false;
+							if(learnedMatcher &&
 								descriptorsTo.cols == descriptorsFrom.cols &&
 								descriptorsTo.rows == (int)kptsTo.size() &&
 								descriptorsTo.type() == CV_32F &&
 								descriptorsFrom.type() == CV_32F &&
 								descriptorsFrom.rows == (int)kptsFrom.size() &&
-								models.size() == 1)
+								!models.empty() &&
+								models[0].imageSize().width > 0 &&
+								models[0].imageSize().height > 0)
 							{
-								UDEBUG("Python matching");
-								matches = _pyMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, models[0].imageSize());
-							}
-							else
-							{
-								if(_nnType == 6 && _pyMatcher)
+								// With multiple cameras, the keypoints are in the side-by-side image:
+								// all the cameras are matched at once, like a wide image.
+								cv::Size imageSizeTo(models[0].imageSize().width * (int)models.size(), models[0].imageSize().height);
+#ifdef RTABMAP_PYTHON
+								if(_nnType == 6)
 								{
-									UDEBUG("Invalid inputs for Python matching (desc type=%d, only float descriptors supported, multicam not supported), doing bruteforce matching instead.", descriptorsFrom.type());
+									UDEBUG("Python matching");
+									matches = _pyMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, imageSizeTo);
+									matched = true;
 								}
-#else
-							{
 #endif
+#ifdef RTABMAP_ONNXRUNTIME
+								if(_nnType == 10)
+								{
+									cv::Size imageSizeFrom = imageFrom.size();
+									if(imageSizeFrom.height == 0 || imageSizeFrom.width == 0)
+									{
+										if(fromSignature.sensorData().cameraModels().size())
+										{
+											imageSizeFrom = fromSignature.sensorData().cameraModels()[0].imageSize();
+											imageSizeFrom.width *= (int)fromSignature.sensorData().cameraModels().size();
+										}
+										else if(fromSignature.sensorData().stereoCameraModels().size())
+										{
+											imageSizeFrom = fromSignature.sensorData().stereoCameraModels()[0].left().imageSize();
+											imageSizeFrom.width *= (int)fromSignature.sensorData().stereoCameraModels().size();
+										}
+									}
+									UDEBUG("ONNX matching");
+									matches = _onnxMatcher->match(descriptorsTo, descriptorsFrom, kptsTo, kptsFrom, imageSizeTo, imageSizeFrom);
+									matched = true;
+								}
+#endif
+							}
+							if(!matched)
+							{
+								if(learnedMatcher)
+								{
+									UDEBUG("Invalid inputs for %s matching (desc type=%d, only float descriptors supported, image size required), doing bruteforce matching instead.",
+											getNNTypeName(_nnType).c_str(), descriptorsFrom.type());
+								}
 								bool doCrossCheck = true;
 #ifdef HAVE_OPENCV_XFEATURES2D
 #if CV_MAJOR_VERSION > 3 || (CV_MAJOR_VERSION==3 && CV_MINOR_VERSION >=4 && CV_SUBMINOR_VERSION >= 1)

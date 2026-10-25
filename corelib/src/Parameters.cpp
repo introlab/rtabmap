@@ -172,7 +172,9 @@ bool Parameters::isFeatureParameter(const std::string & parameter)
 			group.compare("KAZE") == 0 ||
 			group.compare("SuperPoint") == 0 ||
 			group.compare("SuperPointRpautrat") == 0 ||
-			group.compare("PyDetector") == 0;
+			group.compare("PyDetector") == 0 ||
+			group.compare("OnnxDetector") == 0 ||
+			group.compare("Onnx") == 0;
 }
 
 rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, bool vis, bool icp)
@@ -191,7 +193,7 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			group.compare("Optimizer") == 0 ||
 			group.compare("g2o") == 0 ||
 			group.compare("GTSAM") == 0 ||
-			(vis && (group.compare("Vis") == 0 || group.compare("PyMatcher") == 0 || group.compare("GMS") == 0)) ||
+			(vis && (group.compare("Vis") == 0 || group.compare("PyMatcher") == 0 || group.compare("GMS") == 0 || group.compare("OnnxMatcher") == 0)) ||
 			iter->first.compare(kRtabmapPublishRAMUsage())==0 ||
 			iter->first.compare(kRtabmapImagesAlreadyRectified())==0 ||
 			iter->first.compare(kKpByteToFloat())==0)
@@ -685,6 +687,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #endif
 				str = "With Python3:";
 #ifdef RTABMAP_PYTHON
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With ONNX Runtime:";
+#ifdef RTABMAP_ONNXRUNTIME
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;

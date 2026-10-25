@@ -2723,6 +2723,51 @@ TEST_F(MemoryFixture, ComputeLikelihoodEmptyIdsReturnsEmpty)
 	EXPECT_EQ(likelihood.size(), 0u);
 }
 
+TEST_F(MemoryFixture, ComputeLikelihoodUsesGlobalDescriptors)
+{
+	// With Kp/TfIdfLikelihoodUsed=false, the likelihood is Signature::compareTo():
+	// the dot product of the (normalized) global descriptors rescaled to [0,1],
+	// whatever the extractor type (PyDescriptor=1, OnnxDescriptor=2, ...), while
+	// type 0 (external descriptors of unknown nature) is ignored.
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kKpTfIdfLikelihoodUsed()] = "false";
+	reinit(params);
+
+	auto addNode = [&](int type, float x, float y)
+	{
+		SensorData data(image_);
+		cv::Mat d = (cv::Mat_<float>(1, 2) << x, y);
+		data.addGlobalDescriptor(GlobalDescriptor(type, d / cv::norm(d)));
+		Transform pose(float(updateCount_), 0.0f, 0.0f, 0, 0, 0);
+		EXPECT_TRUE(memory_->update(data, pose, covariance_));
+		++updateCount_;
+		return memory_->getLastSignatureId();
+	};
+	for(int type : {2, 1})
+	{
+		SCOPED_TRACE(uFormat("type=%d", type));
+		const int a = addNode(type, 1.0f, 0.0f);   // (1,0)
+		const int b = addNode(type, 1.0f, 1.0f);   // 45 degrees from a
+		const int c = addNode(type, -1.0f, 0.0f);  // opposite of a
+		const int q = addNode(type, 1.0f, 0.0f);   // same as a
+		const Signature * s = memory_->getSignature(q);
+		ASSERT_NE(s, nullptr);
+		ASSERT_EQ(s->sensorData().globalDescriptors().size(), 1u);
+		std::map<int, float> likelihood = memory_->computeLikelihood(s, {a, b, c});
+		ASSERT_EQ(likelihood.size(), 3u);
+		EXPECT_NEAR(1.0f, likelihood.at(a), 1e-5f);
+		EXPECT_NEAR((std::sqrt(0.5f) + 1.0f) / 2.0f, likelihood.at(b), 1e-5f);
+		EXPECT_NEAR(0.0f, likelihood.at(c), 1e-5f);
+	}
+
+	// type 0: not compared, falls back to the word similarity (0 without features)
+	const int a = addNode(0, 1.0f, 0.0f);
+	const int q = addNode(0, 1.0f, 0.0f);
+	std::map<int, float> likelihood = memory_->computeLikelihood(memory_->getSignature(q), {a});
+	ASSERT_EQ(likelihood.size(), 1u);
+	EXPECT_EQ(0.0f, likelihood.at(a));
+}
+
 // ---------------------------------------------------------------------------
 // createSignature (exercised through Memory::update)
 // ---------------------------------------------------------------------------

@@ -100,6 +100,13 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_pymatcher->setText("No");
 	_ui->label_pymatcher_license->setEnabled(false);
 #endif
+#ifdef RTABMAP_ONNXRUNTIME
+	_ui->label_onnxruntime->setText("Yes");
+	_ui->label_onnxruntime_license->setEnabled(true);
+#else
+	_ui->label_onnxruntime->setText("No");
+	_ui->label_onnxruntime_license->setEnabled(false);
+#endif
 #ifdef RTABMAP_FASTCV
 	_ui->label_fastcv->setText("Yes");
 	_ui->label_fastcv_license->setEnabled(true);
