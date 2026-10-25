@@ -507,7 +507,8 @@ seconds to minutes, see "first ms" otherwise).
 
 `test_matcher_perf` compares, on consecutive frames with SuperPoint
 (magicleap) features: FLANN kd-tree with the distance ratio test (rtabmap's
-default, `Vis/CorNNType=1`), brute force matching with cross check, LightGlue
+default, `Vis/CorNNType=1`, with `Vis/CorNNDR` 0.8 and 0.6), brute force
+matching with cross check, LightGlue
 (`OnnxMatcher`, CPU/CUDA/TensorRT/TensorRT FP16), SuperGlue exported to ONNX
 (`OnnxMatcher`) and SuperGlue run by `PyMatcher` (python, CPU/CUDA), with the
 time per pair, the matches and the inliers of a RANSAC fundamental matrix
@@ -517,6 +518,7 @@ iterations):
 ```
 matcher                      device          first ms   mean ms   matches   inliers   inlier %
 FLANN kd-tree, NNDR 0.8      cpu                 17.0     16.34        76        43      56.9%
+FLANN kd-tree, NNDR 0.6      cpu                 15.9     15.65        16        13      80.4%
 brute force cross check      cpu                  9.0      6.46       273        64      23.6%
 LightGlue (OnnxMatcher)      cpu                569.5    548.19       139        91      65.7%
 LightGlue (OnnxMatcher)      cuda               101.5     18.23       139        91      65.9%
@@ -534,7 +536,9 @@ SuperGlue exported to ONNX gives the same matches as the python
 implementation, twice as fast on CPU and the same on CUDA. The learned
 matchers find about twice the inliers of the ratio test at a similar inlier
 ratio, for a cost that is only acceptable on GPU; on CPU, the kd-tree with
-the ratio test remains the sensible choice. TensorRT halves the CUDA time,
+the ratio test remains the sensible choice. A stricter ratio (0.6) raises
+the inlier ratio of the kd-tree but keeps too few matches (16 per pair here)
+for a registration. TensorRT halves the CUDA time,
 and FP16 (`Onnx/TensorRTFp16`) halves it again for LightGlue with the same
 matches. SuperGlue breaks in FP16 (26 matches instead of 237): its Sinkhorn
 iterations overflow in half precision, as TensorRT warns at build time about

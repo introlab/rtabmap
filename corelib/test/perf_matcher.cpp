@@ -2,9 +2,9 @@
 // weights, the ones SuperGlue and the published LightGlue were trained with):
 //
 //   - FLANN kd-tree with the nearest neighbor distance ratio test
-//     (Vis/CorNNType=1 with Vis/CorNNDR=0.8, rtabmap's default; the index is
-//     built on the train descriptors for each pair) and brute force with cross
-//     check (Vis/CorNNType=5), as references;
+//     (Vis/CorNNType=1 with Vis/CorNNDR=0.8, rtabmap's default, and 0.6; the
+//     index is built on the train descriptors for each pair) and brute force
+//     with cross check (Vis/CorNNType=5), as references;
 //   - LightGlue, OnnxMatcher (Vis/CorNNType=10) with superpoint_magicleap_lightglue.onnx
 //     from the LightGlue-ONNX releases, CPU, CUDA and TensorRT (Onnx/Provider);
 //   - SuperGlue exported to ONNX by corelib/src/onnx/export_superglue_onnx.py,
@@ -178,20 +178,23 @@ void addOnnxMatchers(std::vector<Matcher> & list, const std::string & name, cons
 std::vector<Matcher> matchers(std::vector<std::shared_ptr<void> > & keep)
 {
 	std::vector<Matcher> list;
-	list.push_back({"FLANN kd-tree, NNDR 0.8", "cpu", [](const Frame & q, const Frame & t) {
-		std::vector<std::vector<cv::DMatch> > knn;
-		cv::FlannBasedMatcher matcher(cv::makePtr<cv::flann::KDTreeIndexParams>(4), cv::makePtr<cv::flann::SearchParams>(32));
-		matcher.knnMatch(q.descriptors, t.descriptors, knn, 2);
-		std::vector<cv::DMatch> matches;
-		for(size_t i=0; i<knn.size(); ++i)
-		{
-			if(knn[i].size() == 2 && knn[i][0].distance < 0.8f * knn[i][1].distance)
+	for(float nndr : {0.8f, 0.6f})
+	{
+		list.push_back({uFormat("FLANN kd-tree, NNDR %.1f", nndr), "cpu", [nndr](const Frame & q, const Frame & t) {
+			std::vector<std::vector<cv::DMatch> > knn;
+			cv::FlannBasedMatcher matcher(cv::makePtr<cv::flann::KDTreeIndexParams>(4), cv::makePtr<cv::flann::SearchParams>(32));
+			matcher.knnMatch(q.descriptors, t.descriptors, knn, 2);
+			std::vector<cv::DMatch> matches;
+			for(size_t i=0; i<knn.size(); ++i)
 			{
-				matches.push_back(knn[i][0]);
+				if(knn[i].size() == 2 && knn[i][0].distance < nndr * knn[i][1].distance)
+				{
+					matches.push_back(knn[i][0]);
+				}
 			}
-		}
-		return matches;
-	}});
+			return matches;
+		}});
+	}
 	list.push_back({"brute force cross check", "cpu", [](const Frame & q, const Frame & t) {
 		std::vector<cv::DMatch> matches;
 		cv::BFMatcher(cv::NORM_L2SQR, true).match(q.descriptors, t.descriptors, matches);
