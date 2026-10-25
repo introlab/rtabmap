@@ -13,5 +13,6 @@ var searchData=
   ['brief_10',['BRIEF',['../parameters.html#autotoc_md16',1,'']]],
   ['brightnessandcontrastauto_11',['brightnessAndContrastAuto',['../namespacertabmap_1_1util2d.html#a89ec90b2659c764ba22b5c36d729c8f8',1,'rtabmap::util2d']]],
   ['brisk_12',['brisk',['../parameters.html#autotoc_md21',1,'BRISK'],['../classrtabmap_1_1BRISK.html',1,'rtabmap::BRISK']]],
-  ['buildindex_13',['buildIndex',['../classrtabmap_1_1FlannIndex.html#aad2f29314c6b021d1c53217a7a041521',1,'rtabmap::FlannIndex']]]
+  ['buildindex_13',['buildIndex',['../classrtabmap_1_1FlannIndex.html#aad2f29314c6b021d1c53217a7a041521',1,'rtabmap::FlannIndex']]],
+  ['bundleadjustmenttime_14',['bundleAdjustmentTime',['../classrtabmap_1_1RegistrationInfo.html#a45d99b860c24cd89d49b95382456d592',1,'rtabmap::RegistrationInfo']]]
 ];
