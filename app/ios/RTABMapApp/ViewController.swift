@@ -1689,14 +1689,10 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                     let previousState = self.mState
                     self.updateState(state: .STATE_PROCESSING);
                     
+                    // View controller for the progress bar
+                    self.progressView = self.addProgressView(alertView)
+                    
                     self.present(alertView, animated: true, completion: {
-                        //  Add your progressbar after alert is shown (and measured)
-                        let margin:CGFloat = 8.0
-                        let rect = CGRect(x: margin, y: 84.0, width: alertView.view.frame.width - margin * 2.0 , height: 2.0)
-                        self.progressView = UIProgressView(frame: rect)
-                        self.progressView!.progress = 0
-                        self.progressView!.tintColor = self.view.tintColor
-                        alertView.view.addSubview(self.progressView!)
                         
                         var success : Bool = false
                         DispatchQueue.background(background: {
@@ -1878,6 +1874,26 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         })
     }
     
+    private func addProgressView(_ alertView: UIAlertController) -> UIProgressView
+    {
+        let progressVC = UIViewController()
+        let progressView = UIProgressView(progressViewStyle: .default)
+        progressView.progress = 0.0
+        progressView.tintColor = self.view.tintColor
+        progressView.translatesAutoresizingMaskIntoConstraints = false
+        progressVC.view.addSubview(progressView)
+        let margin: CGFloat = 16.0
+        NSLayoutConstraint.activate([
+            progressView.leadingAnchor.constraint(equalTo: progressVC.view.leadingAnchor, constant: margin),
+            progressView.trailingAnchor.constraint(equalTo: progressVC.view.trailingAnchor, constant: -margin),
+            progressView.centerYAnchor.constraint(equalTo: progressVC.view.centerYAnchor),
+            progressView.heightAnchor.constraint(equalToConstant: 2.0)
+        ])
+        progressVC.preferredContentSize = CGSize(width: 270, height: 30)
+        alertView.setValue(progressVC, forKey: "contentViewController")
+        return progressView;
+    }
+    
     private func export(isOBJ: Bool, meshing: Bool, regenerateCloud: Bool, optimized: Bool, optimizedMaxPolygons: Int, previousState: State)
     {
         let defaults = UserDefaults.standard
@@ -1919,15 +1935,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         
         updateState(state: .STATE_PROCESSING);
         
+        // View controller for the progress bar
+        self.progressView = addProgressView(alertView)
+        
         present(alertView, animated: true, completion: {
-            //  Add your progressbar after alert is shown (and measured)
-            let margin:CGFloat = 8.0
-            let rect = CGRect(x: margin, y: 84.0, width: alertView.view.frame.width - margin * 2.0 , height: 2.0)
-            self.progressView = UIProgressView(frame: rect)
-            self.progressView!.progress = 0
-            self.progressView!.tintColor = self.view.tintColor
-            alertView.view.addSubview(self.progressView!)
-            
+
             self.progressStatusUpdate() // This will update memory usage during post processing
             
             var success : Bool = false
@@ -2033,15 +2045,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         
         updateState(state: .STATE_PROCESSING)
         
+        // View controller for the progress bar
+        self.progressView = addProgressView(alertView)
+        
         //  Show it to your users
         present(alertView, animated: true, completion: {
-            //  Add your progressbar after alert is shown (and measured)
-            let margin:CGFloat = 8.0
-            let rect = CGRect(x: margin, y: 72.0, width: alertView.view.frame.width - margin * 2.0 , height: 2.0)
-            self.progressView = UIProgressView(frame: rect)
-            self.progressView!.progress = 0
-            self.progressView!.tintColor = self.view.tintColor
-            alertView.view.addSubview(self.progressView!)
             
             self.progressStatusUpdate() // This will update memory usage during post processing
             
@@ -2361,14 +2369,10 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
 
         updateState(state: .STATE_PROCESSING);
         
+        // View controller for the progress bar
+        self.progressView = addProgressView(alertView)
+        
         present(alertView, animated: true, completion: {
-            //  Add your progressbar after alert is shown (and measured)
-            let margin:CGFloat = 8.0
-            let rect = CGRect(x: margin, y: 84.0, width: alertView.view.frame.width - margin * 2.0 , height: 2.0)
-            self.progressView = UIProgressView(frame: rect)
-            self.progressView!.progress = 0
-            self.progressView!.tintColor = self.view.tintColor
-            alertView.view.addSubview(self.progressView!)
             
             let exportDir = self.getTmpDirectory().appendingPathComponent(self.RTABMAP_EXPORT_DIR)
            
@@ -2485,13 +2489,39 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     
     func openLibrary()
     {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else { return }
+        let screenSize = windowScene.screen.bounds.size
+        let screenWidth = screenSize.width
+        let screenHeight = screenSize.height
+        
+        print("Screen size = %dx%d", screenWidth, screenHeight)
+        
         updateDatabases();
         
         if databases.isEmpty {
             return
         }
         
-        let alertController = UIAlertController(title: "Library", message: nil, preferredStyle: .alert)
+        let alertController = LibraryAlertController(title: "Library", message: nil, preferredStyle: .alert)
+        
+        let customVC = UIViewController()
+        let customView = VerticalScrollerView()
+        customView.dataSource = self
+        customView.delegate = self
+        customView.reload()
+        customView.backgroundColor = .darkGray
+        customView.translatesAutoresizingMaskIntoConstraints = false
+        customVC.view.addSubview(customView)
+        NSLayoutConstraint.activate([
+            customView.topAnchor.constraint(equalTo: customVC.view.topAnchor),
+            customView.bottomAnchor.constraint(equalTo: customVC.view.bottomAnchor),
+            customView.leadingAnchor.constraint(equalTo: customVC.view.leadingAnchor),
+            customView.trailingAnchor.constraint(equalTo: customVC.view.trailingAnchor)
+        ])
+        customVC.preferredContentSize = CGSize(width: 328.0, height: screenSize.height * 0.65)
+        alertController.setValue(customVC, forKey: "contentViewController")
+       
+        /*
         let customView = VerticalScrollerView()
         customView.dataSource = self
         customView.delegate = self
@@ -2501,13 +2531,13 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         customView.topAnchor.constraint(equalTo: alertController.view.topAnchor, constant: 60).isActive = true
         customView.rightAnchor.constraint(equalTo: alertController.view.rightAnchor, constant: -10).isActive = true
         customView.leftAnchor.constraint(equalTo: alertController.view.leftAnchor, constant: 10).isActive = true
-        customView.bottomAnchor.constraint(equalTo: alertController.view.bottomAnchor, constant: -45).isActive = true
-        
+        customView.bottomAnchor.constraint(equalTo: alertController.view.bottomAnchor, constant: -75).isActive = true
         alertController.view.translatesAutoresizingMaskIntoConstraints = false
-        alertController.view.heightAnchor.constraint(equalToConstant: 600).isActive = true
+        alertController.view.heightAnchor.constraint(equalToConstant: screenHeight*0.75).isActive = true
         alertController.view.widthAnchor.constraint(equalToConstant: 400).isActive = true
-
-        customView.backgroundColor = .darkGray
+		*/
+        
+        
 
         let selectAction = UIAlertAction(title: "Select", style: .default) { (action) in
             self.openDatabase(fileUrl: self.databases[self.currentDatabaseIndex])
