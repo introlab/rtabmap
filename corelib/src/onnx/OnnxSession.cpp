@@ -363,6 +363,11 @@ bool OnnxSession::load()
 	}
 
 	UTimer timer;
+	// The environment (and its logger) must exist before the provider options
+	// are created: CreateTensorRTProviderOptions() fails with "Attempt to use
+	// DefaultLogger but none has been registered" otherwise, which happened
+	// when a TensorRT session was the first one of the process.
+	Ort::Env & env = ortEnv();
 	// The requested provider first, CPU if it cannot be used: a provider
 	// listed by the library can still fail to load its dependencies (e.g.
 	// cuDNN) or to find a device.
@@ -430,7 +435,7 @@ bool OnnxSession::load()
 				}
 			}
 
-			impl_->session.reset(new Ort::Session(ortEnv(), modelPath_.c_str(), sessionOptions));
+			impl_->session.reset(new Ort::Session(env, modelPath_.c_str(), sessionOptions));
 			inputs_ = describe(*impl_->session, true, impl_->inputNames);
 			outputs_ = describe(*impl_->session, false, impl_->outputNames);
 			if(provider_ == kProviderTensorRT)
