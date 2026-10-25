@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <algorithm>
 #include <map>
 #include <mutex>
+#include <cstring>
 #include <sstream>
 
 namespace rtabmap {
@@ -112,6 +113,38 @@ struct OnnxSession::Impl
 
 namespace {
 
+// ONNX Runtime log messages go through ULogger, at the matching level, with
+// the provider's own messages (TensorRT's parser and builder) demoted to
+// INFO: they are relayed as warnings but describe normal operation, e.g.
+// "Make sure output keypoints has Int64 binding" on every session creation,
+// which ONNX Runtime already handles.
+void ortLog(void *, OrtLoggingLevel severity, const char * category, const char *, const char * location, const char * message)
+{
+	const bool fromProvider = location != 0 && strstr(location, "execution_provider") != 0;
+	switch(severity)
+	{
+	case ORT_LOGGING_LEVEL_VERBOSE:
+		UDEBUG("onnxruntime [%s]: %s", category, message);
+		break;
+	case ORT_LOGGING_LEVEL_INFO:
+		UINFO("onnxruntime [%s]: %s", category, message);
+		break;
+	case ORT_LOGGING_LEVEL_WARNING:
+		if(fromProvider)
+		{
+			UINFO("onnxruntime [%s]: %s", category, message);
+		}
+		else
+		{
+			UWARN("onnxruntime [%s]: %s", category, message);
+		}
+		break;
+	default:
+		UERROR("onnxruntime [%s]: %s", category, message);
+		break;
+	}
+}
+
 // The one ONNX Runtime environment of the process. It must outlive every
 // session, and sessions may be held by objects destroyed at exit in any
 // order, so it is leaked on purpose instead of being a function-local static.
@@ -131,7 +164,7 @@ Ort::Env & ortEnv()
 		case ULogger::kError:   level = ORT_LOGGING_LEVEL_ERROR; break;
 		case ULogger::kFatal:   level = ORT_LOGGING_LEVEL_FATAL; break;
 		}
-		env = new Ort::Env(level, "rtabmap");
+		env = new Ort::Env(level, "rtabmap", &ortLog, 0);
 	}
 	return *env;
 }
