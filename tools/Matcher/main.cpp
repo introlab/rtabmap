@@ -449,7 +449,12 @@ int main(int argc, char * argv[])
 			nnTypeName = QString(uSplit(UFile::getName(path), '.').front().c_str()).replace("rtabmap_", "");
 		}
 
-		dialog.setWindowTitle(QString("Matches (%1/%2) %3 sec [%4=%5 (%6) %7=%8 (%9)%10 %11=%12 (%13) %14=%15]")
+		const cv::Size sizeFrom = dataFrom.sensorData().imageRaw().size();
+		const cv::Size sizeTo = dataTo.sensorData().imageRaw().size();
+		QString resolution = sizeFrom == sizeTo ?
+				QString("%1x%2").arg(sizeFrom.width).arg(sizeFrom.height) :
+				QString("%1x%2 / %3x%4").arg(sizeFrom.width).arg(sizeFrom.height).arg(sizeTo.width).arg(sizeTo.height);
+		dialog.setWindowTitle(QString("Matches (%1/%2) %16 %3s [%4=%5 (%6) %7=%8 (%9)%10 %11=%12 (%13) %14=%15]")
 				.arg(info.inliers)
 				.arg(info.matches)
 				.arg(info.matchingTime)
@@ -464,7 +469,8 @@ int main(int argc, char * argv[])
 				.arg(reg.getEstimationType())
 				.arg(reg.getEstimationType()==0?"3D->3D":reg.getEstimationType()==1?"3D->2D":reg.getEstimationType()==2?"2D->2D":"?")
 				.arg(Parameters::kVisPnPReprojError().c_str())
-				.arg(reprojError));
+				.arg(reprojError)
+				.arg(resolution));
 
 		CloudViewer * viewer = 0;
 		if(!t.isNull())
