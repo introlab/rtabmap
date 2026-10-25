@@ -388,13 +388,27 @@ int main(int argc, char * argv[])
 		RegistrationInfo info;
 
 
-		// Do it one time before to make sure everything is loaded to get realistic timing for matching only.
-		reg.computeTransformationMod(dataFrom, dataTo, Transform(), &info);
-
+		// First pass: loads the models (e.g., TensorRT engines), extracts the
+		// features and matches. The features are kept in the signatures.
 		UTimer timer;
+		reg.computeTransformationMod(dataFrom, dataTo, Transform(), &info);
+		double firstTime = timer.ticks();
+
+		// Second pass with everything loaded and the features extracted again,
+		// for the time of each step.
+		dataFrom.removeAllWords();
+		dataTo.removeAllWords();
+		dataFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+		dataTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 		Transform t = reg.computeTransformationMod(dataFrom, dataTo, Transform(), &info);
-		double matchingTime = timer.ticks();
-		printf("Time matching and motion estimation (excluding feature detection): %fs\n", matchingTime);
+		printf("Time first pass (model loading, feature extraction, matching, motion estimation): %fs\n", firstTime);
+		printf("Time feature extraction (both images): %fs\n", info.featuresTime);
+		printf("Time matching:                         %fs\n", info.matchingTime);
+		printf("Time motion estimation:                %fs\n", info.motionEstimationTime);
+		if(info.bundleAdjustmentTime > 0.0)
+		{
+			printf("Time bundle adjustment:                %fs\n", info.bundleAdjustmentTime);
+		}
 
 		//////////////////
 		// Visualization
@@ -438,7 +452,7 @@ int main(int argc, char * argv[])
 		dialog.setWindowTitle(QString("Matches (%1/%2) %3 sec [%4=%5 (%6) %7=%8 (%9)%10 %11=%12 (%13) %14=%15]")
 				.arg(info.inliers)
 				.arg(info.matches)
-				.arg(matchingTime)
+				.arg(info.matchingTime)
 				.arg(Parameters::kVisFeatureType().c_str())
 				.arg(reg.getDetector()?reg.getDetector()->getType():-1)
 				.arg(reg.getDetector()?Feature2D::typeName(reg.getDetector()->getType()).c_str():"?")

@@ -334,7 +334,7 @@ TEST(SuperPointPerf, Implementations)
 		GTEST_SKIP() << "no variant could run";
 	}
 
-	printf("\n%-10s %-30s %-9s %9s %10s %9s %9s %9s %8s %10s %8s\n",
+	printf("\n%-10s %-30s %-14s %9s %10s %9s %9s %9s %8s %10s %8s\n",
 			"weights", "implementation", "device", "load ms", "first ms", "mean ms", "median ms", "min ms", "kpts", "same kpts", "cosine");
 	for(size_t v=0; v<results.size(); ++v)
 	{
@@ -352,7 +352,7 @@ TEST(SuperPointPerf, Implementations)
 		}
 		found /= (double)r.frames.size();
 		cosine /= (double)r.frames.size();
-		printf("%-10s %-30s %-9s %9.1f %10.1f %9.2f %9.2f %9.2f %8.0f %9.1f%% %8.3f\n",
+		printf("%-10s %-30s %-14s %9.1f %10.1f %9.2f %9.2f %9.2f %8.0f %9.1f%% %8.3f\n",
 				ran[v].weights.c_str(), ran[v].name.c_str(), ran[v].device.c_str(), r.loadMs, r.firstFrameMs,
 				std::accumulate(r.frameMs.begin(), r.frameMs.end(), 0.0) / (double)r.frameMs.size(),
 				median(r.frameMs), *std::min_element(r.frameMs.begin(), r.frameMs.end()),

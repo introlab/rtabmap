@@ -481,6 +481,10 @@ Transform RegistrationVis::computeTransformationImpl(
 	////////////////////
 	// Find correspondences
 	////////////////////
+	double featuresTime = 0.0;
+	double matchingTime = 0.0;
+	double motionEstimationTime = 0.0;
+	double bundleAdjustmentTime = 0.0;
 	//recompute correspondences if descriptors are provided
 	if((fromSignature.getWordsDescriptors().empty() && toSignature.getWordsDescriptors().empty()) &&
 	   (_estimationType<2 || fromSignature.getWords().size()) && // required only for 2D->2D
@@ -494,6 +498,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	else
 	{
 		UDEBUG("");
+		UTimer featuresTimer;
 		// just some checks to make sure that input data are ok
 		UASSERT(fromSignature.getWords().empty() ||
 				fromSignature.getWordsKpts().empty() ||
@@ -1085,7 +1090,10 @@ Transform RegistrationVis::computeTransformationImpl(
 			UDEBUG("descriptorsTo=%d", descriptorsTo.rows);
 			UDEBUG("orignalWordsFromIds=%d", (int)orignalWordsFromIds.size());
 
+			featuresTime = featuresTimer.ticks();
+
 			// We have all data we need here, so match!
+			UTimer matchingTimer;
 			if(descriptorsFrom.rows > 0 && descriptorsTo.rows > 0)
 			{
 				std::vector<CameraModel> models;
@@ -1724,6 +1732,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 				}
 			}
+			matchingTime = matchingTimer.ticks();
 		}
 
 		fromSignature.setWords(wordsFrom, wordsKptsFrom, words3From, wordsDescFrom);
@@ -1733,6 +1742,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	/////////////////////
 	// Motion estimation
 	/////////////////////
+	UTimer motionTimer;
 	Transform transform;
 	cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
 	int inliersCount = 0;
@@ -2033,6 +2043,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			}
 		}
 
+		motionEstimationTime = motionTimer.ticks();
 		if(_bundleAdjustment > 0 &&
 			_estimationType < 2 &&
 			!transform.isNull() &&
@@ -2257,6 +2268,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				transform.setNull();
 			}
 		}
+		bundleAdjustmentTime = motionTimer.ticks();
 
 		info.inliersIDs = inliers;
 		info.matchesIDs = matches;
@@ -2371,6 +2383,10 @@ Transform RegistrationVis::computeTransformationImpl(
 				(int)toSignature.getWords().size(), toSignature.sensorData().imageRaw().empty()?1:0);
 	}
 
+	info.featuresTime = featuresTime;
+	info.matchingTime = matchingTime;
+	info.motionEstimationTime = motionEstimationTime;
+	info.bundleAdjustmentTime = bundleAdjustmentTime;
 	info.inliers = inliersCount;
 	info.inliersRatio = !toSignature.getWords().empty()?float(inliersCount)/float(toSignature.getWords().size()):0;
 	info.matches = matchesCount;

@@ -255,7 +255,7 @@ TEST(MatcherPerf, Matchers)
 	std::vector<Matcher> list = matchers(keep);
 	printf("%d pairs of consecutive frames of %dx%d, up to 1000 keypoints per frame\n\n", (int)frames.size()-1, frames[0].image.cols, frames[0].image.rows);
 
-	printf("%-28s %-9s %10s %9s %9s %9s %9s %9s\n", "matcher", "device", "first ms", "mean ms", "median ms", "matches", "inliers", "inlier %");
+	printf("%-28s %-14s %10s %9s %9s %9s %9s %9s\n", "matcher", "device", "first ms", "mean ms", "median ms", "matches", "inliers", "inlier %");
 	for(size_t m=0; m<list.size(); ++m)
 	{
 		const Matcher & matcher = list[m];
@@ -264,7 +264,7 @@ TEST(MatcherPerf, Matchers)
 		const double firstMs = timer.ticks() * 1000.0;
 		if(warm.empty())
 		{
-			printf("%-28s %-9s   skipped: no match (model not loaded? see the errors above)\n", matcher.name.c_str(), matcher.device.c_str());
+			printf("%-28s %-14s   skipped: no match (model not loaded? see the errors above)\n", matcher.name.c_str(), matcher.device.c_str());
 			continue;
 		}
 		std::vector<double> ms;
@@ -280,7 +280,7 @@ TEST(MatcherPerf, Matchers)
 		// a pair of frames may not overlap, the matcher must find matches over the sequence
 		EXPECT_GT(inliers, 0.0) << matcher.name << " [" << matcher.device << "]";
 		const double pairs = (double)(frames.size()-1);
-		printf("%-28s %-9s %10.1f %9.2f %9.2f %9.0f %9.0f %8.1f%%\n", matcher.name.c_str(), matcher.device.c_str(), firstMs,
+		printf("%-28s %-14s %10.1f %9.2f %9.2f %9.0f %9.0f %8.1f%%\n", matcher.name.c_str(), matcher.device.c_str(), firstMs,
 				std::accumulate(ms.begin(), ms.end(), 0.0) / pairs, median(ms), matches / pairs, inliers / pairs,
 				matches > 0?100.0 * inliers / matches:0.0);
 	}
