@@ -113,14 +113,13 @@ struct OnnxSession::Impl
 
 namespace {
 
-// ONNX Runtime log messages go through ULogger, at the matching level, with
-// the provider's own messages (TensorRT's parser and builder) demoted to
-// INFO: they are relayed as warnings but describe normal operation, e.g.
-// "Make sure output keypoints has Int64 binding" on every session creation,
-// which ONNX Runtime already handles.
-void ortLog(void *, OrtLoggingLevel severity, const char * category, const char *, const char * location, const char * message)
+// ONNX Runtime log messages go through ULogger at the matching level. The
+// TensorRT parser's "Make sure output <name> has Int64 binding" reminder,
+// relayed as a warning on every session creation for the int64 outputs, is
+// demoted to INFO: ONNX Runtime binds them correctly.
+void ortLog(void *, OrtLoggingLevel severity, const char * category, const char *, const char *, const char * message)
 {
-	const bool fromProvider = location != 0 && strstr(location, "execution_provider") != 0;
+	const bool int64Reminder = message != 0 && strstr(message, "has Int64 binding") != 0;
 	switch(severity)
 	{
 	case ORT_LOGGING_LEVEL_VERBOSE:
@@ -130,7 +129,7 @@ void ortLog(void *, OrtLoggingLevel severity, const char * category, const char 
 		UINFO("onnxruntime [%s]: %s", category, message);
 		break;
 	case ORT_LOGGING_LEVEL_WARNING:
-		if(fromProvider)
+		if(int64Reminder)
 		{
 			UINFO("onnxruntime [%s]: %s", category, message);
 		}
