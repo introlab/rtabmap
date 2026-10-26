@@ -2700,11 +2700,10 @@ bool Rtabmap::process(
 	int proximityDetectionsAddedByICPMulti = 0;
 	int proximityDetectionsAddedByICPGlobal = 0;
 	int lastProximitySpaceClosureId = 0;
-	// Transforms (new node -> loop closure node) of the global loop closure and
-	// of the proximity detection attempted, kept for statistics even if the
-	// loop closure is rejected afterwards (see setLoopClosureTransform() below).
+	// Transform (new node -> loop closure node) of the global loop closure
+	// attempted, kept for statistics even if it is rejected afterwards (see
+	// setLoopClosureTransform() below). Its map node is the highest hypothesis.
 	Transform globalLoopClosureTransform;
-	Transform proximityDetectionTransform;
 	int proximitySpacePaths = 0;
 	int localVisualPathsChecked = 0;
 	int localScanPathsChecked = 0;
@@ -2898,7 +2897,6 @@ bool Rtabmap::process(
 
 									++proximityDetectionsAddedVisually;
 									lastProximitySpaceClosureId = nearestId;
-									proximityDetectionTransform = transform;
 
 									loopClosureVisualInliers = info.inliers;
 									loopClosureVisualInliersRatio = info.inliersRatio;
@@ -3120,7 +3118,6 @@ bool Rtabmap::process(
 										if(proximityDetectionsAddedVisually == 0)
 										{
 											lastProximitySpaceClosureId = nearestId;
-											proximityDetectionTransform = transform;
 										}
 									}
 									else
@@ -4324,7 +4321,7 @@ bool Rtabmap::process(
 			// when no global loop closure or proximity detection was accepted
 			// (accepted ones are set below): the landmark observation (new node ->
 			// landmark), accepted or rejected, else the rejected global loop closure
-			// or proximity detection.
+			// (on the highest hypothesis), if a transform could be computed for it.
 			if(!landmarksDetected.empty())
 			{
 				UASSERT(uContains(signature->getLandmarks(), landmarksDetected.begin()->first));
@@ -4333,10 +4330,6 @@ bool Rtabmap::process(
 			else if(!globalLoopClosureTransform.isNull())
 			{
 				statistics_.setLoopClosureTransform(globalLoopClosureTransform);
-			}
-			else if(!proximityDetectionTransform.isNull())
-			{
-				statistics_.setLoopClosureTransform(proximityDetectionTransform);
 			}
 
 			float x,y,z,roll,pitch,yaw;

@@ -475,8 +475,8 @@ public:
 	 * Without accepted global loop closure or proximity detection, it is the
 	 * one of the localization attempted, even if rejected: the landmark
 	 * observation (current -> landmark) when a landmark is detected, else
-	 * the rejected global loop closure or proximity detection, if a transform
-	 * could be computed for it.
+	 * the rejected global loop closure (on the highest hypothesis), if a
+	 * transform could be computed for it.
 	 *
 	 * @param loopClosureTransform The loop closure transform
 	 */
