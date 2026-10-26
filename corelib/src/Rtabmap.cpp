@@ -2700,6 +2700,11 @@ bool Rtabmap::process(
 	int proximityDetectionsAddedByICPMulti = 0;
 	int proximityDetectionsAddedByICPGlobal = 0;
 	int lastProximitySpaceClosureId = 0;
+	// Transforms (new node -> loop closure node) of the global loop closure and
+	// of the proximity detection attempted, kept for statistics even if the
+	// loop closure is rejected afterwards (see setLoopClosureTransform() below).
+	Transform globalLoopClosureTransform;
+	Transform proximityDetectionTransform;
 	int proximitySpacePaths = 0;
 	int localVisualPathsChecked = 0;
 	int localScanPathsChecked = 0;
@@ -2893,6 +2898,7 @@ bool Rtabmap::process(
 
 									++proximityDetectionsAddedVisually;
 									lastProximitySpaceClosureId = nearestId;
+									proximityDetectionTransform = transform;
 
 									loopClosureVisualInliers = info.inliers;
 									loopClosureVisualInliersRatio = info.inliersRatio;
@@ -3114,6 +3120,7 @@ bool Rtabmap::process(
 										if(proximityDetectionsAddedVisually == 0)
 										{
 											lastProximitySpaceClosureId = nearestId;
+											proximityDetectionTransform = transform;
 										}
 									}
 									else
@@ -3167,6 +3174,7 @@ bool Rtabmap::process(
 				loopClosureVisualMatches = info.matches;
 				loopClosureVisualVariance = info.variance;
 				rejectedLoopClosure = transform.isNull();
+				globalLoopClosureTransform = transform.isNull()?Transform():transform.inverse();
 				if(rejectedLoopClosure)
 				{
 					UWARN("Rejected loop closure %d -> %d: %s",
@@ -4312,6 +4320,25 @@ bool Rtabmap::process(
 
 			statistics_.addStatistic(Statistics::kLoopDistance_since_last_loc(), _distanceTravelledSinceLastLocalization);
 
+			// Transform of the localization attempted, observed from the new node,
+			// when no global loop closure or proximity detection was accepted
+			// (accepted ones are set below): the landmark observation (new node ->
+			// landmark), accepted or rejected, else the rejected global loop closure
+			// or proximity detection.
+			if(!landmarksDetected.empty())
+			{
+				UASSERT(uContains(signature->getLandmarks(), landmarksDetected.begin()->first));
+				statistics_.setLoopClosureTransform(signature->getLandmarks().at(landmarksDetected.begin()->first).transform());
+			}
+			else if(!globalLoopClosureTransform.isNull())
+			{
+				statistics_.setLoopClosureTransform(globalLoopClosureTransform);
+			}
+			else if(!proximityDetectionTransform.isNull())
+			{
+				statistics_.setLoopClosureTransform(proximityDetectionTransform);
+			}
+
 			float x,y,z,roll,pitch,yaw;
 			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId || (!rejectedLoopClosure && !landmarksDetected.empty()))
 			{
@@ -4321,8 +4348,9 @@ bool Rtabmap::process(
 					UASSERT(sLoop);
 					std::multimap<int, Link>::const_iterator loopIter =  sLoop->getLinks().find(signature->id());
 					UASSERT(loopIter!=sLoop->getLinks().end());
-					UINFO("Set loop closure transform = %s", loopIter->second.transform().prettyPrint().c_str());
-					statistics_.setLoopClosureTransform(loopIter->second.transform());
+					// Observed from the new node: new node -> loop closure node.
+					UINFO("Set loop closure transform = %s", loopIter->second.transform().inverse().prettyPrint().c_str());
+					statistics_.setLoopClosureTransform(loopIter->second.transform().inverse());
 
 					statistics_.addStatistic(Statistics::kLoopVisual_words(), sLoop->getWords().size());
 

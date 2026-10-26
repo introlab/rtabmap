@@ -2440,9 +2440,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			   !stat.loopClosureTransform().isNull() &&
 			   !loopSignature.sensorData().imageRaw().empty())
 			{
-				// the last loop closure data
+				// the last loop closure data: the loop closure node at the origin,
+				// the current node where it observed it from (current -> loop).
 				Transform loopClosureTransform = stat.loopClosureTransform();
-				signature.setPose(loopClosureTransform);
+				signature.setPose(loopClosureTransform.inverse());
 				_loopClosureViewer->setData(loopSignature, signature);
 				if(_ui->dockWidget_loopClosureViewer->isVisible())
 				{
