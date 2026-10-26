@@ -4342,8 +4342,10 @@ bool Rtabmap::process(
 					std::multimap<int, Link>::const_iterator loopIter =  sLoop->getLinks().find(signature->id());
 					UASSERT(loopIter!=sLoop->getLinks().end());
 					// Observed from the new node: new node -> loop closure node.
-					UINFO("Set loop closure transform = %s", loopIter->second.transform().inverse().prettyPrint().c_str());
-					statistics_.setLoopClosureTransform(loopIter->second.transform().inverse());
+					// Null in appearance-only mode (RGBD/Enabled=false).
+					Transform loopClosureTransform = loopIter->second.transform().isNull()?Transform():loopIter->second.transform().inverse();
+					UINFO("Set loop closure transform = %s", loopClosureTransform.prettyPrint().c_str());
+					statistics_.setLoopClosureTransform(loopClosureTransform);
 
 					statistics_.addStatistic(Statistics::kLoopVisual_words(), sLoop->getWords().size());
 
