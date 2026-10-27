@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/transforms.h>
 #include <rtabmap/core/odometry/OdometryORBSLAM3.h>
 
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 3
 #include <thread>
 #include <Converter.h>
 
@@ -48,7 +48,7 @@ namespace rtabmap {
 
 OdometryORBSLAM3::OdometryORBSLAM3(const ParametersMap & parameters) :
 	Odometry(parameters)
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 3
     ,
 	orbslam_(0),
 	firstFrame_(true),
@@ -59,14 +59,14 @@ OdometryORBSLAM3::OdometryORBSLAM3(const ParametersMap & parameters) :
 	lastImageStamp_(0.0)
 #endif
 {
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 3
 	Parameters::parse(parameters, Parameters::kOdomORBSLAMInertial(), useIMU_);
 #endif
 }
 
 OdometryORBSLAM3::~OdometryORBSLAM3()
 {
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 3
 	if(orbslam_)
 	{
 		orbslam_->Shutdown();
@@ -78,7 +78,7 @@ OdometryORBSLAM3::~OdometryORBSLAM3()
 void OdometryORBSLAM3::reset(const Transform & initialPose)
 {
 	Odometry::reset(initialPose);
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 3
 	if(orbslam_)
 	{
 		orbslam_->Shutdown();
@@ -96,7 +96,7 @@ void OdometryORBSLAM3::reset(const Transform & initialPose)
 
 bool OdometryORBSLAM3::canProcessAsyncIMU() const
 {
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 3
 	return useIMU_;
 #else
 	return false;
@@ -105,7 +105,7 @@ bool OdometryORBSLAM3::canProcessAsyncIMU() const
 
 bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model1, const rtabmap::CameraModel & model2, double stamp,  bool stereo, double baseline)
 {
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 3
 	std::string vocabularyPath;
 	rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAMVocPath(), vocabularyPath);
 
@@ -372,7 +372,7 @@ Transform OdometryORBSLAM3::computeTransform(
 {
 	Transform t;
 
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 3
 	UTimer timer;
 
 	if(useIMU_)

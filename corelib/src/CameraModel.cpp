@@ -163,7 +163,7 @@ bool CameraModel::initRectificationMap()
 	UINFO("Initialize rectify map");
 	if(D_.cols == 6)
 	{
-#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+#if CV_MAJOR_VERSION > 2 || (CV_MAJOR_VERSION == 2 && (CV_MINOR_VERSION >4 || (CV_MINOR_VERSION == 4 && CV_SUBMINOR_VERSION >=10)))
 		// Equidistant / FishEye
 		// get only k parameters (k1,k2,p1,p2,k3,k4)
 		cv::Mat D(1, 4, CV_64FC1);

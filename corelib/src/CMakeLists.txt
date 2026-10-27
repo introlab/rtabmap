@@ -119,6 +119,7 @@ SET(SRC_FILES
     StereoCameraModel.cpp
     stereo/StereoBM.cpp
     stereo/StereoSGBM.cpp
+    stereo/stereoRectifyFisheye.cpp
     
     GlobalMap.cpp
     LocalGridMaker.cpp

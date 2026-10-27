@@ -38,9 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/calib3d/calib3d.hpp>
 #endif
 #include <opencv2/highgui/highgui.hpp>
-#if (CV_MAJOR_VERSION > 2 and CV_MAJOR_VERSION < 5) or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 #include <rtabmap/core/stereo/stereoRectifyFisheye.h>
-#endif
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -1410,7 +1408,7 @@ void CalibrationDialog::calibrate()
 		UINFO("calibrate!");
 		//Find intrinsic and extrinsic camera parameters
 		double rms = 0.0;
-#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+#if CV_MAJOR_VERSION > 2 || (CV_MAJOR_VERSION == 2 && (CV_MINOR_VERSION >4 || (CV_MINOR_VERSION == 4 && CV_SUBMINOR_VERSION >=10)))
 		bool fishEye = ui_->comboBox_calib_model->currentIndex()==0;
 
 		if(fishEye)
@@ -1529,7 +1527,7 @@ void CalibrationDialog::calibrate()
 
 		for( i = 0; i < (int)objectPoints.size(); ++i )
 		{
-#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+#if CV_MAJOR_VERSION > 2 || (CV_MAJOR_VERSION == 2 && (CV_MINOR_VERSION >4 || (CV_MINOR_VERSION == 4 && CV_SUBMINOR_VERSION >=10)))
 			if(fishEye)
 			{
 				cv::fisheye::projectPoints( cv::Mat(objectPoints[i]), imagePoints2, rvecs[i], tvecs[i], K, D);
@@ -1556,7 +1554,7 @@ void CalibrationDialog::calibrate()
 		P.at<double>(2,3) = 1;
 		K.copyTo(P.colRange(0,3).rowRange(0,3));
 
-#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+#if CV_MAJOR_VERSION > 2 || (CV_MAJOR_VERSION == 2 && (CV_MINOR_VERSION >4 || (CV_MINOR_VERSION == 4 && CV_SUBMINOR_VERSION >=10)))
 		if(fishEye)
 		{
 			// Convert to unified distortion model (k1,k2,p1,p2,k3,k4)
@@ -1769,7 +1767,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 	cv::Mat R, T, E, F;
 
 	double rms = 0.0;
-#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+#if CV_MAJOR_VERSION > 2 || (CV_MAJOR_VERSION == 2 && (CV_MINOR_VERSION >4 || (CV_MINOR_VERSION == 4 && CV_SUBMINOR_VERSION >=10)))
 	bool fishEye = left.D_raw().cols == 6;
 	// calibrate extrinsic
 	if(fishEye)
@@ -1862,7 +1860,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 			UINFO("Compute stereo rectification");
 
 			cv::Mat R1, R2, P1, P2, Q;
-#if CV_MAJOR_VERSION < 5
+#if RTABMAP_HAS_STEREO_RECTIFY_FISHEYE
 			stereoRectifyFisheye(
 					left.K_raw(), D_left,
 					right.K_raw(), D_right,
@@ -1935,7 +1933,7 @@ StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left,
 				imageSize, R, T, E, F,
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
 				cv::CALIB_FIX_INTRINSIC | (ui_->comboBox_calib_model->currentIndex()==2?cv::CALIB_RATIONAL_MODEL:0));
-#elif CV_MAJOR_VERSION == 3 and (CV_MINOR_VERSION < 4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION < 1))
+#elif CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION < 4 || (CV_MINOR_VERSION == 4 && CV_SUBMINOR_VERSION < 1))
 		//OpenCV < 3.4.1
 		rms = cv::stereoCalibrate(
 				stereoObjectPoints_,
