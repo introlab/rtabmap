@@ -5815,7 +5815,8 @@ std::list<std::pair<int, int> > Rtabmap::repairGraph(
 		{
 			subMaxGraphErrors = graph::computeMaxGraphErrors(
 					subPoses,
-					subConstraintsOut);
+					subConstraintsOut,
+					_graphOptimizer->isSlam2d());
 		}
 		if(subPoses.empty() ||
 		   subMaxGraphErrors.linearRatio > _optimizationMaxError ||
@@ -5844,7 +5845,8 @@ std::list<std::pair<int, int> > Rtabmap::repairGraph(
 			{
 				graph::MaxGraphErrors propagatedMaxGraphErrors = graph::computeMaxGraphErrors(
 						propagatedOptimizedPoses,
-						subConstraintsOut);
+						subConstraintsOut,
+						_graphOptimizer->isSlam2d());
 				if(propagatedMaxGraphErrors.linearLink.isValid() &&
 				   (subPoses.empty() ||
 				    std::max(propagatedMaxGraphErrors.linearRatio, propagatedMaxGraphErrors.angularRatio) <
