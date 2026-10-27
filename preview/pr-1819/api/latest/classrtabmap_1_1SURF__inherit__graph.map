@@ -1,0 +1,9 @@
+<map id="rtabmap::SURF" name="rtabmap::SURF">
+<area shape="rect" id="Node000001" title="SURF detector and descriptor (non&#45;free / xfeatures2d depending on OpenCV build)." alt="" coords="125,79,245,104"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1SURF__DAISY.html" title="SURF detector + DAISY descriptors (OpenCV 3+ xfeatures2d)." alt="" coords="5,152,172,177"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="160,114,106,154,103,150,157,110"/>
+<area shape="rect" id="Node000004" href="$classrtabmap_1_1SURF__FREAK.html" title="SURF detector + FREAK descriptors." alt="" coords="197,152,367,177"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="213,110,268,150,265,154,210,114"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Feature2D.html" title="Abstract 2D feature detector and descriptor extractor for visual SLAM." alt="" coords="109,5,261,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="187,44,187,79,182,79,182,44"/>
+</map>
