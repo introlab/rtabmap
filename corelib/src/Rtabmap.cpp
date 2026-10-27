@@ -2700,6 +2700,10 @@ bool Rtabmap::process(
 	int proximityDetectionsAddedByICPMulti = 0;
 	int proximityDetectionsAddedByICPGlobal = 0;
 	int lastProximitySpaceClosureId = 0;
+	// Transform (new node -> loop closure node) of the global loop closure
+	// attempted, kept for statistics even if it is rejected afterwards (see
+	// setLoopClosureTransform() below). Its map node is the highest hypothesis.
+	Transform globalLoopClosureTransform;
 	int proximitySpacePaths = 0;
 	int localVisualPathsChecked = 0;
 	int localScanPathsChecked = 0;
@@ -3167,6 +3171,7 @@ bool Rtabmap::process(
 				loopClosureVisualMatches = info.matches;
 				loopClosureVisualVariance = info.variance;
 				rejectedLoopClosure = transform.isNull();
+				globalLoopClosureTransform = transform.isNull()?Transform():transform.inverse();
 				if(rejectedLoopClosure)
 				{
 					UWARN("Rejected loop closure %d -> %d: %s",
@@ -4312,6 +4317,21 @@ bool Rtabmap::process(
 
 			statistics_.addStatistic(Statistics::kLoopDistance_since_last_loc(), _distanceTravelledSinceLastLocalization);
 
+			// Transform of the localization attempted, observed from the new node,
+			// when no global loop closure or proximity detection was accepted
+			// (accepted ones are set below): the landmark observation (new node ->
+			// landmark), accepted or rejected, else the rejected global loop closure
+			// (on the highest hypothesis), if a transform could be computed for it.
+			if(!landmarksDetected.empty())
+			{
+				UASSERT(uContains(signature->getLandmarks(), landmarksDetected.begin()->first));
+				statistics_.setLoopClosureTransform(signature->getLandmarks().at(landmarksDetected.begin()->first).transform());
+			}
+			else if(!globalLoopClosureTransform.isNull())
+			{
+				statistics_.setLoopClosureTransform(globalLoopClosureTransform);
+			}
+
 			float x,y,z,roll,pitch,yaw;
 			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId || (!rejectedLoopClosure && !landmarksDetected.empty()))
 			{
@@ -4321,8 +4341,11 @@ bool Rtabmap::process(
 					UASSERT(sLoop);
 					std::multimap<int, Link>::const_iterator loopIter =  sLoop->getLinks().find(signature->id());
 					UASSERT(loopIter!=sLoop->getLinks().end());
-					UINFO("Set loop closure transform = %s", loopIter->second.transform().prettyPrint().c_str());
-					statistics_.setLoopClosureTransform(loopIter->second.transform());
+					// Observed from the new node: new node -> loop closure node.
+					// Null in appearance-only mode (RGBD/Enabled=false).
+					Transform loopClosureTransform = loopIter->second.transform().isNull()?Transform():loopIter->second.transform().inverse();
+					UINFO("Set loop closure transform = %s", loopClosureTransform.prettyPrint().c_str());
+					statistics_.setLoopClosureTransform(loopClosureTransform);
 
 					statistics_.addStatistic(Statistics::kLoopVisual_words(), sLoop->getWords().size());
 
