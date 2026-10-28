@@ -1,0 +1,25 @@
+<map id="UThreadC&lt; void &gt;" name="UThreadC&lt; void &gt;">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,203,149,228"/>
+<area shape="rect" id="Node000002" href="$classUThread.html" title=" " alt="" coords="197,203,275,228"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="163,213,197,213,197,218,163,218"/>
+<area shape="rect" id="Node000003" href="$classUEventDispatcher.html" title=" " alt="" coords="366,5,505,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="240,188,250,154,266,114,289,74,321,40,342,28,365,20,366,25,344,33,324,44,293,77,271,116,255,156,245,190"/>
+<area shape="rect" id="Node000004" href="$classUEventsManager.html" title=" " alt="" coords="369,55,502,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="245,189,274,138,296,111,321,89,344,78,368,70,369,76,346,83,324,94,299,115,279,141,250,191"/>
+<area shape="rect" id="Node000005" href="$classUObjDeletionThread.html" title=" " alt="" coords="339,104,531,129"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="256,190,285,163,321,138,351,127,352,132,324,143,288,167,259,194"/>
+<area shape="rect" id="Node000006" href="$classrtabmap_1_1CompressionThread.html" title="Background thread to compress or uncompress images and generic matrices." alt="" coords="328,153,543,179"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="287,197,322,187,370,176,371,181,323,193,289,202"/>
+<area shape="rect" id="Node000007" href="$classrtabmap_1_1DBDriver.html" title="Abstract database driver for RTAB&#45;Map maps (signatures, links, words, statistics)." alt="" coords="363,203,507,228"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="288,213,363,213,363,218,288,218"/>
+<area shape="rect" id="Node000009" href="$classrtabmap_1_1IMUThread.html" title="Background thread that replays IMU measurements from a CSV file." alt="" coords="357,252,513,277"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="289,227,323,237,376,249,375,255,322,242,287,233"/>
+<area shape="rect" id="Node000010" href="$classrtabmap_1_1OdometryThread.html" title="Runs an Odometry front&#45;end in its own thread, driven by events." alt="" coords="338,301,533,327"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="260,236,289,263,324,286,357,299,355,304,321,291,285,267,256,240"/>
+<area shape="rect" id="Node000011" href="$classrtabmap_1_1RtabmapThread.html" title="Runs a Rtabmap instance in its own thread, driven by events." alt="" coords="341,351,530,376"/>
+<area shape="poly" id="edge10_Node000002_Node000011" title=" " alt="" coords="250,239,279,289,300,315,324,336,349,348,347,353,321,340,296,318,275,292,246,242"/>
+<area shape="rect" id="Node000012" href="$classrtabmap_1_1SensorCaptureThread.html" title="Thread&#45;based sensor data capture and event posting for RTAB&#45;Map." alt="" coords="323,400,548,425"/>
+<area shape="poly" id="edge11_Node000002_Node000012" title=" " alt="" coords="245,241,255,274,271,313,294,353,324,385,346,398,343,402,321,389,289,356,266,316,250,276,240,242"/>
+<area shape="rect" id="Node000008" href="$classrtabmap_1_1DBDriverSqlite3.html" title="SQLite3 implementation of DBDriver for RTAB&#45;Map map databases." alt="" coords="596,203,785,228"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="521,213,596,213,596,218,521,218"/>
+</map>
