@@ -185,22 +185,42 @@ endif()
 # performance`. They can also be run directly, e.g. bin/test_flann_index_perf.
 OPTION(BUILD_PERF_TESTS "Build the performance tests (see ctest -L performance)" ON)
 
+OPTION(USE_SYSTEM_GTEST "Use the system GTest if found (>=1.10), otherwise download it" ON)
+
 include(CTest)
 if(BUILD_TESTING)
-   # Add GTest using FetchContent
-   # The fetched googletest must not be installed into the install prefix: it
-   # would shadow the GTest of other projects sharing the prefix and break
-   # their builds (see https://github.com/introlab/rtabmap/issues/1812).
-   set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-   include(FetchContent)
-   FetchContent_Declare(
-       googletest
-       URL https://github.com/google/googletest/archive/refs/tags/v1.16.0.zip
-   )
-   FetchContent_GetProperties(googletest)
-   if(NOT googletest_POPULATED)
-     FetchContent_Populate(googletest)
-     add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+   # The tests need GTEST_SKIP and INSTANTIATE_TEST_SUITE_P, added in 1.10.
+   # RTABMAP_SYSTEM_GTEST is used instead of GTest_FOUND, which another
+   # dependency may have already set with an older GTest.
+   set(RTABMAP_SYSTEM_GTEST FALSE)
+   if(USE_SYSTEM_GTEST)
+      find_package(GTest 1.10 CONFIG QUIET)
+      if(GTest_FOUND AND TARGET GTest::gtest_main AND NOT GTest_VERSION VERSION_LESS "1.10")
+         set(RTABMAP_SYSTEM_GTEST TRUE)
+         message(STATUS "Found system GTest ${GTest_VERSION}: ${GTest_DIR}")
+      endif()
+   endif()
+   if(NOT RTABMAP_SYSTEM_GTEST)
+      if(USE_SYSTEM_GTEST)
+         message(STATUS "System GTest>=1.10 not found, downloading it.")
+      else()
+         message(STATUS "Downloading GTest (USE_SYSTEM_GTEST=OFF).")
+      endif()
+      # Add GTest using FetchContent
+      # The fetched googletest must not be installed into the install prefix: it
+      # would shadow the GTest of other projects sharing the prefix and break
+      # their builds (see https://github.com/introlab/rtabmap/issues/1812).
+      set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+      include(FetchContent)
+      FetchContent_Declare(
+          googletest
+          URL https://github.com/google/googletest/archive/refs/tags/v1.16.0.zip
+      )
+      FetchContent_GetProperties(googletest)
+      if(NOT googletest_POPULATED)
+        FetchContent_Populate(googletest)
+        add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+      endif()
    endif()
    include(GoogleTest)
    set(TEST_DATA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/data"
@@ -1565,7 +1585,15 @@ MESSAGE(STATUS "  CMAKE_INSTALL_LIBDIR = ${CMAKE_INSTALL_LIBDIR}")
 MESSAGE(STATUS "  BUILD_APP =            ${BUILD_APP}")
 MESSAGE(STATUS "  BUILD_TOOLS =          ${BUILD_TOOLS}")
 MESSAGE(STATUS "  BUILD_EXAMPLES =       ${BUILD_EXAMPLES}")
+IF(BUILD_TESTING)
+IF(RTABMAP_SYSTEM_GTEST)
+MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING} (system GTest ${GTest_VERSION})")
+ELSE()
+MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING} (downloaded GTest)")
+ENDIF()
+ELSE()
 MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING}")
+ENDIF()
 MESSAGE(STATUS "  BUILD_PERF_TESTS =     ${BUILD_PERF_TESTS}")
 MESSAGE(STATUS "  ENABLE_COVERAGE =      ${ENABLE_COVERAGE}")
 MESSAGE(STATUS "  ENABLE_FORMAT_ERRORS = ${ENABLE_FORMAT_ERRORS}")

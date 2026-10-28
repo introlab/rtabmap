@@ -124,7 +124,7 @@ jobs:
       run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update
-        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev curl gnupg lsb-release ${{ matrix.extra_deps }}
+        sudo apt-get -y install libopencv-dev libpcl-dev git cmake software-properties-common libyaml-cpp-dev libgtest-dev curl gnupg lsb-release ${{ matrix.extra_deps }}
 
     - name: Install Graph Optimizers From The ROS Repo
       if: matrix.ros_deps != ''
