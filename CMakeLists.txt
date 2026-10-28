@@ -1322,6 +1322,21 @@ IF(NOT WITH_MADGWICK)
    SET(MADGWICK "//")
 ENDIF()
 
+# rtflann is a modified FLANN, it is always built and cannot be replaced by a system one
+FILE(STRINGS "${PROJECT_SOURCE_DIR}/corelib/src/rtflann/config.h.in" RTFLANN_VERSION REGEX "#define FLANN_VERSION_ ")
+STRING(REGEX REPLACE ".*\"(.*)\".*" "\\1" RTFLANN_VERSION "${RTFLANN_VERSION}")
+FILE(STRINGS "${PROJECT_SOURCE_DIR}/corelib/src/rtflann/ext/lz4.h" RTFLANN_LZ4_VERSION REGEX "#define LZ4_VERSION_(MAJOR|MINOR|RELEASE) ")
+STRING(REGEX REPLACE "[^;]*#define LZ4_VERSION_[A-Z]+ +([0-9]+)[^;]*" "\\1" RTFLANN_LZ4_VERSION "${RTFLANN_LZ4_VERSION}")
+STRING(REPLACE ";" "." RTFLANN_LZ4_VERSION "${RTFLANN_LZ4_VERSION}")
+# SQLite3 found on the system, or the one included in rtabmap
+IF(SQLite3_FOUND)
+   SET(RTABMAP_SQLITE3_VERSION "${SQLite3_VERSION}")
+   SET(SQLITE3_INTERNAL "//")
+ELSE()
+   FILE(STRINGS "${PROJECT_SOURCE_DIR}/corelib/src/sqlite3/sqlite3.h" RTABMAP_SQLITE3_VERSION REGEX "#define SQLITE_VERSION ")
+   STRING(REGEX REPLACE ".*\"(.*)\".*" "\\1" RTABMAP_SQLITE3_VERSION "${RTABMAP_SQLITE3_VERSION}")
+ENDIF()
+
 CONFIGURE_FILE(Version.h.in ${CMAKE_CURRENT_BINARY_DIR}/corelib/src/include/${PROJECT_PREFIX}/core/Version.h)
 
 # API documentation (Doxygen). Off by default: preparing it downloads the theme,
@@ -1588,6 +1603,12 @@ MESSAGE(STATUS "  PCL_COMPILE_OPTIONS = ${PCL_COMPILE_OPTIONS}")
 ENDIF(PCL_COMPILE_OPTIONS)
 
 MESSAGE(STATUS "")
+MESSAGE(STATUS "Included dependencies (always built) :")
+MESSAGE(STATUS "  With rtflann (FLANN ${RTFLANN_VERSION} fork) = YES (License: BSD)")
+MESSAGE(STATUS "  With LZ4 ${RTFLANN_LZ4_VERSION} (internal)    = YES (License: BSD)")
+MESSAGE(STATUS "  With Complementary filter (imu_tools) = YES (License: BSD)")
+
+MESSAGE(STATUS "")
 MESSAGE(STATUS "Optional dependencies ('*' affects some default parameters) :")
 IF(OpenCV_FOUND)
   IF((OpenCV_VERSION_MAJOR LESS 4 AND OPENCV_ARUCO_FOUND) OR 
@@ -1640,9 +1661,9 @@ MESSAGE(STATUS "  With Qt                   = NO (Qt not found)")
 ENDIF()
 
 IF(SQLite3_FOUND)
-MESSAGE(STATUS "  With external SQLite3     = YES (License: Public Domain)")
+MESSAGE(STATUS "  With SQLite3 ${SQLite3_VERSION}      = YES (License: Public Domain)")
 ELSE()
-MESSAGE(STATUS "  With external SQLite3     = NO (SQLite3 not found, internal version is used for convenience)")
+MESSAGE(STATUS "  With SQLite3 ${RTABMAP_SQLITE3_VERSION} (internal) = YES (License: Public Domain, system SQLite3 not found)")
 ENDIF()
 
 IF(WITH_ORB_OCTREE)

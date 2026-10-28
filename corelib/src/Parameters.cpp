@@ -665,6 +665,16 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "rtflann (FLANN fork):";
+				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_RTFLANN_VERSION << std::endl;
+				str = "LZ4:";
+				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_LZ4_VERSION << std::endl;
+				str = "SQLite3:";
+#ifdef RTABMAP_SQLITE3_INTERNAL
+				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_SQLITE3_VERSION " (internal)" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_SQLITE3_VERSION << std::endl;
+#endif
 				str = "With ORB OcTree:";
 #ifdef RTABMAP_ORB_OCTREE
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -707,6 +717,8 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With Complementary:";
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 				str = "With Madgwick:";
 #ifdef RTABMAP_MADGWICK
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
