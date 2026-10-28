@@ -85,7 +85,10 @@ jobs:
           extra_deps: "libg2o-dev libceres-dev"
           ros_deps: "ros-jazzy-gtsam"
           ros_prefix: "/opt/ros/jazzy"
-          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DWITH_G2O=ON -DWITH_GTSAM=ON"
+          # ONNX Runtime (OnnxDetector / OnnxMatcher) from its release archive,
+          # built and tested on this job only.
+          onnxruntime: "1.23.2"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DWITH_G2O=ON -DWITH_GTSAM=ON -DWITH_ONNXRUNTIME=ON"
         - build_name: ubuntu-24.04-with-opengv
           os: ubuntu-24.04
           extra_deps: "libg2o-dev libceres-dev"
@@ -179,6 +182,14 @@ jobs:
           -DGTSAM_BUILD_PYTHON=OFF \
           -DBUILD_SHARED_LIBS=ON
         cmake --build ${{runner.temp}}/gtsam-build --target install -j $(nproc)
+
+    # The CPU release archive: FindONNXRuntime.cmake reads ONNXRUNTIME_ROOT from
+    # the environment. The library is loaded from there at runtime too.
+    - name: Install ONNX Runtime
+      if: matrix.onnxruntime != ''
+      run: |
+        curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v${{ matrix.onnxruntime }}/onnxruntime-linux-x64-${{ matrix.onnxruntime }}.tgz | tar -xz -C ${{ runner.temp }}
+        echo "ONNXRUNTIME_ROOT=${{ runner.temp }}/onnxruntime-linux-x64-${{ matrix.onnxruntime }}" >> "$GITHUB_ENV"
 
     - name: Set up Python
       uses: actions/setup-python@v5

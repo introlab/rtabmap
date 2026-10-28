@@ -6,4 +6,9 @@
 *.pt
 *.pth
 *.py
+*.onnx
+weights/
+trt_cache/
+tensorrt_cache/
+*.mat
 __pycache__/

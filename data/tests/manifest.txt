@@ -30,3 +30,26 @@ superpoint_v1.pth	https://github.com/magicleap/SuperPointPretrainedNetwork/raw/r
 superpoint_v6_from_tf.pth	https://github.com/rpautrat/SuperPoint/raw/refs/heads/master/weights/superpoint_v6_from_tf.pth	cd5d19a5061848e248c17728878ea166b66512076d43c77dbcf27f4a88a56084
 demo_superpoint.py	https://raw.githubusercontent.com/magicleap/SuperPointPretrainedNetwork/master/demo_superpoint.py	613706ae7e9ce3fbc2cfe042fc3f37d739838cc2e1dc8ddd08f8ec037765df04
 superpoint_pytorch.py	https://raw.githubusercontent.com/rpautrat/SuperPoint/master/superpoint_pytorch.py	c06e3b0aad7548316ca59db3be9f56c7fcd126a1cf7a73359445fb778598f365
+# ONNX models for test_onnx (OnnxDetector / OnnxMatcher), permissive licenses:
+# DISK and its LightGlue (Apache-2.0) exported by LightGlue-ONNX; the sources
+# of XFeat (Apache-2.0) and of LightGlue, pinned to a commit, from which the
+# fetch script exports xfeat.onnx and sift_lightglue.onnx with the scripts of
+# corelib/src/onnx when torch is available (like superpoint_rpautrat.onnx from
+# the rpautrat files above).
+# The magicleap SuperPoint (non-commercial license, tests only) and its
+# LightGlue, the pair the published LightGlue weights were trained with.
+superpoint_magicleap.onnx	https://github.com/fabio-sim/LightGlue-ONNX/releases/download/v1.0.0/superpoint.onnx	234d12c9f523292efb34e0ca513b011050b0c052700da9c01787b9356a1138d2
+superpoint_magicleap_lightglue.onnx	https://github.com/fabio-sim/LightGlue-ONNX/releases/download/v0.1.3/superpoint_lightglue.onnx	80ae9218c44fe702b48666834e83cdcc3fada4f1dfdad7f0600dbc22fdd2d97b
+disk.onnx	https://github.com/fabio-sim/LightGlue-ONNX/releases/download/v1.0.0/disk.onnx	f02f18e254bd52d978981c715a4e7961f15afaa23290379b9b357f6745df12c4
+disk_lightglue.onnx	https://github.com/fabio-sim/LightGlue-ONNX/releases/download/v0.1.0/disk_lightglue.onnx	025c36dddb245d70cf80674b75eebbbac7e20479a82b3ef3897c36b36d095406
+modules/model.py	https://raw.githubusercontent.com/verlab/accelerated_features/e92685f57f8318b18725c5c8c0bd28c7fe188d9a/modules/model.py	d9a665f18fcea5eaf3e278925e1a92103afcba9051e05b2334f3daa29f411964
+xfeat.pt	https://github.com/verlab/accelerated_features/raw/e92685f57f8318b18725c5c8c0bd28c7fe188d9a/weights/xfeat.pt	0f5187fd7bedd26c7fe6acc9685444493a165a35ecc087b33c2db3627f3ea10b
+lightglue/lightglue.py	https://raw.githubusercontent.com/cvg/LightGlue/eb42fee2d71449efb0aa5c10549752b5d75384d8/lightglue/lightglue.py	dcb75b9cad1985c5e7a537c512d4318d47fbcc99df75b39a513de60e027c039f
+# SuperGlue (non-commercial license, tests only): sources and indoor weights
+# pinned to a commit, for PyMatcher (rtabmap_superglue.py, copied by the fetch
+# script) and for the superglue_indoor.onnx the fetch script exports.
+models/__init__.py	https://raw.githubusercontent.com/magicleap/SuperGluePretrainedNetwork/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/__init__.py	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+models/superglue.py	https://raw.githubusercontent.com/magicleap/SuperGluePretrainedNetwork/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/superglue.py	14b2d1bc363fef84c79653df5660389eeb505250cad8faf7507d604ced0a9fad
+models/matching.py	https://raw.githubusercontent.com/magicleap/SuperGluePretrainedNetwork/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/matching.py	ffff0360d64a184a23e76d4ceead4b3cba1648c23dbf1647aae506d5d934f755
+models/superpoint.py	https://raw.githubusercontent.com/magicleap/SuperGluePretrainedNetwork/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/superpoint.py	a5f7de572b1b1e86e50f3a3704c56779635ddc1a78deeb3b09212baa4042c118
+models/weights/superglue_indoor.pth	https://github.com/magicleap/SuperGluePretrainedNetwork/raw/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/weights/superglue_indoor.pth	0e710469be25ebe1e2ccf68edcae8b2945b0617c8e7e68412251d9d47f5052b1

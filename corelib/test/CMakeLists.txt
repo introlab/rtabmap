@@ -178,6 +178,41 @@ IF(BUILD_PERF_TESTS)
 	set_tests_properties(test_compression_perf PROPERTIES
 			TIMEOUT ${_perf_timeout}
 			LABELS  "performance")
+
+	# Comparison of the implementations of SuperPoint (rpautrat weights): the python
+	# script (PyDetector), libtorch (SuperPointRpautrat) and ONNX Runtime (OnnxDetector),
+	# on CPU, CUDA and TensorRT, over the images of data/samples: load and per frame
+	# times, keypoint counts, and whether they find the same keypoints and descriptors.
+	# The variants the build or the machine can't run are skipped (backends compiled
+	# in, assets of scripts/fetch_test_data.sh, GPU):
+	#   bin/test_superpoint_perf
+	#   RTABMAP_PERF_FRAMES=10 bin/test_superpoint_perf
+	add_executable(test_superpoint_perf perf_superpoint.cpp)
+	target_link_libraries(test_superpoint_perf gtest_main rtabmap_core)
+	target_include_directories(test_superpoint_perf PRIVATE ${CMAKE_SOURCE_DIR}/corelib/src)
+
+	add_test(NAME test_superpoint_perf COMMAND test_superpoint_perf)
+	set_tests_properties(test_superpoint_perf PROPERTIES
+			TIMEOUT ${_perf_timeout}
+			LABELS  "performance")
+
+	# Comparison of the feature matchers on SuperPoint features: brute force with cross
+	# check, LightGlue and SuperGlue exported to ONNX (OnnxMatcher, CPU/CUDA/TensorRT) and
+	# SuperGlue in python (PyMatcher), over consecutive frames of data/samples: times,
+	# matches and RANSAC inliers. The variants the build or the machine can't run are
+	# skipped:
+	#   bin/test_matcher_perf
+	add_executable(test_matcher_perf perf_matcher.cpp)
+	target_link_libraries(test_matcher_perf gtest_main rtabmap_core)
+	target_include_directories(test_matcher_perf PRIVATE ${CMAKE_SOURCE_DIR}/corelib/src)
+	IF(WITH_PYTHON AND Python3_FOUND)
+		target_include_directories(test_matcher_perf PRIVATE ${Python3_INCLUDE_DIRS})
+	ENDIF()
+
+	add_test(NAME test_matcher_perf COMMAND test_matcher_perf)
+	set_tests_properties(test_matcher_perf PROPERTIES
+			TIMEOUT ${_perf_timeout}
+			LABELS  "performance")
 ENDIF(BUILD_PERF_TESTS)
 
 # Rtabmap end-to-end replay of sample DBs (test data fetched by
@@ -239,6 +274,19 @@ IF(WITH_PYTHON AND Python3_FOUND)
 			${CMAKE_SOURCE_DIR}/corelib/src)
 	add_test(NAME test_pymatcher COMMAND test_pymatcher)
 ENDIF(WITH_PYTHON AND Python3_FOUND)
+
+#OnnxSession / OnnxDetector / OnnxMatcher (optional ONNX Runtime support;
+# learned local features and matchers from ONNX models). The tests run the
+# SuperPoint and LightGlue models that scripts/fetch_test_data.sh fetches
+# into data/tests/ and skip when they are absent. The headers are internal
+# (not in the public include tree); expose corelib/src for them.
+IF(ONNXRuntime_FOUND)
+	add_executable(test_onnx test_onnx.cpp)
+	target_link_libraries(test_onnx gtest_main rtabmap_core)
+	target_include_directories(test_onnx PRIVATE
+			${CMAKE_SOURCE_DIR}/corelib/src)
+	add_test(NAME test_onnx COMMAND test_onnx)
+ENDIF(ONNXRuntime_FOUND)
 
 #LASWriter.h (optional libLAS -- own target for the extra link/include set)
 IF(libLAS_FOUND)

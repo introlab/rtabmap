@@ -248,7 +248,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Mem, UseOdomFeatures,             bool, true,     "Use odometry features instead of regenerating them.");
     RTABMAP_PARAM(Mem, UseOdomGravity,              bool, false,    uFormat("Use odometry instead of IMU orientation to add gravity links to new nodes created. We assume that odometry is already aligned with gravity (e.g., we are using a VIO approach). Gravity constraints are used by graph optimization only if \"%s\" is not zero.", kOptimizerGravitySigma().c_str()));
     RTABMAP_PARAM(Mem, CovOffDiagIgnored,           bool, true,     "Ignore off diagonal values of the covariance matrix.");
-    RTABMAP_PARAM(Mem, GlobalDescriptorStrategy,    int, 0,        "Extract global descriptor from sensor data. 0=disabled, 1=PyDescriptor");
+    RTABMAP_PARAM(Mem, GlobalDescriptorStrategy,    int, 0,        "Extract global descriptor from sensor data. 0=disabled, 1=PyDescriptor, 2=OnnxDescriptor");
     RTABMAP_PARAM(Mem, RotateImagesUpsideUp,        bool, false,    "Rotate images so that upside is up if they are not already. This can be useful in case the robots don't have all same camera orientation but are using the same map, so that not rotation-invariant visual features can still be used across the fleet.");
 
     // KeypointMemory (Keypoint-based)
@@ -266,9 +266,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Kp, NndrRatio,                float, 0.8,   "NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
 #if CV_MAJOR_VERSION > 2 && !defined(HAVE_OPENCV_XFEATURES2D)
     // OpenCV>2 without xFeatures2D module doesn't have BRIEF
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 8,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat");
+    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 8,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat 17=OnnxDetector");
 #else
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat");
+    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 6,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat 17=OnnxDetector");
 #endif
     RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,      bool, true,   "Use of the td-idf strategy to compute the likelihood.");
     RTABMAP_PARAM(Kp, Parallelized,             bool, true,   "If the dictionary update and signature creation were parallelized.");
@@ -386,6 +386,14 @@ class RTABMAP_CORE_EXPORT Parameters
 
     RTABMAP_PARAM_STR(PyDetector, Path,       "",           "Path to python script file (see available ones in rtabmap/corelib/src/python/*). See the header to see where the script should be copied.");
 	RTABMAP_PARAM(PyDetector, Cuda,           bool, true,   "Use cuda.");
+
+    RTABMAP_PARAM_STR(OnnxDetector, ModelPath, "",             "[Required] Path to the ONNX model (*.onnx) of the detector/descriptor, e.g., SuperPoint. See rtabmap/corelib/src/onnx/README.md for the expected inputs/outputs of the model and how to export one.");
+    RTABMAP_PARAM(OnnxDetector, Threshold,    float, 0.0,      uFormat("Keep only keypoints with a score above this threshold (0 means that only the threshold inside the model is used). See also the %s parameters.", "Onnx/*"));
+
+    // ONNX Runtime, shared by OnnxDetector and OnnxMatcher
+    RTABMAP_PARAM(Onnx, Provider,              int, 1,          "ONNX Runtime execution provider used by OnnxDetector and OnnxMatcher: 0=CPU, 1=CUDA, 2=TensorRT. A provider not available in the ONNX Runtime library falls back to CPU.");
+    RTABMAP_PARAM(Onnx, TensorRTFp16,          bool, false,     uFormat("[%s=2] Build the TensorRT engines in FP16.", kOnnxProvider().c_str()));
+    RTABMAP_PARAM_STR(Onnx, TensorRTCachePath, "",              uFormat("[%s=2] Directory where the TensorRT engines are cached (building an engine takes seconds to minutes). Empty means the \"tensorrt_cache\" folder of %s.", kOnnxProvider().c_str(), kRtabmapWorkingDirectory().c_str()));
 
     // BayesFilter
     RTABMAP_PARAM(Bayes, VirtualPlacePriorThr, float, 0.9,  "Virtual place prior. Considering that we are at a new place, this is the prior probability to move again to a new place (unvisited location). The prior probability to move to a previously visited location is 1 - VirtualPlacePriorThr (split equally against all previously visited locations).");
@@ -766,9 +774,9 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Vis, Iterations,               int,    300,   "Maximum iterations to compute the transform.");
 #if CV_MAJOR_VERSION > 2 && !defined(HAVE_OPENCV_XFEATURES2D)
     // OpenCV>2 without xFeatures2D module doesn't have BRIEF
-    RTABMAP_PARAM(Vis, FeatureType, int, 8, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat");
+    RTABMAP_PARAM(Vis, FeatureType, int, 8, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat 17=OnnxDetector");
 #else
-    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat");
+    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector 16=SuperPoint-Rpautrat 17=OnnxDetector");
 #endif
     RTABMAP_PARAM(Vis, MaxFeatures,               int,   1000,  "0 no limits.");
     RTABMAP_PARAM(Vis, SSC,                       bool,  false, "If true, SSC (Suppression via Square Covering) is applied to limit keypoints.");
@@ -783,7 +791,7 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(Vis, GridRows,                  int,   1,     uFormat("Number of rows of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, GridCols,                  int,   1,     uFormat("Number of columns of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, CorType,                   int,   0,     "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
-    RTABMAP_PARAM(Vis, CorNNType,                 int,   1,     uFormat("[%s=0] FLANN Linear=0, FLANN KdTree=1, FLANN LSH=2, Brute Force=3, Brute Force GPU=4, Brute Force Cross Check=5, SuperGlue=6, GMS=7, FLANN KdTree Single=8, NanoFLANN KdTree=9. Used for features matching approach.", kVisCorType().c_str()));
+    RTABMAP_PARAM(Vis, CorNNType,                 int,   1,     uFormat("[%s=0] FLANN Linear=0, FLANN KdTree=1, FLANN LSH=2, Brute Force=3, Brute Force GPU=4, Brute Force Cross Check=5, PyMatcher=6, GMS=7, FLANN KdTree Single=8, NanoFLANN KdTree=9, OnnxMatcher=10. Used for features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorNNDR,                   float, 0.8,   uFormat("[%s=0] NNDR: nearest neighbor distance ratio. Used for knn features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessWinSize,           int,   40,    uFormat("[%s=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessMatchToProjection, bool,  false, uFormat("[%s=0] Match frame's corners to source's projected points (when guess transform is provided) instead of projected points to frame's corners.", kVisCorType().c_str()));
@@ -808,6 +816,9 @@ class RTABMAP_CORE_EXPORT Parameters
 	RTABMAP_PARAM(PyMatcher, Cuda,           bool, true,   "Used by SuperGlue.");
 	RTABMAP_PARAM_STR(PyMatcher, Model,        "indoor",   "For SuperGlue, set only \"indoor\" or \"outdoor\". For OANet, set path to one of the pth file (e.g., \"OANet/model/gl3d/sift-4000/model_best.pth\").");
 
+	RTABMAP_PARAM_STR(OnnxMatcher, ModelPath, "",             "[Required] Path to the ONNX model (*.onnx) of the matcher, e.g., LightGlue. See rtabmap/corelib/src/onnx/README.md for the expected inputs/outputs of the model and how to export one. Only float descriptors are supported, the model should have been trained with the descriptors of the feature type used.");
+	RTABMAP_PARAM(OnnxMatcher, Threshold,     float, 0.1,      uFormat("Minimum score of a match (when the model outputs match scores). See also the %s parameters.", "Onnx/*"));
+
 	RTABMAP_PARAM(GMS, WithRotation,         bool, false,   "Take rotation transformation into account.");
 	RTABMAP_PARAM(GMS, WithScale,            bool, false,   "Take scale transformation into account.");
 	RTABMAP_PARAM(GMS, ThresholdFactor,      double, 6.0,   "The higher, the less matches.");
@@ -815,6 +826,8 @@ class RTABMAP_CORE_EXPORT Parameters
 	// Global descriptor approaches
 	RTABMAP_PARAM_STR(PyDescriptor, Path,    "",          "Path to python script file (see available ones in rtabmap/corelib/src/pydescriptor/*). See the header to see where the script should be used.");
 	RTABMAP_PARAM(PyDescriptor, Dim,         int, 4096,   "Descriptor dimension.");
+	RTABMAP_PARAM_STR(OnnxDescriptor, ModelPath, "",      "[Required] Path to the ONNX model (*.onnx) of the global descriptor, e.g., NetVLAD. See rtabmap/corelib/src/onnx/README.md for the expected input/output of the model and how to export one.");
+	RTABMAP_PARAM(OnnxDescriptor, Dim,       int, 0,      uFormat("Keep only the first values of the descriptor (re-normalized), 0 keeps the whole descriptor. See also the %s parameters.", "Onnx/*"));
 
     // ICP registration parameters
 #ifdef RTABMAP_POINTMATCHER
