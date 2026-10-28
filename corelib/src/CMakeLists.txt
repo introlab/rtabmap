@@ -551,12 +551,12 @@ IF(opengv_FOUND)
     )
 ENDIF(opengv_FOUND)
 
-IF(WITH_NANOFLANN AND nanoflann_FOUND)
+IF(RTABMAP_NANOFLANN_FOUND)
     SET(SRC_FILES
         ${SRC_FILES}
         nanoflann/NanoFlannIndex.cpp
     )
-    IF(nanoflann_VERSION STREQUAL "internal")
+    IF(RTABMAP_NANOFLANN_VERSION STREQUAL "internal")
         set_source_files_properties(
             nanoflann/NanoFlannIndex.cpp
             PROPERTIES COMPILE_DEFINITIONS RTABMAP_NANOFLANN_INTERNAL)
@@ -567,7 +567,7 @@ IF(WITH_NANOFLANN AND nanoflann_FOUND)
             $<BUILD_INTERFACE:nanoflann::nanoflann>
         )
     ENDIF()
-ENDIF(WITH_NANOFLANN AND nanoflann_FOUND)
+ENDIF(RTABMAP_NANOFLANN_FOUND)
 
 IF(PDAL_FOUND)
 	SET(INCLUDE_DIRS
