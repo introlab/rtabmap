@@ -333,6 +333,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->reextract_nn->setItemData(7, 0, Qt::UserRole - 1);
 #endif
 
+#ifndef RTABMAP_NANOFLANN
+	_ui->comboBox_dictionary_strategy->setItemData(VWDictionary::kNNNanoFlannKdTree, 0, Qt::UserRole - 1);
+	_ui->reextract_nn->setItemData(9, 0, Qt::UserRole - 1);
+#endif
+
 #if CV_MAJOR_VERSION >= 3
 	_ui->groupBox_fast_opencv2->setEnabled(false);
 #else
