@@ -1808,6 +1808,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->MarkerVarianceOrientationIgnored->setObjectName(Parameters::kMarkerVarianceOrientationIgnored().c_str());
 	_ui->MarkerRangeMin->setObjectName(Parameters::kMarkerMinRange().c_str());
 	_ui->MarkerRangeMax->setObjectName(Parameters::kMarkerMaxRange().c_str());
+	_ui->MarkerMaxAmbiguity->setObjectName(Parameters::kMarkerMaxAmbiguity().c_str());
+	_ui->MarkerMinPixelWidth->setObjectName(Parameters::kMarkerMinPixelWidth().c_str());
 	_ui->MarkerPriors->setObjectName(Parameters::kMarkerPriors().c_str());
 	_ui->MarkerPriorsVarianceLinear->setObjectName(Parameters::kMarkerPriorsVarianceLinear().c_str());
 	_ui->MarkerPriorsVarianceAngular->setObjectName(Parameters::kMarkerPriorsVarianceAngular().c_str());
@@ -1818,6 +1820,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->apriltag_refine_edges->setObjectName(Parameters::kMarkerAprilTagRefineEdges().c_str());
 	_ui->apriltag_decode_sharpening->setObjectName(Parameters::kMarkerAprilTagDecodeSharpening().c_str());
 	_ui->apriltag_debug->setObjectName(Parameters::kMarkerAprilTagDebug().c_str());
+	_ui->apriltag_opencv_pnp->setObjectName(Parameters::kMarkerAprilTagOpenCVPnP().c_str());
 
 	// IMU filter
 	_ui->doubleSpinBox_imuFilterMadgwickGain->setObjectName(Parameters::kImuFilterMadgwickGain().c_str());

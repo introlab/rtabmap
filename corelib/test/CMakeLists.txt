@@ -178,6 +178,19 @@ IF(BUILD_PERF_TESTS)
 	set_tests_properties(test_compression_perf PROPERTIES
 			TIMEOUT ${_perf_timeout}
 			LABELS  "performance")
+
+	# Bad marker orientations (small or ambiguous markers): what Marker/MinPixelWidth and
+	# Marker/MaxAmbiguity reject over rendered markers, for OpenCV, AprilTag and AprilTag
+	# with OpenCV's PnP:
+	#   bin/test_markerdetector_perf
+	#   RTABMAP_PERF_MARKER_SIZE=0.1 bin/test_markerdetector_perf   for 10 cm markers (15 cm by default)
+	add_executable(test_markerdetector_perf perf_markerdetector.cpp)
+	target_link_libraries(test_markerdetector_perf gtest_main rtabmap_core)
+
+	add_test(NAME test_markerdetector_perf COMMAND test_markerdetector_perf)
+	set_tests_properties(test_markerdetector_perf PROPERTIES
+			TIMEOUT ${_perf_timeout}
+			LABELS  "performance")
 ENDIF(BUILD_PERF_TESTS)
 
 # Rtabmap end-to-end replay of sample DBs (test data fetched by

@@ -678,6 +678,74 @@ TEST(MarkerDetectorTest, TiltedMarkerPoseMatchesGroundTruthForAllStrategies)
 #endif
 }
 
+TEST(MarkerDetectorTest, MinPixelWidthFiltersSmallMarkersForAllStrategies)
+{
+#ifndef RTABMAP_TEST_HAVE_ARUCO
+	GTEST_SKIP() << "RTAB-Map not built with OpenCV aruco/objdetect marker detection";
+#else
+	// 1 m marker 4 m ahead: ~131 pixels wide. Tilted by 50 deg about the vertical
+	// axis, its horizontal sides shrink to ~85 pixels, but its vertical sides don't.
+	const Transform facingCamera(
+			1,  0,  0, 0,
+			0, -1,  0, 0,
+			0,  0, -1, 4.0f);
+	const Transform tilted = facingCamera * Transform(0, 0, 0, 0, 50.0f*M_PI/180.0f, 0);
+	for(const StrategyDictionary & c : allStrategiesAndDictionaries())
+	{
+		SCOPED_TRACE(caseName(c));
+		for(const Transform & cameraToMarker : {facingCamera, tilted})
+		{
+			SCOPED_TRACE(cameraToMarker.prettyPrint());
+			const cv::Mat image = renderMarkerAtPose(c.dictionary, 0, cameraToMarker);
+
+			ParametersMap params = strategyParams(c);
+			MarkerDetector detectorDisabled(params);
+			ASSERT_EQ(detectorDisabled.detect(image, testCameraModel()).count(0), 1u);
+
+			// The longest side is used: the tilted marker is kept.
+			params.insert(ParametersPair(Parameters::kMarkerMinPixelWidth(), "110"));
+			MarkerDetector detectorKept(params);
+			EXPECT_EQ(detectorKept.detect(image, testCameraModel()).count(0), 1u);
+
+			params[Parameters::kMarkerMinPixelWidth()] = "150";
+			MarkerDetector detectorFiltered(params);
+			EXPECT_TRUE(detectorFiltered.detect(image, testCameraModel()).empty());
+		}
+	}
+#endif
+}
+
+TEST(MarkerDetectorTest, AprilTagOpenCVPnPPoseMatchesGroundTruth)
+{
+#if !defined(RTABMAP_TEST_HAVE_ARUCO) || !defined(RTABMAP_APRILTAG) || CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 1)
+	GTEST_SKIP() << "Needs OpenCV aruco/objdetect, the AprilTag library and OpenCV >= 4.1";
+#else
+	// Same tilted pose as TiltedMarkerPoseMatchesGroundTruthForAllStrategies: the pose
+	// from OpenCV's PnP should be in the same frame as the AprilTag library's one.
+	const Transform facingCamera(
+			1,  0,  0, 0.4f,
+			0, -1,  0, -0.3f,
+			0,  0, -1, 4.0f);
+	const Transform cameraToMarker = facingCamera * Transform(0, 0, 0, 20.0f*M_PI/180.0f, -25.0f*M_PI/180.0f, 30.0f*M_PI/180.0f);
+	for(const StrategyDictionary & c : allStrategiesAndDictionaries())
+	{
+		if(c.strategy != 1) continue;
+		SCOPED_TRACE(caseName(c));
+		ParametersMap params = strategyParams(c);
+		params.insert(ParametersPair(Parameters::kMarkerAprilTagOpenCVPnP(), "true"));
+		MarkerDetector detector(params);
+		std::map<int, MarkerInfo> detections = detector.detect(
+				renderMarkerAtPose(c.dictionary, 0, cameraToMarker), testCameraModel());
+		ASSERT_EQ(detections.count(0), 1u);
+		const Transform & pose = detections.at(0).pose();
+		EXPECT_LT(rotationErrorDeg(cameraToMarker, pose), 5.0f)
+				<< "expected " << cameraToMarker.prettyPrint() << ", got " << pose.prettyPrint();
+		EXPECT_LT((pose.toEigen3f().translation() - cameraToMarker.toEigen3f().translation()).norm(), 0.1f)
+				<< "expected " << cameraToMarker.prettyPrint() << ", got " << pose.prettyPrint();
+	}
+#endif
+}
+
 TEST(MarkerDetectorTest, AprilTagUprightSelectsOpenCVOrOfficialOrientation)
 {
 #ifndef RTABMAP_TEST_HAVE_ARUCO
@@ -764,5 +832,88 @@ TEST(MarkerDetectorTest, FirstCornerIsTopLeftOfRequestedUprightForAllStrategies)
 			}
 		}
 	}
+#endif
+}
+
+// ---------------------------------------------------------------------------
+// Planar pose ambiguity (Marker/MaxAmbiguity)
+//
+// A square marker seen small (weak perspective) and slightly tilted has two
+// poses, mirrored about the line of sight, reprojecting its corners almost
+// equally well: the detector can return the "flipped" orientation.
+// ---------------------------------------------------------------------------
+namespace {
+#ifdef RTABMAP_TEST_HAVE_ARUCO
+ParametersMap ambiguityParams(const StrategyDictionary & c, float maxAmbiguity)
+{
+	ParametersMap params = strategyParams(c);
+	params.insert(ParametersPair(Parameters::kMarkerMaxAmbiguity(), uNumber2Str(maxAmbiguity)));
+	return params;
+}
+#endif
+} // namespace
+
+TEST(MarkerDetectorTest, MaxAmbiguityKeepsWellConditionedPoseForAllStrategies)
+{
+#ifndef RTABMAP_TEST_HAVE_ARUCO
+	GTEST_SKIP() << "RTAB-Map not built with OpenCV aruco/objdetect marker detection";
+#else
+	// Same strongly tilted, close marker as TiltedMarkerPoseMatchesGroundTruthForAllStrategies:
+	// strong perspective, so the second solution reprojects clearly worse.
+	const Transform facingCamera(
+			1,  0,  0, 0.4f,
+			0, -1,  0, -0.3f,
+			0,  0, -1, 4.0f);
+	const Transform cameraToMarker = facingCamera * Transform(0, 0, 0, 20.0f*M_PI/180.0f, -25.0f*M_PI/180.0f, 30.0f*M_PI/180.0f);
+	for(const StrategyDictionary & c : allStrategiesAndDictionaries())
+	{
+		SCOPED_TRACE(caseName(c));
+		MarkerDetector detector(ambiguityParams(c, 0.1f));
+		std::map<int, MarkerInfo> detections = detector.detect(
+				renderMarkerAtPose(c.dictionary, 0, cameraToMarker), testCameraModel());
+		ASSERT_EQ(detections.count(0), 1u);
+		EXPECT_LT(rotationErrorDeg(cameraToMarker, detections.at(0).pose()), 5.0f)
+				<< "expected " << cameraToMarker.prettyPrint() << ", got " << detections.at(0).pose().prettyPrint();
+	}
+#endif
+}
+
+TEST(MarkerDetectorTest, MaxAmbiguityRejectsFlippedPose)
+{
+#ifndef RTABMAP_TEST_HAVE_ARUCO
+	GTEST_SKIP() << "RTAB-Map not built with OpenCV aruco/objdetect marker detection";
+#else
+	// Far marker (about 35 pixels wide), tilted by 20 deg around its vertical axis,
+	// slightly blurred to add noise on its corners. Without the check, OpenCV
+	// returns the flipped pose (tilted by about -20 deg).
+	const Transform facingCamera(
+			1,  0,  0, 0,
+			0, -1,  0, 0,
+			0,  0, -1, 15.0f);
+	const Transform cameraToMarker = facingCamera * Transform(0, 0, 0, 0, 20.0f*M_PI/180.0f, 0);
+	const StrategyDictionary c = {0, Parameters::defaultMarkerDictionary()};
+	cv::Mat image = renderMarkerAtPose(c.dictionary, 0, cameraToMarker);
+	cv::GaussianBlur(image, image, cv::Size(0,0), 1.5);
+
+	// Disabled (default): detected
+	MarkerDetector detector(strategyParams(c));
+	EXPECT_EQ(detector.detect(image, testCameraModel()).count(0), 1u);
+
+	// Enabled: rejected as ambiguous, the two solutions differ by about 40 deg,
+	// which is over 1 sigma of the default Marker/VarianceAngular (5.7 deg)
+	MarkerDetector ambiguityDetector(ambiguityParams(c, 0.1f));
+	EXPECT_EQ(ambiguityDetector.detect(image, testCameraModel()).count(0), 0u);
+
+	// Enabled, but within 1 sigma of the angular variance (57 deg): kept
+	ParametersMap params = ambiguityParams(c, 0.1f);
+	params.insert(ParametersPair(Parameters::kMarkerVarianceAngular(), "1"));
+	MarkerDetector noisyDetector(params);
+	EXPECT_EQ(noisyDetector.detect(image, testCameraModel()).count(0), 1u);
+
+	// Enabled, but orientation ignored: kept
+	params = ambiguityParams(c, 0.1f);
+	params.insert(ParametersPair(Parameters::kMarkerVarianceOrientationIgnored(), "true"));
+	MarkerDetector orientationIgnoredDetector(params);
+	EXPECT_EQ(orientationIgnoredDetector.detect(image, testCameraModel()).count(0), 1u);
 #endif
 }
