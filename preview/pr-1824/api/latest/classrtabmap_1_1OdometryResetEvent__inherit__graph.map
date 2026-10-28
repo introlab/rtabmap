@@ -1,0 +1,5 @@
+<map id="rtabmap::OdometryResetEvent" name="rtabmap::OdometryResetEvent">
+<area shape="rect" id="Node000001" title="Asks OdometryThread to restart the odometry from a given pose." alt="" coords="5,79,229,104"/>
+<area shape="rect" id="Node000002" href="$classUEvent.html" title=" " alt="" coords="83,5,152,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="120,44,120,79,115,79,115,44"/>
+</map>
