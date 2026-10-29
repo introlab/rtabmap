@@ -88,11 +88,6 @@ private:
 	float maxDepthError_;
 	float maxRange_;
 	float minRange_;
-	float minPixelWidth_;
-	float maxAmbiguity_;
-	float varianceAngular_;
-	bool orientationIgnored_;
-	float maxAmbiguityAngle_;
 	int dictionaryId_;
 	int aprilTagUpright_;
 	bool aprilTagOpenCVPnP_;

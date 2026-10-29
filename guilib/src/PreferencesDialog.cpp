@@ -1808,8 +1808,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->MarkerVarianceOrientationIgnored->setObjectName(Parameters::kMarkerVarianceOrientationIgnored().c_str());
 	_ui->MarkerRangeMin->setObjectName(Parameters::kMarkerMinRange().c_str());
 	_ui->MarkerRangeMax->setObjectName(Parameters::kMarkerMaxRange().c_str());
-	_ui->MarkerMaxAmbiguity->setObjectName(Parameters::kMarkerMaxAmbiguity().c_str());
-	_ui->MarkerMinPixelWidth->setObjectName(Parameters::kMarkerMinPixelWidth().c_str());
+	_ui->RGBDLandmarkMaxNormalError->setObjectName(Parameters::kRGBDLandmarkMaxNormalError().c_str());
 	_ui->MarkerPriors->setObjectName(Parameters::kMarkerPriors().c_str());
 	_ui->MarkerPriorsVarianceLinear->setObjectName(Parameters::kMarkerPriorsVarianceLinear().c_str());
 	_ui->MarkerPriorsVarianceAngular->setObjectName(Parameters::kMarkerPriorsVarianceAngular().c_str());

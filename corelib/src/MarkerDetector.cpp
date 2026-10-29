@@ -202,11 +202,6 @@ MarkerDetector::MarkerDetector(const ParametersMap & parameters) :
 	maxDepthError_(Parameters::defaultMarkerMaxDepthError()),
 	maxRange_(Parameters::defaultMarkerMaxRange()),
 	minRange_(Parameters::defaultMarkerMinRange()),
-	minPixelWidth_(Parameters::defaultMarkerMinPixelWidth()),
-	maxAmbiguity_(Parameters::defaultMarkerMaxAmbiguity()),
-	varianceAngular_(Parameters::defaultMarkerVarianceAngular()),
-	orientationIgnored_(Parameters::defaultMarkerVarianceOrientationIgnored()),
-	maxAmbiguityAngle_(0.0f),
 	dictionaryId_(Parameters::defaultMarkerDictionary()),
 	aprilTagUpright_(Parameters::defaultMarkerAprilTagUpright()),
 	aprilTagOpenCVPnP_(Parameters::defaultMarkerAprilTagOpenCVPnP()),
@@ -255,21 +250,6 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMarkerMaxDepthError(), maxDepthError_);
 	Parameters::parse(parameters, Parameters::kMarkerMaxRange(), maxRange_);
 	Parameters::parse(parameters, Parameters::kMarkerMinRange(), minRange_);
-	Parameters::parse(parameters, Parameters::kMarkerMinPixelWidth(), minPixelWidth_);
-	Parameters::parse(parameters, Parameters::kMarkerMaxAmbiguity(), maxAmbiguity_);
-	// The two pose solutions can be considered the same if they are within 1 sigma of
-	// the angular variance set on marker detections. If the orientation is ignored
-	// (also with deprecated angular variance >= 9999), a flipped orientation doesn't matter.
-	Parameters::parse(parameters, Parameters::kMarkerVarianceAngular(), varianceAngular_);
-	Parameters::parse(parameters, Parameters::kMarkerVarianceOrientationIgnored(), orientationIgnored_);
-	maxAmbiguityAngle_ = orientationIgnored_ || varianceAngular_ >= 9999 ? M_PI : sqrt(varianceAngular_);
-#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 1)
-	if(maxAmbiguity_ > 0.0f && strategy_ == kStrategyOpencv)
-	{
-		UWARN("Parameter %s is ignored with %s=0 (OpenCV) for OpenCV < 4.1.",
-			Parameters::kMarkerMaxAmbiguity().c_str(), Parameters::kMarkerStrategy().c_str());
-	}
-#endif
 	Parameters::parse(parameters, Parameters::kMarkerDictionary(), dictionaryId_);
 	Parameters::parse(parameters, Parameters::kMarkerAprilTagUpright(), aprilTagUpright_);
 	Parameters::parse(parameters, Parameters::kMarkerAprilTagOpenCVPnP(), aprilTagOpenCVPnP_);
@@ -505,24 +485,15 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 // Drop-in replacement for cv::aruco::estimatePoseSingleMarkers(), which was deprecated
 // in OpenCV 4.7 and removed in OpenCV 5. It reproduces the legacy default behavior (marker
 // object points ordered as ARUCO_CCW_CENTER + SOLVEPNP_ITERATIVE) using cv::solvePnP() per
-// marker. For OpenCV < 4.7 the native cv::aruco::estimatePoseSingleMarkers() is still used,
-// unless the ambiguity check is enabled (OpenCV >= 4.1).
-// If secondRvecs, secondTvecs and errors are set, the two planar pose solutions are also
-// computed with SOLVEPNP_IPPE_SQUARE: the one closest to the returned pose is considered as
-// the same solution, and the other one is returned as the second solution (the "flipped" one),
-// with their RMS reprojection errors in pixels (returned, second). The returned pose is not
-// changed (IPPE_SQUARE is not reliable when the marker is exactly perpendicular to the camera,
-// at least on OpenCV 4.2). Errors are negative if there is no second solution.
+// marker. For OpenCV < 4.7 the native cv::aruco::estimatePoseSingleMarkers() is still used
+// by the OpenCV strategy. Also used by MarkerAprilTag/OpenCVPnP (OpenCV >= 4.1).
 static void estimatePoseSingleMarkers(
 		const std::vector<std::vector<cv::Point2f> > & corners,
 		float markerLength,
 		const cv::Mat & cameraMatrix,
 		const cv::Mat & distCoeffs,
 		std::vector<cv::Vec3d> & rvecs,
-		std::vector<cv::Vec3d> & tvecs,
-		std::vector<cv::Vec3d> * secondRvecs = 0,
-		std::vector<cv::Vec3d> * secondTvecs = 0,
-		std::vector<cv::Vec2f> * errors = 0)
+		std::vector<cv::Vec3d> & tvecs)
 {
 	cv::Mat objPoints(4, 1, CV_32FC3);
 	objPoints.ptr<cv::Vec3f>(0)[0] = cv::Vec3f(-markerLength/2.f,  markerLength/2.f, 0);
@@ -536,73 +507,14 @@ static void estimatePoseSingleMarkers(
 	{
 		cv::solvePnP(objPoints, corners[i], cameraMatrix, distCoeffs, rvecs[i], tvecs[i]);
 	}
-
-	if(secondRvecs && secondTvecs && errors)
-	{
-		secondRvecs->resize(corners.size());
-		secondTvecs->resize(corners.size());
-		errors->resize(corners.size());
-		for(size_t i=0; i<corners.size(); ++i)
-		{
-			secondRvecs->at(i) = rvecs[i];
-			secondTvecs->at(i) = tvecs[i];
-			errors->at(i) = cv::Vec2f(-1.0f, -1.0f);
-
-			std::vector<cv::Mat> solutionsR, solutionsT;
-			std::vector<double> solutionsErrors; // must be CV_32F or CV_64F
-			int n = cv::solvePnPGeneric(objPoints, corners[i], cameraMatrix, distCoeffs,
-					solutionsR, solutionsT, false, cv::SOLVEPNP_IPPE_SQUARE,
-					cv::noArray(), cv::noArray(), solutionsErrors);
-			if(n >= 2)
-			{
-				// Which IPPE solution is the returned pose?
-				cv::Mat R, R0, R1;
-				cv::Rodrigues(rvecs[i], R);
-				cv::Rodrigues(solutionsR[0], R0);
-				cv::Rodrigues(solutionsR[1], R1);
-				// trace(R^T*Ri) is larger for the closest rotation
-				int same = cv::trace(R.t()*R0)[0] >= cv::trace(R.t()*R1)[0] ? 0 : 1;
-				int other = 1-same;
-				secondRvecs->at(i) = cv::Vec3d(solutionsR[other]);
-				secondTvecs->at(i) = cv::Vec3d(solutionsT[other]);
-				errors->at(i) = cv::Vec2f(solutionsErrors[same], solutionsErrors[other]);
-			}
-		}
-	}
 }
 #endif
 
-// A square marker can have two poses (the second one "flipped") explaining almost equally
-// well its corners. Returns true if the ratio of their errors (best/second, RMS-like
-// errors so that the ratio has the same meaning for all strategies) is over maxAmbiguity, unless both orientations are within maxAngle (e.g., marker seen
-// perpendicularly, where both solutions converge) or the second one is not physically
-// possible (the marker would be seen from its back). Poses are in camera optical frame,
-// with marker's z axis out of the marker.
-static bool isPoseAmbiguous(
-		int id,
-		float bestError,
-		float secondError,
-		const char * errorUnit,
-		const Transform & best,
-		const Transform & second,
-		float maxAmbiguity,
-		float maxAngle)
+// Whether the marker's z axis (out of the marker) points toward the camera (at the
+// origin), i.e., the marker is seen from its front. Pose in camera optical frame.
+static bool facesCamera(const Transform & pose)
 {
-	const float errorRatio = secondError > 0.0f ? bestError / secondError : 1.0f;
-	const float angleBetweenSolutions = best.getAngle(second);
-	// Marker's z axis should point toward the camera (at the origin)
-	const bool secondFacesCamera = second.r13()*second.x() + second.r23()*second.y() + second.r33()*second.z() < 0.0f;
-	if(errorRatio > maxAmbiguity && angleBetweenSolutions > maxAngle && secondFacesCamera)
-	{
-		UWARN("Skipping marker %d because its pose is ambiguous: error ratio of the two "
-			"pose solutions = %f (%f/%f %s) > %f (%s), their orientations differ by %f deg > %f deg (1 sigma of %s).",
-			id, errorRatio, bestError, secondError, errorUnit, maxAmbiguity, Parameters::kMarkerMaxAmbiguity().c_str(),
-			angleBetweenSolutions*180.0f/M_PI, maxAngle*180.0f/M_PI, Parameters::kMarkerVarianceAngular().c_str());
-		return true;
-	}
-	UDEBUG("Marker %d: error ratio of the two pose solutions = %f (%f/%f %s), their orientations differ by %f deg (second faces camera=%d).",
-		id, errorRatio, bestError, secondError, errorUnit, angleBetweenSolutions*180.0f/M_PI, secondFacesCamera?1:0);
-	return false;
+	return pose.r13()*pose.x() + pose.r23()*pose.y() + pose.r33()*pose.z() < 0.0f;
 }
 
 std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
@@ -728,7 +640,6 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 			Transform markerPose; // in OpenCV frame
 			double err = 0.0;
-			bool ambiguous = false;
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 1)
 			if(aprilTagOpenCVPnP_)
 			{
@@ -739,32 +650,13 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 				{
 					tagCorners[0][i] = cv::Point2f(det->p[i][0], det->p[i][1]);
 				}
-				std::vector<cv::Vec3d> rvecs, tvecs, secondRvecs, secondTvecs;
-				std::vector<cv::Vec2f> errors;
-				if(maxAmbiguity_ > 0.0f)
-				{
-					estimatePoseSingleMarkers(tagCorners, 1.0f, model.K(), model.D(), rvecs, tvecs, &secondRvecs, &secondTvecs, &errors);
-				}
-				else
-				{
-					estimatePoseSingleMarkers(tagCorners, 1.0f, model.K(), model.D(), rvecs, tvecs);
-				}
+				std::vector<cv::Vec3d> rvecs, tvecs;
+				estimatePoseSingleMarkers(tagCorners, 1.0f, model.K(), model.D(), rvecs, tvecs);
 				cv::Mat R;
 				cv::Rodrigues(rvecs[0], R);
 				markerPose = Transform(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvecs[0].val[0],
 							R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvecs[0].val[1],
 							R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvecs[0].val[2]) * toOpenCV;
-				if(!errors.empty() && errors[0][1] >= 0.0f)
-				{
-					err = errors[0][0];
-					cv::Mat R2;
-					cv::Rodrigues(secondRvecs[0], R2);
-					Transform second(R2.at<double>(0,0), R2.at<double>(0,1), R2.at<double>(0,2), secondTvecs[0].val[0],
-								R2.at<double>(1,0), R2.at<double>(1,1), R2.at<double>(1,2), secondTvecs[0].val[1],
-								R2.at<double>(2,0), R2.at<double>(2,1), R2.at<double>(2,2), secondTvecs[0].val[2]);
-					ambiguous = isPoseAmbiguous(det->id, errors[0][0], errors[0][1], "px RMS",
-							markerPose, second*toOpenCV, maxAmbiguity_, maxAmbiguityAngle_);
-				}
 			}
 			else
 #endif
@@ -779,51 +671,7 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 				// Then call estimate_tag_pose.
 				apriltag_pose_t pose;
-				if(maxAmbiguity_ > 0.0f)
-				{
-					// Same as estimate_tag_pose(), but keeping both solutions to check for ambiguity
-					double err1, err2;
-					apriltag_pose_t pose1, pose2;
-					estimate_tag_pose_orthogonal_iteration(&info, &err1, &pose1, &err2, &pose2, 50);
-					if(pose2.R)
-					{
-						bool firstIsBest = err1 <= err2;
-						const apriltag_pose_t & best = firstIsBest?pose1:pose2;
-						const apriltag_pose_t & second = firstIsBest?pose2:pose1;
-						double bestErr = firstIsBest?err1:err2;
-						double secondErr = firstIsBest?err2:err1;
-						Transform bestPose(MATD_EL(best.R, 0, 0), MATD_EL(best.R, 0, 1), MATD_EL(best.R, 0, 2), MATD_EL(best.t, 0, 0),
-									MATD_EL(best.R, 1, 0), MATD_EL(best.R, 1, 1), MATD_EL(best.R, 1, 2), MATD_EL(best.t, 1, 0),
-									MATD_EL(best.R, 2, 0), MATD_EL(best.R, 2, 1), MATD_EL(best.R, 2, 2), MATD_EL(best.t, 2, 0));
-						Transform secondPose(MATD_EL(second.R, 0, 0), MATD_EL(second.R, 0, 1), MATD_EL(second.R, 0, 2), MATD_EL(second.t, 0, 0),
-									MATD_EL(second.R, 1, 0), MATD_EL(second.R, 1, 1), MATD_EL(second.R, 1, 2), MATD_EL(second.t, 1, 0),
-									MATD_EL(second.R, 2, 0), MATD_EL(second.R, 2, 1), MATD_EL(second.R, 2, 2), MATD_EL(second.t, 2, 0));
-						// The errors are sums of squared object-space errors, use their
-						// square root to get a ratio comparable to OpenCV's RMS errors
-						ambiguous = isPoseAmbiguous(det->id,
-								sqrt(bestErr),
-								sqrt(secondErr),
-								"sqrt(object-space error)",
-								bestPose*toOpenCV,
-								secondPose*toOpenCV,
-								maxAmbiguity_,
-								maxAmbiguityAngle_);
-						pose = best;
-						err = bestErr;
-						matd_destroy(second.R);
-						matd_destroy(second.t);
-					}
-					else
-					{
-						// No second solution, t of pose2 is not set
-						pose = pose1;
-						err = err1;
-					}
-				}
-				else
-				{
-					err = estimate_tag_pose(&info, &pose);
-				}
+				err = estimate_tag_pose(&info, &pose);
 
 				if (pose.R && pose.t)
 				{
@@ -837,13 +685,17 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 				if (pose.t) matd_destroy(pose.t);
 			}
 
-			if(ambiguous)
+			if (!markerPose.isNull())
 			{
-				// skipped (warning already shown)
-			}
-			else if (!markerPose.isNull())
-			{
-				if(markerPose.z() > 0)
+				if(markerPose.z() <= 0)
+				{
+					UWARN("Skipping %d because its estimated pose is behind the camera %d", det->id, cameraIndex);
+				}
+				else if(!facesCamera(markerPose))
+				{
+					UWARN("Skipping %d because its estimated pose is seen from its back by the camera %d", det->id, cameraIndex);
+				}
+				else
 				{
 					poses.push_back(markerPose);
 
@@ -860,10 +712,6 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 					cams.push_back(cameraIndex);
 					UDEBUG("Add marker %d (err = %f)", det->id, err);
 					idsAdded.insert(det->id);
-				}
-				else
-				{
-					UWARN("Skipping %d because its estimated pose is behind the camera %d", det->id, cameraIndex);
 				}
 			}
 			else
@@ -940,22 +788,11 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 			const CameraModel & model = models[cam];
 
 			std::vector< cv::Vec3d > rvecs, tvecs;
-			std::vector< cv::Vec3d > secondRvecs, secondTvecs;
-			std::vector< cv::Vec2f > errors;
-#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 1)
-			if(maxAmbiguity_ > 0.0f)
-			{
-				estimatePoseSingleMarkers(cvCornersPerCam[cam], 1.0f, model.K(), model.D(), rvecs, tvecs, &secondRvecs, &secondTvecs, &errors);
-			}
-			else
-#endif
-			{
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
-				estimatePoseSingleMarkers(cvCornersPerCam[cam], 1.0f, model.K(), model.D(), rvecs, tvecs);
+			estimatePoseSingleMarkers(cvCornersPerCam[cam], 1.0f, model.K(), model.D(), rvecs, tvecs);
 #else
-				cv::aruco::estimatePoseSingleMarkers(cvCornersPerCam[cam], 1.0f, model.K(), model.D(), rvecs, tvecs);
+			cv::aruco::estimatePoseSingleMarkers(cvCornersPerCam[cam], 1.0f, model.K(), model.D(), rvecs, tvecs);
 #endif
-			}
 
 			float offsetX = cam*subRGBWidth;
 			for(size_t i=0; i<cvIdsPerCam[cam].size(); ++i)
@@ -970,17 +807,10 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 				Transform t(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvecs[i].val[0],
 							R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvecs[i].val[1],
 							R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvecs[i].val[2]);
-				if(!errors.empty() && errors[i][1] >= 0.0f)
+				if(!facesCamera(t))
 				{
-					cv::Mat R2;
-					cv::Rodrigues(secondRvecs[i], R2);
-					Transform second(R2.at<double>(0,0), R2.at<double>(0,1), R2.at<double>(0,2), secondTvecs[i].val[0],
-								R2.at<double>(1,0), R2.at<double>(1,1), R2.at<double>(1,2), secondTvecs[i].val[1],
-								R2.at<double>(2,0), R2.at<double>(2,1), R2.at<double>(2,2), secondTvecs[i].val[2]);
-					if(isPoseAmbiguous(cvIdsPerCam[cam][i], errors[i][0], errors[i][1], "px RMS", t, second, maxAmbiguity_, maxAmbiguityAngle_))
-					{
-						continue;
-					}
+					UWARN("Skipping %d because its estimated pose is seen from its back by the camera %d", cvIdsPerCam[cam][i], (int)cam);
+					continue;
 				}
 				poses.push_back(t);
 				ids.push_back(cvIdsPerCam[cam][i]);
@@ -1018,24 +848,6 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 	std::map<int, MarkerInfo> detections;
 	for(size_t i=0; i<ids.size(); ++i)
 	{
-		// Ignore markers too small in the image, their orientation is not reliable.
-		// The longest side is used, so that a strongly tilted marker (whose
-		// orientation is well constrained) is not rejected.
-		if(minPixelWidth_ > 0.0f)
-		{
-			float width = 0.0f;
-			for(size_t j=0; j<corners[i].size(); ++j)
-			{
-				width = std::max(width, (float)cv::norm(corners[i][j] - corners[i][(j+1)%corners[i].size()]));
-			}
-			if(width < minPixelWidth_)
-			{
-				UDEBUG("Filtered marker %d by its width in the image (%f < %f pixels, %s) from the camera %d",
-					ids[i], width, minPixelWidth_, Parameters::kMarkerMinPixelWidth().c_str(), cams[i]);
-				continue;
-			}
-		}
-
 		float length = 0.0f;
 		std::map<int, float>::const_iterator findIter = extraMarkerLengths.find(ids[i]);
 		if(markerLengths_.empty() && !depthMap.empty() && (markerLength_ == 0 || (markerLength_<0 && findIter==extraMarkerLengths.end())))

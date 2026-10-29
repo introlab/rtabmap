@@ -151,6 +151,7 @@ Rtabmap::Rtabmap() :
 	_loopCovLimited(Parameters::defaultRGBDLoopCovLimited()),
 	_loopGPS(Parameters::defaultRtabmapLoopGPS()),
 	_maxOdomCacheSize(Parameters::defaultRGBDMaxOdomCacheSize()),
+	_landmarkMaxNormalError(Parameters::defaultRGBDLandmarkMaxNormalError()),
 	_localizationSmoothing(Parameters::defaultRGBDLocalizationSmoothing()),
 	_localizationPriorInf(1.0/(Parameters::defaultRGBDLocalizationPriorError()*Parameters::defaultRGBDLocalizationPriorError())),
 	_localizationSecondTryWithoutProximityLinks(Parameters::defaultRGBDLocalizationSecondTryWithoutProximityLinks()),
@@ -642,6 +643,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), _loopCovLimited);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopGPS(), _loopGPS);
 	Parameters::parse(parameters, Parameters::kRGBDMaxOdomCacheSize(), _maxOdomCacheSize);
+	Parameters::parse(parameters, Parameters::kRGBDLandmarkMaxNormalError(), _landmarkMaxNormalError);
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationSmoothing(), _localizationSmoothing);
 	double localizationPriorError = Parameters::defaultRGBDLocalizationPriorError();
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationPriorError(), localizationPriorError);
@@ -3223,25 +3225,36 @@ bool Rtabmap::process(
 	std::map<int, std::set<int> > landmarksDetected; // <Landmark ID, list of nodes that saw this landmark>
 	if(!signature->getLandmarks().empty() && !_graphOptimizer->landmarksIgnored() && signature->getWeight()!=-1)
 	{
-		bool hasGlobalLoopClosuresInOdomCache = !graph::filterLinks(_odomCacheConstraints, Link::kGlobalClosure, true).empty() || _loopClosureHypothesis.first != 0;
-		UDEBUG("hasGlobalLoopClosuresInOdomCache=%d", hasGlobalLoopClosuresInOdomCache?1:0);
+		const bool localizedInOdomCache = !_memory->isIncremental() && hasLocalizationLinksInOdomCache();
+		UDEBUG("localizedInOdomCache=%d", localizedInOdomCache?1:0);
+		std::vector<int> landmarksRejected;
 		for(std::map<int, Link>::const_iterator iter=signature->getLandmarks().begin(); iter!=signature->getLandmarks().end(); ++iter)
 		{
 			if(uContains(_memory->getLandmarksIndex(), iter->first) &&
 					_memory->getLandmarksIndex().find(iter->first)->second.size()>1)
 			{
 				if(!_memory->isIncremental() &&          // In localization mode
-					!hasGlobalLoopClosuresInOdomCache && // If there are global loop closures in odom cache, we can keep far landmarks
+					!localizedInOdomCache &&             // If there are localization links in odom cache, we can keep far landmarks
+					_loopClosureHypothesis.first == 0 && // or if this node has a global loop closure
 					_localRadius>0.0 &&
 					iter->second.transform().getNormSquared() > _localRadius*_localRadius)
 				{
-					// Ignore landmark detections over local radius
+					// Remove landmark detections over local radius, so that they are not
+					// added back to the graph on a later optimization
 					UWARN("Ignoring landmark %d for localization as it is too far (%fm > %s=%f) "
-							"and odom cache doesn't contain global loop closure(s).",
+							"and odom cache doesn't contain localization link(s).",
 							iter->first,
 							iter->second.transform().getNorm(),
 							Parameters::kRGBDLocalRadius().c_str(),
 							_localRadius);
+					landmarksRejected.push_back(iter->first);
+				}
+				else if(_landmarkMaxNormalError > 0.0f &&
+						!_memory->isIncremental() &&           // In localization mode (in mapping mode, the landmark's pose can be wrong, and corrected by next detections)
+						iter->second.rotVariance() < 9999.0 && // orientation used (not ignored)
+						!isLandmarkNormalValid(signature, iter->first, iter->second, localizedInOdomCache))
+				{
+					landmarksRejected.push_back(iter->first);
 				}
 				else
 				{
@@ -3251,6 +3264,10 @@ bool Rtabmap::process(
 					loopClosureLinksAdded.push_back(std::make_pair(signature->id(), iter->first));
 				}
 			}
+		}
+		for(size_t i=0; i<landmarksRejected.size(); ++i)
+		{
+			_memory->removeLink(signature->id(), landmarksRejected[i]);
 		}
 	}
 
@@ -3762,22 +3779,7 @@ bool Rtabmap::process(
 						maxGraphErrorsRemovedCount = removedLinks.size();
 					}
 
-					// Count how many localization links are in the constraints
-					bool hadAlreadyLocalizationLinks = false;
-					for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin();
-							iter!=_odomCacheConstraints.end(); ++iter)
-					{
-						if(iter->second.type() == Link::kGlobalClosure ||
-						   iter->second.type() == Link::kLocalSpaceClosure ||
-						   iter->second.type() == Link::kLocalTimeClosure ||
-						   iter->second.type() == Link::kUserClosure ||
-						   iter->second.type() == Link::kNeighborMerged ||
-						   iter->second.type() == Link::kLandmark)
-						{
-							hadAlreadyLocalizationLinks = true;
-							break;
-						}
-					}
+					const bool hadAlreadyLocalizationLinks = hasLocalizationLinksInOdomCache();
 
 					// update localization links
 					UASSERT(uContains(optPoses, signature->id()));
@@ -5641,6 +5643,70 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	UINFO("Optimization time %f s", timer.ticks());
 
 	return optimizedPoses;
+}
+
+// Whether there are localization links in the odometry cache: global loop closures,
+// proximity links, landmarks, or user links (from addLink()).
+bool Rtabmap::hasLocalizationLinksInOdomCache() const
+{
+	for(std::multimap<int, Link>::const_iterator iter=_odomCacheConstraints.begin(); iter!=_odomCacheConstraints.end(); ++iter)
+	{
+		if(iter->second.type() == Link::kGlobalClosure ||
+		   iter->second.type() == Link::kLocalSpaceClosure ||
+		   iter->second.type() == Link::kUserClosure ||
+		   iter->second.type() == Link::kLandmark)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+// Compare the normal (z axis) of a landmark detection with the one of the landmark
+// in the map (see RGBD/LandmarkMaxNormalError). When localized, the full normals are
+// compared using the current localization. Otherwise, only their inclination (angle
+// with the vertical) is compared, which doesn't depend on the yaw of the robot.
+bool Rtabmap::isLandmarkNormalValid(const Signature * signature, int landmarkId, const Link & landmarkLink, bool localized) const
+{
+	UASSERT(signature);
+	std::map<int, Transform>::const_iterator landmarkIter = _optimizedPoses.find(landmarkId);
+	std::map<int, Transform>::const_iterator poseIter = _optimizedPoses.find(signature->id());
+	if(landmarkIter == _optimizedPoses.end() || poseIter == _optimizedPoses.end())
+	{
+		UDEBUG("Landmark %d or node %d not in the local map, its normal is not checked.", -landmarkId, signature->id());
+		return true;
+	}
+
+	// Orientation of the robot in the map, with roll and pitch from gravity if available
+	Transform robotRotation = poseIter->second.rotation();
+	std::multimap<int, Link>::const_iterator gravityIter = graph::findLink(signature->getLinks(), signature->id(), signature->id(), false, Link::kGravity);
+	if(gravityIter != signature->getLinks().end())
+	{
+		float roll, pitch, yaw;
+		gravityIter->second.transform().getEulerAngles(roll, pitch, yaw);
+		robotRotation = Transform(0, 0, 0, roll, pitch, poseIter->second.theta());
+	}
+	const Eigen::Vector3f detectedNormal = (robotRotation * landmarkLink.transform().rotation()).toEigen3f().rotation().col(2);
+	const Eigen::Vector3f mapNormal = landmarkIter->second.toEigen3f().rotation().col(2);
+
+	float error;
+	if(localized)
+	{
+		error = acos(std::max(-1.0f, std::min(1.0f, detectedNormal.dot(mapNormal))));
+	}
+	else
+	{
+		error = fabs(acos(std::max(-1.0f, std::min(1.0f, detectedNormal.z()))) - acos(std::max(-1.0f, std::min(1.0f, mapNormal.z()))));
+	}
+	if(error > _landmarkMaxNormalError)
+	{
+		UWARN("Rejecting detection of landmark %d by node %d: its %s differs from the one in the map by %f rad > %f rad (%s).",
+				-landmarkId, signature->id(), localized?"normal":"inclination", error, _landmarkMaxNormalError,
+				Parameters::kRGBDLandmarkMaxNormalError().c_str());
+		return false;
+	}
+	UDEBUG("Landmark %d: %s error = %f rad", -landmarkId, localized?"normal":"inclination", error);
+	return true;
 }
 
 // Returns the old loop closure to remove to repair the graph when the

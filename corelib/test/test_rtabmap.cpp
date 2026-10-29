@@ -3606,6 +3606,102 @@ TEST(RtabmapTest, LandmarkObservationsAcrossFramesShareSameLandmarkPose)
 	rtabmap.close(false);
 }
 
+// RGBD/LandmarkMaxNormalError: a map is created with two nodes at the origin seeing
+// landmark 42 1 m forward, on a wall facing the robot (normal toward -x). Then, in localization mode, new nodes at the origin see the
+// landmark again with the orientations `observations`. Returns, for each of them,
+// whether the landmark is used (it is removed when rejected).
+// Landmark 1 m forward, its z axis (normal) toward the robot (-x)
+static const Transform kWallLandmark(1.0f, 0, 0, 0, -M_PI/2.0f, 0);
+
+static std::vector<bool> landmarkObservationsKeptInLocalization(
+		const std::vector<Transform> & observations,
+		float maxNormalError,
+		bool orientationIgnored = false,
+		bool localizationMode = true)
+{
+	const std::string dbPath = uniqueDbPath();
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kOptimizerStrategy()] = uNumber2Str(Optimizer::isAvailable(Optimizer::kTypeGTSAM)?Optimizer::kTypeGTSAM:Optimizer::kTypeG2O);
+	params[Parameters::kOptimizerLandmarksIgnored()] = "false";
+	params[Parameters::kRGBDOptimizeMaxError()] = "0"; // only the normal check can reject
+	params[Parameters::kRGBDLandmarkMaxNormalError()] = uNumber2Str(maxNormalError);
+	const cv::Mat cov = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	cv::Mat lmCov = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const int kLm = 42;
+	const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+	auto process = [&](Rtabmap & rtabmap, int id, const Transform & observation, const cv::Mat & observationCov)
+	{
+		SensorData d(image); d.setId(id);
+		Landmarks lms;
+		lms.emplace(kLm, Landmark(kLm, 0.1f, observation, observationCov));
+		d.setLandmarks(lms);
+		EXPECT_TRUE(rtabmap.process(d, Transform::getIdentity(), cov));
+	};
+	{
+		Rtabmap rtabmap;
+		rtabmap.init(params, dbPath);
+		for(int id=1; id<=2; ++id)
+		{
+			process(rtabmap, id, kWallLandmark, lmCov);
+		}
+		rtabmap.close(true);
+	}
+	if(orientationIgnored)
+	{
+		lmCov(cv::Range(3,6), cv::Range(3,6)) = cv::Mat::eye(3, 3, CV_64FC1) * 9999;
+	}
+	std::vector<bool> kept;
+	{
+		params[Parameters::kMemIncrementalMemory()] = uBool2Str(!localizationMode);
+		Rtabmap rtabmap;
+		rtabmap.init(params, dbPath);
+		for(size_t i=0; i<observations.size(); ++i)
+		{
+			process(rtabmap, 3+i, observations[i], lmCov);
+			// In localization mode, the new node may not be kept in memory: use the
+			// landmark used for localization (0 if none) instead of its links.
+			kept.push_back(uValue(rtabmap.getStatistics().data(), Statistics::kLoopLandmark_detected(), 0.0f) == kLm);
+		}
+		rtabmap.close(false);
+	}
+	UFile::erase(dbPath.c_str());
+	return kept;
+}
+
+TEST(RtabmapTest, LandmarkMaxNormalErrorRejectsTiltedDetectionInLocalization)
+{
+	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM) && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		GTEST_SKIP() << "neither GTSAM nor g2o is available to optimize landmarks";
+	}
+	// Seen again with its normal tilted up by 40 deg (e.g., a flipped pose of a small
+	// marker). Not localized yet: the inclination is compared.
+	const Transform tilted(1.0f, 0, 0, 0, -50.0f*M_PI/180.0f, 0);
+	EXPECT_FALSE(landmarkObservationsKeptInLocalization({tilted}, 20.0f*M_PI/180.0f)[0]);
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 0.0f)[0]) << "disabled";
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 50.0f*M_PI/180.0f)[0]);
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({kWallLandmark}, 20.0f*M_PI/180.0f)[0]) << "same orientation";
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 20.0f*M_PI/180.0f, true)[0]) << "orientation ignored (angular variance >= 9999)";
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 20.0f*M_PI/180.0f, false, false)[0]) << "not checked in mapping mode";
+}
+
+TEST(RtabmapTest, LandmarkMaxNormalErrorComparesYawOnlyWhenLocalized)
+{
+	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM) && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		GTEST_SKIP() << "neither GTSAM nor g2o is available to optimize landmarks";
+	}
+	// Normal turned by 60 deg about the vertical: its inclination is the same, so it is
+	// kept when not localized. Once localized by a first good detection (in the odom
+	// cache), the full normal is compared and it is rejected.
+	const Transform turned(1.0f, 0, 0, 0, -M_PI/2.0f, 60.0f*M_PI/180.0f);
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({turned}, 20.0f*M_PI/180.0f)[0]) << "not localized: only the inclination is compared";
+	const std::vector<bool> kept = landmarkObservationsKeptInLocalization({kWallLandmark, turned}, 20.0f*M_PI/180.0f);
+	ASSERT_EQ(kept.size(), 2u);
+	EXPECT_TRUE(kept[0]) << "good detection";
+	EXPECT_FALSE(kept[1]) << "localized: the full normal is compared";
+}
+
 TEST(RtabmapTest, DetectMoreLoopClosuresReturnsMinusOneWhenIntraAndInterBothFalse)
 {
 	Rtabmap rtabmap;
