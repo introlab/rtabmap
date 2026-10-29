@@ -34,7 +34,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 
 #include "rtflann/flann.hpp"
+#ifdef RTABMAP_NANOFLANN
 #include "nanoflann/NanoFlannIndex.h"
+#endif
 #include <boost/crc.hpp>
 #ifdef _OPENMP
 #include <omp.h>
@@ -80,6 +82,7 @@ FlannIndex::~FlannIndex()
 
 void FlannIndex::release()
 {
+#ifdef RTABMAP_NANOFLANN
 	if(nanoIndex_)
 	{
 		UDEBUG("Clearing nanoflann index...");
@@ -87,6 +90,7 @@ void FlannIndex::release()
 		nanoIndex_ = 0;
 		UDEBUG("Clearing nanoflann index... done!");
 	}
+#endif
 	if(index_)
 	{
 		UDEBUG("Clearing flann index...");
@@ -200,6 +204,7 @@ static void fillIndexHeader(
 }
 
 std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) const {
+#ifdef RTABMAP_NANOFLANN
 	if(nanoIndex_)
 	{
 		std::vector<unsigned char> nanoIndexData = nanoIndex_->serializeIndex();
@@ -225,6 +230,7 @@ std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) cons
 		}
 		return std::vector<unsigned char>();
 	}
+#endif
 	if(index_ && !addedDescriptors_.empty())
 	{
 #ifdef WIN32
@@ -356,10 +362,12 @@ std::vector<unsigned char> FlannIndex::serializeIndex(bool computeChecksum) cons
 
 size_t FlannIndex::indexedFeatures() const
 {
+#ifdef RTABMAP_NANOFLANN
 	if(nanoIndex_)
 	{
 		return nanoIndex_->indexedFeatures();
 	}
+#endif
 	if(!index_)
 	{
 		return 0;
@@ -388,10 +396,12 @@ size_t FlannIndex::indexedFeatures() const
 // return Bytes
 size_t FlannIndex::memoryUsed() const
 {
+#ifdef RTABMAP_NANOFLANN
 	if(nanoIndex_)
 	{
 		return nanoIndex_->memoryUsed();
 	}
+#endif
 	if(!index_)
 	{
 		return 0;
@@ -428,6 +438,14 @@ void FlannIndex::buildIndex(
 		float rebalancingFactor)
 {
 	UDEBUG("algorithm=%d", (int)algorithm);
+#ifndef RTABMAP_NANOFLANN
+	if(isNanoFlannAlgorithm(algorithm))
+	{
+		// Closest rtflann structure
+		UDEBUG("RTAB-Map is not built with nanoflann, using FLANN_INDEX_KDTREE_SINGLE instead.");
+		algorithm = FLANN_INDEX_KDTREE_SINGLE;
+	}
+#endif
 	this->release();
 	UASSERT(index_ == 0);
 	UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
@@ -437,6 +455,7 @@ void FlannIndex::buildIndex(
 	rebalancingFactor_ = rebalancingFactor;
 	algorithm_ = algorithm;
 
+#ifdef RTABMAP_NANOFLANN
 	if(isNanoFlannAlgorithm(algorithm))
 	{
 		// The tree keeps its own copy of the points and rebuilds itself, so
@@ -452,6 +471,7 @@ void FlannIndex::buildIndex(
 			removedRatioThreshold(rebalancingFactor_));
 		return;
 	}
+#endif
 
 	rtflann::IndexParams params;
 
@@ -554,6 +574,13 @@ bool FlannIndex::loadIndex(
 		return false;
 	}
 	UASSERT(indexData!=NULL);
+#ifndef RTABMAP_NANOFLANN
+	if(isNanoFlannAlgorithm(algorithm))
+	{
+		// Same fallback as buildIndex()
+		algorithm = FLANN_INDEX_KDTREE_SINGLE;
+	}
+#endif
 #ifdef WIN32
 	if(!isNanoFlannAlgorithm(algorithm)) {
 		UERROR("FLANN index deserialization is not yet implemented on Windows. Index cannot be loaded from memory buffer.");
@@ -680,6 +707,7 @@ bool FlannIndex::loadIndex(
 
 	UDEBUG("algorithm=%d", (int)algorithm);
 
+#ifdef RTABMAP_NANOFLANN
 	if(isNanoFlannAlgorithm(algorithm))
 	{
 		nanoIndex_ = new NanoFlannIndex();
@@ -698,6 +726,7 @@ bool FlannIndex::loadIndex(
 		}
 		return true;
 	}
+#endif
 
 #ifdef WIN32
 	return false; // rtflann deserialization is not implemented on Windows, rejected above
@@ -775,15 +804,21 @@ bool FlannIndex::loadIndex(
 
 bool FlannIndex::isBuilt()
 {
+#ifdef RTABMAP_NANOFLANN
 	return index_!=0 || nanoIndex_!=0;
+#else
+	return index_!=0;
+#endif
 }
 
 std::vector<unsigned int> FlannIndex::addPoints(const cv::Mat & features)
 {
+#ifdef RTABMAP_NANOFLANN
 	if(nanoIndex_)
 	{
 		return nanoIndex_->addPoints(features);
 	}
+#endif
 	if(!index_)
 	{
 		UERROR("Flann index not yet created!");
@@ -891,11 +926,13 @@ std::vector<unsigned int> FlannIndex::addPoints(const cv::Mat & features)
 
 void FlannIndex::removePoint(unsigned int index)
 {
+#ifdef RTABMAP_NANOFLANN
 	if(nanoIndex_)
 	{
 		nanoIndex_->removePoint(index);
 		return;
 	}
+#endif
 	if(!index_)
 	{
 		UERROR("Flann index not yet created!");
@@ -937,12 +974,14 @@ void FlannIndex::knnSearch(
 		bool sorted,
 		int cores) const
 {
+#ifdef RTABMAP_NANOFLANN
 	if(nanoIndex_)
 	{
 		// exact search, "checks", "eps" and "sorted" don't apply
 		nanoIndex_->knnSearch(query, indices, dists, knn);
 		return;
 	}
+#endif
 	if(!index_)
 	{
 		UERROR("Flann index not yet created!");
@@ -1003,12 +1042,14 @@ void FlannIndex::radiusSearch(
 		bool sorted,
 		int cores) const
 {
+#ifdef RTABMAP_NANOFLANN
 	if(nanoIndex_)
 	{
 		// "checks" and "cores" don't apply, it searches on one core
 		nanoIndex_->radiusSearch(query, indices, dists, radius, maxNeighbors, eps, sorted);
 		return;
 	}
+#endif
 	if(!index_)
 	{
 		UERROR("Flann index not yet created!");

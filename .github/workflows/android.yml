@@ -2,8 +2,8 @@ name: android
 
 # Android build environments (docker/noble/android/rtabmap_apiXX).
 # amd64 only, so a single native runner and no manifest juggling.
-# Note: these build FROM introlab3it/rtabmap:android-noble-deps, which is not
-# produced by any workflow; it is still built and pushed by hand.
+# These build FROM introlab3it/rtabmap:android-noble-deps (docker/noble/android),
+# which the docker_deps job below rebuilds and pushes from master only.
 
 # No paths filters on the triggers: the `changes` job below filters pushes and
 # pull requests, so the required check still reports (one that never does
@@ -59,10 +59,46 @@ jobs:
               - 'docker/noble/android/**'
               - '.github/workflows/android.yml'
 
-  docker:
+  docker_deps:
+    # Skipped on pull requests and in the merge queue; built and pushed only
+    # from master (push or manual dispatch), since it pushes the
+    # :android-noble-deps tag to Docker Hub. When unchanged, the registry
+    # cache makes this a quick no-op.
     needs: changes
+    if: needs.changes.outputs.relevant == 'true' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          file: ./docker/noble/android/Dockerfile
+          tags: introlab3it/rtabmap:android-noble-deps
+          cache-from: type=registry,ref=introlab3it/rtabmap:android-noble-deps
+          cache-to: type=inline
+
+  docker:
+    needs: [changes, docker_deps]
+    # Run even when docker_deps is skipped (it is, on pull requests): the
+    # Dockerfiles then pull the :android-noble-deps image already on Docker Hub.
     # A manual dispatch is honored only on master, the only ref we push from.
-    if: ${{ needs.changes.outputs.relevant == 'true' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
+    if: ${{ !cancelled() && !failure() && needs.changes.outputs.relevant == 'true' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/master') }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -122,7 +158,7 @@ jobs:
   # The only check of this workflow the ruleset requires: a matrix job skipped
   # by `if` does not report its per-entry names, so those cannot be required.
   android-ci:
-    needs: [changes, docker]
+    needs: [changes, docker_deps, docker]
     if: always()
     runs-on: ubuntu-latest
     steps:

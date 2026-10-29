@@ -32,7 +32,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
 
+#ifdef RTABMAP_NANOFLANN_INTERNAL
 #include "nanoflann/nanoflann.h"
+#else
+#include <nanoflann.hpp>
+#endif
 
 #include <sstream>
 
