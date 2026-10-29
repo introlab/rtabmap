@@ -74,11 +74,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_qt_version->setText(qVersion());
 	_ui->label_rtflann_version->setText(RTABMAP_RTFLANN_VERSION);
 	_ui->label_lz4_version->setText(RTABMAP_LZ4_VERSION);
-#ifdef RTABMAP_SQLITE3_INTERNAL
-	_ui->label_sqlite3_version->setText(RTABMAP_SQLITE3_VERSION " (internal)");
-#else
 	_ui->label_sqlite3_version->setText(RTABMAP_SQLITE3_VERSION);
-#endif
 	_ui->label_complementary->setText("Yes");
 #ifdef RTABMAP_MADGWICK
 	_ui->label_madgwick->setText("Yes");

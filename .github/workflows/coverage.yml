@@ -171,7 +171,6 @@ jobs:
           # the upload, so the HTML artifact, the summary below and Codecov all
           # report the same figure. Kept in sync with coverage-report.sh.
           lcov "${LCOV_IGNORE[@]}" --remove lcov.info \
-            '*/sqlite3/*' \
             '*/rtflann/*' \
             '*/corelib/test/*' \
             '*/utilite/test/*' \

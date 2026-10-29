@@ -670,11 +670,7 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 				str = "LZ4:";
 				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_LZ4_VERSION << std::endl;
 				str = "SQLite3:";
-#ifdef RTABMAP_SQLITE3_INTERNAL
-				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_SQLITE3_VERSION " (internal)" << std::endl;
-#else
 				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_SQLITE3_VERSION << std::endl;
-#endif
 				str = "With ORB OcTree:";
 #ifdef RTABMAP_ORB_OCTREE
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
