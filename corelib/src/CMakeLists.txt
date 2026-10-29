@@ -136,7 +136,6 @@ SET(SRC_FILES
     rtflann/ext/lz4.c
     rtflann/ext/lz4hc.c
     FlannIndex.cpp
-    nanoflann/NanoFlannIndex.cpp
 
     #clams stuff
     clams/discrete_depth_distortion_model_helpers.cpp
@@ -551,6 +550,24 @@ IF(opengv_FOUND)
         opengv
     )
 ENDIF(opengv_FOUND)
+
+IF(RTABMAP_NANOFLANN_FOUND)
+    SET(SRC_FILES
+        ${SRC_FILES}
+        nanoflann/NanoFlannIndex.cpp
+    )
+    IF(RTABMAP_NANOFLANN_VERSION STREQUAL "internal")
+        set_source_files_properties(
+            nanoflann/NanoFlannIndex.cpp
+            PROPERTIES COMPILE_DEFINITIONS RTABMAP_NANOFLANN_INTERNAL)
+    ELSE()
+        # Header-only, used privately: don't require it from the exported targets
+        SET(LIBRARIES
+            ${LIBRARIES}
+            $<BUILD_INTERFACE:nanoflann::nanoflann>
+        )
+    ENDIF()
+ENDIF(RTABMAP_NANOFLANN_FOUND)
 
 IF(PDAL_FOUND)
 	SET(INCLUDE_DIRS
