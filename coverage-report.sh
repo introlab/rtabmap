@@ -145,7 +145,6 @@ lcov "${LCOV_IGNORE[@]}" --extract "$INFO_FILE" \
 # near-fully covered by construction, so leaving them in inflates the overall
 # number. Kept in sync with the same list in .github/workflows/coverage.yml.
 lcov "${LCOV_IGNORE[@]}" --remove "$INFO_FILE" \
-	'*/sqlite3/*' \
 	'*/rtflann/*' \
 	'*/corelib/test/*' \
 	'*/utilite/test/*' \

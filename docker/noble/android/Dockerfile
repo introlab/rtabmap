@@ -91,6 +91,19 @@ RUN echo "Install flann..." && \
     cd /root && \
     rm -rf flann
 
+# SQLite3 (not available to native code in the NDK)
+RUN echo "Install sqlite3..." && \
+    wget -nv https://www.sqlite.org/2026/sqlite-amalgamation-3540100.zip && \
+    unzip -qq sqlite-amalgamation-3540100.zip && \
+    cd sqlite-amalgamation-3540100 && \
+    $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android23-clang -O2 -fPIC -DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION -c sqlite3.c -o sqlite3.o && \
+    $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar rcs libsqlite3.a sqlite3.o && \
+    mkdir -p /opt/android/arm64-v8a/lib /opt/android/arm64-v8a/include && \
+    cp libsqlite3.a /opt/android/arm64-v8a/lib/ && \
+    cp sqlite3.h sqlite3ext.h /opt/android/arm64-v8a/include/ && \
+    cd /root && \
+    rm -rf sqlite-amalgamation-3540100.zip sqlite-amalgamation-3540100
+
 # GTSAM
 RUN echo "Install gtsam..." && \
     git clone https://bitbucket.org/gtborg/gtsam.git && \
