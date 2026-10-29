@@ -199,29 +199,24 @@ $(document).ready(function(){initNavTree('MarkerDetector_8h_source.html',''); in
 <div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>  <span class="keywordtype">float</span> maxDepthError_;</div>
 <div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span>  <span class="keywordtype">float</span> maxRange_;</div>
 <div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span>  <span class="keywordtype">float</span> minRange_;</div>
-<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>  <span class="keywordtype">float</span> minPixelWidth_;</div>
-<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>  <span class="keywordtype">float</span> maxAmbiguity_;</div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>  <span class="keywordtype">float</span> varianceAngular_;</div>
-<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>  <span class="keywordtype">bool</span> orientationIgnored_;</div>
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>  <span class="keywordtype">float</span> maxAmbiguityAngle_;</div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>  <span class="keywordtype">int</span> dictionaryId_;</div>
-<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>  <span class="keywordtype">int</span> aprilTagUpright_;</div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>  <span class="keywordtype">bool</span> aprilTagOpenCVPnP_;</div>
-<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span><span class="preprocessor">#if ((CV_MAJOR_VERSION &gt; 4 || (CV_MAJOR_VERSION==4 &amp;&amp; CV_MINOR_VERSION &gt;=7)) &amp;&amp; defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)</span></div>
-<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="preprocessor">#if CV_MAJOR_VERSION &gt; 4 || (CV_MAJOR_VERSION==4 &amp;&amp; CV_MINOR_VERSION &gt;=7)</span></div>
-<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span>  cv::Ptr&lt;cv::aruco::ArucoDetector&gt; arucoDetector_;</div>
-<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span>  cv::Ptr&lt;cv::aruco::DetectorParameters&gt; detectorParams_;</div>
-<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span>  cv::Ptr&lt;cv::aruco::Dictionary&gt; dictionary_;</div>
-<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span><span class="preprocessor">#endif</span></div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span>  <span class="keywordtype">void</span> * apriltagLibDetector_;</div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>  <span class="keywordtype">void</span> * apriltagLibFamily_;</div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>};</div>
+<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>  <span class="keywordtype">int</span> dictionaryId_;</div>
+<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>  <span class="keywordtype">int</span> aprilTagUpright_;</div>
+<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>  <span class="keywordtype">bool</span> aprilTagOpenCVPnP_;</div>
+<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span><span class="preprocessor">#if ((CV_MAJOR_VERSION &gt; 4 || (CV_MAJOR_VERSION==4 &amp;&amp; CV_MINOR_VERSION &gt;=7)) &amp;&amp; defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)</span></div>
+<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span><span class="preprocessor">#if CV_MAJOR_VERSION &gt; 4 || (CV_MAJOR_VERSION==4 &amp;&amp; CV_MINOR_VERSION &gt;=7)</span></div>
+<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>  cv::Ptr&lt;cv::aruco::ArucoDetector&gt; arucoDetector_;</div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>  cv::Ptr&lt;cv::aruco::DetectorParameters&gt; detectorParams_;</div>
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span>  cv::Ptr&lt;cv::aruco::Dictionary&gt; dictionary_;</div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span>  <span class="keywordtype">void</span> * apriltagLibDetector_;</div>
+<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span>  <span class="keywordtype">void</span> * apriltagLibFamily_;</div>
+<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span>};</div>
 </div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span> </div>
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>} <span class="comment">/* namespace rtabmap */</span></div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span> </div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span><span class="preprocessor">#endif </span><span class="comment">/* CORELIB_INCLUDE_RTABMAP_CORE_MARKERDETECTOR_H_ */</span><span class="preprocessor"></span></div>
+<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span> </div>
+<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span>} <span class="comment">/* namespace rtabmap */</span></div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span> </div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span><span class="preprocessor">#endif </span><span class="comment">/* CORELIB_INCLUDE_RTABMAP_CORE_MARKERDETECTOR_H_ */</span><span class="preprocessor"></span></div>
 <div class="ttc" id="aclassrtabmap_1_1CameraModel_html"><div class="ttname"><a href="classrtabmap_1_1CameraModel.html">rtabmap::CameraModel</a></div><div class="ttdoc">Represents a pinhole camera model containing intrinsic and extrinsic parameters, used for projection,...</div><div class="ttdef"><b>Definition</b> <a href="CameraModel_8h_source.html#l00052">CameraModel.h:53</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1MarkerDetector_html"><div class="ttname"><a href="classrtabmap_1_1MarkerDetector.html">rtabmap::MarkerDetector</a></div><div class="ttdef"><b>Definition</b> <a href="MarkerDetector_8h_source.html#l00059">MarkerDetector.h:59</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1MarkerInfo_html"><div class="ttname"><a href="classrtabmap_1_1MarkerInfo.html">rtabmap::MarkerInfo</a></div><div class="ttdef"><b>Definition</b> <a href="MarkerDetector_8h_source.html#l00043">MarkerDetector.h:43</a></div></div>
