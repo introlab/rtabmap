@@ -1169,7 +1169,7 @@ public class RTABMapActivity extends FragmentActivity implements OnClickListener
 			{
 				RTABMapLib.setMappingParameter(nativeApplication, "RGBD/MarkerDetection", "true");
 				RTABMapLib.setMappingParameter(nativeApplication, "Marker/Dictionary", markerDetection);
-				RTABMapLib.setMappingParameter(nativeApplication, "Marker/CornerRefinementMethod", Integer.parseInt(markerDetection) > 16?"3":"0");
+				RTABMapLib.setMappingParameter(nativeApplication, "MarkerOpenCV/CornerRefinementMethod", "1"); // Subpixel
 			}
 			RTABMapLib.setMappingParameter(nativeApplication, "Marker/MaxDepthError", markerDetectionDepthError);
 		

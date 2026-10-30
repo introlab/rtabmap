@@ -16224,6 +16224,9 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                            </item>
                            <item row="1" column="0">
                             <widget class="QComboBox" name="OpenCVCornerRefinementMethod">
+                             <property name="currentIndex">
+                              <number>1</number>
+                             </property>
                              <item>
                               <property name="text">
                                <string>None</string>
