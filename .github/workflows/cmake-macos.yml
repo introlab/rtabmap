@@ -101,7 +101,7 @@ jobs:
     - name: Install Brew Dependencies
       run: |
         # Update brew and install from Brewfile if present, or specific packages
-        brew install pcl octomap pdal yaml-cpp librealsense libfreenect libusb zlib libomp suite-sparse ceres-solver ${{ matrix.cv }}
+        brew install pcl octomap pdal yaml-cpp librealsense libfreenect libusb zlib libomp suite-sparse ceres-solver googletest ${{ matrix.cv }}
 
     - name: Install Source Dependencies
       # Build (and per-dependency cache) the source-only deps not available from

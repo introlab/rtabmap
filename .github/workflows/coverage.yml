@@ -63,6 +63,7 @@ jobs:
             cmake \
             software-properties-common \
             libyaml-cpp-dev \
+            libgtest-dev \
             libg2o-dev \
             libceres-dev \
             curl \
