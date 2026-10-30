@@ -2074,12 +2074,6 @@ TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereoRepair)
 		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
 		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
 		uInsert(params, ParametersPair(Parameters::kMemBinDataKept(), "false"));
-		// Exact and deterministic nearest neighbor search: the default
-		// randomized FLANN kd-trees (Kp/NNStrategy=1) are seeded by
-		// std::random_device, so the visual words, thus the loop closures
-		// detected, change from run to run, and sometimes no wrong loop
-		// closure is accepted before the repair is enabled.
-		uInsert(params, ParametersPair(Parameters::kKpNNStrategy(), "6"));
 		uInsert(params, ParametersPair(Parameters::kKpFlannRebalancingFactor(), "1"));
 		uInsert(params, ParametersPair(Parameters::kRtabmapDetectionRate(), "0"));
 

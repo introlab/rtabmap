@@ -110,8 +110,9 @@ public:
         for (int i = 0; i < size_; ++i) vals_[i] = i;
 
         // shuffle the elements in the array
-        std::random_device rd;
-        std::mt19937 g(rd());
+        // Seeded by std::rand() (instead of std::random_device) to get the same
+        // results from one run to another, like upstream std::random_shuffle().
+        std::mt19937 g(std::rand());
         std::shuffle(vals_.begin(), vals_.end(), g);
 
         counter_ = 0;
