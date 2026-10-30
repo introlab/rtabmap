@@ -184,7 +184,7 @@ IF(BUILD_PERF_TESTS)
 	#   bin/test_markerdetector_perf
 	#   RTABMAP_PERF_MARKER_SIZE=0.1 bin/test_markerdetector_perf   for 10 cm markers (15 cm by default)
 	add_executable(test_markerdetector_perf perf_markerdetector.cpp)
-	target_link_libraries(test_markerdetector_perf gtest_main rtabmap_core)
+	target_link_libraries(test_markerdetector_perf GTest::gtest_main rtabmap_core)
 
 	add_test(NAME test_markerdetector_perf COMMAND test_markerdetector_perf)
 	set_tests_properties(test_markerdetector_perf PROPERTIES

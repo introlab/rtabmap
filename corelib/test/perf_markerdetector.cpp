@@ -17,9 +17,9 @@
 // those.
 //
 //   RangeTiltSweep: markers rendered at 16 distances up to 6 m (with their width in the image for the
-//   camera), tilted from 0 to 85 deg by 5 deg, detected by each strategy with its default
-//   parameters: OpenCV, the AprilTag library, and the AprilTag library with OpenCV's PnP
-//   (MarkerAprilTag/OpenCVPnP). It reports, per detector, tilt and distance, how many
+//   camera), tilted about their vertical axis from 0 to 85 deg by 5 deg, detected by each
+//   strategy with its default parameters: OpenCV, the AprilTag library, and the AprilTag
+//   library with OpenCV's PnP (MarkerAprilTag/OpenCVPnP). It reports, per detector, tilt and distance, how many
 //   markers are detected with a good pose and how many with a bad pose (more than 10 deg off).
 //
 //   RefinementSweep: the same with fewer tilts (by 15 deg), comparing the corner refinement
@@ -43,6 +43,8 @@
 //                                 0.5 pixel by default)
 //   RTABMAP_PERF_SUPERSAMPLING=1 bin/test_markerdetector_perf   to render without averaging over each pixel
 //                                 (8x8 samples per pixel by default)
+//   RTABMAP_PERF_ROLL=30 bin/test_markerdetector_perf   for markers rotated by 30 deg about their normal
+//                                 (0 by default, their edges aligned with the pixels)
 //   RTABMAP_PERF_MAX_DISTANCE=3 bin/test_markerdetector_perf   for distances up to 3 m (6 m by default)
 //   RTABMAP_PERF_JPEG_QUALITY=95 bin/test_markerdetector_perf   for images compressed in JPEG like in a database
 //                                 (raw images by default)
@@ -117,10 +119,18 @@ double focal()
 	return f;
 }
 
+// Rotation (deg) of the markers about their normal, before being tilted: 0 by default
+// (RTABMAP_PERF_ROLL), their edges are then aligned with the pixels
+float markerRoll()
+{
+	static const float roll = envValue("RTABMAP_PERF_ROLL", 0.0f);
+	return roll;
+}
+
 std::string setupDescription()
 {
-	return uFormat("Marker size: %g m (RTABMAP_PERF_MARKER_SIZE), camera: %dx%d (RTABMAP_PERF_IMAGE_WIDTH/HEIGHT), fx=fy=%g px (RTABMAP_PERF_FOCAL).",
-			markerSize(), imageWidth(), imageHeight(), focal());
+	return uFormat("Marker size: %g m (RTABMAP_PERF_MARKER_SIZE), camera: %dx%d (RTABMAP_PERF_IMAGE_WIDTH/HEIGHT), fx=fy=%g px (RTABMAP_PERF_FOCAL), marker roll: %g deg (RTABMAP_PERF_ROLL).",
+			markerSize(), imageWidth(), imageHeight(), focal(), markerRoll());
 }
 
 // Width (pixels) of a frontal marker in the image at this distance
@@ -202,16 +212,18 @@ ParametersMap sweepParams(const Config & c)
 	return params;
 }
 
-// Marker facing the camera at `distance`, tilted about its horizontal or vertical axis,
+// Marker facing the camera at `distance`, tilted about its vertical axis (about the
+// horizontal axis would be the same, rotated by 90 deg),
 // its center offset by (offsetX, offsetY) pixels from the image center.
-Transform sweepPose(float distance, float tiltDeg, bool verticalAxis, float offsetX, float offsetY)
+Transform sweepPose(float distance, float tiltDeg, float offsetX, float offsetY)
 {
 	const float tilt = tiltDeg*M_PI/180.0f;
 	return Transform(
 			1,  0,  0, offsetX*distance/focal(),
 			0, -1,  0, offsetY*distance/focal(),
 			0,  0, -1, distance) *
-			(verticalAxis ? Transform(0, 0, 0, 0, tilt, 0) : Transform(0, 0, 0, tilt, 0, 0));
+			Transform(0, 0, 0, 0, tilt, 0) *
+			Transform(0, 0, 0, 0, 0, markerRoll()*M_PI/180.0f);
 }
 
 // Distances (m) of the markers in the sweeps: 16 steps up to 6 m by default, or up to
@@ -358,25 +370,19 @@ void rangeTiltSweep(const std::vector<Config> & configs, int tiltStep)
 	std::map<std::string, double> detectionTime; // per config (s)
 	int images = 0;
 
-	// Per tilt and distance: 24 images, 12 about the horizontal axis and 12 about the vertical
-	// axis (only 12 at 0 deg, the same for both axes), each with the marker center jittered
-	// by up to half a pixel, otherwise the results depend on where the corners fall in the
-	// pixels (e.g., all odd widths would have their corners on pixel centers).
-	const int jitteredImagesPerAxis = 12;
+	// Per tilt and distance: 24 images, each with the marker center jittered by up to half a
+	// pixel, otherwise the results depend on where the corners fall in the pixels (e.g., all
+	// odd widths would have their corners on pixel centers).
+	const int jitteredImages = 24;
 	std::mt19937 rng(42);
 	std::uniform_real_distribution<float> jitter(-0.5f, 0.5f);
 	for(int tiltDeg=0; tiltDeg<=85; tiltDeg+=tiltStep)
 	for(float distance : distances)
-	for(int verticalAxis=0; verticalAxis<2; ++verticalAxis)
-	for(int jitteredImage=0; jitteredImage<jitteredImagesPerAxis; ++jitteredImage) // new random offsets below
+	for(int jitteredImage=0; jitteredImage<jitteredImages; ++jitteredImage) // new random offsets below
 	{
-		if(tiltDeg == 0 && verticalAxis)
-		{
-			continue; // same as about the horizontal axis
-		}
 		const float offsetX = jitter(rng);
 		const float offsetY = jitter(rng);
-		const Transform cameraToMarker = sweepPose(distance, tiltDeg, verticalAxis, offsetX, offsetY);
+		const Transform cameraToMarker = sweepPose(distance, tiltDeg, offsetX, offsetY);
 		const cv::Mat image = renderMarker(cameraToMarker);
 		++images;
 		if(distance == distances.front())
@@ -407,11 +413,11 @@ void rangeTiltSweep(const std::vector<Config> & configs, int tiltStep)
 	}
 
 	printf("\n%s\nGood and bad detections per tilt and distance, over %d images per tilt and distance (blur %g px\n"
-			"(RTABMAP_PERF_BLUR), about the horizontal and vertical axes, center jittered %d times by +-0.5 px per axis,\n"
-			"half the images at 0 deg, %dx%d samples per pixel (RTABMAP_PERF_SUPERSAMPLING), JPEG quality %d\n"
+			"(RTABMAP_PERF_BLUR), about the vertical axis, center jittered %d times by +-0.5 px per axis,\n"
+			"%dx%d samples per pixel (RTABMAP_PERF_SUPERSAMPLING), JPEG quality %d\n"
 			"(RTABMAP_PERF_JPEG_QUALITY, 0 for raw images)).\n"
 			"Each cell: number of good detections, number of bad ones (more than 10 deg off), \"-\" if none is bad.\n",
-			setupDescription().c_str(), imagesPerTilt.rbegin()->second, blur(), jitteredImagesPerAxis,
+			setupDescription().c_str(), imagesPerTilt.rbegin()->second, blur(), jitteredImages,
 			supersampling(), supersampling(), jpegQuality());
 	for(const Config & c : configs)
 	{
@@ -511,8 +517,8 @@ TEST(MarkerDetectorPerf, SaveRenderedSamples)
 		cv::putText(sheet, uFormat("%d deg", tiltDeg), cv::Point(5, y+cell/2), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0), 1);
 		for(size_t c=0; c<distances.size(); ++c)
 		{
-			// Tilted about the vertical axis, like the sweep's images about this axis
-			const Transform cameraToMarker = sweepPose(distances[c], tiltDeg, true, 0.0f, 0.0f);
+			// Tilted about the vertical axis, like the sweep's images
+			const Transform cameraToMarker = sweepPose(distances[c], tiltDeg, 0.0f, 0.0f);
 			const cv::Mat image = renderMarker(cameraToMarker);
 
 			std::string result = "not detected";
