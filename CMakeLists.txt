@@ -185,22 +185,42 @@ endif()
 # performance`. They can also be run directly, e.g. bin/test_flann_index_perf.
 OPTION(BUILD_PERF_TESTS "Build the performance tests (see ctest -L performance)" ON)
 
+OPTION(USE_SYSTEM_GTEST "Use the system GTest if found (>=1.10), otherwise download it" ON)
+
 include(CTest)
 if(BUILD_TESTING)
-   # Add GTest using FetchContent
-   # The fetched googletest must not be installed into the install prefix: it
-   # would shadow the GTest of other projects sharing the prefix and break
-   # their builds (see https://github.com/introlab/rtabmap/issues/1812).
-   set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
-   include(FetchContent)
-   FetchContent_Declare(
-       googletest
-       URL https://github.com/google/googletest/archive/refs/tags/v1.16.0.zip
-   )
-   FetchContent_GetProperties(googletest)
-   if(NOT googletest_POPULATED)
-     FetchContent_Populate(googletest)
-     add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+   # The tests need GTEST_SKIP and INSTANTIATE_TEST_SUITE_P, added in 1.10.
+   # RTABMAP_SYSTEM_GTEST is used instead of GTest_FOUND, which another
+   # dependency may have already set with an older GTest.
+   set(RTABMAP_SYSTEM_GTEST FALSE)
+   if(USE_SYSTEM_GTEST)
+      find_package(GTest 1.10 CONFIG QUIET)
+      if(GTest_FOUND AND TARGET GTest::gtest_main AND NOT GTest_VERSION VERSION_LESS "1.10")
+         set(RTABMAP_SYSTEM_GTEST TRUE)
+         message(STATUS "Found system GTest ${GTest_VERSION}: ${GTest_DIR}")
+      endif()
+   endif()
+   if(NOT RTABMAP_SYSTEM_GTEST)
+      if(USE_SYSTEM_GTEST)
+         message(STATUS "System GTest>=1.10 not found, downloading it.")
+      else()
+         message(STATUS "Downloading GTest (USE_SYSTEM_GTEST=OFF).")
+      endif()
+      # Add GTest using FetchContent
+      # The fetched googletest must not be installed into the install prefix: it
+      # would shadow the GTest of other projects sharing the prefix and break
+      # their builds (see https://github.com/introlab/rtabmap/issues/1812).
+      set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+      include(FetchContent)
+      FetchContent_Declare(
+          googletest
+          URL https://github.com/google/googletest/archive/refs/tags/v1.16.0.zip
+      )
+      FetchContent_GetProperties(googletest)
+      if(NOT googletest_POPULATED)
+        FetchContent_Populate(googletest)
+        add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+      endif()
    endif()
    include(GoogleTest)
    set(TEST_DATA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/data"
@@ -351,10 +371,8 @@ endif()
 
 FIND_PACKAGE(ZLIB REQUIRED QUIET)
 
-FIND_PACKAGE(SQLite3 QUIET)
-IF(SQLite3_FOUND)
-   MESSAGE(STATUS "Found SQLite3: ${SQLite3_INCLUDE_DIRS} ${SQLite3_LIBRARIES}")
-ENDIF(SQLite3_FOUND)
+FIND_PACKAGE(SQLite3 REQUIRED QUIET)
+MESSAGE(STATUS "Found SQLite3: ${SQLite3_INCLUDE_DIRS} ${SQLite3_LIBRARIES}")
 
 if(NOT "${PCL_LIBRARIES}" STREQUAL "")
    # fix libproj.so not found on Xenial
@@ -1346,6 +1364,14 @@ IF(NOT WITH_MADGWICK)
    SET(MADGWICK "//")
 ENDIF()
 
+# rtflann is a modified FLANN, it is always built and cannot be replaced by a system one
+FILE(STRINGS "${PROJECT_SOURCE_DIR}/corelib/src/rtflann/config.h.in" RTFLANN_VERSION REGEX "#define FLANN_VERSION_ ")
+STRING(REGEX REPLACE ".*\"(.*)\".*" "\\1" RTFLANN_VERSION "${RTFLANN_VERSION}")
+FILE(STRINGS "${PROJECT_SOURCE_DIR}/corelib/src/rtflann/ext/lz4.h" RTFLANN_LZ4_VERSION REGEX "#define LZ4_VERSION_(MAJOR|MINOR|RELEASE) ")
+STRING(REGEX REPLACE "[^;]*#define LZ4_VERSION_[A-Z]+ +([0-9]+)[^;]*" "\\1" RTFLANN_LZ4_VERSION "${RTFLANN_LZ4_VERSION}")
+STRING(REPLACE ";" "." RTFLANN_LZ4_VERSION "${RTFLANN_LZ4_VERSION}")
+SET(RTABMAP_SQLITE3_VERSION "${SQLite3_VERSION}")
+
 CONFIGURE_FILE(Version.h.in ${CMAKE_CURRENT_BINARY_DIR}/corelib/src/include/${PROJECT_PREFIX}/core/Version.h)
 
 # API documentation (Doxygen). Off by default: preparing it downloads the theme,
@@ -1589,7 +1615,15 @@ MESSAGE(STATUS "  CMAKE_INSTALL_LIBDIR = ${CMAKE_INSTALL_LIBDIR}")
 MESSAGE(STATUS "  BUILD_APP =            ${BUILD_APP}")
 MESSAGE(STATUS "  BUILD_TOOLS =          ${BUILD_TOOLS}")
 MESSAGE(STATUS "  BUILD_EXAMPLES =       ${BUILD_EXAMPLES}")
+IF(BUILD_TESTING)
+IF(RTABMAP_SYSTEM_GTEST)
+MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING} (system GTest ${GTest_VERSION})")
+ELSE()
+MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING} (downloaded GTest)")
+ENDIF()
+ELSE()
 MESSAGE(STATUS "  BUILD_TESTING =        ${BUILD_TESTING}")
+ENDIF()
 MESSAGE(STATUS "  BUILD_PERF_TESTS =     ${BUILD_PERF_TESTS}")
 MESSAGE(STATUS "  ENABLE_COVERAGE =      ${ENABLE_COVERAGE}")
 MESSAGE(STATUS "  ENABLE_FORMAT_ERRORS = ${ENABLE_FORMAT_ERRORS}")
@@ -1610,6 +1644,12 @@ MESSAGE(STATUS "  PCL_VERSION = ${PCL_VERSION}")
 IF(PCL_COMPILE_OPTIONS)
 MESSAGE(STATUS "  PCL_COMPILE_OPTIONS = ${PCL_COMPILE_OPTIONS}")
 ENDIF(PCL_COMPILE_OPTIONS)
+
+MESSAGE(STATUS "")
+MESSAGE(STATUS "Included dependencies (always built) :")
+MESSAGE(STATUS "  With rtflann (FLANN ${RTFLANN_VERSION} fork) = YES (License: BSD)")
+MESSAGE(STATUS "  With LZ4 ${RTFLANN_LZ4_VERSION} (internal)    = YES (License: BSD)")
+MESSAGE(STATUS "  With Complementary filter (imu_tools) = YES (License: BSD)")
 
 MESSAGE(STATUS "")
 MESSAGE(STATUS "Optional dependencies ('*' affects some default parameters) :")
@@ -1663,11 +1703,7 @@ ELSE()
 MESSAGE(STATUS "  With Qt                   = NO (Qt not found)")
 ENDIF()
 
-IF(SQLite3_FOUND)
-MESSAGE(STATUS "  With external SQLite3     = YES (License: Public Domain)")
-ELSE()
-MESSAGE(STATUS "  With external SQLite3     = NO (SQLite3 not found, internal version is used for convenience)")
-ENDIF()
+MESSAGE(STATUS "  With SQLite3 ${SQLite3_VERSION}      = YES (License: Public Domain)")
 
 IF(WITH_ORB_OCTREE)
 MESSAGE(STATUS "  With ORB OcTree           = YES (License: GPLv3)")

@@ -2071,6 +2071,12 @@ TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereoRepair)
 		uInsert(params, ParametersPair(Parameters::kRGBDOptimizeMaxError(), "0"));
 		uInsert(params, ParametersPair(Parameters::kRGBDOptimizeMaxErrorRepairRadius(),
 				uNumber2Str(v.repairRadius)));
+		// Repair only triggers when the same wrong loop closure causes two
+		// consecutive rejections, which is sensitive to which loop closures
+		// are found. FLANN kd-trees are randomized, use linear search instead
+		// to get the same loop closures on every run.
+		uInsert(params, ParametersPair(Parameters::kKpNNStrategy(), "0"));
+		uInsert(params, ParametersPair(Parameters::kVisCorNNType(), "0"));
 		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
 		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
 		uInsert(params, ParametersPair(Parameters::kMemBinDataKept(), "false"));

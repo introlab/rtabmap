@@ -1,4 +1,4 @@
-IMU filters taken from ROS imu_tools stack: https://github.com/ccny-ros-pkg/imu_tools, please look below for licensing. To avoid GPL license, MadgwickFilter can be disabled on compilation with "cmake -DWITH_MADGWICK=OFF ..".
+IMU filters taken from ROS imu_tools stack: https://github.com/CCNYRoboticsLab/imu_tools, please look below for licensing. To avoid GPL license, MadgwickFilter can be disabled on compilation with "cmake -DWITH_MADGWICK=OFF ..".
 ===================================
 
 Overview
@@ -17,9 +17,9 @@ device into an orientation quaternion using a novel approach based on a compleme
 License
 -----------------------------------
 
- * `MadgwickFilter`: currently licensed as GPL, following the original implementation
+ * `MadgwickFilter`: GPL-3.0-or-later, following the original implementation (imu_filter_madgwick)
  
- * `ComplementaryFilter`: BSD
+ * `ComplementaryFilter`: BSD-3-Clause (imu_complementary_filter)
 
 References
 -----------------------------------
