@@ -422,6 +422,14 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 		if(apriltagLibDetector_ == NULL)
 		{
 			apriltagLibDetector_ = apriltag_detector_create();
+			// Use our defaults, not the AprilTag library's ones (e.g., its quad_decimate is 2),
+			// for parameters not in the map
+			((apriltag_detector_t*)apriltagLibDetector_)->nthreads = Parameters::defaultMarkerAprilTagNThreads();
+			((apriltag_detector_t*)apriltagLibDetector_)->quad_decimate = Parameters::defaultMarkerAprilTagQuadDecimate();
+			((apriltag_detector_t*)apriltagLibDetector_)->quad_sigma = Parameters::defaultMarkerAprilTagQuadSigma();
+			((apriltag_detector_t*)apriltagLibDetector_)->refine_edges = Parameters::defaultMarkerAprilTagRefineEdges();
+			((apriltag_detector_t*)apriltagLibDetector_)->decode_sharpening = Parameters::defaultMarkerAprilTagDecodeSharpening();
+			((apriltag_detector_t*)apriltagLibDetector_)->debug = Parameters::defaultMarkerAprilTagDebug();
 		}
 		Parameters::parse(parameters, Parameters::kMarkerAprilTagNThreads(), ((apriltag_detector_t*)apriltagLibDetector_)->nthreads);
 		Parameters::parse(parameters, Parameters::kMarkerAprilTagQuadDecimate(), ((apriltag_detector_t*)apriltagLibDetector_)->quad_decimate);
