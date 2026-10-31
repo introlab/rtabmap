@@ -437,6 +437,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcOrbbecSDK - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
+	if (!CameraEinstar::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(kSrcEinstar - kSrcRGBD, 0, Qt::UserRole - 1);
+	}
 	if (!CameraRealSense::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(kSrcRealSense - kSrcRGBD, 0, Qt::UserRole - 1);
@@ -7081,6 +7085,15 @@ Camera * PreferencesDialog::createCamera(
 			_ui->checkbox_publishInterIMU->isChecked() && getIMUFilteringStrategy()>0?
 					IMUFilter::create((IMUFilter::Type)(getIMUFilteringStrategy()-1), this->getAllParameters()):0,
 					getIMUFilteringBaseFrameConversion());
+	}
+	else if (driver == kSrcEinstar)
+	{
+		// Calibration is read from the scanner itself.
+		camera = new CameraEinstar(
+			"",
+			"",
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
 	}
 	else if (driver == kSrcRealSense)
 	{

@@ -33,6 +33,10 @@ IF(@CONF_WITH_REALSENSE2@)
     ENDIF()
 ENDIF()
 
+IF(@CONF_WITH_EINSTAR@)
+    find_dependency(einstar)
+ENDIF()
+
 IF(@CONF_WITH_K4A@)
     IF(WIN32)
         find_dependency(K4A)

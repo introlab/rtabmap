@@ -99,6 +99,7 @@ public:
 		kSrcK4A            = 10,
 		kSrcSeerSense      = 11,
 		kSrcOrbbecSDK      = 12,
+		kSrcEinstar        = 13,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,

@@ -249,6 +249,12 @@
        </property>
        <addaction name="actionOrbbecSDK_astra2"/>
       </widget>
+      <widget class="QMenu" name="menuShining3D_Einstar">
+       <property name="title">
+        <string>SHINING 3D Einstar</string>
+       </property>
+       <addaction name="actionEinstar"/>
+      </widget>
       <addaction name="menuKinect_for_Xbox_360"/>
       <addaction name="menuXtion_PRO_LIVE"/>
       <addaction name="menuOrbbec_Astra"/>
@@ -262,6 +268,7 @@
       <addaction name="menuRealSense_D435"/>
       <addaction name="menuRealSense_L515"/>
       <addaction name="menuXvisio_SeerSense"/>
+      <addaction name="menuShining3D_Einstar"/>
      </widget>
      <widget class="QMenu" name="menuStereo_camera">
       <property name="title">
@@ -1769,6 +1776,14 @@
    </property>
    <property name="text">
     <string>Orbbec SDK</string>
+   </property>
+  </action>
+  <action name="actionEinstar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Einstar</string>
    </property>
   </action>
  </widget>

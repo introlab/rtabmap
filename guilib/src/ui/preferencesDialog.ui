@@ -3570,6 +3570,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <string>Orbbec SDK</string>
                                    </property>
                                   </item>
+                                  <item>
+                                   <property name="text">
+                                    <string>SHINING 3D Einstar</string>
+                                   </property>
+                                  </item>
                                  </widget>
                                 </item>
                                 <item row="0" column="1">
