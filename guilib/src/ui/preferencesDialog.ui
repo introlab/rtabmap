@@ -29697,7 +29697,7 @@ p, li { white-space: pre-wrap; }
                  </item>
                 </layout>
                </widget>
-               <widget class="QWidget" name="page_102">
+               <widget class="QWidget" name="page_onnxdetector">
                 <layout class="QVBoxLayout" name="verticalLayout_onnxdetector">
                  <item>
                   <widget class="QGroupBox" name="groupBox_onnxdetector2">

@@ -188,7 +188,7 @@ IF(BUILD_PERF_TESTS)
 	#   bin/test_superpoint_perf
 	#   RTABMAP_PERF_FRAMES=10 bin/test_superpoint_perf
 	add_executable(test_superpoint_perf perf_superpoint.cpp)
-	target_link_libraries(test_superpoint_perf gtest_main rtabmap_core)
+	target_link_libraries(test_superpoint_perf GTest::gtest_main rtabmap_core)
 	target_include_directories(test_superpoint_perf PRIVATE ${CMAKE_SOURCE_DIR}/corelib/src)
 
 	add_test(NAME test_superpoint_perf COMMAND test_superpoint_perf)
@@ -203,7 +203,7 @@ IF(BUILD_PERF_TESTS)
 	# skipped:
 	#   bin/test_matcher_perf
 	add_executable(test_matcher_perf perf_matcher.cpp)
-	target_link_libraries(test_matcher_perf gtest_main rtabmap_core)
+	target_link_libraries(test_matcher_perf GTest::gtest_main rtabmap_core)
 	target_include_directories(test_matcher_perf PRIVATE ${CMAKE_SOURCE_DIR}/corelib/src)
 	IF(WITH_PYTHON AND Python3_FOUND)
 		target_include_directories(test_matcher_perf PRIVATE ${Python3_INCLUDE_DIRS})
@@ -282,7 +282,7 @@ ENDIF(WITH_PYTHON AND Python3_FOUND)
 # (not in the public include tree); expose corelib/src for them.
 IF(ONNXRuntime_FOUND)
 	add_executable(test_onnx test_onnx.cpp)
-	target_link_libraries(test_onnx gtest_main rtabmap_core)
+	target_link_libraries(test_onnx GTest::gtest_main rtabmap_core)
 	target_include_directories(test_onnx PRIVATE
 			${CMAKE_SOURCE_DIR}/corelib/src)
 	add_test(NAME test_onnx COMMAND test_onnx)

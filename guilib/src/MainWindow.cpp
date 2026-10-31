@@ -8128,7 +8128,11 @@ void MainWindow::exportGridMap()
 				path += ".png";
 			}
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+			QImage img = image.flipped(Qt::Vertical).transformed(QTransform().rotate(-90));
+#else
 			QImage img = image.mirrored(false, true).transformed(QTransform().rotate(-90));
+#endif
 			QPixmap::fromImage(img).save(path);
 
 			QDesktopServices::openUrl(QUrl::fromLocalFile(path));
@@ -8678,7 +8682,7 @@ void MainWindow::changeState(MainWindow::State newState)
 	}
 	else
 	{
-		UWARN("Menu File actions size has changed (%d)", actions.size());
+		UWARN("Menu File actions size has changed (%d)", (int)actions.size());
 	}
 	actions = _ui->menuProcess->actions();
 	if(actions.size()>=2)

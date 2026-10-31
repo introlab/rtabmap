@@ -555,7 +555,7 @@ TEST_P(OnnxDetectorModel, BasicDetection)
 	EXPECT_GT(keypoints.size(), 100u);
 	ASSERT_EQ((int)keypoints.size(), descriptors.rows);
 	EXPECT_GT(descriptors.cols, 0);
-	if(dim > 0) EXPECT_EQ(dim, descriptors.cols);
+	if(dim > 0) { EXPECT_EQ(dim, descriptors.cols); }
 	EXPECT_EQ(CV_32F, descriptors.type());
 	expectKeypointsInImage(keypoints, image);
 
