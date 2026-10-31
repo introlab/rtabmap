@@ -1295,6 +1295,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_onnx_trt_fp16->setObjectName(Parameters::kOnnxTensorRTFp16().c_str());
 	_ui->lineEdit_onnx_trt_cache_path->setObjectName(Parameters::kOnnxTensorRTCachePath().c_str());
 	connect(_ui->toolButton_onnx_trt_cache_path, SIGNAL(clicked()), this, SLOT(changeOnnxTensorRTCachePath()));
+	_ui->lineEdit_onnx_openvino_device->setObjectName(Parameters::kOnnxOpenVINODevice().c_str());
+	_ui->lineEdit_onnx_openvino_precision->setObjectName(Parameters::kOnnxOpenVINOPrecision().c_str());
+	_ui->lineEdit_onnx_openvino_cache_path->setObjectName(Parameters::kOnnxOpenVINOCachePath().c_str());
+	connect(_ui->toolButton_onnx_openvino_cache_path, SIGNAL(clicked()), this, SLOT(changeOnnxOpenVINOCachePath()));
+	_ui->lineEdit_onnx_openvino_library_path->setObjectName(Parameters::kOnnxOpenVINOLibraryPath().c_str());
+	connect(_ui->toolButton_onnx_openvino_library_path, SIGNAL(clicked()), this, SLOT(changeOnnxOpenVINOLibraryPath()));
 
 	// OnnxMatcher
 	_ui->lineEdit_onnxmatcher_model_path->setObjectName(Parameters::kOnnxMatcherModelPath().c_str());
@@ -6160,6 +6166,28 @@ void PreferencesDialog::changeOnnxTensorRTCachePath()
 	QLineEdit * lineEdit = _ui->lineEdit_onnx_trt_cache_path;
 	QString path = QFileDialog::getExistingDirectory(this, tr("Select TensorRT cache directory"),
 			lineEdit->text().isEmpty()?this->getWorkingDirectory():lineEdit->text());
+	if(!path.isEmpty())
+	{
+		lineEdit->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOnnxOpenVINOCachePath()
+{
+	QLineEdit * lineEdit = _ui->lineEdit_onnx_openvino_cache_path;
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select OpenVINO cache directory"),
+			lineEdit->text().isEmpty()?this->getWorkingDirectory():lineEdit->text());
+	if(!path.isEmpty())
+	{
+		lineEdit->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOnnxOpenVINOLibraryPath()
+{
+	QLineEdit * lineEdit = _ui->lineEdit_onnx_openvino_library_path;
+	QString path = QFileDialog::getOpenFileName(this, tr("Select OpenVINO plugin library"),
+			lineEdit->text().isEmpty()?this->getWorkingDirectory():lineEdit->text(), tr("Shared library (*.so *.dll *.dylib)"));
 	if(!path.isEmpty())
 	{
 		lineEdit->setText(path);

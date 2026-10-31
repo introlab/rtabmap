@@ -28,33 +28,17 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "onnx/OnnxDescriptor.h"
 
 #include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
 
 #include <opencv2/imgproc/imgproc.hpp>
 
 namespace rtabmap {
 
-namespace {
-
-std::string expandTilde(const std::string & path)
-{
-	if(!path.empty() && path[0] == '~' && (path.size() == 1 || path[1] == '/' || path[1] == '\\'))
-	{
-		return UDirectory::homeDir() + path.substr(1);
-	}
-	return path;
-}
-
-} // namespace
-
 OnnxDescriptor::OnnxDescriptor(const ParametersMap & parameters) :
 		GlobalDescriptorExtractor(parameters),
 		modelPath_(Parameters::defaultOnnxDescriptorModelPath()),
 		dim_(Parameters::defaultOnnxDescriptorDim()),
-		provider_(Parameters::defaultOnnxProvider()),
-		tensorRTFp16_(Parameters::defaultOnnxTensorRTFp16()),
-		tensorRTCachePath_(Parameters::defaultOnnxTensorRTCachePath()),
+		options_(OnnxSession::Options::defaults()),
 		resizeWarned_(false)
 {
 	parseParameters(parameters);
@@ -67,27 +51,16 @@ OnnxDescriptor::~OnnxDescriptor()
 void OnnxDescriptor::parseParameters(const ParametersMap & parameters)
 {
 	std::string previousModelPath = modelPath_;
-	int previousProvider = provider_;
-	bool previousFp16 = tensorRTFp16_;
-	std::string previousCachePath = tensorRTCachePath_;
+	OnnxSession::Options previousOptions = options_;
 
 	Parameters::parse(parameters, Parameters::kOnnxDescriptorModelPath(), modelPath_);
 	Parameters::parse(parameters, Parameters::kOnnxDescriptorDim(), dim_);
-	Parameters::parse(parameters, Parameters::kOnnxProvider(), provider_);
-	Parameters::parse(parameters, Parameters::kOnnxTensorRTFp16(), tensorRTFp16_);
-	Parameters::parse(parameters, Parameters::kOnnxTensorRTCachePath(), tensorRTCachePath_);
-	modelPath_ = expandTilde(modelPath_);
-	tensorRTCachePath_ = expandTilde(tensorRTCachePath_);
-	if(tensorRTCachePath_.empty() && provider_ == (int)OnnxSession::kProviderTensorRT)
-	{
-		tensorRTCachePath_ = OnnxSession::defaultTensorRTCachePath(parameters);
-	}
+	options_.parse(parameters);
+	modelPath_ = OnnxSession::expandTilde(modelPath_);
 
 	if(session_.get() == 0 ||
 	   modelPath_.compare(previousModelPath) != 0 ||
-	   provider_ != previousProvider ||
-	   tensorRTFp16_ != previousFp16 ||
-	   tensorRTCachePath_.compare(previousCachePath) != 0)
+	   options_ != previousOptions)
 	{
 		session_.reset();
 		if(modelPath_.empty())
@@ -96,11 +69,7 @@ void OnnxDescriptor::parseParameters(const ParametersMap & parameters)
 		}
 		else
 		{
-			OnnxSession::Options options;
-			options.provider = (OnnxSession::Provider)provider_;
-			options.tensorRTFp16 = tensorRTFp16_;
-			options.tensorRTCachePath = tensorRTCachePath_;
-			session_ = OnnxSession::get(modelPath_, options);
+			session_ = OnnxSession::get(modelPath_, options_);
 			if(session_.get() == 0)
 			{
 				UERROR("Cannot initialize ONNX descriptor with %s=\"%s\".", Parameters::kOnnxDescriptorModelPath().c_str(), modelPath_.c_str());

@@ -50,6 +50,7 @@
 #include <rtabmap/utilite/UTimer.h>
 #ifdef RTABMAP_ONNXRUNTIME
 #include "onnx/OnnxSession.h"
+#include "onnx/OnnxDetector.h"
 #endif
 #ifdef RTABMAP_PYTHON
 #include <rtabmap/core/PythonInterface.h>
@@ -138,12 +139,15 @@ void addOnnxVariants(std::vector<Variant> & list, const std::string & weights, c
 {
 #ifdef RTABMAP_ONNXRUNTIME
 	if(!Feature2D::isAvailable(Feature2D::kFeatureOnnxDetector) || !UFile::exists(onnx)) return;
-	struct {OnnxSession::Provider provider; bool fp16; const char * name;} providers[] = {
-		{OnnxSession::kProviderCPU, false, "cpu"}, {OnnxSession::kProviderCUDA, false, "cuda"},
-		{OnnxSession::kProviderTensorRT, false, "tensorrt"}, {OnnxSession::kProviderTensorRT, true, "tensorrt-fp16"}};
+	struct {OnnxSession::Provider provider; bool fp16; const char * name; const char * openVINODevice;} providers[] = {
+		{OnnxSession::kProviderCPU, false, "cpu", ""}, {OnnxSession::kProviderCUDA, false, "cuda", ""},
+		{OnnxSession::kProviderTensorRT, false, "tensorrt", ""}, {OnnxSession::kProviderTensorRT, true, "tensorrt-fp16", ""},
+		{OnnxSession::kProviderOpenVINO, false, "openvino-cpu", "CPU"}, {OnnxSession::kProviderOpenVINO, false, "openvino-gpu", "GPU"}};
+	// The OpenVINO plugin of onnxruntime-ep-openvino, when OpenVINO is not built in ONNX Runtime.
+	const char * openVINOPlugin = std::getenv("RTABMAP_TEST_OPENVINO_PLUGIN");
 	for(const auto & p : providers)
 	{
-		if(!OnnxSession::isProviderAvailable(p.provider)) continue;
+		if(!OnnxSession::isProviderAvailable(p.provider, openVINOPlugin?openVINOPlugin:"")) continue;
 		ParametersMap params = common;
 		params[Parameters::kOnnxDetectorModelPath()] = onnx;
 		params[Parameters::kOnnxProvider()] = uNumber2Str((int)p.provider);
@@ -153,7 +157,16 @@ void addOnnxVariants(std::vector<Variant> & list, const std::string & weights, c
 			params[Parameters::kOnnxTensorRTFp16()] = p.fp16?"true":"false";
 			UDirectory::makeDir(testFile("trt_cache"));
 		}
-		list.push_back({weights, "OnnxDetector", p.name, Feature2D::kFeatureOnnxDetector, params, p.provider != OnnxSession::kProviderCPU});
+		else if(p.provider == OnnxSession::kProviderOpenVINO)
+		{
+			params[Parameters::kOnnxOpenVINODevice()] = p.openVINODevice;
+			params[Parameters::kOnnxOpenVINOCachePath()] = testFile("openvino_cache");
+			params[Parameters::kOnnxOpenVINOLibraryPath()] = openVINOPlugin?openVINOPlugin:"";
+			UDirectory::makeDir(testFile("openvino_cache"));
+		}
+		// OpenVINO doesn't need CUDA: whether it ran is checked on the session below.
+		list.push_back({weights, "OnnxDetector", p.name, Feature2D::kFeatureOnnxDetector, params,
+			p.provider == OnnxSession::kProviderCUDA || p.provider == OnnxSession::kProviderTensorRT});
 	}
 #endif
 }
@@ -292,6 +305,19 @@ TEST(SuperPointPerf, Implementations)
 			printf("  skipped: no GPU for this backend on this machine\n");
 			continue;
 		}
+#ifdef RTABMAP_ONNXRUNTIME
+		if(variant.type == Feature2D::kFeatureOnnxDetector)
+		{
+			int requested = Parameters::defaultOnnxProvider();
+			Parameters::parse(variant.params, Parameters::kOnnxProvider(), requested);
+			const OnnxDetector * onnx = static_cast<const OnnxDetector*>(detector.get());
+			if(!onnx->isModelLoaded() || (int)onnx->session()->provider() != requested)
+			{
+				printf("  skipped: the provider fell back (runtime or device not found)\n");
+				continue;
+			}
+		}
+#endif
 		Result result;
 		result.loadMs = timer.ticks() * 1000.0;
 

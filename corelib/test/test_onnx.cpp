@@ -256,6 +256,47 @@ TEST(OnnxSession, RuntimeInfo)
 	EXPECT_EQ("CPU", OnnxSession::providerName(OnnxSession::kProviderCPU));
 	EXPECT_EQ("CUDA", OnnxSession::providerName(OnnxSession::kProviderCUDA));
 	EXPECT_EQ("TensorRT", OnnxSession::providerName(OnnxSession::kProviderTensorRT));
+	EXPECT_EQ("OpenVINO", OnnxSession::providerName(OnnxSession::kProviderOpenVINO));
+}
+
+// Options::parse() reads only the Onnx parameters it is given, and fills the
+// cache path of the selected provider when it is empty.
+TEST(OnnxSession, OptionsParse)
+{
+	OnnxSession::Options options = OnnxSession::Options::defaults();
+	EXPECT_EQ(Parameters::defaultOnnxProvider(), (int)options.provider);
+	EXPECT_EQ("CPU", options.openVINODevice);
+
+	ParametersMap params;
+	params[Parameters::kOnnxProvider()] = "3";
+	params[Parameters::kOnnxOpenVINODevice()] = "GPU";
+	params[Parameters::kOnnxOpenVINOPrecision()] = "FP32";
+	params[Parameters::kRtabmapWorkingDirectory()] = testFile("");
+	OnnxSession::Options parsed = options;
+	parsed.parse(params);
+	EXPECT_EQ(OnnxSession::kProviderOpenVINO, parsed.provider);
+	EXPECT_EQ("GPU", parsed.openVINODevice);
+	EXPECT_EQ("FP32", parsed.openVINOPrecision);
+	EXPECT_EQ(testFile("") + "/openvino_cache", parsed.openVINOCachePath);
+	EXPECT_TRUE(parsed.tensorRTCachePath.empty()); // not TensorRT
+	EXPECT_NE(options, parsed);
+
+	// Parameters not given are kept.
+	OnnxSession::Options kept = parsed;
+	ParametersMap partial;
+	partial[Parameters::kOnnxOpenVINOPrecision()] = "FP16";
+	kept.parse(partial);
+	EXPECT_EQ("GPU", kept.openVINODevice);
+	EXPECT_EQ("FP16", kept.openVINOPrecision);
+	EXPECT_NE(parsed, kept);
+
+	// "~" is expanded in the paths.
+	ParametersMap tilde;
+	tilde[Parameters::kOnnxOpenVINOCachePath()] = "~/ov";
+	tilde[Parameters::kOnnxOpenVINOLibraryPath()] = "~/ov/plugin.so";
+	kept.parse(tilde);
+	EXPECT_EQ(UDirectory::homeDir() + "/ov", kept.openVINOCachePath);
+	EXPECT_EQ(UDirectory::homeDir() + "/ov/plugin.so", kept.openVINOLibraryPath);
 }
 
 TEST(OnnxSession, MissingModelReturnsNull)
@@ -325,12 +366,20 @@ TEST(OnnxSession, SharedBetweenUsers)
 TEST(OnnxSession, UnavailableProviderFallsBackToCpu)
 {
 	SKIP_WITHOUT(kDiskModel);
-	if(OnnxSession::isProviderAvailable(OnnxSession::kProviderCUDA) && OnnxSession::isProviderAvailable(OnnxSession::kProviderTensorRT))
+	OnnxSession::Options options;
+	options.provider = OnnxSession::kProviderCPU;
+	for(OnnxSession::Provider p : {OnnxSession::kProviderCUDA, OnnxSession::kProviderTensorRT, OnnxSession::kProviderOpenVINO})
+	{
+		if(!OnnxSession::isProviderAvailable(p))
+		{
+			options.provider = p;
+			break;
+		}
+	}
+	if(options.provider == OnnxSession::kProviderCPU)
 	{
 		GTEST_SKIP() << "every provider is available in this ONNX Runtime library";
 	}
-	OnnxSession::Options options;
-	options.provider = OnnxSession::isProviderAvailable(OnnxSession::kProviderCUDA)?OnnxSession::kProviderTensorRT:OnnxSession::kProviderCUDA;
 	std::shared_ptr<OnnxSession> session = OnnxSession::get(testFile(kDiskModel), options);
 	ASSERT_TRUE(session.get() != NULL);
 	EXPECT_NE(options.provider, session->provider());
@@ -480,6 +529,59 @@ TEST(OnnxSession, TensorRTProviderMatchesCpu)
 	EXPECT_EQ(testFile("") + "/tensorrt_cache", OnnxSession::defaultTensorRTCachePath(defaults));
 	EXPECT_TRUE(UDirectory::exists(testFile("tensorrt_cache")));
 	ULogger::setType(ULogger::kTypeNoLog);
+}
+
+// The OpenVINO provider, built in ONNX Runtime or from the plugin library of
+// RTABMAP_TEST_OPENVINO_PLUGIN (onnxruntime-ep-openvino, else found by its
+// default name), on the device of RTABMAP_TEST_OPENVINO_DEVICE (CPU by default;
+// GPU or NPU need the Intel hardware and drivers).
+TEST(OnnxSession, OpenVINOProviderMatchesCpu)
+{
+	SKIP_WITHOUT(kDiskModel);
+	SKIP_WITHOUT(kDiskLightGlue);
+	const char * plugin = std::getenv("RTABMAP_TEST_OPENVINO_PLUGIN");
+	if(!OnnxSession::isProviderAvailable(OnnxSession::kProviderOpenVINO, plugin?plugin:""))
+	{
+		GTEST_SKIP() << "OpenVINO execution provider not available (not built in ONNX Runtime, "
+				"set RTABMAP_TEST_OPENVINO_PLUGIN to libonnxruntime_providers_openvino_plugin.so)";
+	}
+	const char * device = std::getenv("RTABMAP_TEST_OPENVINO_DEVICE");
+	cv::Mat image = sampleImage();
+	std::unique_ptr<Feature2D> cpu = createDetector(detectorParams(kDiskModel));
+	ParametersMap params = detectorParams(kDiskModel);
+	params[Parameters::kOnnxProvider()] = "3";
+	params[Parameters::kOnnxOpenVINODevice()] = device?device:"CPU";
+	params[Parameters::kOnnxOpenVINOPrecision()] = "FP32"; // compared to the CPU provider
+	params[Parameters::kOnnxOpenVINOCachePath()] = testFile("openvino_cache");
+	params[Parameters::kOnnxOpenVINOLibraryPath()] = plugin?plugin:"";
+	UDirectory::makeDir(testFile("openvino_cache"));
+	std::unique_ptr<Feature2D> ov = createDetector(params);
+	ASSERT_TRUE(static_cast<OnnxDetector*>(ov.get())->isModelLoaded());
+	if(static_cast<OnnxDetector*>(ov.get())->session()->provider() != OnnxSession::kProviderOpenVINO)
+	{
+		GTEST_SKIP() << "OpenVINO provider fell back (OpenVINO runtime or device not found?)";
+	}
+
+	std::vector<cv::KeyPoint> kptsCpu, kptsOv;
+	cv::Mat descCpu, descOv;
+	detect(*cpu, image, kptsCpu, descCpu);
+	detect(*ov, image, kptsOv, descOv);
+	ASSERT_GT(kptsCpu.size(), 100u);
+	EXPECT_NEAR((double)kptsCpu.size(), (double)kptsOv.size(), kptsCpu.size()*0.1);
+	ASSERT_EQ((int)kptsOv.size(), descOv.rows);
+
+	OnnxSession::Options options = static_cast<OnnxDetector*>(ov.get())->options();
+	OnnxMatcher matcherOv(testFile(kDiskLightGlue), 0.1f, options);
+	ASSERT_TRUE(matcherOv.isModelLoaded());
+	EXPECT_EQ(OnnxSession::kProviderOpenVINO, matcherOv.session()->provider());
+	std::vector<cv::DMatch> matches = matcherOv.match(descCpu, descCpu, kptsCpu, kptsCpu, image.size());
+	EXPECT_GE(matches.size(), kptsCpu.size()*8/10);
+	int identity = 0;
+	for(size_t i=0; i<matches.size(); ++i)
+	{
+		if(matches[i].queryIdx == matches[i].trainIdx) ++identity;
+	}
+	EXPECT_GE(identity, (int)matches.size()*9/10);
 }
 
 //////////////////////////

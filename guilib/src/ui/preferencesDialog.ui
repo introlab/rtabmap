@@ -29795,6 +29795,11 @@ p, li { white-space: pre-wrap; }
                           <string>TensorRT</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>OpenVINO</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="2" column="2">
@@ -29844,6 +29849,84 @@ p, li { white-space: pre-wrap; }
                        <widget class="QLabel" name="label_onnx_trt_cache_path">
                         <property name="text">
                          <string>[TensorRT] Directory where the TensorRT engines are cached (building an engine takes minutes, empty means no cache).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLineEdit" name="lineEdit_onnx_openvino_device"/>
+                      </item>
+                      <item row="5" column="2">
+                       <widget class="QLabel" name="label_onnx_openvino_device">
+                        <property name="text">
+                         <string>[OpenVINO] Device: CPU, GPU (GPU.0, GPU.1... with many), NPU, or AUTO / AUTO:GPU,CPU to let OpenVINO choose.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QLineEdit" name="lineEdit_onnx_openvino_precision"/>
+                      </item>
+                      <item row="6" column="2">
+                       <widget class="QLabel" name="label_onnx_openvino_precision">
+                        <property name="text">
+                         <string>[OpenVINO] Inference precision: FP32, FP16 or ACCURACY. Empty means the device default (FP32 on CPU, FP16 on GPU and NPU).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QToolButton" name="toolButton_onnx_openvino_cache_path">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QLineEdit" name="lineEdit_onnx_openvino_cache_path"/>
+                      </item>
+                      <item row="7" column="2">
+                       <widget class="QLabel" name="label_onnx_openvino_cache_path">
+                        <property name="text">
+                         <string>[OpenVINO] Directory where OpenVINO caches the compiled models (compiling for GPU or NPU takes seconds). Empty means the openvino_cache folder of the working directory.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="0">
+                       <widget class="QToolButton" name="toolButton_onnx_openvino_library_path">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="1">
+                       <widget class="QLineEdit" name="lineEdit_onnx_openvino_library_path"/>
+                      </item>
+                      <item row="8" column="2">
+                       <widget class="QLabel" name="label_onnx_openvino_library_path">
+                        <property name="text">
+                         <string>[OpenVINO] Path to the OpenVINO plugin of onnxruntime-ep-openvino (libonnxruntime_providers_openvino_plugin.so), used when OpenVINO is not built in the ONNX Runtime library. Empty means its default file name, searched like any shared library.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>

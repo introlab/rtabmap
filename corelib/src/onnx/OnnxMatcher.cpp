@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "onnx/OnnxMatcher.h"
 
 #include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
 
 #include <algorithm>
@@ -36,15 +35,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 namespace {
-
-std::string expandTilde(const std::string & path)
-{
-	if(!path.empty() && path[0] == '~' && (path.size() == 1 || path[1] == '/' || path[1] == '\\'))
-	{
-		return UDirectory::homeDir() + path.substr(1);
-	}
-	return path;
-}
 
 std::vector<int64_t> squeezeBatch(const std::vector<int64_t> & shape)
 {
@@ -110,22 +100,36 @@ OnnxMatcher::OnnxMatcher(
 		int provider,
 		bool tensorRTFp16,
 		const std::string & tensorRTCachePath) :
-				modelPath_(expandTilde(modelPath)),
+				modelPath_(OnnxSession::expandTilde(modelPath)),
+				matchThreshold_(matchThreshold)
+{
+	options_.provider = (OnnxSession::Provider)provider;
+	options_.tensorRTFp16 = tensorRTFp16;
+	options_.tensorRTCachePath = OnnxSession::expandTilde(tensorRTCachePath);
+	load();
+}
+
+OnnxMatcher::OnnxMatcher(
+		const std::string & modelPath,
+		float matchThreshold,
+		const OnnxSession::Options & options) :
+				modelPath_(OnnxSession::expandTilde(modelPath)),
 				matchThreshold_(matchThreshold),
-				provider_(provider),
-				tensorRTFp16_(tensorRTFp16),
-				tensorRTCachePath_(expandTilde(tensorRTCachePath))
+				options_(options)
+{
+	options_.tensorRTCachePath = OnnxSession::expandTilde(options_.tensorRTCachePath);
+	options_.openVINOCachePath = OnnxSession::expandTilde(options_.openVINOCachePath);
+	load();
+}
+
+void OnnxMatcher::load()
 {
 	if(modelPath_.empty())
 	{
 		UERROR("Cannot initialize ONNX matcher, the model path is empty.");
 		return;
 	}
-	OnnxSession::Options options;
-	options.provider = (OnnxSession::Provider)provider_;
-	options.tensorRTFp16 = tensorRTFp16_;
-	options.tensorRTCachePath = tensorRTCachePath_;
-	session_ = OnnxSession::get(modelPath_, options);
+	session_ = OnnxSession::get(modelPath_, options_);
 	if(session_.get() == 0)
 	{
 		UERROR("Cannot initialize ONNX matcher with model \"%s\".", modelPath_.c_str());

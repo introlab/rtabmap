@@ -153,19 +153,31 @@ std::vector<Frame> loadFrames(int count)
 void addOnnxMatchers(std::vector<Matcher> & list, const std::string & name, const std::string & model, std::vector<std::shared_ptr<OnnxMatcher> > & keep)
 {
 	if(!UFile::exists(model)) return;
-	struct {OnnxSession::Provider provider; bool fp16; const char * name;} providers[] = {
-		{OnnxSession::kProviderCPU, false, "cpu"}, {OnnxSession::kProviderCUDA, false, "cuda"},
-		{OnnxSession::kProviderTensorRT, false, "tensorrt"}, {OnnxSession::kProviderTensorRT, true, "tensorrt-fp16"}};
+	struct {OnnxSession::Provider provider; bool fp16; const char * name; const char * openVINODevice;} providers[] = {
+		{OnnxSession::kProviderCPU, false, "cpu", ""}, {OnnxSession::kProviderCUDA, false, "cuda", ""},
+		{OnnxSession::kProviderTensorRT, false, "tensorrt", ""}, {OnnxSession::kProviderTensorRT, true, "tensorrt-fp16", ""},
+		{OnnxSession::kProviderOpenVINO, false, "openvino-cpu", "CPU"}, {OnnxSession::kProviderOpenVINO, false, "openvino-gpu", "GPU"}};
+	// The OpenVINO plugin of onnxruntime-ep-openvino, when OpenVINO is not built in ONNX Runtime.
+	const char * openVINOPlugin = std::getenv("RTABMAP_TEST_OPENVINO_PLUGIN");
 	for(const auto & p : providers)
 	{
-		if(!OnnxSession::isProviderAvailable(p.provider)) continue;
-		std::string cache;
+		if(!OnnxSession::isProviderAvailable(p.provider, openVINOPlugin?openVINOPlugin:"")) continue;
+		OnnxSession::Options options;
+		options.provider = p.provider;
+		options.tensorRTFp16 = p.fp16;
 		if(p.provider == OnnxSession::kProviderTensorRT)
 		{
-			cache = testFile("trt_cache");
-			UDirectory::makeDir(cache);
+			options.tensorRTCachePath = testFile("trt_cache");
+			UDirectory::makeDir(options.tensorRTCachePath);
 		}
-		std::shared_ptr<OnnxMatcher> matcher(new OnnxMatcher(model, 0.1f, (int)p.provider, p.fp16, cache));
+		else if(p.provider == OnnxSession::kProviderOpenVINO)
+		{
+			options.openVINODevice = p.openVINODevice;
+			options.openVINOCachePath = testFile("openvino_cache");
+			options.openVINOLibraryPath = openVINOPlugin?openVINOPlugin:"";
+			UDirectory::makeDir(options.openVINOCachePath);
+		}
+		std::shared_ptr<OnnxMatcher> matcher(new OnnxMatcher(model, 0.1f, options));
 		if(!matcher->isModelLoaded() || matcher->session()->provider() != p.provider) continue;
 		keep.push_back(matcher);
 		list.push_back({name, p.name, [matcher](const Frame & q, const Frame & t) {

@@ -295,18 +295,10 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 #else
 		std::string path = _onnxMatcher?_onnxMatcher->modelPath():Parameters::defaultOnnxMatcherModelPath();
 		float matchThr = _onnxMatcher?_onnxMatcher->matchThreshold():Parameters::defaultOnnxMatcherThreshold();
-		int provider = _onnxMatcher?_onnxMatcher->provider():Parameters::defaultOnnxProvider();
-		bool fp16 = _onnxMatcher?_onnxMatcher->tensorRTFp16():Parameters::defaultOnnxTensorRTFp16();
-		std::string cachePath = _onnxMatcher?_onnxMatcher->tensorRTCachePath():Parameters::defaultOnnxTensorRTCachePath();
+		OnnxSession::Options options = _onnxMatcher?_onnxMatcher->options():OnnxSession::Options::defaults();
 		Parameters::parse(parameters, Parameters::kOnnxMatcherModelPath(), path);
 		Parameters::parse(parameters, Parameters::kOnnxMatcherThreshold(), matchThr);
-		Parameters::parse(parameters, Parameters::kOnnxProvider(), provider);
-		Parameters::parse(parameters, Parameters::kOnnxTensorRTFp16(), fp16);
-		Parameters::parse(parameters, Parameters::kOnnxTensorRTCachePath(), cachePath);
-		if(cachePath.empty() && provider == (int)OnnxSession::kProviderTensorRT)
-		{
-			cachePath = OnnxSession::defaultTensorRTCachePath(parameters);
-		}
+		options.parse(parameters);
 		if(path.empty())
 		{
 			UERROR("%s parameter should be set to use ONNX matching (%s=10), using default %d.",
@@ -319,7 +311,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 		{
 			// The new matcher is created before the old one is deleted so that
 			// the session they share (same model and options) is not reloaded.
-			OnnxMatcher * matcher = new OnnxMatcher(path, matchThr, provider, fp16, cachePath);
+			OnnxMatcher * matcher = new OnnxMatcher(path, matchThr, options);
 			delete _onnxMatcher;
 			_onnxMatcher = matcher;
 		}

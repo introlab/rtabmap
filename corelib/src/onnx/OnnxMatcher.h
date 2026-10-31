@@ -80,7 +80,7 @@ public:
 	/**
 	 * @param modelPath Path to the ONNX model.
 	 * @param matchThreshold Minimum score of a match (when the model outputs scores).
-	 * @param provider OnnxSession::Provider value (0=CPU, 1=CUDA, 2=TensorRT).
+	 * @param provider OnnxSession::Provider value (0=CPU, 1=CUDA, 2=TensorRT, 3=OpenVINO on its CPU device).
 	 * @param tensorRTFp16 Build the TensorRT engine in FP16.
 	 * @param tensorRTCachePath Directory caching TensorRT engines (empty = no cache).
 	 */
@@ -90,13 +90,23 @@ public:
 			int provider = 0,
 			bool tensorRTFp16 = false,
 			const std::string & tensorRTCachePath = "");
+	/**
+	 * @param modelPath Path to the ONNX model.
+	 * @param matchThreshold Minimum score of a match (when the model outputs scores).
+	 * @param options Execution provider and its options, e.g. OnnxSession::Options::parse() of the "Onnx/..." parameters.
+	 */
+	OnnxMatcher(
+			const std::string & modelPath,
+			float matchThreshold,
+			const OnnxSession::Options & options);
 	virtual ~OnnxMatcher();
 
 	const std::string & modelPath() const {return modelPath_;}
 	float matchThreshold() const {return matchThreshold_;}
-	int provider() const {return provider_;}
-	bool tensorRTFp16() const {return tensorRTFp16_;}
-	const std::string & tensorRTCachePath() const {return tensorRTCachePath_;}
+	int provider() const {return (int)options_.provider;}
+	bool tensorRTFp16() const {return options_.tensorRTFp16;}
+	const std::string & tensorRTCachePath() const {return options_.tensorRTCachePath;}
+	const OnnxSession::Options & options() const {return options_;}
 	bool isModelLoaded() const {return session_.get() != 0;}
 	/** @brief The session (null if the model is not loaded), e.g. to inspect its inputs and outputs. */
 	const std::shared_ptr<OnnxSession> & session() const {return session_;}
@@ -154,9 +164,9 @@ private:
 	std::shared_ptr<OnnxSession> session_;
 	std::string modelPath_;
 	float matchThreshold_;
-	int provider_;
-	bool tensorRTFp16_;
-	std::string tensorRTCachePath_;
+	OnnxSession::Options options_;
+
+	void load();
 };
 
 } // namespace rtabmap

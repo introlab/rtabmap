@@ -391,9 +391,13 @@ class RTABMAP_CORE_EXPORT Parameters
     RTABMAP_PARAM(OnnxDetector, Threshold,    float, 0.0,      uFormat("Keep only keypoints with a score above this threshold (0 means that only the threshold inside the model is used). See also the %s parameters.", "Onnx/*"));
 
     // ONNX Runtime, shared by OnnxDetector and OnnxMatcher
-    RTABMAP_PARAM(Onnx, Provider,              int, 1,          "ONNX Runtime execution provider used by OnnxDetector and OnnxMatcher: 0=CPU, 1=CUDA, 2=TensorRT. A provider not available in the ONNX Runtime library falls back to CPU.");
+    RTABMAP_PARAM(Onnx, Provider,              int, 1,          "ONNX Runtime execution provider used by OnnxDetector and OnnxMatcher: 0=CPU, 1=CUDA, 2=TensorRT, 3=OpenVINO. A provider not available in the ONNX Runtime library falls back to CPU.");
     RTABMAP_PARAM(Onnx, TensorRTFp16,          bool, false,     uFormat("[%s=2] Build the TensorRT engines in FP16.", kOnnxProvider().c_str()));
     RTABMAP_PARAM_STR(Onnx, TensorRTCachePath, "",              uFormat("[%s=2] Directory where the TensorRT engines are cached (building an engine takes seconds to minutes). Empty means the \"tensorrt_cache\" folder of %s.", kOnnxProvider().c_str(), kRtabmapWorkingDirectory().c_str()));
+    RTABMAP_PARAM_STR(Onnx, OpenVINODevice,    "CPU",           uFormat("[%s=3] OpenVINO device: \"CPU\", \"GPU\" (\"GPU.0\", \"GPU.1\"... with many), \"NPU\", or \"AUTO\"/\"AUTO:GPU,CPU\" to let OpenVINO choose.", kOnnxProvider().c_str()));
+    RTABMAP_PARAM_STR(Onnx, OpenVINOPrecision, "",              uFormat("[%s=3] OpenVINO inference precision: \"FP32\", \"FP16\" or \"ACCURACY\" (the model's own precision). Empty means the device's default (FP32 on CPU, FP16 on GPU and NPU).", kOnnxProvider().c_str()));
+    RTABMAP_PARAM_STR(Onnx, OpenVINOCachePath, "",              uFormat("[%s=3] Directory where OpenVINO caches the compiled models (compiling for GPU or NPU takes seconds). Empty means the \"openvino_cache\" folder of %s.", kOnnxProvider().c_str(), kRtabmapWorkingDirectory().c_str()));
+    RTABMAP_PARAM_STR(Onnx, OpenVINOLibraryPath, "",            uFormat("[%s=3] Path to the OpenVINO execution provider plugin (onnxruntime-ep-openvino), e.g. \"/opt/onnxruntime-ep-openvino/libonnxruntime_providers_openvino_plugin.so\", used when OpenVINO is not built in the ONNX Runtime library. Empty means its default file name, searched like any shared library.", kOnnxProvider().c_str()));
 
     // BayesFilter
     RTABMAP_PARAM(Bayes, VirtualPlacePriorThr, float, 0.9,  "Virtual place prior. Considering that we are at a new place, this is the prior probability to move again to a new place (unvisited location). The prior probability to move to a previously visited location is 1 - VirtualPlacePriorThr (split equally against all previously visited locations).");

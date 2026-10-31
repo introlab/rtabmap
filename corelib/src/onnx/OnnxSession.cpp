@@ -33,11 +33,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UStl.h>
 
 #include <onnxruntime_cxx_api.h>
 
 #include <algorithm>
 #include <map>
+#include <set>
+#include <unordered_map>
 #include <mutex>
 #include <cstring>
 #include <sstream>
@@ -264,6 +267,7 @@ std::string ortProviderName(OnnxSession::Provider provider)
 	{
 	case OnnxSession::kProviderCUDA: return "CUDAExecutionProvider";
 	case OnnxSession::kProviderTensorRT: return "TensorrtExecutionProvider";
+	case OnnxSession::kProviderOpenVINO: return "OpenVINOExecutionProvider";
 	default: return "CPUExecutionProvider";
 	}
 }
@@ -285,18 +289,334 @@ void updateProviderOptions(
 	Ort::ThrowOnError(update(options, keys.data(), values.data(), keys.size()));
 }
 
+// The <folder> folder of the RTAB-Map working directory, created if needed.
+std::string workingDirectoryCachePath(const ParametersMap & parameters, const std::string & folder)
+{
+	std::string workingDir;
+	Parameters::parse(parameters, Parameters::kRtabmapWorkingDirectory(), workingDir);
+	if(workingDir.empty())
+	{
+		workingDir = Parameters::createDefaultWorkingDirectory();
+	}
+	std::string path = workingDir + "/" + folder;
+	if(!UDirectory::exists(path))
+	{
+		UDirectory::makeDir(path);
+	}
+	return path;
+}
+
+#if ORT_API_VERSION >= 22
+// Execution provider plugins: libraries loaded at runtime by the official ONNX
+// Runtime releases (plugin API of ONNX Runtime >= 1.22), e.g. OpenVINO's
+// onnxruntime-ep-openvino. Loading them is the same for every plugin; how
+// their devices are selected and their options set is specific to each one.
+
+const char * hardwareTypeName(OrtHardwareDeviceType type)
+{
+	switch(type)
+	{
+	case OrtHardwareDeviceType_CPU: return "CPU";
+	case OrtHardwareDeviceType_GPU: return "GPU";
+	case OrtHardwareDeviceType_NPU: return "NPU";
+	default: return "?";
+	}
+}
+
+// Registers the plugin library @p path under @p registrationName, once per
+// process: ONNX Runtime holds one library per registration name, so the first
+// one loaded is kept. A library that fails to load is not tried again; @p error
+// gets the reason.
+bool registerPluginLibrary(const std::string & registrationName, const std::string & path, std::string * error = 0)
+{
+	static std::mutex mutex;
+	static std::map<std::string, std::string> registered; // registration name -> path
+	static std::map<std::string, std::string> failures;   // path -> error
+	std::lock_guard<std::mutex> lock(mutex);
+	std::map<std::string, std::string>::iterator iter = registered.find(registrationName);
+	if(iter != registered.end())
+	{
+		if(path.compare(iter->second) != 0)
+		{
+			UDEBUG("Plugin \"%s\" already loaded from \"%s\", \"%s\" is ignored.", registrationName.c_str(), iter->second.c_str(), path.c_str());
+		}
+		return true;
+	}
+	iter = failures.find(path);
+	if(iter != failures.end())
+	{
+		if(error) *error = iter->second;
+		return false;
+	}
+	try
+	{
+		// ASCII paths only on Windows, where ORTCHAR_T is wchar_t.
+		ortEnv().RegisterExecutionProviderLibrary(registrationName.c_str(), std::basic_string<ORTCHAR_T>(path.begin(), path.end()));
+		registered.insert(std::make_pair(registrationName, path));
+		std::list<std::string> devices;
+		std::vector<Ort::ConstEpDevice> epDevices = ortEnv().GetEpDevices();
+		for(size_t i=0; i<epDevices.size(); ++i)
+		{
+			std::string epName = epDevices[i].EpName();
+			if(epName.compare(0, registrationName.size(), registrationName) == 0)
+			{
+				devices.push_back(uFormat("%s on %s (%s)", epName.c_str(),
+						hardwareTypeName(epDevices[i].Device().Type()), epDevices[i].EpVendor()));
+			}
+		}
+		UINFO("Loaded execution provider plugin \"%s\": %s.", path.c_str(), devices.empty()?"no devices":uJoin(devices, ", ").c_str());
+		return true;
+	}
+	catch(const Ort::Exception & e)
+	{
+		failures.insert(std::make_pair(path, std::string(e.what())));
+		UDEBUG("Cannot load execution provider plugin \"%s\": %s", path.c_str(), e.what());
+		if(error) *error = e.what();
+		return false;
+	}
+}
+
+// The devices of execution provider @p epName, with the value of their
+// metadata @p metadataKey (devices without it are skipped).
+std::vector<std::pair<std::string, Ort::ConstEpDevice> > pluginDevices(const std::string & epName, const char * metadataKey)
+{
+	std::vector<std::pair<std::string, Ort::ConstEpDevice> > devices;
+	std::vector<Ort::ConstEpDevice> epDevices = ortEnv().GetEpDevices();
+	for(size_t i=0; i<epDevices.size(); ++i)
+	{
+		const char * value = epDevices[i].EpMetadata().GetValue(metadataKey);
+		if(value && epName.compare(epDevices[i].EpName()) == 0)
+		{
+			devices.push_back(std::make_pair(std::string(value), epDevices[i]));
+		}
+	}
+	return devices;
+}
+#endif
+
+// OpenVINO comes either built in ONNX Runtime (custom or Intel builds, the
+// deprecated way) or as the onnxruntime-ep-openvino plugin.
+
+// Whether OpenVINO is built in this ONNX Runtime library. Checked once: a
+// plugin registered afterwards is not listed by GetAvailableProviders().
+bool hasBuiltInOpenVINO()
+{
+	static const bool builtIn = []()
+	{
+		try
+		{
+			std::vector<std::string> providers = Ort::GetAvailableProviders();
+			return std::find(providers.begin(), providers.end(), "OpenVINOExecutionProvider") != providers.end();
+		}
+		catch(const Ort::Exception & e)
+		{
+			UERROR("%s", e.what());
+			return false;
+		}
+	}();
+	return builtIn;
+}
+
+#if ORT_API_VERSION >= 22
+// Registration name of the plugin and name of its devices, and of the devices
+// of its AUTO mode.
+const char * kOpenVINOPluginEp = "OpenVINOExecutionProvider";
+const char * kOpenVINOPluginAutoEp = "OpenVINOExecutionProvider.AUTO";
+
+std::string defaultOpenVINOPluginLibrary()
+{
+#ifdef _WIN32
+	return "onnxruntime_providers_openvino_plugin.dll";
+#else
+	return "libonnxruntime_providers_openvino_plugin.so";
+#endif
+}
+
+bool registerOpenVINOPlugin(const std::string & libraryPath, std::string * error = 0)
+{
+	return registerPluginLibrary(kOpenVINOPluginEp, libraryPath.empty()?defaultOpenVINOPluginLibrary():libraryPath, error);
+}
+
+// "GPU" is the first GPU, which OpenVINO also names "GPU.0".
+bool sameOpenVINODevice(const std::string & a, const std::string & b)
+{
+	return a.compare(b) == 0 ||
+		(a.compare("GPU") == 0 && b.compare("GPU.0") == 0) ||
+		(a.compare("GPU.0") == 0 && b.compare("GPU") == 0);
+}
+
+// The plugin's devices matching Onnx/OpenVINODevice: "CPU", "GPU", "GPU.1",
+// "NPU"... (their "ov_device" metadata), or "AUTO" (all the devices of the AUTO
+// mode) / "AUTO:GPU,CPU" (these ones, in this order of priority). @p available
+// lists the devices that could be selected.
+std::vector<Ort::ConstEpDevice> selectOpenVINODevices(const std::string & device, std::string & available)
+{
+	bool autoMode = device.compare(0, 4, "AUTO") == 0;
+	std::list<std::string> wanted;
+	if(!autoMode)
+	{
+		wanted.push_back(device);
+	}
+	else if(device.size() > 5 && device[4] == ':')
+	{
+		wanted = uSplit(device.substr(5), ',');
+	}
+	std::vector<std::pair<std::string, Ort::ConstEpDevice> > candidates =
+			pluginDevices(autoMode?kOpenVINOPluginAutoEp:kOpenVINOPluginEp, "ov_device");
+	std::list<std::string> names;
+	for(size_t i=0; i<candidates.size(); ++i)
+	{
+		names.push_back(candidates[i].first);
+	}
+	available = uJoin(names, ", ");
+
+	std::vector<Ort::ConstEpDevice> selected;
+	if(autoMode && wanted.empty())
+	{
+		for(size_t i=0; i<candidates.size(); ++i)
+		{
+			selected.push_back(candidates[i].second);
+		}
+	}
+	for(std::list<std::string>::iterator iter=wanted.begin(); iter!=wanted.end(); ++iter)
+	{
+		for(size_t i=0; i<candidates.size(); ++i)
+		{
+			if(sameOpenVINODevice(uToUpperCase(*iter), candidates[i].first))
+			{
+				selected.push_back(candidates[i].second);
+				break;
+			}
+		}
+	}
+	return selected;
+}
+
+std::string jsonString(const std::string & value)
+{
+	std::string out = "\"";
+	for(size_t i=0; i<value.size(); ++i)
+	{
+		if(value[i] == '"' || value[i] == '\\')
+		{
+			out += '\\';
+		}
+		out += value[i];
+	}
+	return out + "\"";
+}
+
+// The plugin ignores the precision and cache_dir options of the built-in
+// provider: they are given as OpenVINO properties of the device in the
+// load_config option instead, e.g. {"GPU":{"INFERENCE_PRECISION_HINT":"f32",
+// "CACHE_DIR":"/path"}}. Empty if there is nothing to set.
+std::string openVINOLoadConfig(const std::string & device, const std::string & precision, const std::string & cachePath)
+{
+	std::vector<std::string> properties;
+	std::string p = uToUpperCase(precision);
+	if(p.compare("FP32") == 0)
+	{
+		properties.push_back(jsonString("INFERENCE_PRECISION_HINT") + ":" + jsonString("f32"));
+	}
+	else if(p.compare("FP16") == 0)
+	{
+		properties.push_back(jsonString("INFERENCE_PRECISION_HINT") + ":" + jsonString("f16"));
+	}
+	else if(p.compare("ACCURACY") == 0)
+	{
+		properties.push_back(jsonString("EXECUTION_MODE_HINT") + ":" + jsonString("ACCURACY"));
+	}
+	else if(!p.empty())
+	{
+		UWARN("Unknown %s \"%s\" (FP32, FP16 or ACCURACY), the device's default is used.",
+				Parameters::kOnnxOpenVINOPrecision().c_str(), precision.c_str());
+	}
+	if(!cachePath.empty())
+	{
+		properties.push_back(jsonString("CACHE_DIR") + ":" + jsonString(cachePath));
+	}
+	if(properties.empty())
+	{
+		return "";
+	}
+	// The properties are set on the device named by Onnx/OpenVINODevice ("AUTO"
+	// for "AUTO:GPU,CPU").
+	std::string key = device.substr(0, device.find(':'));
+	std::string config = "{" + jsonString(uToUpperCase(key)) + ":{";
+	for(size_t i=0; i<properties.size(); ++i)
+	{
+		config += (i?",":"") + properties[i];
+	}
+	return config + "}}";
+}
+#endif
+
 } // namespace
 
 std::string OnnxSession::Options::key() const
 {
-	return uFormat("provider=%d;device=%d;fp16=%d;cache=%s", (int)provider, deviceId, tensorRTFp16?1:0, tensorRTCachePath.c_str());
+	return uFormat("provider=%d;device=%d;fp16=%d;cache=%s;ovdevice=%s;ovprecision=%s;ovcache=%s;ovlib=%s",
+			(int)provider, deviceId, tensorRTFp16?1:0, tensorRTCachePath.c_str(),
+			openVINODevice.c_str(), openVINOPrecision.c_str(), openVINOCachePath.c_str(), openVINOLibraryPath.c_str());
 }
 
-bool OnnxSession::isProviderAvailable(Provider provider)
+OnnxSession::Options OnnxSession::Options::defaults()
+{
+	Options options;
+	options.provider = (Provider)Parameters::defaultOnnxProvider();
+	options.tensorRTFp16 = Parameters::defaultOnnxTensorRTFp16();
+	options.tensorRTCachePath = Parameters::defaultOnnxTensorRTCachePath();
+	options.openVINODevice = Parameters::defaultOnnxOpenVINODevice();
+	options.openVINOPrecision = Parameters::defaultOnnxOpenVINOPrecision();
+	options.openVINOCachePath = Parameters::defaultOnnxOpenVINOCachePath();
+	options.openVINOLibraryPath = Parameters::defaultOnnxOpenVINOLibraryPath();
+	return options;
+}
+
+void OnnxSession::Options::parse(const ParametersMap & parameters)
+{
+	int providerValue = (int)provider;
+	Parameters::parse(parameters, Parameters::kOnnxProvider(), providerValue);
+	provider = (Provider)providerValue;
+	Parameters::parse(parameters, Parameters::kOnnxTensorRTFp16(), tensorRTFp16);
+	Parameters::parse(parameters, Parameters::kOnnxTensorRTCachePath(), tensorRTCachePath);
+	tensorRTCachePath = expandTilde(tensorRTCachePath);
+	if(tensorRTCachePath.empty() && provider == kProviderTensorRT)
+	{
+		tensorRTCachePath = defaultTensorRTCachePath(parameters);
+	}
+	Parameters::parse(parameters, Parameters::kOnnxOpenVINODevice(), openVINODevice);
+	Parameters::parse(parameters, Parameters::kOnnxOpenVINOPrecision(), openVINOPrecision);
+	Parameters::parse(parameters, Parameters::kOnnxOpenVINOCachePath(), openVINOCachePath);
+	openVINOCachePath = expandTilde(openVINOCachePath);
+	if(openVINOCachePath.empty() && provider == kProviderOpenVINO)
+	{
+		openVINOCachePath = defaultOpenVINOCachePath(parameters);
+	}
+	Parameters::parse(parameters, Parameters::kOnnxOpenVINOLibraryPath(), openVINOLibraryPath);
+	openVINOLibraryPath = expandTilde(openVINOLibraryPath);
+}
+
+bool OnnxSession::isProviderAvailable(Provider provider, const std::string & openVINOLibraryPath)
 {
 	if(provider == kProviderCPU)
 	{
 		return true;
+	}
+	if(provider == kProviderOpenVINO)
+	{
+		if(hasBuiltInOpenVINO())
+		{
+			return true;
+		}
+#if ORT_API_VERSION >= 22
+		if(registerOpenVINOPlugin(openVINOLibraryPath))
+		{
+			// Available if the plugin found at least one device.
+			return !pluginDevices(kOpenVINOPluginEp, "ov_device").empty();
+		}
+#endif
+		return false;
 	}
 	try
 	{
@@ -316,6 +636,7 @@ std::string OnnxSession::providerName(Provider provider)
 	{
 	case kProviderCUDA: return "CUDA";
 	case kProviderTensorRT: return "TensorRT";
+	case kProviderOpenVINO: return "OpenVINO";
 	default: return "CPU";
 	}
 }
@@ -327,16 +648,19 @@ std::string OnnxSession::runtimeVersion()
 
 std::string OnnxSession::defaultTensorRTCachePath(const ParametersMap & parameters)
 {
-	std::string workingDir;
-	Parameters::parse(parameters, Parameters::kRtabmapWorkingDirectory(), workingDir);
-	if(workingDir.empty())
+	return workingDirectoryCachePath(parameters, "tensorrt_cache");
+}
+
+std::string OnnxSession::defaultOpenVINOCachePath(const ParametersMap & parameters)
+{
+	return workingDirectoryCachePath(parameters, "openvino_cache");
+}
+
+std::string OnnxSession::expandTilde(const std::string & path)
+{
+	if(!path.empty() && path[0] == '~' && (path.size() == 1 || path[1] == '/' || path[1] == '\\'))
 	{
-		workingDir = Parameters::createDefaultWorkingDirectory();
-	}
-	std::string path = workingDir + "/tensorrt_cache";
-	if(!UDirectory::exists(path))
-	{
-		UDirectory::makeDir(path);
+		return UDirectory::homeDir() + path.substr(1);
 	}
 	return path;
 }
@@ -466,6 +790,66 @@ bool OnnxSession::load()
 					UWARN("CUDA execution provider is not available in this ONNX Runtime library, falling back to CPU.");
 				}
 			}
+			if(requested == kProviderOpenVINO)
+			{
+#if ORT_API_VERSION >= 22
+				std::string pluginError;
+#endif
+				// In both cases, the nodes OpenVINO doesn't support run on the CPU provider.
+				if(hasBuiltInOpenVINO())
+				{
+					std::unordered_map<std::string, std::string> openVINOOptions;
+					openVINOOptions["device_type"] = options_.openVINODevice;
+					if(!options_.openVINOPrecision.empty())
+					{
+						openVINOOptions["precision"] = options_.openVINOPrecision;
+					}
+					if(!options_.openVINOCachePath.empty())
+					{
+						openVINOOptions["cache_dir"] = options_.openVINOCachePath;
+					}
+					sessionOptions.AppendExecutionProvider_OpenVINO_V2(openVINOOptions);
+					provider_ = kProviderOpenVINO;
+				}
+#if ORT_API_VERSION >= 22
+				else if(registerOpenVINOPlugin(options_.openVINOLibraryPath, &pluginError))
+				{
+					std::string available;
+					std::vector<Ort::ConstEpDevice> devices = selectOpenVINODevices(options_.openVINODevice, available);
+					if(devices.empty())
+					{
+						UWARN("OpenVINO device \"%s\" (%s) not found, available: %s. Falling back to CPU.",
+								options_.openVINODevice.c_str(), Parameters::kOnnxOpenVINODevice().c_str(),
+								available.empty()?"none":available.c_str());
+					}
+					else
+					{
+						std::unordered_map<std::string, std::string> openVINOOptions;
+						std::string config = openVINOLoadConfig(options_.openVINODevice, options_.openVINOPrecision, options_.openVINOCachePath);
+						if(!config.empty())
+						{
+							openVINOOptions["load_config"] = config;
+						}
+						sessionOptions.AppendExecutionProvider_V2(env, devices, openVINOOptions);
+						provider_ = kProviderOpenVINO;
+					}
+				}
+				else
+				{
+					UWARN("OpenVINO execution provider is not available: it is not built in this ONNX Runtime library "
+							"and its plugin \"%s\" cannot be loaded (%s; set %s to the path of "
+							"libonnxruntime_providers_openvino_plugin.so of onnxruntime-ep-openvino), falling back to CPU.",
+							options_.openVINOLibraryPath.empty()?defaultOpenVINOPluginLibrary().c_str():options_.openVINOLibraryPath.c_str(),
+							pluginError.c_str(), Parameters::kOnnxOpenVINOLibraryPath().c_str());
+				}
+#else
+				else
+				{
+					UWARN("OpenVINO execution provider is not available in this ONNX Runtime library (plugin "
+							"execution providers need ONNX Runtime >= 1.22), falling back to CPU.");
+				}
+#endif
+			}
 
 			impl_->session.reset(new Ort::Session(env, modelPath_.c_str(), sessionOptions));
 			inputs_ = describe(*impl_->session, true, impl_->inputNames);
@@ -482,6 +866,13 @@ bool OnnxSession::load()
 				{
 					UINFO("TensorRT engines of ONNX model \"%s\" are cached in \"%s\".", modelPath_.c_str(), options_.tensorRTCachePath.c_str());
 				}
+			}
+			else if(provider_ == kProviderOpenVINO)
+			{
+				UINFO("ONNX model \"%s\" runs with OpenVINO on device \"%s\" (precision: %s, cache: \"%s\").",
+						modelPath_.c_str(), options_.openVINODevice.c_str(),
+						options_.openVINOPrecision.empty()?"device default":options_.openVINOPrecision.c_str(),
+						options_.openVINOCachePath.c_str());
 			}
 			break;
 		}

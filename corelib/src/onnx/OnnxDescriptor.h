@@ -73,7 +73,8 @@ public:
 
 	const std::string & modelPath() const {return modelPath_;}
 	int dim() const {return dim_;}
-	int provider() const {return provider_;}
+	int provider() const {return (int)options_.provider;}
+	const OnnxSession::Options & options() const {return options_;}
 	bool isModelLoaded() const {return session_.get() != 0;}
 	/** @brief The session (null if the model is not loaded), e.g. to inspect its inputs and outputs. */
 	const std::shared_ptr<OnnxSession> & session() const {return session_;}
@@ -94,9 +95,7 @@ private:
 	std::shared_ptr<OnnxSession> session_;
 	std::string modelPath_;
 	int dim_;
-	int provider_;
-	bool tensorRTFp16_;
-	std::string tensorRTCachePath_;
+	OnnxSession::Options options_;
 	mutable bool resizeWarned_;
 };
 

@@ -41,8 +41,9 @@ of the model and is shared by every object using the same model and options.
 
 * **OnnxSession** ([OnnxSession.h](OnnxSession.h)) wraps ONNX Runtime: the
   one `Ort::Env` of the process (its logging level follows ULogger's), an
-  `Ort::Session` per model with the requested execution provider (CUDA and
-  TensorRT are appended when the library has them, CPU is the fallback), the
+  `Ort::Session` per model with the requested execution provider (CUDA,
+  TensorRT or OpenVINO, appended when the library has them, CPU is the
+  fallback), the
   description of the model's inputs/outputs (names, element types, shapes with
   -1 for dynamic dimensions) and `run()`. Sessions are cached by model path
   and options and shared through `std::shared_ptr`: RTAB-Map creates a
@@ -86,7 +87,7 @@ the execution to an *execution provider* selected with `Onnx/Provider`:
 PyTorch --export--> model.onnx --> ONNX Runtime --> CPU      (default, any platform)
                                                  --> CUDA     (NVIDIA)
                                                  --> TensorRT (NVIDIA, compiled engine)
-                                                 --> OpenVINO (Intel)   not supported yet
+                                                 --> OpenVINO (Intel CPU, GPU, NPU)
                                                  --> CoreML   (Apple)   not supported yet
 ```
 
@@ -106,14 +107,21 @@ support are run on the CPU by ONNX Runtime automatically.
   without it on your data (`test_superpoint_perf`, `test_matcher_perf`, or
   the inlier ratio of `rtabmap-matcher`) before enabling it. The FP32 and
   FP16 engines are cached side by side (the file names carry `_fp16`).
-* **OpenVINO** is Intel's inference engine (Intel CPUs, integrated and Arc
-  GPUs, NPUs), the Intel counterpart of TensorRT. It reads `.onnx` files
-  directly, and ONNX Runtime has an OpenVINO execution provider, so it would
-  only need a new `Onnx/Provider` value appending `"OpenVINO"` in
-  `OnnxSession` (with `device_type` `CPU`, `GPU` or `NPU`). The provider is not
-  in the standard ONNX Runtime release archives: it needs Intel's
-  onnxruntime-openvino build or ONNX Runtime built with `--use_openvino`.
-  Worth it on Intel machines without an NVIDIA GPU.
+* **OpenVINO** (`Onnx/Provider=3`) is Intel's inference engine (Intel CPUs,
+  integrated and Arc GPUs, NPUs), the Intel counterpart of TensorRT. The
+  device is selected with `Onnx/OpenVINODevice` (`CPU`, `GPU`, `GPU.1`, `NPU`,
+  or `AUTO:GPU,CPU` to let OpenVINO choose). Like TensorRT, GPU and NPU compile
+  the model when it is loaded (seconds), so the compiled models are cached in
+  `Onnx/OpenVINOCachePath`. GPU and NPU compute in FP16 by default: set
+  `Onnx/OpenVINOPrecision=FP32` to get the same results as on CPU, and compare
+  with and without it on your data as for `Onnx/TensorRTFp16`. The NPU needs
+  fixed input sizes (`--height`/`--width` and, for the detectors that have it,
+  `--max-keypoints` in the export scripts), GPU works best with them. Even on
+  CPU, OpenVINO is often faster than the default CPU provider on Intel
+  processors. OpenVINO is not in the ONNX Runtime release archives: it is
+  loaded at runtime from its plugin library (`Onnx/OpenVINOLibraryPath`, see
+  [Building](#building)), or used built in an ONNX Runtime built with
+  `--use_openvino` (deprecated by ONNX Runtime in favor of the plugin).
 * **iOS**: ONNX Runtime is distributed for iOS as `onnxruntime.xcframework`
   (CocoaPods `onnxruntime-c`, or the onnxruntime-swift-package-manager
   releases) with the same C++ API, so `OnnxDetector`/`OnnxMatcher` should work
@@ -144,6 +152,39 @@ shows `With ONNX Runtime: true`. The library is loaded at runtime from the
 same location: keep the archive where it was, or add its `lib/` directory to
 `LD_LIBRARY_PATH`.
 
+### OpenVINO
+
+OpenVINO is an execution provider *plugin*
+([onnxruntime-ep-openvino](https://github.com/onnxruntime/onnxruntime-ep-openvino)):
+a library loaded at runtime by the official ONNX Runtime releases (>= 1.22 for
+the plugin API; the plugin itself documents the versions it supports), so the
+CUDA/TensorRT archive above works with OpenVINO too, no ONNX Runtime build
+needed. The easiest way to get the plugin is its Python wheel, which bundles
+the OpenVINO and TBB libraries it needs (all found next to the plugin):
+
+```bash
+pip install onnxruntime-ep-openvino
+SRC=$(python3 -c "import onnxruntime_ep_openvino, os; print(os.path.dirname(onnxruntime_ep_openvino.__file__))")
+sudo mkdir -p /opt/onnxruntime-ep-openvino
+sudo cp -a $SRC/*.so* $SRC/cache.json $SRC/third-party-programs.txt /opt/onnxruntime-ep-openvino/
+```
+
+then set `Onnx/OpenVINOLibraryPath` to
+`/opt/onnxruntime-ep-openvino/libonnxruntime_providers_openvino_plugin.so`
+(empty: the library is searched by its file name, e.g. in `LD_LIBRARY_PATH`).
+Don't add that folder to the system library path (`ld.so.conf`): it has its
+own copies of TBB and hwloc, which would replace the system ones for every
+program. The plugin is loaded once per process; the log tells the devices it
+found (`Loaded execution provider plugin ...: OpenVINOExecutionProvider on CPU (Intel), ...`),
+and a device not found falls back to CPU with a warning listing them.
+
+The plugin ignores the provider options of the built-in provider
+(`device_type`, `precision`, `cache_dir`): `OnnxSession` selects the device
+among the plugin's devices and passes the precision and cache directory as
+OpenVINO properties (`load_config`). An ONNX Runtime with OpenVINO built in
+(`./build.sh ... --use_openvino CPU`) is used as before when found, the plugin
+is then not loaded.
+
 ## Parameters
 
 | Parameter | Default | Description |
@@ -154,9 +195,13 @@ same location: keep the archive where it was, or add its `lib/` directory to
 | `OnnxMatcher/Threshold` | 0.1 | Minimum score of a match (when the model outputs scores). |
 | `OnnxDescriptor/ModelPath` | | [Required] Path to the ONNX model of the global descriptor (`Mem/GlobalDescriptorStrategy=2`). |
 | `OnnxDescriptor/Dim` | 0 | Keep the first values of the descriptor, re-normalized (0: all). |
-| `Onnx/Provider` | 1 | Execution provider of all three: 0=CPU, 1=CUDA, 2=TensorRT. A provider not available in the ONNX Runtime library, or failing to load (missing cuDNN, no device...), falls back to CPU with a warning. |
+| `Onnx/Provider` | 1 | Execution provider of all three: 0=CPU, 1=CUDA, 2=TensorRT, 3=OpenVINO. A provider not available in the ONNX Runtime library, or failing to load (missing cuDNN, no device...), falls back to CPU with a warning. |
 | `Onnx/TensorRTFp16` | false | Build the TensorRT engines in FP16. |
 | `Onnx/TensorRTCachePath` | | Directory caching the TensorRT engines (building one takes seconds to minutes; a warning is logged when it happens). Empty: the `tensorrt_cache` folder of the RTAB-Map working directory. |
+| `Onnx/OpenVINODevice` | CPU | OpenVINO device: `CPU`, `GPU` (`GPU.0`, `GPU.1`... with many), `NPU`, or `AUTO` / `AUTO:GPU,CPU`. |
+| `Onnx/OpenVINOPrecision` | | `FP32`, `FP16` or `ACCURACY` (the model's own precision). Empty: the device's default (FP32 on CPU, FP16 on GPU and NPU). |
+| `Onnx/OpenVINOCachePath` | | Directory caching the models compiled by OpenVINO. Empty: the `openvino_cache` folder of the RTAB-Map working directory. |
+| `Onnx/OpenVINOLibraryPath` | | The OpenVINO plugin library (`libonnxruntime_providers_openvino_plugin.so` of onnxruntime-ep-openvino), when OpenVINO is not built in ONNX Runtime. Empty: searched by its file name. |
 
 The usual feature parameters apply: `Kp/MaxFeatures` / `Vis/MaxFeatures` (the
 strongest keypoints are kept, or `Kp/SSC` for a uniform distribution), the

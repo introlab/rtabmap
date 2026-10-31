@@ -89,16 +89,33 @@ class RTABMAP_CORE_EXPORT OnnxSession
 {
 public:
 	/** @brief Execution providers, values of the OnnxDetector/Provider and OnnxMatcher/Provider parameters. */
-	enum Provider {kProviderCPU=0, kProviderCUDA=1, kProviderTensorRT=2};
+	enum Provider {kProviderCPU=0, kProviderCUDA=1, kProviderTensorRT=2, kProviderOpenVINO=3};
 
 	struct Options
 	{
-		Options() : provider(kProviderCPU), deviceId(0), tensorRTFp16(false) {}
+		Options() : provider(kProviderCPU), deviceId(0), tensorRTFp16(false), openVINODevice("CPU") {}
 		Provider provider;
 		int deviceId;                   ///< GPU device for CUDA and TensorRT
 		bool tensorRTFp16;              ///< Build the TensorRT engine in FP16
 		std::string tensorRTCachePath;  ///< Directory caching TensorRT engines (empty = no cache)
+		std::string openVINODevice;     ///< OpenVINO device_type: CPU, GPU, GPU.1, NPU, AUTO...
+		std::string openVINOPrecision;  ///< FP32, FP16 or ACCURACY (empty = device default)
+		std::string openVINOCachePath;  ///< Directory caching OpenVINO compiled models (empty = no cache)
+		std::string openVINOLibraryPath;///< OpenVINO plugin library (empty = found by its default name)
 		std::string key() const;        ///< Identifies the options in the session cache
+
+		/** @brief The options at the default values of the "Onnx/..." parameters. */
+		static Options defaults();
+		/**
+		 * @brief Updates the options from the "Onnx/..." parameters found in @p parameters
+		 * (the others are kept), with "~" expanded in paths. With TensorRT or OpenVINO,
+		 * an empty cache path becomes defaultTensorRTCachePath(@p parameters) or
+		 * defaultOpenVINOCachePath(@p parameters).
+		 */
+		void parse(const ParametersMap & parameters);
+
+		bool operator==(const Options & other) const {return key() == other.key();}
+		bool operator!=(const Options & other) const {return !(*this == other);}
 	};
 
 	/**
@@ -110,8 +127,13 @@ public:
 	 */
 	static std::shared_ptr<OnnxSession> get(const std::string & modelPath, const Options & options = Options());
 
-	/** @brief True if the ONNX Runtime library can use @p provider. */
-	static bool isProviderAvailable(Provider provider);
+	/**
+	 * @brief True if the ONNX Runtime library can use @p provider. OpenVINO is
+	 * available when it is built in the library, or else when its plugin
+	 * (onnxruntime-ep-openvino) can be loaded from @p openVINOLibraryPath (empty:
+	 * its default file name, searched like any shared library) and reports devices.
+	 */
+	static bool isProviderAvailable(Provider provider, const std::string & openVINOLibraryPath = "");
 	static std::string providerName(Provider provider);
 	/** @brief ONNX Runtime version string, e.g. "1.23.2". */
 	static std::string runtimeVersion();
@@ -121,6 +143,13 @@ public:
 	 * (Rtabmap/WorkingDirectory in @p parameters, else the default one).
 	 */
 	static std::string defaultTensorRTCachePath(const ParametersMap & parameters);
+	/**
+	 * @brief Where OpenVINO caches the compiled models when Onnx/OpenVINOCachePath is
+	 * empty: the "openvino_cache" folder of the RTAB-Map working directory.
+	 */
+	static std::string defaultOpenVINOCachePath(const ParametersMap & parameters);
+	/** @brief @p path with a leading "~" replaced by the home directory. */
+	static std::string expandTilde(const std::string & path);
 
 	virtual ~OnnxSession();
 

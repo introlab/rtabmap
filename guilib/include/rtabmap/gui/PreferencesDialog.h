@@ -397,6 +397,8 @@ private Q_SLOTS:
 	void changeOnnxMatcherModelPath();
 	void changeOnnxDescriptorModelPath();
 	void changeOnnxTensorRTCachePath();
+	void changeOnnxOpenVINOCachePath();
+	void changeOnnxOpenVINOLibraryPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();
