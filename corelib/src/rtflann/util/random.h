@@ -52,6 +52,46 @@ inline void seed_random(unsigned int seed)
 }
 
 /*
+ * rtabmap addition: by default, the shuffles of the randomized indexes
+ * (kd-trees, LSH tables) are seeded by std::random_device, so the search
+ * results change from one run to another. When the deterministic seed is
+ * enabled (for tests), they are seeded by a generator reset with a fixed seed
+ * on enabling, so the same inputs give the same results whatever ran before.
+ */
+inline bool & deterministic_seed_enabled()
+{
+    static bool enabled = false;
+    return enabled;
+}
+
+inline std::mt19937 & deterministic_seed_generator()
+{
+    static std::mt19937 generator;
+    return generator;
+}
+
+inline void set_deterministic_seed(bool enable)
+{
+    deterministic_seed_enabled() = enable;
+    if(enable)
+    {
+        deterministic_seed_generator().seed(5489u);
+        // rand_int() is used to pick the kd-tree split dimensions
+        seed_random(5489u);
+    }
+}
+
+inline std::mt19937::result_type random_seed()
+{
+    if(deterministic_seed_enabled())
+    {
+        return deterministic_seed_generator()();
+    }
+    std::random_device rd;
+    return rd();
+}
+
+/*
  * Generates a random double value.
  */
 /**
@@ -110,9 +150,7 @@ public:
         for (int i = 0; i < size_; ++i) vals_[i] = i;
 
         // shuffle the elements in the array
-        // Seeded by std::rand() (instead of std::random_device) to get the same
-        // results from one run to another, like upstream std::random_shuffle().
-        std::mt19937 g(std::rand());
+        std::mt19937 g(random_seed());
         std::shuffle(vals_.begin(), vals_.end(), g);
 
         counter_ = 0;

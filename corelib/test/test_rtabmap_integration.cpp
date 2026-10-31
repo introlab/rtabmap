@@ -17,6 +17,7 @@
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/DBReader.h>
 #include <rtabmap/core/Features2d.h>
+#include <rtabmap/core/FlannIndex.h>
 #include <rtabmap/core/camera/CameraImages.h>
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/LocalGrid.h>
@@ -1018,7 +1019,16 @@ ParametersMap baseOdometryParams()
 	return ParametersMap();
 }
 
-class RtabmapIntegrationFixture : public ::testing::Test {};
+// The randomized FLANN indexes (visual words, feature matching) are seeded by
+// std::random_device by default, so the loop closures detected would change
+// from one run to another. Reset to a fixed seed before each test so it gives
+// the same results whatever ran before it.
+class RtabmapIntegrationFixture : public ::testing::Test
+{
+protected:
+	void SetUp() override { FlannIndex::setDeterministicSeed(true); }
+	void TearDown() override { FlannIndex::setDeterministicSeed(false); }
+};
 
 }  // namespace
 

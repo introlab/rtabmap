@@ -48,10 +48,10 @@
 #include <math.h>
 #include <stddef.h>
 #include <random>
-#include <cstdlib>
 
 #include "rtflann/util/dynamic_bitset.h"
 #include "rtflann/util/matrix.h"
+#include "rtflann/util/random.h"
 
 namespace rtflann
 {
@@ -366,9 +366,7 @@ inline LshTable<unsigned char>::LshTable(unsigned int feature_size, unsigned int
     // A bit brutal but fast to code
     std::vector<size_t> indices(feature_size * CHAR_BIT);
     for (size_t i = 0; i < feature_size * CHAR_BIT; ++i) indices[i] = i;
-    // Seeded by std::rand() (instead of std::random_device) to get the same
-    // results from one run to another, like upstream std::random_shuffle().
-    std::mt19937 g(std::rand());
+    std::mt19937 g(random_seed());
     std::shuffle(indices.begin(), indices.end(), g);
 
     // Generate a random set of order of subsignature_size_ bits
