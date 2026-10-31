@@ -112,7 +112,12 @@ def main():
     parser.add_argument("--output", required=True, help="Output ONNX file")
     parser.add_argument("--iterations", type=int, default=20, help="Sinkhorn iterations, unrolled in the graph (default 20, rtabmap's PyMatcher/Iterations default; SuperGlue's own default is 100)")
     parser.add_argument("--threshold", type=float, default=0.2, help="Match threshold inside the model (default 0.2, SuperGlue's)")
-    parser.add_argument("--opset", type=int, default=17, help="ONNX opset version (default 17)")
+    # 18, not 17 like the other scripts: the Sinkhorn iterations are ReduceLogSumExp
+    # nodes, and the OpenVINO execution provider ignores their axes attribute of
+    # opset <= 17 (it reduces over all the axes: no match), while it reads the axes
+    # input of opset 18 correctly. OpenVINO's ONNX frontend bug, fixed in OpenVINO
+    # 2026.5: https://github.com/openvinotoolkit/openvino/issues/38238
+    parser.add_argument("--opset", type=int, default=18, help="ONNX opset version (default 18, OpenVINO needs >= 18 for its ReduceLogSumExp)")
     parser.add_argument("--no-check", action="store_true", help="Don't verify the exported model with onnxruntime")
     args = parser.parse_args()
 

@@ -545,7 +545,16 @@ python3 export_superglue_onnx.py --superglue-dir SuperGluePretrainedNetwork --we
 ```
 
 Options: `--weights indoor|outdoor`, `--iterations 20` (Sinkhorn iterations;
-`PyMatcher/Iterations` default, SuperGlue's own is 100), `--threshold 0.2`.
+`PyMatcher/Iterations` default, SuperGlue's own is 100), `--threshold 0.2`,
+`--opset 18`. Keep the opset >= 18 for OpenVINO: the Sinkhorn iterations are
+`ReduceLogSumExp` nodes, whose axes the OpenVINO execution provider ignores
+with opset 17 and lower (it reduces over all the axes, so SuperGlue finds no
+match), while it reads them correctly from opset 18. A SuperGlue exported
+before with opset 17 has to be exported again for OpenVINO. This is a bug of
+OpenVINO's ONNX frontend
+([openvinotoolkit/openvino#38238](https://github.com/openvinotoolkit/openvino/issues/38238)),
+fixed in OpenVINO 2026.5 (the onnxruntime-ep-openvino 1.8.1 wheel bundles
+2026.4.1).
 The matcher benchmark below compares it with `PyMatcher` running the same
 network in Python and with LightGlue.
 
