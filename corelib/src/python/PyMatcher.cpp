@@ -287,7 +287,7 @@ std::vector<cv::DMatch> PyMatcher::match(
 			Py_DECREF(pImageWidth);
 			Py_DECREF(pImageHeight);
 
-			UDEBUG("Fill matches (%d/%d) and cleanup time = %fs", matches.size(), std::min(descriptorsQuery.rows, descriptorsTrain.rows), timer.ticks());
+			UDEBUG("Fill matches (%d/%d) and cleanup time = %fs", (int)matches.size(), std::min(descriptorsQuery.rows, descriptorsTrain.rows), timer.ticks());
 		}
 	}
 	else

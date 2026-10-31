@@ -30,8 +30,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
+// octomap includes <ciso646>, which GCC deprecates (#warning) from C++20.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcpp"
+#endif
 #include <octomap/ColorOcTree.h>
 #include <octomap/OcTreeKey.h>
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 #include <pcl/pcl_base.h>
 #include <pcl/point_types.h>
