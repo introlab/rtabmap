@@ -4558,6 +4558,14 @@ namespace {
 
 // A SensorData carrying both the raw image and the blob that encodes it, the
 // shape produced by SensorData::uncompressData() when reprocessing a database.
+// Deliberately uses the deprecated raw setters: their replacements clear the blob.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4996)
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 SensorData dataWithRawAndCompressed(const cv::Mat & raw, const cv::Mat & blob)
 {
 	SensorData data(blob);     // 1-row CV_8UC1 is detected as compressed
@@ -4571,6 +4579,11 @@ SensorData dataWithRawAndCompressed(const cv::Mat & raw, const cv::Mat & blob, c
 	data.setImageRaw(raw);
 	return data;
 }
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
+#endif
 
 cv::Mat texture(int rows, int cols)
 {
@@ -4768,8 +4781,21 @@ TEST(MemoryTest, CreateSignatureRecompressesStereoPairAfterRectification)
 
 	SensorData data;
 	data.setStereoImage(leftBlob, rightBlob, std::vector<StereoCameraModel>{model});
+	// Deliberately uses the deprecated raw setters: their replacements clear the blobs.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4996)
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 	data.setImageRaw(left);          // neither setter clears the blobs
 	data.setDepthOrRightRaw(right);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
+#endif
 	ASSERT_FALSE(data.imageCompressed().empty());
 	ASSERT_FALSE(data.depthOrRightCompressed().empty());
 
