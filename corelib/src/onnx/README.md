@@ -635,14 +635,36 @@ magicleap  PyDetector (python script)     cuda                0.2       24.3    
 Within each set of weights, the implementations find the same keypoints
 ("same kpts" compares each row with the first row of its weights; the test
 also reports the cosine similarity of the descriptors, 1.000 everywhere but
-for the magicleap python script, whose `demo_superpoint.py` samples them with
-another interpolation convention, 0.978); ONNX Runtime is the fastest on CPU
+for the magicleap python script, 0.978, see below); ONNX Runtime is the fastest on CPU
 and TensorRT on GPU. FP16 is 1.5x faster again and changes about 2% of the
 keypoints (the ones near the detection threshold), with the same descriptors
 (cosine similarity 0.999). The two sets of weights are different trainings,
 see [SuperPoint](#superpoint) above. The magicleap python script needs a
 `cv2` importable by the embedded interpreter (`pip install
 opencv-python-headless` in the environment the build uses).
+
+**Don't mix the magicleap python script with the other magicleap
+implementations in a map.** The network and the keypoints are the same, but
+magicleap's `demo_superpoint.py` (used by `rtabmap_superpoint.py`) reads the
+descriptors from the network's 1/8 descriptor map with its own convention,
+while LightGlue's SuperPoint, which `superpoint.onnx` (`OnnxDetector`) and
+`SuperPointTorch` follow, reads them at the centers of the 8x8 cells: the
+descriptors of a same keypoint differ (cosine 0.975). On the 83 consecutive
+frame pairs of `data/samples` (brute force matching, ratio test, RANSAC), a
+map made with the python script and localized with `OnnxDetector` gets 35%
+fewer inliers than `OnnxDetector` on both sides, enough to drop loop
+closures near `Vis/MinInliers`. The python script on both sides gets 12%
+fewer, its sampling being a bit blurrier. The rpautrat implementations all
+give the same descriptors.
+
+For backward compatibility with the maps already made with it,
+`rtabmap_superpoint.py` keeps the demo's sampling by default. Set
+`DESCRIPTOR_SAMPLING = 'lightglue'` at the top of the script (or the
+`RTABMAP_SUPERPOINT_SAMPLING=lightglue` environment variable) to get the
+descriptors of the other implementations (cosine 1.000), e.g. for a new map
+that may later be used with `OnnxDetector`, or with SuperPoint-LightGlue,
+which was trained with them. A map made with the other sampling has to be
+reprocessed (`rtabmap-reprocess`) to switch.
 
 ## Specializing
 
