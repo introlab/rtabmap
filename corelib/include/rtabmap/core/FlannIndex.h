@@ -86,6 +86,21 @@ public:
 		NANOFLANN_INDEX_KDTREE_SINGLE = 100,
 	};
 
+	/**
+	 * @brief Make the randomized rtflann indexes the same from one run to another
+	 *
+	 * The randomized kd-trees and LSH tables shuffle their features with a
+	 * generator seeded by @c std::random_device, so they are different on
+	 * every run, and so may be the approximate neighbors they return. Enabling
+	 * the deterministic seed resets their generator with a fixed seed (and
+	 * calls @c std::srand), so the same inputs give the same indexes and
+	 * results, whatever was built before. Not thread-safe: indexes built from
+	 * multiple threads get their seeds in the order the threads ask for them.
+	 *
+	 * Intended for tests; production code should leave this off (default).
+	 */
+	static void setDeterministicSeed(bool enable);
+
 	FlannIndex();
 	virtual ~FlannIndex();
 

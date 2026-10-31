@@ -78,7 +78,7 @@ IF(GTSAM_FOUND)
 ENDIF(GTSAM_FOUND)
 
 add_executable(test_corelib ${corelib_test_sources})
-target_link_libraries(test_corelib gtest_main rtabmap_core)
+target_link_libraries(test_corelib GTest::gtest_main rtabmap_core)
 
 IF(GTSAM_FOUND)
 	target_link_libraries(test_corelib gtsam)
@@ -123,7 +123,7 @@ endforeach()
 # and so that its seconds of benchmarking stay out of the unit test shards.
 IF(BUILD_PERF_TESTS)
 	add_executable(test_flann_index_perf perf_flann_index.cpp)
-	target_link_libraries(test_flann_index_perf gtest_main rtabmap_core)
+	target_link_libraries(test_flann_index_perf GTest::gtest_main rtabmap_core)
 
 	# Labelled "performance" so CI jobs can opt out via `ctest -LE performance`,
 	# and run them alone with `ctest -L performance`.
@@ -144,7 +144,7 @@ IF(BUILD_PERF_TESTS)
 	# largest maps it builds allocate a gigabyte for the dense prediction matrix,
 	# which in a unit test shard would look like a leak.
 	add_executable(test_bayesfilter_perf perf_bayesfilter.cpp)
-	target_link_libraries(test_bayesfilter_perf gtest_main rtabmap_core)
+	target_link_libraries(test_bayesfilter_perf GTest::gtest_main rtabmap_core)
 
 	add_test(NAME test_bayesfilter_perf COMMAND test_bayesfilter_perf)
 	set_tests_properties(test_bayesfilter_perf PROPERTIES
@@ -158,7 +158,7 @@ IF(BUILD_PERF_TESTS)
 	#   bin/test_graph_perf
 	#   bin/test_graph_perf --gtest_filter=*ProximityLinks*
 	add_executable(test_graph_perf perf_graph.cpp)
-	target_link_libraries(test_graph_perf gtest_main rtabmap_core)
+	target_link_libraries(test_graph_perf GTest::gtest_main rtabmap_core)
 
 	add_test(NAME test_graph_perf COMMAND test_graph_perf)
 	set_tests_properties(test_graph_perf PROPERTIES
@@ -172,7 +172,7 @@ IF(BUILD_PERF_TESTS)
 	#   bin/test_compression_perf
 	#   bin/test_compression_perf --gtest_filter=*Synthetic*
 	add_executable(test_compression_perf perf_compression.cpp)
-	target_link_libraries(test_compression_perf gtest_main rtabmap_core)
+	target_link_libraries(test_compression_perf GTest::gtest_main rtabmap_core)
 
 	add_test(NAME test_compression_perf COMMAND test_compression_perf)
 	set_tests_properties(test_compression_perf PROPERTIES
@@ -188,7 +188,7 @@ ENDIF(BUILD_PERF_TESTS)
 # one long test (>20 min), it needs its own timeout and "long" label, and a
 # crash in it stays contained instead of taking a shard of unit tests with it.
 add_executable(test_rtabmap_integration test_rtabmap_integration.cpp)
-target_link_libraries(test_rtabmap_integration gtest_main rtabmap_core)
+target_link_libraries(test_rtabmap_integration GTest::gtest_main rtabmap_core)
 
 # Labelled "long" so CI PR jobs can opt out via:
 #  `ctest -LE long`
@@ -219,22 +219,22 @@ IF(WITH_PYTHON AND Python3_FOUND)
 	# Direct tests for PythonInterface / getPythonTraceback. Links pybind11
 	# and Python headers so the test can drive the Python C API directly.
 	add_executable(test_python_interface test_python_interface.cpp)
-	target_link_libraries(test_python_interface gtest_main rtabmap_core pybind11::embed)
+	target_link_libraries(test_python_interface GTest::gtest_main rtabmap_core pybind11::embed)
 	target_include_directories(test_python_interface PRIVATE ${Python3_INCLUDE_DIRS})
 	add_test(NAME test_python_interface COMMAND test_python_interface)
 
 	add_executable(test_pydetector test_pydetector.cpp)
-	target_link_libraries(test_pydetector gtest_main rtabmap_core)
+	target_link_libraries(test_pydetector GTest::gtest_main rtabmap_core)
 	add_test(NAME test_pydetector COMMAND test_pydetector)
 
 	add_executable(test_pydescriptor test_pydescriptor.cpp)
-	target_link_libraries(test_pydescriptor gtest_main rtabmap_core)
+	target_link_libraries(test_pydescriptor GTest::gtest_main rtabmap_core)
 	add_test(NAME test_pydescriptor COMMAND test_pydescriptor)
 
 	# PyMatcher's header is internal (not in the public include tree);
 	# expose corelib/src so the test can `#include "python/PyMatcher.h"`.
 	add_executable(test_pymatcher test_pymatcher.cpp)
-	target_link_libraries(test_pymatcher gtest_main rtabmap_core)
+	target_link_libraries(test_pymatcher GTest::gtest_main rtabmap_core)
 	target_include_directories(test_pymatcher PRIVATE
 			${CMAKE_SOURCE_DIR}/corelib/src)
 	add_test(NAME test_pymatcher COMMAND test_pymatcher)
@@ -243,7 +243,7 @@ ENDIF(WITH_PYTHON AND Python3_FOUND)
 #LASWriter.h (optional libLAS -- own target for the extra link/include set)
 IF(libLAS_FOUND)
 	add_executable(test_laswriter test_laswriter.cpp)
-	target_link_libraries(test_laswriter gtest_main rtabmap_core ${libLAS_LIBRARIES})
+	target_link_libraries(test_laswriter GTest::gtest_main rtabmap_core ${libLAS_LIBRARIES})
 	target_include_directories(test_laswriter PRIVATE ${libLAS_INCLUDE_DIRS})
 	add_test(NAME test_laswriter COMMAND test_laswriter)
 ENDIF(libLAS_FOUND)

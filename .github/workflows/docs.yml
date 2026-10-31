@@ -152,11 +152,11 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
 
-    # Serialize every push to gh-pages, including the preview cleanup workflow,
-    # and never cancel one in flight: two concurrent pushes would collide.
-    concurrency:
-      group: gh-pages-publish
-      cancel-in-progress: false
+    # No concurrency group shared with the other gh-pages writers: GitHub keeps
+    # only one pending job per group and cancels it when a newer one arrives, so
+    # publishes of unrelated PRs (or a master merge) would show up as cancelled.
+    # Writers touch disjoint folders instead, and a rejected push is retried on
+    # top of the new gh-pages head (see Publish below).
 
     permissions:
       contents: write
@@ -168,29 +168,49 @@ jobs:
           name: documentation-site
           path: _site
 
-      # Pull requests go to preview/pr-<number>/, everything else to the site
-      # root. keep_files preserves what this run does not carry: the published
-      # version folders (api/0.23.x/) and the other PRs' previews.
-      - name: Publish
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: ./_site
-          destination_dir: ${{ github.event_name == 'pull_request' && format('preview/pr-{0}', github.event.number) || '' }}
-          keep_files: true
-          # Do not let the action drop a .nojekyll at the *branch root*: that
-          # disables Jekyll for everything on the branch, including content
-          # published outside this deployment. The site we publish carries its
-          # own .nojekyll inside destination_dir, which is the only place it
-          # should apply.
-          enable_jekyll: true
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
-          commit_message: >-
+          ref: gh-pages
+          path: gh-pages
+          fetch-depth: 1
+
+      # Pull requests go to preview/pr-<number>/, everything else to the site
+      # root. Files are copied over what is there, preserving what this run
+      # does not carry: the published version folders (api/0.23.x/) and the
+      # other PRs' previews. If another workflow pushed in between, the push is
+      # rejected: start again from the new head and re-apply, which is safe
+      # because each writer only owns its own folder.
+      - name: Publish
+        working-directory: gh-pages
+        env:
+          DEST: ${{ github.event_name == 'pull_request' && format('preview/pr-{0}', github.event.number) || '.' }}
+          MESSAGE: >-
             ${{ github.event_name == 'pull_request'
                 && format('Preview for PR #{0}', github.event.number)
                 || format('Update documentation ({0})', needs.build.outputs.version || 'latest') }}
+        run: |
+          set -eux
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3 4 5; do
+            git fetch --depth 1 origin gh-pages
+            git reset --hard FETCH_HEAD
+            mkdir -p "${DEST}"
+            cp -RfL ../_site/. "${DEST}/"
+            git add -A
+            if git diff --cached --quiet; then
+              echo "Nothing changed on gh-pages."
+              exit 0
+            fi
+            git commit --quiet -m "${MESSAGE}"
+            if git push origin HEAD:gh-pages; then
+              exit 0
+            fi
+            sleep $((attempt * 5 + RANDOM % 10))
+          done
+          echo "Could not push to gh-pages after ${attempt} attempts."
+          exit 1
 
       - name: Link the site
         run: |
