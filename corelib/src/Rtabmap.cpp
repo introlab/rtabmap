@@ -3221,6 +3221,7 @@ bool Rtabmap::process(
 	// Landmark
 	//============================================================
 	std::map<int, std::set<int> > landmarksDetected; // <Landmark ID, list of nodes that saw this landmark>
+	std::map<int, Transform> landmarksDetectedTransforms; // <Landmark ID, observation from the new node>, kept as the link is removed if rejected after graph optimization
 	if(!signature->getLandmarks().empty() && !_graphOptimizer->landmarksIgnored() && signature->getWeight()!=-1)
 	{
 		bool hasGlobalLoopClosuresInOdomCache = !graph::filterLinks(_odomCacheConstraints, Link::kGlobalClosure, true).empty() || _loopClosureHypothesis.first != 0;
@@ -3247,6 +3248,7 @@ bool Rtabmap::process(
 				{
 					UINFO("Landmark %d observed again! Seen the first time by node %d.", -iter->first, *_memory->getLandmarksIndex().find(iter->first)->second.begin());
 					landmarksDetected.insert(std::make_pair(iter->first, _memory->getLandmarksIndex().find(iter->first)->second));
+					landmarksDetectedTransforms.insert(std::make_pair(iter->first, iter->second.transform()));
 					rejectedLoopClosure = false; // If it was true, it will be set back to false if landmarks are rejected on graph optimization
 					loopClosureLinksAdded.push_back(std::make_pair(signature->id(), iter->first));
 				}
@@ -4324,8 +4326,8 @@ bool Rtabmap::process(
 			// (on the highest hypothesis), if a transform could be computed for it.
 			if(!landmarksDetected.empty())
 			{
-				UASSERT(uContains(signature->getLandmarks(), landmarksDetected.begin()->first));
-				statistics_.setLoopClosureTransform(signature->getLandmarks().at(landmarksDetected.begin()->first).transform());
+				UASSERT(uContains(landmarksDetectedTransforms, landmarksDetected.begin()->first));
+				statistics_.setLoopClosureTransform(landmarksDetectedTransforms.at(landmarksDetected.begin()->first));
 			}
 			else if(!globalLoopClosureTransform.isNull())
 			{

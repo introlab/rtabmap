@@ -3606,6 +3606,69 @@ TEST(RtabmapTest, LandmarkObservationsAcrossFramesShareSameLandmarkPose)
 	rtabmap.close(false);
 }
 
+TEST(RtabmapTest, RejectedLandmarkLoopClosureStillReportsObservationTransform)
+{
+	// Regression for #1817: when a landmark re-observation is rejected after
+	// graph optimization (RGBD/OptimizeMaxError), its link is removed from the
+	// new signature, but the statistics must still report the observation as
+	// the loop closure transform (instead of asserting on the removed link).
+	int optimizerStrategy = -1;
+	if(Optimizer::isAvailable(Optimizer::kTypeGTSAM)) optimizerStrategy = Optimizer::kTypeGTSAM;
+	else if(Optimizer::isAvailable(Optimizer::kTypeG2O)) optimizerStrategy = Optimizer::kTypeG2O;
+	if(optimizerStrategy < 0)
+	{
+		GTEST_SKIP() << "neither GTSAM nor g2o is available; the default optimizer "
+				"(TORO/Ceres) does not include landmarks in the optimized graph";
+	}
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kOptimizerStrategy()] = uNumber2Str(optimizerStrategy);
+	params[Parameters::kOptimizerLandmarksIgnored()] = "false";
+	params[Parameters::kRGBDOptimizeMaxError()] = "1.0";
+	Rtabmap rtabmap;
+	rtabmap.init(params);
+	const cv::Mat cov = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const cv::Mat lmCov = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const int kLm = 42;
+	const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+
+	// Frame N1 at (0,0,0) sees landmark 1 m forward.
+	{
+		SensorData d(image); d.setId(1);
+		Landmarks lms;
+		lms.emplace(kLm, Landmark(kLm, /*size=*/0.1f, Transform(1.0f, 0, 0, 0, 0, 0), lmCov));
+		d.setLandmarks(lms);
+		ASSERT_TRUE(rtabmap.process(d, Transform(0.0f, 0, 0, 0, 0, 0), cov));
+	}
+	// Frame N2 at (10,0,0) sees the same landmark 0.5 m forward: ~8.5 m of
+	// inconsistency with odometry, way over RGBD/OptimizeMaxError.
+	const Transform observation(0.5f, 0.2f, 0, 0, 0, 0);
+	{
+		SensorData d(image); d.setId(2);
+		Landmarks lms;
+		lms.emplace(kLm, Landmark(kLm, /*size=*/0.1f, observation, lmCov));
+		d.setLandmarks(lms);
+		ASSERT_TRUE(rtabmap.process(d, Transform(10.0f, 0, 0, 0, 0, 0), cov));
+	}
+
+	// The landmark loop closure was rejected and its link removed from N2.
+	const Statistics & stats = rtabmap.getStatistics();
+	auto itRej = stats.data().find(Statistics::kLoopRejectedHypothesis());
+	ASSERT_NE(itRej, stats.data().end());
+	EXPECT_FLOAT_EQ(itRej->second, 1.0f);
+	const Signature * s = rtabmap.getMemory()->getSignature(2);
+	ASSERT_NE(s, nullptr);
+	EXPECT_FALSE(uContains(s->getLandmarks(), -kLm));
+
+	// The rejected observation (new node -> landmark) is still published.
+	auto itLmDetected = stats.data().find(Statistics::kLoopLandmark_detected());
+	ASSERT_NE(itLmDetected, stats.data().end());
+	EXPECT_FLOAT_EQ(itLmDetected->second, float(kLm));
+	ASSERT_FALSE(stats.loopClosureTransform().isNull());
+	EXPECT_NEAR(stats.loopClosureTransform().x(), observation.x(), 1e-5);
+	EXPECT_NEAR(stats.loopClosureTransform().y(), observation.y(), 1e-5);
+	rtabmap.close(false);
+}
+
 TEST(RtabmapTest, DetectMoreLoopClosuresReturnsMinusOneWhenIntraAndInterBothFalse)
 {
 	Rtabmap rtabmap;
