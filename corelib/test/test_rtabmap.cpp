@@ -3702,6 +3702,259 @@ TEST(RtabmapTest, LandmarkMaxNormalErrorComparesYawOnlyWhenLocalized)
 	EXPECT_FALSE(kept[1]) << "localized: the full normal is compared";
 }
 
+// Mapping mode, RGBD/OptimizeMaxError with RGBD/OptimizeMaxErrorRepairRadius: the robot
+// drives a circle around a landmark on the floor (its normal up), observations given
+// externally. The landmark is first seen twice with its normal tilted by 30 deg, the
+// second time in the opposite direction (e.g., flipped poses of a small marker). The
+// second bad observation is rejected, the first one is removed by the repair when the
+// good observations make it the largest error, then all good observations are accepted.
+// A later observation with a random orientation is rejected, and the loop closure with
+// the first node at the end of the circle is accepted.
+// Note that if the first bad observations agreed with each other, they would outvote
+// each new good observation, which would be rejected (as new link, it cannot be repaired).
+TEST(RtabmapTest, LandmarkRepairRemovesFirstBadObservationOnCircle)
+{
+	int optimizerStrategy = -1;
+	if(Optimizer::isAvailable(Optimizer::kTypeGTSAM)) optimizerStrategy = Optimizer::kTypeGTSAM;
+	else if(Optimizer::isAvailable(Optimizer::kTypeG2O)) optimizerStrategy = Optimizer::kTypeG2O;
+	if(optimizerStrategy < 0)
+	{
+		GTEST_SKIP() << "neither GTSAM nor g2o is available to optimize landmarks";
+	}
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kOptimizerStrategy()] = uNumber2Str(optimizerStrategy);
+	params[Parameters::kOptimizerLandmarksIgnored()] = "false";
+	params[Parameters::kRGBDOptimizeMaxError()] = "3";
+	params[Parameters::kRGBDOptimizeMaxErrorRepairRadius()] = "1";
+	Rtabmap rtabmap;
+	rtabmap.init(params);
+
+	const int kLm = 42;
+	const int kNodes = 37; // every 10 deg, the last one back on the first one
+	const float kRadius = 2.0f;
+	const cv::Mat odomCov = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
+	cv::Mat lmCov = cv::Mat::eye(6, 6, CV_64FC1);
+	lmCov(cv::Range(0,3), cv::Range(0,3)) *= 0.001; // like Marker/VarianceLinear
+	lmCov(cv::Range(3,6), cv::Range(3,6)) *= 0.01;  // like Marker/VarianceAngular
+	const Transform landmark = Transform::getIdentity(); // on the floor at the center
+	const int kBadNodes[] = {2, 3};
+	const int kRandomNode = 25;
+	std::mt19937 rng(42);
+	std::uniform_real_distribution<float> angle(-M_PI, M_PI);
+	const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+	auto robotPose = [&](int id)
+	{
+		const float a = float(id-1) * 2.0f * M_PI / float(kNodes-1);
+		return Transform(kRadius*std::cos(a), kRadius*std::sin(a), 0, 0, 0, a + M_PI/2.0f); // driving counterclockwise
+	};
+
+	int repairNode = 0;
+	std::map<int, bool> goodKept;
+	for(int id=1; id<=kNodes; ++id)
+	{
+		SCOPED_TRACE(uFormat("node %d", id));
+		const Transform pose = robotPose(id);
+		SensorData d(image); d.setId(id);
+		Transform observation;
+		if(id == kBadNodes[0] || id == kBadNodes[1])
+		{
+			// normal tilted by 30 deg, in opposite directions
+			observation = pose.inverse() * landmark * Transform(0, 0, 0, (id==kBadNodes[0]?1:-1)*30.0f*M_PI/180.0f, 0, 0);
+		}
+		else if(id == kRandomNode)
+		{
+			observation = pose.inverse() * landmark * Transform(0, 0, 0, angle(rng), angle(rng), angle(rng));
+		}
+		else if(id > 1 && id < kNodes)
+		{
+			observation = pose.inverse() * landmark;
+		}
+		if(!observation.isNull())
+		{
+			Landmarks lms;
+			lms.emplace(kLm, Landmark(kLm, 0.2f, observation, lmCov));
+			d.setLandmarks(lms);
+		}
+		ASSERT_TRUE(rtabmap.process(d, pose, odomCov));
+		const std::map<std::string, float> & stats = rtabmap.getStatistics().data();
+		const Signature * s = rtabmap.getMemory()->getSignature(id);
+		ASSERT_NE(s, nullptr);
+		const bool kept = s->getLandmarks().count(-kLm) != 0;
+		if(uValue(stats, Statistics::kLoopOptimization_max_error_removed_count(), 0.0f) > 0)
+		{
+			EXPECT_EQ(repairNode, 0) << "only one repair expected";
+			repairNode = id;
+		}
+
+		if(id == kBadNodes[0])
+		{
+			EXPECT_TRUE(kept) << "first observation of the landmark";
+		}
+		else if(id == kBadNodes[1])
+		{
+			EXPECT_FALSE(kept) << "60 deg from the first observation";
+		}
+		else if(id == kRandomNode)
+		{
+			EXPECT_FALSE(kept) << "random orientation";
+		}
+		else if(!observation.isNull())
+		{
+			goodKept[id] = kept;
+		}
+	}
+
+	// The first bad observation has been removed by the repair, a couple of nodes after.
+	// Good observations before the repair can be rejected, all the ones after are accepted.
+	EXPECT_GT(repairNode, kBadNodes[1]);
+	EXPECT_LE(repairNode, kBadNodes[1]+3);
+	for(std::map<int, bool>::iterator iter=goodKept.upper_bound(repairNode); iter!=goodKept.end(); ++iter)
+	{
+		EXPECT_TRUE(iter->second) << "good observation of node " << iter->first;
+	}
+	const Signature * bad = rtabmap.getMemory()->getSignature(kBadNodes[0]);
+	ASSERT_NE(bad, nullptr);
+	EXPECT_EQ(bad->getLandmarks().count(-kLm), 0u);
+
+	// Loop closure with the first node (same pose)
+	const Link loop(kNodes, 1, Link::kGlobalClosure, robotPose(kNodes).inverse() * robotPose(1), cv::Mat::eye(6, 6, CV_64FC1) * 10000);
+	EXPECT_TRUE(rtabmap.addLink(loop));
+	rtabmap.close(false);
+}
+
+// Same as above, but the two first bad observations agree with each other, so each new
+// good observation alone is rejected, the error being on it. The landmark is outside the
+// circle, opposite to the start: the bad observations are seen from farther away (~5 m)
+// than the good ones when the robot comes closer, then the old bad observations are
+// considered for graph repair instead of the new one and are removed. Then all good
+// observations are accepted. Before the end of the circle, the landmark is seen again
+// twice with the same wrong orientation from far away: these new observations are
+// rejected and don't remove the old good ones, which have been seen from closer.
+TEST(RtabmapTest, LandmarkRepairRemovesFarConsistentBadObservationsOnCircle)
+{
+	int optimizerStrategy = -1;
+	if(Optimizer::isAvailable(Optimizer::kTypeGTSAM)) optimizerStrategy = Optimizer::kTypeGTSAM;
+	else if(Optimizer::isAvailable(Optimizer::kTypeG2O)) optimizerStrategy = Optimizer::kTypeG2O;
+	if(optimizerStrategy < 0)
+	{
+		GTEST_SKIP() << "neither GTSAM nor g2o is available to optimize landmarks";
+	}
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kOptimizerStrategy()] = uNumber2Str(optimizerStrategy);
+	params[Parameters::kOptimizerLandmarksIgnored()] = "false";
+	params[Parameters::kRGBDOptimizeMaxError()] = "3";
+	params[Parameters::kRGBDOptimizeMaxErrorRepairRadius()] = "1";
+	Rtabmap rtabmap;
+	rtabmap.init(params);
+
+	const int kLm = 42;
+	const int kNodes = 37; // every 10 deg, the last one back on the first one
+	const float kRadius = 2.0f;
+	const cv::Mat odomCov = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
+	cv::Mat lmCov = cv::Mat::eye(6, 6, CV_64FC1);
+	lmCov(cv::Range(0,3), cv::Range(0,3)) *= 0.001; // like Marker/VarianceLinear
+	lmCov(cv::Range(3,6), cv::Range(3,6)) *= 0.01;  // like Marker/VarianceAngular
+	const Transform landmark(-3, 0, 0, 0, 0, 0); // on the floor outside the circle, opposite to the start: 5 m from the first nodes, 1 m from the closest ones
+	const Transform badLandmark = landmark * Transform(0, 0, 0, 30.0f*M_PI/180.0f, 0, 0); // normal tilted by 30 deg
+	const int kBadNodes[] = {2, 3};
+	const int kLateBadNodes[] = {33, 34};
+	const int kRandomNode = 25;
+	std::mt19937 rng(42);
+	std::uniform_real_distribution<float> angle(-M_PI, M_PI);
+	const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+	auto robotPose = [&](int id)
+	{
+		const float a = float(id-1) * 2.0f * M_PI / float(kNodes-1);
+		return Transform(kRadius*std::cos(a), kRadius*std::sin(a), 0, 0, 0, a + M_PI/2.0f); // driving counterclockwise
+	};
+
+	int firstRepairNode = 0;
+	int lastRepairNode = 0;
+	std::map<int, bool> goodKept;
+	for(int id=1; id<=kNodes; ++id)
+	{
+		SCOPED_TRACE(uFormat("node %d", id));
+		const Transform pose = robotPose(id);
+		SensorData d(image); d.setId(id);
+		Transform observation;
+		const bool lateBad = id == kLateBadNodes[0] || id == kLateBadNodes[1];
+		if(id == kBadNodes[0] || id == kBadNodes[1] || lateBad)
+		{
+			observation = pose.inverse() * badLandmark;
+		}
+		else if(id == kRandomNode)
+		{
+			observation = pose.inverse() * landmark * Transform(0, 0, 0, angle(rng), angle(rng), angle(rng));
+		}
+		else if(id > 1 && id < kNodes)
+		{
+			observation = pose.inverse() * landmark;
+		}
+		if(!observation.isNull())
+		{
+			Landmarks lms;
+			lms.emplace(kLm, Landmark(kLm, 0.2f, observation, lmCov));
+			d.setLandmarks(lms);
+		}
+		ASSERT_TRUE(rtabmap.process(d, pose, odomCov));
+		const std::map<std::string, float> & stats = rtabmap.getStatistics().data();
+		const Signature * s = rtabmap.getMemory()->getSignature(id);
+		ASSERT_NE(s, nullptr);
+		const bool kept = s->getLandmarks().count(-kLm) != 0;
+		if(uValue(stats, Statistics::kLoopOptimization_max_error_removed_count(), 0.0f) > 0)
+		{
+			const int removedFrom = (int)uValue(stats, Statistics::kLoopOptimization_max_error_removed_from_id(), 0.0f);
+			const int removedTo = (int)uValue(stats, Statistics::kLoopOptimization_max_error_removed_to_id(), 0.0f);
+			const int removedNode = removedFrom<0?removedTo:removedFrom;
+			EXPECT_TRUE(removedNode == kBadNodes[0] || removedNode == kBadNodes[1]) << "removed observation of node " << removedNode;
+			if(firstRepairNode == 0) firstRepairNode = id;
+			lastRepairNode = id;
+		}
+
+		if(id == kBadNodes[0] || id == kBadNodes[1])
+		{
+			EXPECT_TRUE(kept) << "bad observations agreeing with each other";
+		}
+		else if(lateBad)
+		{
+			EXPECT_FALSE(kept) << "bad observation from farther away than the good ones";
+		}
+		else if(id == kRandomNode)
+		{
+			EXPECT_FALSE(kept) << "random orientation";
+		}
+		else if(!observation.isNull())
+		{
+			goodKept[id] = kept;
+		}
+	}
+
+	// Good observations are rejected until they are closer enough than the bad
+	// ones, which are then removed by the repair. Then all good ones are accepted.
+	ASSERT_GT(firstRepairNode, kBadNodes[1]);
+	EXPECT_FALSE(goodKept.begin()->second) << "first good observation, seen from as far as the bad ones";
+	EXPECT_LT(lastRepairNode, kLateBadNodes[0]);
+	for(std::map<int, bool>::iterator iter=goodKept.upper_bound(lastRepairNode); iter!=goodKept.end(); ++iter)
+	{
+		EXPECT_TRUE(iter->second) << "good observation of node " << iter->first;
+		// still there at the end
+		const Signature * s = rtabmap.getMemory()->getSignature(iter->first);
+		ASSERT_NE(s, nullptr);
+		EXPECT_EQ(s->getLandmarks().count(-kLm), 1u) << "good observation of node " << iter->first;
+	}
+	for(int id : kBadNodes)
+	{
+		const Signature * bad = rtabmap.getMemory()->getSignature(id);
+		ASSERT_NE(bad, nullptr);
+		EXPECT_EQ(bad->getLandmarks().count(-kLm), 0u) << "bad observation of node " << id;
+	}
+
+	// Loop closure with the first node (same pose)
+	const Link loop(kNodes, 1, Link::kGlobalClosure, robotPose(kNodes).inverse() * robotPose(1), cv::Mat::eye(6, 6, CV_64FC1) * 10000);
+	EXPECT_TRUE(rtabmap.addLink(loop));
+	rtabmap.close(false);
+}
+
 TEST(RtabmapTest, DetectMoreLoopClosuresReturnsMinusOneWhenIntraAndInterBothFalse)
 {
 	Rtabmap rtabmap;

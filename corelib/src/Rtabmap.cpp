@@ -5720,7 +5720,9 @@ bool Rtabmap::isLandmarkNormalValid(const Signature * signature, int landmarkId,
 // error goes on the adjacent neighbor links (#1784). In that case, the loop
 // closure with the highest error ratio around the neighbor link (under
 // RGBD/OptimizeMaxErrorRepairRadius) is returned instead. Loop closures added
-// in this iteration (newLinks) are never returned.
+// in this iteration (newLinks) are never returned. In mapping mode, if it is a
+// new landmark observation, the old observation of the same landmark with the
+// highest error ratio, seen from farther away, is returned instead.
 Link Rtabmap::findLoopClosureToRepair(
 	const graph::MaxGraphErrors & maxGraphErrors,
 	const std::map<int, Transform> & poses,
@@ -5737,11 +5739,64 @@ Link Rtabmap::findLoopClosureToRepair(
 	{
 		maxErrorLink = maxGraphErrors.angularLink;
 	}
-	if(!maxErrorLink.isValid() ||
-	   newLinks.find(std::make_pair(maxErrorLink.from(), maxErrorLink.to())) != newLinks.end() ||
-	   newLinks.find(std::make_pair(maxErrorLink.to(), maxErrorLink.from())) != newLinks.end())
+	if(!maxErrorLink.isValid())
 	{
 		return Link();
+	}
+	auto isNewLink = [&newLinks](const Link & link)
+	{
+		return newLinks.find(std::make_pair(link.from(), link.to())) != newLinks.end() ||
+			   newLinks.find(std::make_pair(link.to(), link.from())) != newLinks.end();
+	};
+	auto errorRatio = [&poses, this](const std::multimap<int, Link>::value_type & link)
+	{
+		std::multimap<int, Link> single;
+		single.insert(link);
+		graph::MaxGraphErrors errors = graph::computeMaxGraphErrors(poses, single, _graphOptimizer->isSlam2d());
+		return std::max(errors.linearRatio, errors.angularRatio);
+	};
+	if(isNewLink(maxErrorLink))
+	{
+		// In mapping mode, when a new observation of a landmark has the highest error, the old
+		// observations of that landmark seen from farther away are more likely to be wrong
+		// (e.g., flipped poses of small or far markers): if they agree with each other, they
+		// would make all new observations rejected. The old one with the highest error is
+		// considered instead for graph repair. Old observations seen from closer are not,
+		// so that a far wrong observation cannot remove good ones.
+		if(maxErrorLink.type() != Link::kLandmark || !_memory->isIncremental())
+		{
+			return Link();
+		}
+		const int landmarkId = maxErrorLink.from()<0?maxErrorLink.from():maxErrorLink.to();
+		const float distance = maxErrorLink.transform().getNorm();
+		const float closerRatio = 0.9f; // at least 10% closer, not to depend on noise for observations at the same distance
+		Link candidate;
+		float candidateRatio = -1.0f;
+		for(std::multimap<int, Link>::const_iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+		{
+			const Link & link = iter->second;
+			if(link.type() != Link::kLandmark ||
+			   (link.from() != landmarkId && link.to() != landmarkId) ||
+			   distance >= closerRatio * link.transform().getNorm() ||
+			   isNewLink(link))
+			{
+				continue;
+			}
+			float ratio = errorRatio(*iter);
+			if(ratio > candidateRatio)
+			{
+				candidate = link;
+				candidateRatio = ratio;
+			}
+		}
+		if(candidate.isValid())
+		{
+			UWARN("Highest error is on new observation %d->%d of landmark %d (%f m), the older observation %d->%d "
+				  "seen from farther away (%f m, error ratio=%f) is considered instead for graph repair.",
+				  maxErrorLink.from(), maxErrorLink.to(), -landmarkId, distance,
+				  candidate.from(), candidate.to(), candidate.transform().getNorm(), candidateRatio);
+		}
+		return candidate;
 	}
 	if(maxErrorLink.type() != Link::kNeighbor && maxErrorLink.type() != Link::kNeighborMerged)
 	{
@@ -5761,8 +5816,7 @@ Link Rtabmap::findLoopClosureToRepair(
 		if(link.from() == link.to() ||
 		   link.type() == Link::kNeighbor ||
 		   link.type() == Link::kNeighborMerged ||
-		   newLinks.find(std::make_pair(link.from(), link.to())) != newLinks.end() ||
-		   newLinks.find(std::make_pair(link.to(), link.from())) != newLinks.end())
+		   isNewLink(link))
 		{
 			continue;
 		}
@@ -5774,10 +5828,7 @@ Link Rtabmap::findLoopClosureToRepair(
 		{
 			continue;
 		}
-		std::multimap<int, Link> single;
-		single.insert(*iter);
-		graph::MaxGraphErrors errors = graph::computeMaxGraphErrors(poses, single, _graphOptimizer->isSlam2d());
-		float ratio = std::max(errors.linearRatio, errors.angularRatio);
+		float ratio = errorRatio(*iter);
 		if(ratio > candidateRatio)
 		{
 			candidate = link;
