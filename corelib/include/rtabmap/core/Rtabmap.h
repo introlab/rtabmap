@@ -941,7 +941,7 @@ private:
 		cv::Mat & optimizationCovariance,
 		const std::set<std::pair<int, int> > & newLinks);
 	bool hasLocalizationLinksInOdomCache() const;
-	bool isLandmarkNormalValid(const Signature * signature, int landmarkId, const Link & landmarkLink, bool localized) const;
+	bool isLandmarkNormalValid(const Signature * signature, int landmarkId, const Link & landmarkLink, bool localized, float * error = 0) const;
 	void updateGoalIndex();
 	bool computePath(int targetNode, std::map<int, Transform> nodes, const std::multimap<int, rtabmap::Link> & constraints);
 

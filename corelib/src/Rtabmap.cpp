@@ -3224,6 +3224,8 @@ bool Rtabmap::process(
 	//============================================================
 	std::map<int, std::set<int> > landmarksDetected; // <Landmark ID, list of nodes that saw this landmark>
 	std::map<int, Transform> landmarksDetectedTransforms; // <Landmark ID, observation from the new node>, kept as the link is removed if rejected after graph optimization
+	int landmarkNormalRejected = 0; // first landmark rejected by RGBD/LandmarkMaxNormalError
+	float landmarkNormalError = -1.0f; // largest normal error (rad) of the landmarks checked by RGBD/LandmarkMaxNormalError, -1 if none
 	if(!signature->getLandmarks().empty() && !_graphOptimizer->landmarksIgnored() && signature->getWeight()!=-1)
 	{
 		const bool localizedInOdomCache = !_memory->isIncremental() && hasLocalizationLinksInOdomCache();
@@ -3234,6 +3236,7 @@ bool Rtabmap::process(
 			if(uContains(_memory->getLandmarksIndex(), iter->first) &&
 					_memory->getLandmarksIndex().find(iter->first)->second.size()>1)
 			{
+				float normalError = -1.0f; // set if checked by RGBD/LandmarkMaxNormalError
 				if(!_memory->isIncremental() &&          // In localization mode
 					!localizedInOdomCache &&             // If there are localization links in odom cache, we can keep far landmarks
 					_loopClosureHypothesis.first == 0 && // or if this node has a global loop closure
@@ -3253,9 +3256,13 @@ bool Rtabmap::process(
 				else if(_landmarkMaxNormalError > 0.0f &&
 						!_memory->isIncremental() &&           // In localization mode (in mapping mode, the landmark's pose can be wrong, and corrected by next detections)
 						iter->second.rotVariance() < 9999.0 && // orientation used (not ignored)
-						!isLandmarkNormalValid(signature, iter->first, iter->second, localizedInOdomCache))
+						!isLandmarkNormalValid(signature, iter->first, iter->second, localizedInOdomCache, &normalError))
 				{
 					landmarksRejected.push_back(iter->first);
+					if(landmarkNormalRejected == 0)
+					{
+						landmarkNormalRejected = -iter->first;
+					}
 				}
 				else
 				{
@@ -3265,6 +3272,7 @@ bool Rtabmap::process(
 					rejectedLoopClosure = false; // If it was true, it will be set back to false if landmarks are rejected on graph optimization
 					loopClosureLinksAdded.push_back(std::make_pair(signature->id(), iter->first));
 				}
+				landmarkNormalError = std::max(landmarkNormalError, normalError);
 			}
 		}
 		for(size_t i=0; i<landmarksRejected.size(); ++i)
@@ -4302,6 +4310,12 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected(), landmarksDetected.empty()?0:-landmarksDetected.begin()->first);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected_node_ref(), landmarksDetected.empty() || landmarksDetected.begin()->second.empty()?0:*landmarksDetected.begin()->second.begin());
+			statistics_.addStatistic(Statistics::kLoopLandmark_normal_rejected(), landmarkNormalRejected);
+			if(landmarkNormalError >= 0.0f)
+			{
+				// only when checked, accepted or not
+				statistics_.addStatistic(Statistics::kLoopLandmark_normal_error(), landmarkNormalError*180.0f/M_PI);
+			}
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers_mean_dist(), loopClosureVisualInliersMeanDist);
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers_distribution(), loopClosureVisualInliersDistribution);
 
@@ -5668,7 +5682,7 @@ bool Rtabmap::hasLocalizationLinksInOdomCache() const
 // in the map (see RGBD/LandmarkMaxNormalError). When localized, the full normals are
 // compared using the current localization. Otherwise, only their inclination (angle
 // with the vertical) is compared, which doesn't depend on the yaw of the robot.
-bool Rtabmap::isLandmarkNormalValid(const Signature * signature, int landmarkId, const Link & landmarkLink, bool localized) const
+bool Rtabmap::isLandmarkNormalValid(const Signature * signature, int landmarkId, const Link & landmarkLink, bool localized, float * errorOut) const
 {
 	UASSERT(signature);
 	std::map<int, Transform>::const_iterator landmarkIter = _optimizedPoses.find(landmarkId);
@@ -5699,6 +5713,10 @@ bool Rtabmap::isLandmarkNormalValid(const Signature * signature, int landmarkId,
 	else
 	{
 		error = fabs(acos(std::max(-1.0f, std::min(1.0f, detectedNormal.z()))) - acos(std::max(-1.0f, std::min(1.0f, mapNormal.z()))));
+	}
+	if(errorOut)
+	{
+		*errorOut = error;
 	}
 	if(error > _landmarkMaxNormalError)
 	{

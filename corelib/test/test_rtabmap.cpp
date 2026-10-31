@@ -3609,7 +3609,9 @@ TEST(RtabmapTest, LandmarkObservationsAcrossFramesShareSameLandmarkPose)
 // RGBD/LandmarkMaxNormalError: a map is created with two nodes at the origin seeing
 // landmark 42 1 m forward, on a wall facing the robot (normal toward -x). Then, in localization mode, new nodes at the origin see the
 // landmark again with the orientations `observations`. Returns, for each of them,
-// whether the landmark is used (it is removed when rejected).
+// whether the landmark is used (it is removed when rejected). If set, `normalRejected` and
+// `normalErrors` get, for each of them, the Loop/Landmark_normal_rejected/ and
+// Loop/Landmark_normal_error/ statistics (-1 if not published).
 // Landmark 1 m forward, its z axis (normal) toward the robot (-x)
 static const Transform kWallLandmark(1.0f, 0, 0, 0, -M_PI/2.0f, 0);
 
@@ -3617,7 +3619,9 @@ static std::vector<bool> landmarkObservationsKeptInLocalization(
 		const std::vector<Transform> & observations,
 		float maxNormalError,
 		bool orientationIgnored = false,
-		bool localizationMode = true)
+		bool localizationMode = true,
+		std::vector<float> * normalRejected = 0,
+		std::vector<float> * normalErrors = 0)
 {
 	const std::string dbPath = uniqueDbPath();
 	ParametersMap params = defaultRtabmapParams();
@@ -3661,6 +3665,14 @@ static std::vector<bool> landmarkObservationsKeptInLocalization(
 			// In localization mode, the new node may not be kept in memory: use the
 			// landmark used for localization (0 if none) instead of its links.
 			kept.push_back(uValue(rtabmap.getStatistics().data(), Statistics::kLoopLandmark_detected(), 0.0f) == kLm);
+			if(normalRejected)
+			{
+				normalRejected->push_back(uValue(rtabmap.getStatistics().data(), Statistics::kLoopLandmark_normal_rejected(), -1.0f));
+			}
+			if(normalErrors)
+			{
+				normalErrors->push_back(uValue(rtabmap.getStatistics().data(), Statistics::kLoopLandmark_normal_error(), -1.0f));
+			}
 		}
 		rtabmap.close(false);
 	}
@@ -3676,13 +3688,28 @@ TEST(RtabmapTest, LandmarkMaxNormalErrorRejectsTiltedDetectionInLocalization)
 	}
 	// Seen again with its normal tilted up by 40 deg (e.g., a flipped pose of a small
 	// marker). Not localized yet: the inclination is compared.
+	// The statistics tell whether it was rejected by the normal check, and its error
+	// (published only when checked, accepted or not).
 	const Transform tilted(1.0f, 0, 0, 0, -50.0f*M_PI/180.0f, 0);
-	EXPECT_FALSE(landmarkObservationsKeptInLocalization({tilted}, 20.0f*M_PI/180.0f)[0]);
-	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 0.0f)[0]) << "disabled";
-	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 50.0f*M_PI/180.0f)[0]);
-	EXPECT_TRUE(landmarkObservationsKeptInLocalization({kWallLandmark}, 20.0f*M_PI/180.0f)[0]) << "same orientation";
-	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 20.0f*M_PI/180.0f, true)[0]) << "orientation ignored (angular variance >= 9999)";
-	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 20.0f*M_PI/180.0f, false, false)[0]) << "not checked in mapping mode";
+	std::vector<float> rejected, errors;
+	EXPECT_FALSE(landmarkObservationsKeptInLocalization({tilted}, 20.0f*M_PI/180.0f, false, true, &rejected, &errors)[0]);
+	EXPECT_EQ(rejected.back(), 42.0f);
+	EXPECT_NEAR(errors.back(), 40.0f, 0.5f);
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 0.0f, false, true, &rejected, &errors)[0]) << "disabled";
+	EXPECT_EQ(rejected.back(), 0.0f) << "disabled";
+	EXPECT_EQ(errors.back(), -1.0f) << "disabled: not checked";
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 50.0f*M_PI/180.0f, false, true, &rejected, &errors)[0]);
+	EXPECT_EQ(rejected.back(), 0.0f);
+	EXPECT_NEAR(errors.back(), 40.0f, 0.5f) << "checked and accepted";
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({kWallLandmark}, 20.0f*M_PI/180.0f, false, true, &rejected, &errors)[0]) << "same orientation";
+	EXPECT_EQ(rejected.back(), 0.0f) << "same orientation";
+	EXPECT_NEAR(errors.back(), 0.0f, 0.5f) << "same orientation";
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 20.0f*M_PI/180.0f, true, true, &rejected, &errors)[0]) << "orientation ignored (angular variance >= 9999)";
+	EXPECT_EQ(rejected.back(), 0.0f) << "orientation ignored";
+	EXPECT_EQ(errors.back(), -1.0f) << "orientation ignored: not checked";
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({tilted}, 20.0f*M_PI/180.0f, false, false, &rejected, &errors)[0]) << "not checked in mapping mode";
+	EXPECT_EQ(rejected.back(), 0.0f) << "mapping mode";
+	EXPECT_EQ(errors.back(), -1.0f) << "mapping mode: not checked";
 }
 
 TEST(RtabmapTest, LandmarkMaxNormalErrorComparesYawOnlyWhenLocalized)
@@ -3696,10 +3723,16 @@ TEST(RtabmapTest, LandmarkMaxNormalErrorComparesYawOnlyWhenLocalized)
 	// cache), the full normal is compared and it is rejected.
 	const Transform turned(1.0f, 0, 0, 0, -M_PI/2.0f, 60.0f*M_PI/180.0f);
 	EXPECT_TRUE(landmarkObservationsKeptInLocalization({turned}, 20.0f*M_PI/180.0f)[0]) << "not localized: only the inclination is compared";
-	const std::vector<bool> kept = landmarkObservationsKeptInLocalization({kWallLandmark, turned}, 20.0f*M_PI/180.0f);
+	std::vector<float> rejected, errors;
+	const std::vector<bool> kept = landmarkObservationsKeptInLocalization({kWallLandmark, turned}, 20.0f*M_PI/180.0f, false, true, &rejected, &errors);
 	ASSERT_EQ(kept.size(), 2u);
+	ASSERT_EQ(rejected.size(), 2u);
+	ASSERT_EQ(errors.size(), 2u);
 	EXPECT_TRUE(kept[0]) << "good detection";
+	EXPECT_EQ(rejected[0], 0.0f) << "good detection";
 	EXPECT_FALSE(kept[1]) << "localized: the full normal is compared";
+	EXPECT_EQ(rejected[1], 42.0f) << "localized: the full normal is compared";
+	EXPECT_NEAR(errors[1], 60.0f, 0.5f) << "localized: the full normal is compared";
 }
 
 // Mapping mode, RGBD/OptimizeMaxError with RGBD/OptimizeMaxErrorRepairRadius: the robot
