@@ -86,6 +86,18 @@ endif()
 if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
+# find_package(Boost) uses the BoostConfig.cmake shipped with Boost (>=1.70)
+# instead of CMake's removed FindBoost module. The default also covers the
+# package configs that reset policies before finding Boost (VTK through PCL).
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+    set(CMAKE_POLICY_DEFAULT_CMP0167 NEW)
+endif()
+# find_package(<Pkg>) also searches the upper-case <PKG>_ROOT variables, e.g.
+# ONNXRUNTIME_ROOT for find_package(ONNXRuntime).
+if(POLICY CMP0144)
+    cmake_policy(SET CMP0144 NEW)
+endif()
 
 IF(MINGW)
     # Hide the --enable-auto-import warning
