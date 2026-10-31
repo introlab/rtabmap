@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 
 #include "rtflann/flann.hpp"
+#include "rtflann/util/random.h"
 #ifdef RTABMAP_NANOFLANN
 #include "nanoflann/NanoFlannIndex.h"
 #endif
@@ -63,6 +64,11 @@ int resolveCores(int cores)
 	return 1;
 #endif
 }
+}
+
+void FlannIndex::setDeterministicSeed(bool enable)
+{
+	rtflann::set_deterministic_seed(enable);
 }
 
 FlannIndex::FlannIndex():
