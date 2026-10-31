@@ -16436,12 +16436,15 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                              <property name="text">
                               <string/>
                              </property>
+                             <property name="checked">
+                              <bool>true</bool>
+                             </property>
                             </widget>
                            </item>
                            <item row="6" column="1">
                             <widget class="QLabel" name="label_apriltag_opencv_pnp">
                              <property name="text">
-                              <string>Estimate the pose of the tags with OpenCV's solvePnP() instead of the AprilTag library's pose estimation. Unlike the AprilTag library, it uses the distortion coefficients of the camera model (useful if the images are not rectified), and it gives fewer wrong orientations on small or noisy tags. Requires OpenCV &gt;= 4.1.</string>
+                              <string>Estimate the pose of the tags with OpenCV's solvePnP() instead of the AprilTag library's pose estimation. Unlike the AprilTag library, it uses the distortion coefficients of the camera model (useful if the images are not rectified), and it gives fewer wrong orientations on small or noisy tags.</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>

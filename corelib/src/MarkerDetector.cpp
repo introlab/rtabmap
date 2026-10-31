@@ -253,12 +253,6 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMarkerDictionary(), dictionaryId_);
 	Parameters::parse(parameters, Parameters::kMarkerAprilTagUpright(), aprilTagUpright_);
 	Parameters::parse(parameters, Parameters::kMarkerAprilTagOpenCVPnP(), aprilTagOpenCVPnP_);
-#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION < 1)
-	if(aprilTagOpenCVPnP_ && strategy_ == kStrategyApriltag)
-	{
-		UWARN("Parameter %s is ignored for OpenCV < 4.1.", Parameters::kMarkerAprilTagOpenCVPnP().c_str());
-	}
-#endif
 	
 	if(parameters.find(Parameters::kMarkerLengths()) != parameters.end())
 	{
@@ -489,12 +483,12 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 }
 
 // deprecated
-#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 1)
+#if defined(RTABMAP_APRILTAG) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
 // Drop-in replacement for cv::aruco::estimatePoseSingleMarkers(), which was deprecated
 // in OpenCV 4.7 and removed in OpenCV 5. It reproduces the legacy default behavior (marker
 // object points ordered as ARUCO_CCW_CENTER + SOLVEPNP_ITERATIVE) using cv::solvePnP() per
 // marker. For OpenCV < 4.7 the native cv::aruco::estimatePoseSingleMarkers() is still used
-// by the OpenCV strategy. Also used by MarkerAprilTag/OpenCVPnP (OpenCV >= 4.1).
+// by the OpenCV strategy. Also used by MarkerAprilTag/OpenCVPnP.
 static void estimatePoseSingleMarkers(
 		const std::vector<std::vector<cv::Point2f> > & corners,
 		float markerLength,
@@ -648,7 +642,6 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 
 			Transform markerPose; // in OpenCV frame
 			double err = 0.0;
-#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 1)
 			if(aprilTagOpenCVPnP_)
 			{
 				// AprilTag corners are in the same order than the object points of
@@ -667,7 +660,6 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 							R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvecs[0].val[2]) * toOpenCV;
 			}
 			else
-#endif
 			{
 				apriltag_detection_info_t info;
 				info.det = det;

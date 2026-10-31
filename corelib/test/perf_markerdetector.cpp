@@ -17,10 +17,11 @@
 // those.
 //
 //   RangeTiltSweep: markers rendered at 16 distances up to 6 m (with their width in the image for the
-//   camera), tilted about their vertical axis from 0 to 85 deg by 5 deg, detected by each
-//   strategy with its default parameters: OpenCV, the AprilTag library, and the AprilTag
-//   library with OpenCV's PnP (MarkerAprilTag/OpenCVPnP). It reports, per detector, tilt and distance, how many
-//   markers are detected with a good pose and how many with a bad pose (more than 10 deg off).
+//   camera), tilted about their vertical (or horizontal) axis from 0 to 85 deg by 5 deg,
+//   detected by each strategy with its default parameters: OpenCV, and the AprilTag library
+//   (with OpenCV's PnP, MarkerAprilTag/OpenCVPnP, and with the library's own pose). It reports, per
+//   detector, tilt and distance, how many markers are detected with a good pose and how
+//   many with a bad pose (more than 10 deg off).
 //
 //   RefinementSweep: the same with fewer tilts (by 15 deg), comparing the corner refinement
 //   methods of the OpenCV strategy (MarkerOpenCV/CornerRefinementMethod) and the quad
@@ -45,6 +46,11 @@
 //                                 (8x8 samples per pixel by default)
 //   RTABMAP_PERF_ROLL=30 bin/test_markerdetector_perf   for markers rotated by 30 deg about their normal
 //                                 (0 by default, their edges aligned with the pixels)
+//   RTABMAP_PERF_HORIZONTAL_TILT=1 bin/test_markerdetector_perf   to tilt the markers about their horizontal
+//                                 axis, like floor markers (about their vertical axis by default, like wall
+//                                 markers seen from the side)
+//   RTABMAP_PERF_WHITE_BORDER=1 bin/test_markerdetector_perf   for a white border as wide as the markers
+//                                 around them (a third of their size by default)
 //   RTABMAP_PERF_MAX_DISTANCE=3 bin/test_markerdetector_perf   for distances up to 3 m (6 m by default)
 //   RTABMAP_PERF_JPEG_QUALITY=95 bin/test_markerdetector_perf   for images compressed in JPEG like in a database
 //                                 (raw images by default)
@@ -127,10 +133,27 @@ float markerRoll()
 	return roll;
 }
 
+// Markers tilted about their horizontal axis (RTABMAP_PERF_HORIZONTAL_TILT=1), like markers
+// on the floor, instead of their vertical axis by default, like markers on
+// walls seen from the side
+bool horizontalTilt()
+{
+	static const bool horizontal = envValue("RTABMAP_PERF_HORIZONTAL_TILT", 0.0f) > 0.0f;
+	return horizontal;
+}
+
+// Width of the white border around the markers, relative to their size: a third by
+// default, like the measured real markers (RTABMAP_PERF_WHITE_BORDER)
+float whiteBorder()
+{
+	static const float border = envValue("RTABMAP_PERF_WHITE_BORDER", 1.0f/3.0f);
+	return border;
+}
+
 std::string setupDescription()
 {
-	return uFormat("Marker size: %g m (RTABMAP_PERF_MARKER_SIZE), camera: %dx%d (RTABMAP_PERF_IMAGE_WIDTH/HEIGHT), fx=fy=%g px (RTABMAP_PERF_FOCAL), marker roll: %g deg (RTABMAP_PERF_ROLL).",
-			markerSize(), imageWidth(), imageHeight(), focal(), markerRoll());
+	return uFormat("Marker size: %g m (RTABMAP_PERF_MARKER_SIZE), camera: %dx%d (RTABMAP_PERF_IMAGE_WIDTH/HEIGHT), fx=fy=%g px (RTABMAP_PERF_FOCAL), white border: %g x marker size (RTABMAP_PERF_WHITE_BORDER), marker roll: %g deg (RTABMAP_PERF_ROLL), tilted about the %s axis (RTABMAP_PERF_HORIZONTAL_TILT).",
+			markerSize(), imageWidth(), imageHeight(), focal(), whiteBorder(), markerRoll(), horizontalTilt()?"horizontal":"vertical");
 }
 
 // Width (pixels) of a frontal marker in the image at this distance
@@ -180,9 +203,7 @@ std::vector<Config> strategyConfigs()
 	configs.push_back(makeConfig("OpenCV", 0));
 #ifdef RTABMAP_APRILTAG
 	configs.push_back(makeConfig("AprilTag", 1));
-#if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 1)
-	configs.push_back(makeConfig("AprilTag+OpenCVPnP", 1, Parameters::kMarkerAprilTagOpenCVPnP(), "true"));
-#endif
+	configs.push_back(makeConfig("AprilTag+LibraryPose", 1, Parameters::kMarkerAprilTagOpenCVPnP(), "false"));
 #endif
 	return configs;
 }
@@ -212,9 +233,8 @@ ParametersMap sweepParams(const Config & c)
 	return params;
 }
 
-// Marker facing the camera at `distance`, tilted about its vertical axis (about the
-// horizontal axis would be the same, rotated by 90 deg),
-// its center offset by (offsetX, offsetY) pixels from the image center.
+// Marker facing the camera at `distance`, tilted about its vertical axis (or horizontal
+// axis, see horizontalTilt()), its center offset by (offsetX, offsetY) pixels from the image center.
 Transform sweepPose(float distance, float tiltDeg, float offsetX, float offsetY)
 {
 	const float tilt = tiltDeg*M_PI/180.0f;
@@ -222,7 +242,8 @@ Transform sweepPose(float distance, float tiltDeg, float offsetX, float offsetY)
 			1,  0,  0, offsetX*distance/focal(),
 			0, -1,  0, offsetY*distance/focal(),
 			0,  0, -1, distance) *
-			Transform(0, 0, 0, 0, tilt, 0) *
+			// About the horizontal axis like a floor marker: its far edge at the top of the image
+			(horizontalTilt() ? Transform(0, 0, 0, -tilt, 0, 0) : Transform(0, 0, 0, 0, tilt, 0)) *
 			Transform(0, 0, 0, 0, 0, markerRoll()*M_PI/180.0f);
 }
 
@@ -279,7 +300,8 @@ bool idealRendering()
 // box of the marker is rendered at high resolution. Unless idealRendering(), the intensities
 // and noise are the ones measured on 20-33 pixels wide markers printed with a white border
 // on a floor (480x300 8-bit grayscale images): black at 75, white at 245, a white border
-// of a third of the marker size around it, the floor at 140 and a noise of 3 (sigma).
+// of a third of the marker size around it (see whiteBorder()), the floor at 140 and a
+// noise of 3 (sigma).
 cv::Mat renderMarker(const Transform & cameraToMarker)
 {
 	const int ss = supersampling();
@@ -288,7 +310,7 @@ cv::Mat renderMarker(const Transform & cameraToMarker)
 	const float white = ideal?255.0f:245.0f;
 	const float floor = ideal?255.0f:140.0f;
 	const float noise = ideal?0.0f:3.0f;
-	const float borderRatio = 1.0f/3.0f; // white border width / marker size
+	const float borderRatio = whiteBorder(); // white border width / marker size
 
 	cv::Mat marker;
 #if CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)
@@ -413,7 +435,7 @@ void rangeTiltSweep(const std::vector<Config> & configs, int tiltStep)
 	}
 
 	printf("\n%s\nGood and bad detections per tilt and distance, over %d images per tilt and distance (blur %g px\n"
-			"(RTABMAP_PERF_BLUR), about the vertical axis, center jittered %d times by +-0.5 px per axis,\n"
+			"(RTABMAP_PERF_BLUR), center jittered %d times by +-0.5 px per axis,\n"
 			"%dx%d samples per pixel (RTABMAP_PERF_SUPERSAMPLING), JPEG quality %d\n"
 			"(RTABMAP_PERF_JPEG_QUALITY, 0 for raw images)).\n"
 			"Each cell: number of good detections, number of bad ones (more than 10 deg off), \"-\" if none is bad.\n",
@@ -517,7 +539,7 @@ TEST(MarkerDetectorPerf, SaveRenderedSamples)
 		cv::putText(sheet, uFormat("%d deg", tiltDeg), cv::Point(5, y+cell/2), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,0,0), 1);
 		for(size_t c=0; c<distances.size(); ++c)
 		{
-			// Tilted about the vertical axis, like the sweep's images
+			// Tilted like the sweep's images
 			const Transform cameraToMarker = sweepPose(distances[c], tiltDeg, 0.0f, 0.0f);
 			const cv::Mat image = renderMarker(cameraToMarker);
 
@@ -531,7 +553,7 @@ TEST(MarkerDetectorPerf, SaveRenderedSamples)
 				color = error > 10.0f ? cv::Scalar(0,0,255) : cv::Scalar(0,140,0);
 			}
 
-			// Square crop around the marker (at the image center), enlarged without interpolation
+			// Square crop around the marker, enlarged without interpolation
 			const int half = std::max(8, (int)(widthAtDistance(distances[c])*0.75f));
 			cv::Rect roi = cv::Rect(imageWidth()/2-half, imageHeight()/2-half, 2*half, 2*half) & cv::Rect(0, 0, imageWidth(), imageHeight());
 			cv::Mat crop;
