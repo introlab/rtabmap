@@ -474,6 +474,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionDepthAI_oakdpro, SIGNAL(triggered()), this, SLOT(selectDepthAIOAKDPro()));
 	connect(_ui->actionXvisio_SeerSense, SIGNAL(triggered()), this, SLOT(selectXvisioSeerSense()));
 	connect(_ui->actionOrbbecSDK_astra2, SIGNAL(triggered()), this, SLOT(selectOrbbecSDK()));
+	connect(_ui->actionEinstar, SIGNAL(triggered()), this, SLOT(selectEinstar()));
 	connect(_ui->actionVelodyne_VLP_16, SIGNAL(triggered()), this, SLOT(selectVLP16()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	_ui->actionOpenNI_PCL->setEnabled(CameraOpenni::available());
@@ -504,6 +505,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
     _ui->actionDepthAI_oakdpro->setEnabled(CameraDepthAI::available());
 	_ui->actionXvisio_SeerSense->setEnabled(CameraSeerSense::available());
 	_ui->actionOrbbecSDK_astra2->setEnabled(CameraOrbbecSDK::available());
+	_ui->actionEinstar->setEnabled(CameraEinstar::available());
 	this->updateSelectSourceMenu();
 
 	connect(_ui->actionPreferences, SIGNAL(triggered()), this, SLOT(openPreferences()));
@@ -5410,6 +5412,7 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionDepthAI_oakdpro->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoDepthAI);
 	_ui->actionXvisio_SeerSense->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcSeerSense);
 	_ui->actionOrbbecSDK_astra2->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcOrbbecSDK);
+	_ui->actionEinstar->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcEinstar);
 	_ui->actionVelodyne_VLP_16->setChecked(_preferencesDialog->getLidarSourceDriver() == PreferencesDialog::kSrcLidarVLP16);
 }
 
@@ -7426,6 +7429,11 @@ void MainWindow::selectDepthAIOAKDPro()
 void MainWindow::selectXvisioSeerSense()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcSeerSense);
+}
+
+void MainWindow::selectEinstar()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcEinstar);
 }
 
 void MainWindow::selectVLP16()

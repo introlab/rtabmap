@@ -72,12 +72,15 @@ void showUsage(const char * executableName)
 			"                                     15=depthai-core\n"
 			"                                     16=XVSDK     (SeerSense)\n"
 			"                                     17=Orbbec SDK\n"
+			"                                     18=Einstar   (SHINING 3D, libeinstar)\n"
 			"  Options:\n"
 			"      -r #.#                         Input rate Hz (default 0=inf)\n"
 			"      -d #                           Device ID (number or string)\n"
 			"      -w #                           Request a specific image width. Not all camera drivers support this.\n"
 			"      -h #                           Request a specific image height. Not all camera drivers support this.\n"
-			"      -pcl                           Use PCL's CloudViewer for visualization (legacy).\n",
+			"      -pcl                           Use PCL's CloudViewer for visualization (legacy).\n"
+			"      -calib \"path\"                 Einstar: calibration file/dir (default: read from scanner).\n"
+			"      -replay \"path\"                Einstar: replay a directory of libeinstar captures.\n",
 		executableName);
 	exit(1);
 }
@@ -100,6 +103,8 @@ int main(int argc, char * argv[])
 	int driver = 0;
 	float rate = 0.0f;
 	std::string deviceId;
+	std::string einstarCalib;
+	std::string einstarReplay;
 	int width = 0;
 	int height = 0;
 	bool usePCLViz = false;
@@ -167,6 +172,20 @@ int main(int argc, char * argv[])
 				}
 				continue;
 			}
+			if (strcmp(argv[i], "-calib") == 0 || strcmp(argv[i], "-replay") == 0)
+			{
+				bool isCalib = strcmp(argv[i], "-calib") == 0;
+				++i;
+				if(i < argc)
+				{
+					(isCalib?einstarCalib:einstarReplay) = argv[i];
+				}
+				else
+				{
+					showUsage(argv[0]);
+				}
+				continue;
+			}
 			if (strcmp(argv[i], "-pcl") == 0)
 			{
 				usePCLViz = true;
@@ -184,9 +203,9 @@ int main(int argc, char * argv[])
 
 			// last
 			driver = atoi(argv[i]);
-			if(driver < 0 || driver > 17)
+			if(driver < 0 || driver > 18)
 			{
-				UERROR("driver should be between 0 and 17.");
+				UERROR("driver should be between 0 and 18.");
 				showUsage(argv[0]);
 			}
 		}
@@ -357,6 +376,20 @@ int main(int argc, char * argv[])
 			camera = new rtabmap::CameraOrbbecSDK(deviceId, width, height, width, height, rate);
 		else
 			camera = new rtabmap::CameraOrbbecSDK(deviceId, 800, 600, 800, 600, rate);
+	}
+	else if (driver == 18)
+	{
+		if (!rtabmap::CameraEinstar::available())
+		{
+			UERROR("Not built with Einstar (libeinstar) support...");
+			exit(-1);
+		}
+		if (einstarCalib.empty() && !einstarReplay.empty())
+		{
+			UERROR("Einstar replay needs a calibration (-calib).");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraEinstar(einstarCalib, einstarReplay, rate);
 	}
 	else
 	{

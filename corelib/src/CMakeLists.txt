@@ -41,6 +41,7 @@ SET(SRC_FILES
     camera/CameraMyntEye.cpp
     camera/CameraDepthAI.cpp
 	camera/CameraSeerSense.cpp
+	camera/CameraEinstar.cpp
 	camera/CameraOrbbecSDK.cpp
     
     EpipolarGeometry.cpp
@@ -299,6 +300,14 @@ IF(KinectSDK2_FOUND)
 		${KinectSDK2_LIBRARIES}
 	)
 ENDIF(KinectSDK2_FOUND)
+
+IF(einstar_FOUND)
+	SET(PUBLIC_LIBRARIES
+		${PUBLIC_LIBRARIES}
+		einstar::einstar
+		einstar::depth
+	)
+ENDIF(einstar_FOUND)
 
 IF(k4a_FOUND)
 	SET(PUBLIC_INCLUDE_DIRS
