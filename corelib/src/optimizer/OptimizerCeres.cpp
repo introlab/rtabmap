@@ -63,7 +63,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ceres/bundle/between_cameras_error.h"
 #include "ceres/bundle/planar_constraint_error.h"
 
-#if not(CERES_VERSION_MAJOR > 1 || (CERES_VERSION_MAJOR == 1 && CERES_VERSION_MINOR >= 12))
+#if !(CERES_VERSION_MAJOR > 1 || (CERES_VERSION_MAJOR == 1 && CERES_VERSION_MINOR >= 12))
 #include "ceres/pose_graph_3d/eigen_quaternion_manifold.h"
 #endif
 

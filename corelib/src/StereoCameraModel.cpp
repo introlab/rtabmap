@@ -33,9 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#if (CV_MAJOR_VERSION > 2 and CV_MAJOR_VERSION < 5) or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
 #include <rtabmap/core/stereo/stereoRectifyFisheye.h>
-#endif
 
 namespace rtabmap {
 
@@ -172,14 +170,14 @@ void StereoCameraModel::setName(const std::string & name, const std::string & le
 void StereoCameraModel::updateStereoRectification()
 {
 	cv::Mat R1,R2,P1,P2,Q;
-	#if CV_MAJOR_VERSION > 2 or (CV_MAJOR_VERSION == 2 and (CV_MINOR_VERSION >4 or (CV_MINOR_VERSION == 4 and CV_SUBMINOR_VERSION >=10)))
+	#if CV_MAJOR_VERSION > 2 || (CV_MAJOR_VERSION == 2 && (CV_MINOR_VERSION >4 || (CV_MINOR_VERSION == 4 && CV_SUBMINOR_VERSION >=10)))
 	bool fishEye = left_.D_raw().cols == 6;
 	// calibrate extrinsic
 	if(fishEye)
 	{
 		cv::Vec4d D_left(left_.D_raw().at<double>(0,0), left_.D_raw().at<double>(0,1), left_.D_raw().at<double>(0,4), left_.D_raw().at<double>(0,5));
 		cv::Vec4d D_right(right_.D_raw().at<double>(0,0), right_.D_raw().at<double>(0,1), right_.D_raw().at<double>(0,4), right_.D_raw().at<double>(0,5));
-#if CV_MAJOR_VERSION < 5
+#if RTABMAP_HAS_STEREO_RECTIFY_FISHEYE
 		stereoRectifyFisheye(
 				left_.K_raw(), D_left,
 				right_.K_raw(), D_right,

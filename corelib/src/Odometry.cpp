@@ -87,7 +87,7 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 		odometry = new OdometryDVO(parameters);
 		break;
 	case Odometry::kTypeORBSLAM:
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 2
 		odometry = new OdometryORBSLAM2(parameters);
 #else
 		odometry = new OdometryORBSLAM3(parameters);

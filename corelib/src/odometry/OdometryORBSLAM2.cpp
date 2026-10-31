@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/transforms.h>
 #include <rtabmap/core/odometry/OdometryORBSLAM2.h>
 
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 2
 #include <System.h>
 #include <thread>
 
@@ -821,21 +821,21 @@ namespace rtabmap {
 
 OdometryORBSLAM2::OdometryORBSLAM2(const ParametersMap & parameters) :
 	Odometry(parameters)
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 2
     ,
 	orbslam_(0),
 	firstFrame_(true),
 	previousPose_(Transform::getIdentity())
 #endif
 {
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 2
 	orbslam_ = new ORBSLAM2System(parameters);
 #endif
 }
 
 OdometryORBSLAM2::~OdometryORBSLAM2()
 {
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 2
 	if(orbslam_)
 	{
 		delete orbslam_;
@@ -846,7 +846,7 @@ OdometryORBSLAM2::~OdometryORBSLAM2()
 void OdometryORBSLAM2::reset(const Transform & initialPose)
 {
 	Odometry::reset(initialPose);
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 2
 	if(orbslam_)
 	{
 		orbslam_->shutdown();
@@ -865,7 +865,7 @@ Transform OdometryORBSLAM2::computeTransform(
 {
 	Transform t;
 
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 2
 	UTimer timer;
 
 	if(data.imageRaw().empty() ||

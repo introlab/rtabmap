@@ -37,7 +37,7 @@
 
 namespace ceres {
 
-#if not(CERES_VERSION_MAJOR > 1 || (CERES_VERSION_MAJOR == 1 && CERES_VERSION_MINOR >= 12))
+#if !(CERES_VERSION_MAJOR > 1 || (CERES_VERSION_MAJOR == 1 && CERES_VERSION_MINOR >= 12))
 inline double floor   (double x) { return std::floor(x);    }
 
 // The floor function should be used with extreme care as this operation will

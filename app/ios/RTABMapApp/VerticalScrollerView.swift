@@ -49,7 +49,7 @@ class VerticalScrollerView: UIView {
     // 1
     private enum ViewConstants {
         static let Padding: CGFloat = 5
-        static let Dimensions: CGFloat = 185
+        static let Dimensions: CGFloat = 135
         static let Offset: CGFloat = 10
     }
     
@@ -108,31 +108,44 @@ class VerticalScrollerView: UIView {
     }
     
     func reload() {
-        // 1 - Check if there is a data source, if not there is nothing to load.
-        guard let dataSource = dataSource else {
-            return
+        guard let dataSource = dataSource else { return }
+        
+        // 1. Clear out old subviews
+        contentViews.forEach { $0.removeFromSuperview() }
+        contentViews.removeAll()
+        
+        // 2. Track the top anchor anchor step-by-step
+        var lastTopAnchor = scroller.topAnchor
+        let numberOfItems = dataSource.numberOfViews(in: self)
+        
+        for index in 0..<numberOfItems {
+            let view = dataSource.getScrollerViewItem(self, viewAt: index)
+            
+            // --- CRUCIAL FIX: Enable Auto Layout on the cell ---
+            view.translatesAutoresizingMaskIntoConstraints = false
+            scroller.addSubview(view)
+            contentViews.append(view)
+            
+            // Pin cell tightly to the left/right edges of the scrollview frame
+            NSLayoutConstraint.activate([
+                view.leadingAnchor.constraint(equalTo: scroller.leadingAnchor, constant: ViewConstants.Padding),
+                view.trailingAnchor.constraint(equalTo: scroller.trailingAnchor, constant: -ViewConstants.Padding),
+                view.widthAnchor.constraint(equalTo: scroller.widthAnchor, constant: -(ViewConstants.Padding * 2)),
+                
+                // Fixed cell height boundary
+                view.heightAnchor.constraint(equalToConstant: ViewConstants.Dimensions),
+                
+                // Stack them vertically step-by-step
+                view.topAnchor.constraint(equalTo: lastTopAnchor, constant: index == 0 ? ViewConstants.Offset : ViewConstants.Padding)
+            ])
+            
+            lastTopAnchor = view.bottomAnchor
         }
         
-        //2 - Remove the old content views
-        contentViews.forEach { $0.removeFromSuperview() }
-
-        // 3 - yValue is the starting point of each view inside the scroller
-        var yValue = ViewConstants.Offset
-        // 4 - Fetch and add the new views
-        contentViews = (0..<dataSource.numberOfViews(in: self)).map {
-            index in
-            // 5 - add a view at the right position
-            yValue += ViewConstants.Padding
-            let view = dataSource.getScrollerViewItem(self, viewAt: index)
-            view.frame = CGRect(x: ViewConstants.Padding, y: CGFloat(yValue), width: ViewConstants.Dimensions*2, height: ViewConstants.Dimensions)
-            scroller.addSubview(view)
-            yValue += ViewConstants.Dimensions + ViewConstants.Padding
-            // 6 - Store the view so we can reference it later
-            return view
+        // 3. Set the bottom constraint on the final element to lock the scrolling contentSize height
+        if let lastView = contentViews.last {
+            lastView.bottomAnchor.constraint(equalTo: scroller.bottomAnchor, constant: -ViewConstants.Offset).isActive = true
         }
-
-        // 7
-        scroller.contentSize = CGSize(width: frame.size.width, height: CGFloat(yValue + ViewConstants.Offset))
     }
 }
 

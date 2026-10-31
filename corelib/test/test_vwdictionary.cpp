@@ -100,6 +100,12 @@ TEST_F(VWDictionaryTest, AddNewWordsIncremental)
 #endif
 #endif
         }
+#ifndef RTABMAP_NANOFLANN
+        if(strategy == VWDictionary::kNNNanoFlannKdTree)
+        {
+            strategy = VWDictionary::kNNFlannKdTree; // see VWDictionary::setNNStrategy()
+        }
+#endif
 
         // Reset dictionary for each strategy
         dict->clear();
@@ -678,6 +684,12 @@ TEST_F(VWDictionaryTest, SerializeDeserializeIndex)
 #endif
 #endif
         }
+#ifndef RTABMAP_NANOFLANN
+        if(strategy == VWDictionary::kNNNanoFlannKdTree)
+        {
+            strategy = VWDictionary::kNNFlannKdTree; // see VWDictionary::setNNStrategy()
+        }
+#endif
 
         // Reset dictionary for each strategy
         dict->clear();

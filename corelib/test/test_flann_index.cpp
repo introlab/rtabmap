@@ -1,4 +1,5 @@
 #include "FlannIndexBackends.h"
+#include <rtabmap/core/Version.h> // RTABMAP_NANOFLANN
 
 TEST(FlannIndexTest, ExactBackendsFindTheSameNeighbors)
 {
@@ -174,9 +175,12 @@ TEST(FlannIndexTest, LoadIndexRefusesDataItCannotUse)
 	FlannIndex loaded;
 	std::string error;
 
-	// Another algorithm than the one it was built with
+#ifdef RTABMAP_NANOFLANN
+	// Another algorithm than the one it was built with (without nanoflann,
+	// both are the same rtflann index)
 	EXPECT_FALSE(loaded.loadIndex(data, FlannIndex::FLANN_INDEX_KDTREE_SINGLE, cloud, false, 2.0f, &error));
 	EXPECT_FALSE(error.empty());
+#endif
 
 	// Another number of features
 	error.clear();
@@ -332,6 +336,9 @@ TEST(FlannIndexTest, IndexesSurviveARebuild)
 
 TEST(FlannIndexTest, UnsupportedOperationsAreRefused)
 {
+#ifndef RTABMAP_NANOFLANN
+	GTEST_SKIP() << "RTAB-Map is not built with nanoflann";
+#endif
 	const cv::Mat cloud = makeCloud(200, 3, 30);
 	const cv::Mat added = makeCloud(10, 3, 31);
 
