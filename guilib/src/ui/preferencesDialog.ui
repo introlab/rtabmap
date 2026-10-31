@@ -16159,6 +16159,41 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
+                      <item row="15" column="0">
+                       <widget class="QDoubleSpinBox" name="RGBDLandmarkMaxNormalError">
+                        <property name="decimals">
+                         <number>3</number>
+                        </property>
+                        <property name="maximum">
+                         <double>1.571000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.050000000000000</double>
+                        </property>
+                        <property name="suffix">
+                         <string> rad</string>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="15" column="1">
+                       <widget class="QLabel" name="label_landmarkMaxNormalError">
+                        <property name="toolTip">
+                         <string>Small or nearly frontal markers can have a wrong orientation (e.g., &quot;flipped&quot; pose). When localized (with localization links in the odometry cache), the detected normal is compared to the landmark's one in the map using the current localization. Otherwise, only their inclination (angle with the vertical) is compared, which doesn't depend on the yaw of the robot (its roll and pitch are taken from the gravity links if available). Applies also to landmarks given in the input data.</string>
+                        </property>
+                        <property name="text">
+                         <string>In localization mode, reject detections of landmarks of the map if their normal differs from the one in the map by more than this angle (0=disabled). Mouse over for more details.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
                      </layout>
                     </item>
                     <item>
@@ -16189,6 +16224,9 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                            </item>
                            <item row="1" column="0">
                             <widget class="QComboBox" name="OpenCVCornerRefinementMethod">
+                             <property name="currentIndex">
+                              <number>1</number>
+                             </property>
                              <item>
                               <property name="text">
                                <string>None</string>
@@ -16390,6 +16428,29 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                              </property>
                              <property name="value">
                               <double>2.000000000000000</double>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="6" column="0">
+                            <widget class="QCheckBox" name="apriltag_opencv_pnp">
+                             <property name="text">
+                              <string/>
+                             </property>
+                             <property name="checked">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="6" column="1">
+                            <widget class="QLabel" name="label_apriltag_opencv_pnp">
+                             <property name="text">
+                              <string>Estimate the pose of the tags with OpenCV's solvePnP() instead of the AprilTag library's pose estimation. Unlike the AprilTag library, it uses the distortion coefficients of the camera model (useful if the images are not rectified), and it gives fewer wrong orientations on small or noisy tags.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
                             </widget>
                            </item>

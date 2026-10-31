@@ -151,6 +151,7 @@ Rtabmap::Rtabmap() :
 	_loopCovLimited(Parameters::defaultRGBDLoopCovLimited()),
 	_loopGPS(Parameters::defaultRtabmapLoopGPS()),
 	_maxOdomCacheSize(Parameters::defaultRGBDMaxOdomCacheSize()),
+	_landmarkMaxNormalError(Parameters::defaultRGBDLandmarkMaxNormalError()),
 	_localizationSmoothing(Parameters::defaultRGBDLocalizationSmoothing()),
 	_localizationPriorInf(1.0/(Parameters::defaultRGBDLocalizationPriorError()*Parameters::defaultRGBDLocalizationPriorError())),
 	_localizationSecondTryWithoutProximityLinks(Parameters::defaultRGBDLocalizationSecondTryWithoutProximityLinks()),
@@ -642,6 +643,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLoopCovLimited(), _loopCovLimited);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopGPS(), _loopGPS);
 	Parameters::parse(parameters, Parameters::kRGBDMaxOdomCacheSize(), _maxOdomCacheSize);
+	Parameters::parse(parameters, Parameters::kRGBDLandmarkMaxNormalError(), _landmarkMaxNormalError);
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationSmoothing(), _localizationSmoothing);
 	double localizationPriorError = Parameters::defaultRGBDLocalizationPriorError();
 	Parameters::parse(parameters, Parameters::kRGBDLocalizationPriorError(), localizationPriorError);
@@ -3222,27 +3224,45 @@ bool Rtabmap::process(
 	//============================================================
 	std::map<int, std::set<int> > landmarksDetected; // <Landmark ID, list of nodes that saw this landmark>
 	std::map<int, Transform> landmarksDetectedTransforms; // <Landmark ID, observation from the new node>, kept as the link is removed if rejected after graph optimization
+	int landmarkNormalRejected = 0; // first landmark rejected by RGBD/LandmarkMaxNormalError
+	float landmarkNormalError = -1.0f; // largest normal error (rad) of the landmarks checked by RGBD/LandmarkMaxNormalError, -1 if none
 	if(!signature->getLandmarks().empty() && !_graphOptimizer->landmarksIgnored() && signature->getWeight()!=-1)
 	{
-		bool hasGlobalLoopClosuresInOdomCache = !graph::filterLinks(_odomCacheConstraints, Link::kGlobalClosure, true).empty() || _loopClosureHypothesis.first != 0;
-		UDEBUG("hasGlobalLoopClosuresInOdomCache=%d", hasGlobalLoopClosuresInOdomCache?1:0);
+		const bool localizedInOdomCache = !_memory->isIncremental() && hasLocalizationLinksInOdomCache();
+		UDEBUG("localizedInOdomCache=%d", localizedInOdomCache?1:0);
+		std::vector<int> landmarksRejected;
 		for(std::map<int, Link>::const_iterator iter=signature->getLandmarks().begin(); iter!=signature->getLandmarks().end(); ++iter)
 		{
 			if(uContains(_memory->getLandmarksIndex(), iter->first) &&
 					_memory->getLandmarksIndex().find(iter->first)->second.size()>1)
 			{
+				float normalError = -1.0f; // set if checked by RGBD/LandmarkMaxNormalError
 				if(!_memory->isIncremental() &&          // In localization mode
-					!hasGlobalLoopClosuresInOdomCache && // If there are global loop closures in odom cache, we can keep far landmarks
+					!localizedInOdomCache &&             // If there are localization links in odom cache, we can keep far landmarks
+					_loopClosureHypothesis.first == 0 && // or if this node has a global loop closure
 					_localRadius>0.0 &&
 					iter->second.transform().getNormSquared() > _localRadius*_localRadius)
 				{
-					// Ignore landmark detections over local radius
+					// Remove landmark detections over local radius, so that they are not
+					// added back to the graph on a later optimization
 					UWARN("Ignoring landmark %d for localization as it is too far (%fm > %s=%f) "
-							"and odom cache doesn't contain global loop closure(s).",
+							"and odom cache doesn't contain localization link(s).",
 							iter->first,
 							iter->second.transform().getNorm(),
 							Parameters::kRGBDLocalRadius().c_str(),
 							_localRadius);
+					landmarksRejected.push_back(iter->first);
+				}
+				else if(_landmarkMaxNormalError > 0.0f &&
+						!_memory->isIncremental() &&           // In localization mode (in mapping mode, the landmark's pose can be wrong, and corrected by next detections)
+						iter->second.rotVariance() < 9999.0 && // orientation used (not ignored)
+						!isLandmarkNormalValid(signature, iter->first, iter->second, localizedInOdomCache, &normalError))
+				{
+					landmarksRejected.push_back(iter->first);
+					if(landmarkNormalRejected == 0)
+					{
+						landmarkNormalRejected = -iter->first;
+					}
 				}
 				else
 				{
@@ -3252,7 +3272,12 @@ bool Rtabmap::process(
 					rejectedLoopClosure = false; // If it was true, it will be set back to false if landmarks are rejected on graph optimization
 					loopClosureLinksAdded.push_back(std::make_pair(signature->id(), iter->first));
 				}
+				landmarkNormalError = std::max(landmarkNormalError, normalError);
 			}
+		}
+		for(size_t i=0; i<landmarksRejected.size(); ++i)
+		{
+			_memory->removeLink(signature->id(), landmarksRejected[i]);
 		}
 	}
 
@@ -3764,22 +3789,7 @@ bool Rtabmap::process(
 						maxGraphErrorsRemovedCount = removedLinks.size();
 					}
 
-					// Count how many localization links are in the constraints
-					bool hadAlreadyLocalizationLinks = false;
-					for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin();
-							iter!=_odomCacheConstraints.end(); ++iter)
-					{
-						if(iter->second.type() == Link::kGlobalClosure ||
-						   iter->second.type() == Link::kLocalSpaceClosure ||
-						   iter->second.type() == Link::kLocalTimeClosure ||
-						   iter->second.type() == Link::kUserClosure ||
-						   iter->second.type() == Link::kNeighborMerged ||
-						   iter->second.type() == Link::kLandmark)
-						{
-							hadAlreadyLocalizationLinks = true;
-							break;
-						}
-					}
+					const bool hadAlreadyLocalizationLinks = hasLocalizationLinksInOdomCache();
 
 					// update localization links
 					UASSERT(uContains(optPoses, signature->id()));
@@ -4300,6 +4310,12 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected(), landmarksDetected.empty()?0:-landmarksDetected.begin()->first);
 			statistics_.addStatistic(Statistics::kLoopLandmark_detected_node_ref(), landmarksDetected.empty() || landmarksDetected.begin()->second.empty()?0:*landmarksDetected.begin()->second.begin());
+			statistics_.addStatistic(Statistics::kLoopLandmark_normal_rejected(), landmarkNormalRejected);
+			if(landmarkNormalError >= 0.0f)
+			{
+				// only when checked, accepted or not
+				statistics_.addStatistic(Statistics::kLoopLandmark_normal_error(), landmarkNormalError*180.0f/M_PI);
+			}
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers_mean_dist(), loopClosureVisualInliersMeanDist);
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers_distribution(), loopClosureVisualInliersDistribution);
 
@@ -5645,6 +5661,74 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	return optimizedPoses;
 }
 
+// Whether there are localization links in the odometry cache: global loop closures,
+// proximity links, landmarks, or user links (from addLink()).
+bool Rtabmap::hasLocalizationLinksInOdomCache() const
+{
+	for(std::multimap<int, Link>::const_iterator iter=_odomCacheConstraints.begin(); iter!=_odomCacheConstraints.end(); ++iter)
+	{
+		if(iter->second.type() == Link::kGlobalClosure ||
+		   iter->second.type() == Link::kLocalSpaceClosure ||
+		   iter->second.type() == Link::kUserClosure ||
+		   iter->second.type() == Link::kLandmark)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+// Compare the normal (z axis) of a landmark detection with the one of the landmark
+// in the map (see RGBD/LandmarkMaxNormalError). When localized, the full normals are
+// compared using the current localization. Otherwise, only their inclination (angle
+// with the vertical) is compared, which doesn't depend on the yaw of the robot.
+bool Rtabmap::isLandmarkNormalValid(const Signature * signature, int landmarkId, const Link & landmarkLink, bool localized, float * errorOut) const
+{
+	UASSERT(signature);
+	std::map<int, Transform>::const_iterator landmarkIter = _optimizedPoses.find(landmarkId);
+	std::map<int, Transform>::const_iterator poseIter = _optimizedPoses.find(signature->id());
+	if(landmarkIter == _optimizedPoses.end() || poseIter == _optimizedPoses.end())
+	{
+		UDEBUG("Landmark %d or node %d not in the local map, its normal is not checked.", -landmarkId, signature->id());
+		return true;
+	}
+
+	// Orientation of the robot in the map, with roll and pitch from gravity if available
+	Transform robotRotation = poseIter->second.rotation();
+	std::multimap<int, Link>::const_iterator gravityIter = graph::findLink(signature->getLinks(), signature->id(), signature->id(), false, Link::kGravity);
+	if(gravityIter != signature->getLinks().end())
+	{
+		float roll, pitch, yaw;
+		gravityIter->second.transform().getEulerAngles(roll, pitch, yaw);
+		robotRotation = Transform(0, 0, 0, roll, pitch, poseIter->second.theta());
+	}
+	const Eigen::Vector3f detectedNormal = (robotRotation * landmarkLink.transform().rotation()).toEigen3f().rotation().col(2);
+	const Eigen::Vector3f mapNormal = landmarkIter->second.toEigen3f().rotation().col(2);
+
+	float error;
+	if(localized)
+	{
+		error = acos(std::max(-1.0f, std::min(1.0f, detectedNormal.dot(mapNormal))));
+	}
+	else
+	{
+		error = fabs(acos(std::max(-1.0f, std::min(1.0f, detectedNormal.z()))) - acos(std::max(-1.0f, std::min(1.0f, mapNormal.z()))));
+	}
+	if(errorOut)
+	{
+		*errorOut = error;
+	}
+	if(error > _landmarkMaxNormalError)
+	{
+		UWARN("Rejecting detection of landmark %d by node %d: its %s differs from the one in the map by %f rad > %f rad (%s).",
+				-landmarkId, signature->id(), localized?"normal":"inclination", error, _landmarkMaxNormalError,
+				Parameters::kRGBDLandmarkMaxNormalError().c_str());
+		return false;
+	}
+	UDEBUG("Landmark %d: %s error = %f rad", -landmarkId, localized?"normal":"inclination", error);
+	return true;
+}
+
 // Returns the old loop closure to remove to repair the graph when the
 // optimization error is too high (see RGBD/OptimizeMaxErrorRepairRadius), or
 // an invalid link if there is none. The link with the highest error ratio
@@ -5654,7 +5738,9 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 // error goes on the adjacent neighbor links (#1784). In that case, the loop
 // closure with the highest error ratio around the neighbor link (under
 // RGBD/OptimizeMaxErrorRepairRadius) is returned instead. Loop closures added
-// in this iteration (newLinks) are never returned.
+// in this iteration (newLinks) are never returned. In mapping mode, if it is a
+// new landmark observation, the old observation of the same landmark with the
+// highest error ratio, seen from farther away, is returned instead.
 Link Rtabmap::findLoopClosureToRepair(
 	const graph::MaxGraphErrors & maxGraphErrors,
 	const std::map<int, Transform> & poses,
@@ -5671,11 +5757,64 @@ Link Rtabmap::findLoopClosureToRepair(
 	{
 		maxErrorLink = maxGraphErrors.angularLink;
 	}
-	if(!maxErrorLink.isValid() ||
-	   newLinks.find(std::make_pair(maxErrorLink.from(), maxErrorLink.to())) != newLinks.end() ||
-	   newLinks.find(std::make_pair(maxErrorLink.to(), maxErrorLink.from())) != newLinks.end())
+	if(!maxErrorLink.isValid())
 	{
 		return Link();
+	}
+	auto isNewLink = [&newLinks](const Link & link)
+	{
+		return newLinks.find(std::make_pair(link.from(), link.to())) != newLinks.end() ||
+			   newLinks.find(std::make_pair(link.to(), link.from())) != newLinks.end();
+	};
+	auto errorRatio = [&poses, this](const std::multimap<int, Link>::value_type & link)
+	{
+		std::multimap<int, Link> single;
+		single.insert(link);
+		graph::MaxGraphErrors errors = graph::computeMaxGraphErrors(poses, single, _graphOptimizer->isSlam2d());
+		return std::max(errors.linearRatio, errors.angularRatio);
+	};
+	if(isNewLink(maxErrorLink))
+	{
+		// In mapping mode, when a new observation of a landmark has the highest error, the old
+		// observations of that landmark seen from farther away are more likely to be wrong
+		// (e.g., flipped poses of small or far markers): if they agree with each other, they
+		// would make all new observations rejected. The old one with the highest error is
+		// considered instead for graph repair. Old observations seen from closer are not,
+		// so that a far wrong observation cannot remove good ones.
+		if(maxErrorLink.type() != Link::kLandmark || !_memory->isIncremental())
+		{
+			return Link();
+		}
+		const int landmarkId = maxErrorLink.from()<0?maxErrorLink.from():maxErrorLink.to();
+		const float distance = maxErrorLink.transform().getNorm();
+		const float closerRatio = 0.9f; // at least 10% closer, not to depend on noise for observations at the same distance
+		Link candidate;
+		float candidateRatio = -1.0f;
+		for(std::multimap<int, Link>::const_iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
+		{
+			const Link & link = iter->second;
+			if(link.type() != Link::kLandmark ||
+			   (link.from() != landmarkId && link.to() != landmarkId) ||
+			   distance >= closerRatio * link.transform().getNorm() ||
+			   isNewLink(link))
+			{
+				continue;
+			}
+			float ratio = errorRatio(*iter);
+			if(ratio > candidateRatio)
+			{
+				candidate = link;
+				candidateRatio = ratio;
+			}
+		}
+		if(candidate.isValid())
+		{
+			UWARN("Highest error is on new observation %d->%d of landmark %d (%f m), the older observation %d->%d "
+				  "seen from farther away (%f m, error ratio=%f) is considered instead for graph repair.",
+				  maxErrorLink.from(), maxErrorLink.to(), -landmarkId, distance,
+				  candidate.from(), candidate.to(), candidate.transform().getNorm(), candidateRatio);
+		}
+		return candidate;
 	}
 	if(maxErrorLink.type() != Link::kNeighbor && maxErrorLink.type() != Link::kNeighborMerged)
 	{
@@ -5695,8 +5834,7 @@ Link Rtabmap::findLoopClosureToRepair(
 		if(link.from() == link.to() ||
 		   link.type() == Link::kNeighbor ||
 		   link.type() == Link::kNeighborMerged ||
-		   newLinks.find(std::make_pair(link.from(), link.to())) != newLinks.end() ||
-		   newLinks.find(std::make_pair(link.to(), link.from())) != newLinks.end())
+		   isNewLink(link))
 		{
 			continue;
 		}
@@ -5708,10 +5846,7 @@ Link Rtabmap::findLoopClosureToRepair(
 		{
 			continue;
 		}
-		std::multimap<int, Link> single;
-		single.insert(*iter);
-		graph::MaxGraphErrors errors = graph::computeMaxGraphErrors(poses, single, _graphOptimizer->isSlam2d());
-		float ratio = std::max(errors.linearRatio, errors.angularRatio);
+		float ratio = errorRatio(*iter);
 		if(ratio > candidateRatio)
 		{
 			candidate = link;

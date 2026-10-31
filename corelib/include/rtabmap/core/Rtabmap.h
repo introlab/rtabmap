@@ -940,6 +940,8 @@ private:
 		int & optimizationIterations,
 		cv::Mat & optimizationCovariance,
 		const std::set<std::pair<int, int> > & newLinks);
+	bool hasLocalizationLinksInOdomCache() const;
+	bool isLandmarkNormalValid(const Signature * signature, int landmarkId, const Link & landmarkLink, bool localized, float * error = 0) const;
 	void updateGoalIndex();
 	bool computePath(int targetNode, std::map<int, Transform> nodes, const std::multimap<int, rtabmap::Link> & constraints);
 
@@ -1009,6 +1011,7 @@ private:
 	bool _loopCovLimited;
 	bool _loopGPS;
 	int _maxOdomCacheSize;
+	float _landmarkMaxNormalError;
 	bool _localizationSmoothing;
 	double _localizationPriorInf;
 	bool _localizationSecondTryWithoutProximityLinks;

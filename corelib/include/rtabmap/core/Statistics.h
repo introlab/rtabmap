@@ -141,6 +141,8 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(Loop, Angular_variance,);
 	RTABMAP_STATS(Loop, Landmark_detected,);
 	RTABMAP_STATS(Loop, Landmark_detected_node_ref,);
+	RTABMAP_STATS(Loop, Landmark_normal_rejected,);
+	RTABMAP_STATS(Loop, Landmark_normal_error, deg);
 	RTABMAP_STATS(Loop, Visual_inliers_mean_dist,m);
 	RTABMAP_STATS(Loop, Visual_inliers_distribution,);
 	RTABMAP_STATS(Loop, Proximity_links_cleared,);
