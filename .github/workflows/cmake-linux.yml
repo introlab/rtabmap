@@ -188,7 +188,8 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.x'
+        # Not '3.x': onnxruntime has no wheels of the latest Python (3.15) yet
+        python-version: '3.14'
 
     - name: Install Python Dependencies
       run: |
