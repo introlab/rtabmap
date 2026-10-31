@@ -678,8 +678,7 @@ protected:
         /* Construct the randomized trees. */
         for (int i = 0; i < trees_; i++) {
             /* Randomize the order of vectors to allow for unbiased sampling. */
-            std::random_device rd;
-            std::mt19937 g(rd());
+            std::mt19937 g(random_seed());
             std::shuffle(ind.begin(), ind.end(), g);
             tree_roots_[i] = divideTree(&ind[0], int(size_) );
         }
