@@ -17,7 +17,8 @@
 // those.
 //
 //   RangeTiltSweep: markers rendered at 16 distances up to 6 m (with their width in the image for the
-//   camera), tilted about their vertical (or horizontal) axis from 0 to 85 deg by 5 deg,
+//   camera), tilted about their vertical (or horizontal) axis from 0 to 85 deg by 5 deg, 12 images
+//   per tilt and distance,
 //   detected by each strategy with its default parameters: OpenCV, and the AprilTag library
 //   (with OpenCV's PnP, MarkerAprilTag/OpenCVPnP, and with the library's own pose). It reports, per
 //   detector, tilt and distance, how many markers are detected with a good pose and how
@@ -52,6 +53,8 @@
 //   RTABMAP_PERF_WHITE_BORDER=1 bin/test_markerdetector_perf   for a white border as wide as the markers
 //                                 around them (a third of their size by default)
 //   RTABMAP_PERF_MAX_DISTANCE=3 bin/test_markerdetector_perf   for distances up to 3 m (6 m by default)
+//   RTABMAP_PERF_IMAGES=24 bin/test_markerdetector_perf   for 24 images per tilt and distance in the sweeps
+//                                 (12 by default)
 //   RTABMAP_PERF_JPEG_QUALITY=95 bin/test_markerdetector_perf   for images compressed in JPEG like in a database
 //                                 (raw images by default)
 //   RTABMAP_PERF_IDEAL=1 bin/test_markerdetector_perf   to render pure black on white markers without noise
@@ -264,6 +267,14 @@ std::vector<float> sweepDistances()
 	return distances;
 }
 
+// Images per tilt and distance in the sweeps, each with the marker center jittered by up to
+// half a pixel: 12 by default (RTABMAP_PERF_IMAGES)
+int jitteredImages()
+{
+	static const int images = (int)envValue("RTABMAP_PERF_IMAGES", 12);
+	return images;
+}
+
 // Gaussian blur (sigma, pixels) of the rendered markers: 0.5 pixel by default (like real
 // 480x300 images), or the one set by RTABMAP_PERF_BLUR (0 for no blur)
 float blur()
@@ -395,15 +406,14 @@ void rangeTiltSweep(const std::vector<Config> & configs, int tiltStep)
 	std::map<std::string, double> detectionTime; // per config (s)
 	int images = 0;
 
-	// Per tilt and distance: 24 images, each with the marker center jittered by up to half a
-	// pixel, otherwise the results depend on where the corners fall in the pixels (e.g., all
-	// odd widths would have their corners on pixel centers).
-	const int jitteredImages = 24;
+	// Per tilt and distance: jitteredImages() images, each with the marker center jittered by up
+	// to half a pixel, otherwise the results depend on where the corners fall in the pixels
+	// (e.g., all odd widths would have their corners on pixel centers).
 	std::mt19937 rng(42);
 	std::uniform_real_distribution<float> jitter(-0.5f, 0.5f);
 	for(int tiltDeg=0; tiltDeg<=85; tiltDeg+=tiltStep)
 	for(float distance : distances)
-	for(int jitteredImage=0; jitteredImage<jitteredImages; ++jitteredImage) // new random offsets below
+	for(int jitteredImage=0; jitteredImage<jitteredImages(); ++jitteredImage) // new random offsets below
 	{
 		const float offsetX = jitter(rng);
 		const float offsetY = jitter(rng);
@@ -437,12 +447,12 @@ void rangeTiltSweep(const std::vector<Config> & configs, int tiltStep)
 		}
 	}
 
-	printf("\n%s\nGood and bad detections per tilt and distance, over %d images per tilt and distance (blur %g px\n"
-			"(RTABMAP_PERF_BLUR), center jittered %d times by +-0.5 px per axis,\n"
+	printf("\n%s\nGood and bad detections per tilt and distance, over %d images per tilt and distance\n"
+			"(RTABMAP_PERF_IMAGES, blur %g px (RTABMAP_PERF_BLUR), center jittered %d times by +-0.5 px per axis,\n"
 			"%dx%d samples per pixel (RTABMAP_PERF_SUPERSAMPLING), JPEG quality %d\n"
 			"(RTABMAP_PERF_JPEG_QUALITY, 0 for raw images)).\n"
 			"Each cell: number of good detections, number of bad ones (more than 10 deg off), \"-\" if none is bad.\n",
-			setupDescription().c_str(), imagesPerTilt.rbegin()->second, blur(), jitteredImages,
+			setupDescription().c_str(), imagesPerTilt.rbegin()->second, blur(), jitteredImages(),
 			supersampling(), supersampling(), jpegQuality());
 	for(const Config & c : configs)
 	{
