@@ -45,6 +45,7 @@
 #include <opencv2/imgproc.hpp>
 #include <algorithm>
 #include <cstdlib>
+#include <map>
 #include <memory>
 
 using namespace rtabmap;
@@ -55,7 +56,8 @@ std::string testFile(const std::string & name)
 {
 	return std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/" + name;
 }
-const std::string kDiskModel = "disk.onnx";
+const std::string kDiskModel = "disk.onnx";        // LightGlue-ONNX release
+const std::string kDiskExportModel = "disk_rtabmap.onnx"; // export_disk_onnx.py
 const std::string kDiskLightGlue = "disk_lightglue.onnx";
 const std::string kMagicleapModel = "superpoint_magicleap.onnx";
 const std::string kMagicleapLightGlue = "superpoint_magicleap_lightglue.onnx";
@@ -80,7 +82,7 @@ std::ostream & operator<<(std::ostream & os, const ModelPair & pair) {return os 
 std::vector<ModelPair> availableModelPairs()
 {
 	std::vector<ModelPair> pairs;
-	for(const ModelPair & p : {ModelPair{kDiskModel, kDiskLightGlue}, ModelPair{kMagicleapModel, kMagicleapLightGlue}})
+	for(const ModelPair & p : {ModelPair{kDiskModel, kDiskLightGlue}, ModelPair{kDiskExportModel, kDiskLightGlue}, ModelPair{kMagicleapModel, kMagicleapLightGlue}})
 	{
 		if(UFile::exists(testFile(p.detector)) && UFile::exists(testFile(p.matcher))) pairs.push_back(p);
 	}
@@ -95,7 +97,7 @@ std::vector<ModelPair> availableModelPairs()
 std::vector<std::string> availableDetectorModels()
 {
 	std::vector<std::string> models;
-	for(const std::string & m : {kDiskModel, kMagicleapModel, kSuperPointModel, kXFeatModel})
+	for(const std::string & m : {kDiskModel, kDiskExportModel, kMagicleapModel, kSuperPointModel, kXFeatModel})
 	{
 		if(UFile::exists(testFile(m))) models.push_back(m);
 	}
@@ -473,9 +475,14 @@ TEST(OnnxSession, CudaProviderMatchesCpu)
 
 // The TensorRT provider: opt-in with RTABMAP_TEST_TENSORRT=1 as building the
 // engines takes minutes (cached under data/tests/trt_cache for the next run).
+// With DISK exported by export_disk_onnx.py: the release disk.onnx has a
+// MaxPool with an indices output that the TensorRT parser rejects (logged as
+// errors, ONNX Runtime then runs these nodes with CUDA), this one runs as a
+// whole in TensorRT.
 TEST(OnnxSession, TensorRTProviderMatchesCpu)
 {
-	SKIP_WITHOUT(kDiskModel);
+	const std::string detectorModel = kDiskExportModel;
+	SKIP_WITHOUT(detectorModel);
 	SKIP_WITHOUT(kDiskLightGlue);
 	if(!std::getenv("RTABMAP_TEST_TENSORRT"))
 	{
@@ -489,8 +496,8 @@ TEST(OnnxSession, TensorRTProviderMatchesCpu)
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
 	cv::Mat image = sampleImage();
-	std::unique_ptr<Feature2D> cpu = createDetector(detectorParams(kDiskModel));
-	ParametersMap params = detectorParams(kDiskModel);
+	std::unique_ptr<Feature2D> cpu = createDetector(detectorParams(detectorModel));
+	ParametersMap params = detectorParams(detectorModel);
 	params[Parameters::kOnnxProvider()] = "2";
 	params[Parameters::kOnnxTensorRTCachePath()] = testFile("trt_cache");
 	UDirectory::makeDir(testFile("trt_cache"));
@@ -498,6 +505,7 @@ TEST(OnnxSession, TensorRTProviderMatchesCpu)
 	ASSERT_TRUE(static_cast<OnnxDetector*>(trt.get())->isModelLoaded());
 	if(static_cast<OnnxDetector*>(trt.get())->session()->provider() != OnnxSession::kProviderTensorRT)
 	{
+		ULogger::setType(ULogger::kTypeNoLog);
 		GTEST_SKIP() << "TensorRT provider fell back (TensorRT libraries not found?)";
 	}
 
@@ -523,7 +531,7 @@ TEST(OnnxSession, TensorRTProviderMatchesCpu)
 
 	// Without a cache path, the engines go to the "tensorrt_cache" folder of
 	// the working directory given (or the default one).
-	ParametersMap defaults = detectorParams(kDiskModel);
+	ParametersMap defaults = detectorParams(detectorModel);
 	defaults[Parameters::kOnnxProvider()] = "2";
 	defaults[Parameters::kRtabmapWorkingDirectory()] = testFile("");
 	EXPECT_EQ(testFile("") + "/tensorrt_cache", OnnxSession::defaultTensorRTCachePath(defaults));
@@ -613,6 +621,42 @@ TEST(OnnxDetector, MissingModelReturnsEmpty)
 	std::unique_ptr<Feature2D> detector2 = createDetector(params);
 	EXPECT_FALSE(static_cast<OnnxDetector*>(detector2.get())->isModelLoaded());
 	EXPECT_TRUE(detector2->generateKeypoints(image).empty());
+}
+
+// export_disk_onnx.py and the LightGlue-ONNX release export the same DISK
+// (kornia's "depth" weights, 5x5 NMS, no threshold) with a different NMS graph
+// and keypoint type (float vs int64): they find the same features.
+TEST(OnnxDetector, DiskExportMatchesRelease)
+{
+	SKIP_WITHOUT(kDiskModel);
+	SKIP_WITHOUT(kDiskExportModel);
+	cv::Mat image = sampleImage();
+	std::unique_ptr<Feature2D> release = createDetector(detectorParams(kDiskModel, 0));
+	std::unique_ptr<Feature2D> exported = createDetector(detectorParams(kDiskExportModel, 0));
+	std::vector<cv::KeyPoint> kptsRelease, kptsExport;
+	cv::Mat descRelease, descExport;
+	detect(*release, image, kptsRelease, descRelease);
+	detect(*exported, image, kptsExport, descExport);
+	ASSERT_GT(kptsRelease.size(), 100u);
+	ASSERT_EQ(kptsRelease.size(), kptsExport.size());
+
+	std::map<std::pair<int, int>, int> releaseIndex;
+	for(size_t i=0; i<kptsRelease.size(); ++i)
+	{
+		releaseIndex[std::make_pair(cvRound(kptsRelease[i].pt.x), cvRound(kptsRelease[i].pt.y))] = (int)i;
+	}
+	int same = 0;
+	for(size_t i=0; i<kptsExport.size(); ++i)
+	{
+		std::map<std::pair<int, int>, int>::iterator iter = releaseIndex.find(std::make_pair(cvRound(kptsExport[i].pt.x), cvRound(kptsExport[i].pt.y)));
+		if(iter != releaseIndex.end())
+		{
+			++same;
+			EXPECT_NEAR(kptsRelease[iter->second].response, kptsExport[i].response, 1e-4);
+			EXPECT_GT(descRelease.row(iter->second).dot(descExport.row((int)i)), 0.999);
+		}
+	}
+	EXPECT_GE(same, (int)kptsExport.size()*99/100);
 }
 
 // The detector tests run on every detector model on disk.

@@ -220,6 +220,9 @@ export_onnx() {
 		return 0
 	fi
 	echo "Exporting $label -> $output"
+	if [[ -n "${EXPORT_NOTE:-}" ]]; then
+		echo "  $EXPORT_NOTE"
+	fi
 	if python3 "$@" --output "$output" >/tmp/onnx_export.log 2>&1; then
 		echo "  $label: exported ($(du -h "$output" | cut -f1))"
 	else
@@ -242,8 +245,19 @@ if [[ -f "$DEST_DIR/lightglue/lightglue.py" ]]; then
 	export_onnx "sift_lightglue.onnx" "$DEST_DIR/sift_lightglue.onnx" \
 		"$ONNX_SCRIPTS/export_lightglue_onnx.py" --features sift --lightglue-dir "$DEST_DIR"
 fi
-# NetVLAD: 555 MB of weights to download and a 134 MB model, only on request.
-if [[ "${RTABMAP_FETCH_NETVLAD:-0}" == "1" ]]; then
+# NetVLAD: 555 MB of weights to download (kept to export again) and a 134 MB
+# model. RTABMAP_FETCH_NETVLAD=0 skips it.
+if [[ "${RTABMAP_FETCH_NETVLAD:-1}" == "0" ]]; then
+	echo "  netvlad.onnx: RTABMAP_FETCH_NETVLAD=0 — skipping export"
+elif [[ ! -f "$DEST_DIR/netvlad.onnx" ]] && ! python3 -c "import scipy" >/dev/null 2>&1; then
+	# checked before the download: the script reads the weights (*.mat) with scipy
+	echo "  netvlad.onnx: python3 doesn't have scipy (pip install scipy) — skipping export"
+else
+	netvlad_note=""
+	if [[ ! -f "$DEST_DIR/Pitts30K_struct.mat" ]]; then
+		netvlad_note="netvlad downloads 555 MB of weights, this can take a while. To skip it: RTABMAP_FETCH_NETVLAD=0 scripts/fetch_test_data.sh"
+	fi
+	EXPORT_NOTE="$netvlad_note" \
 	export_onnx "netvlad.onnx" "$DEST_DIR/netvlad.onnx" \
 		"$ONNX_SCRIPTS/export_netvlad_onnx.py" --download --weights "$DEST_DIR/Pitts30K_struct.mat" --dim 1024
 fi
@@ -252,6 +266,15 @@ if [[ -f "$DEST_DIR/models/superglue.py" && -f "$DEST_DIR/models/weights/supergl
 		"$ONNX_SCRIPTS/export_superglue_onnx.py" --superglue-dir "$DEST_DIR" --weights indoor
 	# the PyMatcher wrapper imports models.matching from its own directory
 	cp -f "$REPO_ROOT/corelib/src/python/rtabmap_superglue.py" "$DEST_DIR/"
+fi
+# DISK from kornia's implementation and weights (kornia downloads them), next
+# to the release disk.onnx of the manifest: same features, but a plain MaxPool
+# NMS that TensorRT runs as a whole (the release one has an indices output).
+if python3 -c "import kornia" >/dev/null 2>&1; then
+	export_onnx "disk_rtabmap.onnx" "$DEST_DIR/disk_rtabmap.onnx" \
+		"$ONNX_SCRIPTS/export_disk_onnx.py"
+else
+	echo "  disk_rtabmap.onnx: python3 doesn't have kornia (pip install kornia) — skipping export"
 fi
 
 # --- PyDetector variant of test_superpoint_perf ---

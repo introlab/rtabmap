@@ -430,6 +430,19 @@ python3 export_disk_onnx.py --output disk.onnx
 Options: `--weights depth|epipolar|file.pth`, `--window-size 5`,
 `--threshold 0`, `--max-keypoints 0`, `--height`/`--width`.
 
+With TensorRT, prefer this export to the `disk.onnx` of the LightGlue-ONNX
+v1.0.0 release: its NMS is a `MaxPool` that also
+outputs the indices of the maxima, which the TensorRT parser rejects ("doesn't
+support more than 1 outputs for MaxPool nodes", logged as errors). ONNX Runtime
+then runs these nodes with CUDA and the rest with TensorRT, so the results are
+the same, but the log is noisy. This export's NMS has a plain `MaxPool`, so the
+whole model runs in TensorRT. Both find the same keypoints at the same speed
+(about 16 ms on a 640x480 image, RTX 3080). The unit tests use both:
+`scripts/fetch_test_data.sh` downloads the release one and, when python3 has
+kornia, exports this one as `disk_rtabmap.onnx` (`test_onnx` checks they find
+the same features, and its TensorRT test, `RTABMAP_TEST_TENSORRT=1`, uses this
+one).
+
 ### XFeat
 
 [export_xfeat_onnx.py](export_xfeat_onnx.py) exports
