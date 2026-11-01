@@ -130,6 +130,49 @@ which generates `Parameters::kGroupName()`, `defaultGroupName()` and
 Statistics are declared in `corelib/include/rtabmap/core/Statistics.h` with
 `RTABMAP_STATS(Group, Name, unit)` and are consumed by the GUI and `rtabmap_ros`.
 
+### Camera / sensor drivers
+
+Drivers are `Camera` subclasses (or `Lidar` for lidars) in
+`corelib/include/rtabmap/core/camera/Camera<Name>.h` and
+`corelib/src/camera/Camera<Name>.cpp`. See `CameraOrbbecSDK` (#1590) for a
+complete example. A new driver touches:
+
+1. **The class**
+   - `static bool available()` returning whether rtabmap was built with the SDK
+     (`#ifdef RTABMAP_<NAME>`); override `init()`, `isCalibrated()`, `getSerial()`
+     and `captureImage()`.
+   - SDK headers and SDK-typed members stay under `#ifdef RTABMAP_<NAME>`, so the
+     class (and its installed header) compiles without the SDK; methods then
+     fail gracefully with `UERROR` instead of crashing.
+   - Include the header in the matching aggregate header:
+     `CameraRGBD.h`, `CameraStereo.h`, `CameraRGB.h` or `Lidar.h`.
+2. **Build**: add the `.cpp` to `corelib/src/CMakeLists.txt`, link the SDK when
+   found, and register the SDK as a dependency (`WITH_<NAME>` option, CMake
+   summary with license, `Version.h.in` define, `--version` listing, About
+   dialog: see "Adding a dependency" below).
+3. **GUI** (`guilib/`)
+   - `PreferencesDialog.h`: add a `kSrc<Name>` value at the **end** of its
+     group (RGB-D 0-99, stereo 100-199, RGB 200-299, lidar 400-...). Never
+     renumber or reuse values: they are saved in users' ini files.
+   - `preferencesDialog.ui`: add the entry to the matching source combo box (same
+     position as the enum value) and a `groupBox_<name>` with the driver
+     options.
+   - `PreferencesDialog.cpp`: disable the combo box item when `!Camera<Name>::available()`,
+     connect the option widgets to `makeObsoleteSourcePanel()`, set their
+     defaults in the reset code, read/write them in a `settings.beginGroup("<Name>")`
+     block, show the group box only when that driver is selected, and
+     instantiate it in `createCamera()` (or `createLidar()` for a lidar).
+   - `MainWindow.cpp/.h` and `mainWindow.ui`: optional quick-select action in the
+     source menu (`select<Name>()` slot), enabled only when `available()`; an
+     icon goes in `guilib/src/images/` and `GuiLib.qrc`.
+4. **Tools**: add the driver to the numbered driver list and switch of the
+   matching tool (`tools/CameraRGBD/main.cpp` for RGB-D/stereo cameras),
+   with an `UERROR("Not built with <Name> support...")` path when not
+   `available()`; optionally to `examples/RGBDMapping`.
+5. **Tests**: hardware can't run in CI, but the build without the SDK must work
+   (`available()` returns false, no crash when constructing/destroying the
+   class).
+
 ### Adding a dependency or vendored third-party code
 
 Users and packagers must be able to see every dependency and its license. When
