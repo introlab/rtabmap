@@ -93,11 +93,22 @@ public:
 
 	struct Options
 	{
-		Options() : provider(kProviderCPU), deviceId(0), tensorRTFp16(false), openVINODevice("CPU") {}
+		Options() : provider(kProviderCPU), deviceId(0), tensorRTFp16(false), tensorRTMaxKeypoints(Parameters::defaultOnnxTensorRTMaxKeypoints()), openVINODevice("CPU") {}
 		Provider provider;
 		int deviceId;                   ///< GPU device for CUDA and TensorRT
 		bool tensorRTFp16;              ///< Build the TensorRT engine in FP16
 		std::string tensorRTCachePath;  ///< Directory caching TensorRT engines (empty = no cache)
+		int tensorRTMaxKeypoints;       ///< OnnxMatcher: largest keypoint count of its TensorRT engine (0 = the engine grows with the inputs)
+		/**
+		 * @brief TensorRT optimization profile: the min, opt and max shapes of every
+		 * dynamic input, in ONNX Runtime's trt_profile_*_shapes format
+		 * ("kpts0:1x1x2,desc0:1x1x256,..."). Empty: TensorRT builds the engine for the
+		 * shapes seen so far, and again each time an input is larger or smaller.
+		 * OnnxMatcher fills them from tensorRTMaxKeypoints.
+		 */
+		std::string tensorRTProfileMinShapes;
+		std::string tensorRTProfileOptShapes;
+		std::string tensorRTProfileMaxShapes;
 		std::string openVINODevice;     ///< OpenVINO device_type: CPU, GPU, GPU.1, NPU, AUTO...
 		std::string openVINOPrecision;  ///< FP32, FP16 or ACCURACY (empty = device default)
 		std::string openVINOCachePath;  ///< Directory caching OpenVINO compiled models (empty = no cache)
@@ -150,12 +161,23 @@ public:
 	static std::string defaultOpenVINOCachePath(const ParametersMap & parameters);
 	/** @brief @p path with a leading "~" replaced by the home directory. */
 	static std::string expandTilde(const std::string & path);
+	/**
+	 * @brief Reads the inputs and outputs of the model (see inputs() and outputs())
+	 * without preparing it for inference, e.g. to set the TensorRT profile shapes
+	 * before creating its session. False if the model cannot be read (logged).
+	 */
+	static bool readModelInterface(const std::string & modelPath, std::vector<OnnxTensor> & inputs, std::vector<OnnxTensor> & outputs);
 
 	virtual ~OnnxSession();
 
 	const std::string & modelPath() const {return modelPath_;}
 	/** @brief Provider effectively used (after fallback). */
 	Provider provider() const {return provider_;}
+	/**
+	 * @brief Options effectively used: the TensorRT profile shapes are cleared if
+	 * TensorRT could not use them (the session is then created without them).
+	 */
+	const Options & options() const {return options_;}
 	/** @brief Model inputs: name, element type and shape (-1 for dynamic dimensions). */
 	const std::vector<OnnxTensor> & inputs() const {return inputs_;}
 	/** @brief Model outputs: name, element type and shape (-1 for dynamic dimensions). */

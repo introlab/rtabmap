@@ -286,6 +286,10 @@ IF(ONNXRuntime_FOUND)
 	target_include_directories(test_onnx PRIVATE
 			${CMAKE_SOURCE_DIR}/corelib/src)
 	add_test(NAME test_onnx COMMAND test_onnx)
+	# Stereo20HzSuperPointLightGlue (OnnxSession::isProviderAvailable())
+	target_compile_definitions(test_rtabmap_integration PRIVATE RTABMAP_TEST_ONNXRUNTIME)
+	target_include_directories(test_rtabmap_integration PRIVATE
+			${CMAKE_SOURCE_DIR}/corelib/src)
 ENDIF(ONNXRuntime_FOUND)
 
 #LASWriter.h (optional libLAS -- own target for the extra link/include set)

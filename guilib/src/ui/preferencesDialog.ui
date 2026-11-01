@@ -29859,9 +29859,32 @@ p, li { white-space: pre-wrap; }
                        </widget>
                       </item>
                       <item row="5" column="1">
-                       <widget class="QLineEdit" name="lineEdit_onnx_openvino_device"/>
+                       <widget class="QSpinBox" name="spinBox_onnx_trt_max_keypoints">
+                        <property name="maximum">
+                         <number>100000</number>
+                        </property>
+                        <property name="value">
+                         <number>4096</number>
+                        </property>
+                       </widget>
                       </item>
                       <item row="5" column="2">
+                       <widget class="QLabel" name="label_onnx_trt_max_keypoints">
+                        <property name="text">
+                         <string>[TensorRT] Largest number of keypoints per image the TensorRT engine of OnnxMatcher is built for, so that it is built once. Above, only the keypoints with the highest responses are matched. 0 means no limit: the engine is built again (seconds) each time an image has more (or fewer) keypoints than all the previous ones.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QLineEdit" name="lineEdit_onnx_openvino_device"/>
+                      </item>
+                      <item row="6" column="2">
                        <widget class="QLabel" name="label_onnx_openvino_device">
                         <property name="text">
                          <string>[OpenVINO] Device: CPU, GPU (GPU.0, GPU.1... with many), NPU, or AUTO / AUTO:GPU,CPU to let OpenVINO choose.</string>
@@ -29874,10 +29897,10 @@ p, li { white-space: pre-wrap; }
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="1">
+                      <item row="7" column="1">
                        <widget class="QLineEdit" name="lineEdit_onnx_openvino_precision"/>
                       </item>
-                      <item row="6" column="2">
+                      <item row="7" column="2">
                        <widget class="QLabel" name="label_onnx_openvino_precision">
                         <property name="text">
                          <string>[OpenVINO] Inference precision: FP32, FP16 or ACCURACY. Empty means the device default (FP32 on CPU, FP16 on GPU and NPU).</string>
@@ -29890,17 +29913,17 @@ p, li { white-space: pre-wrap; }
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="8" column="0">
                        <widget class="QToolButton" name="toolButton_onnx_openvino_cache_path">
                         <property name="text">
                          <string>...</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLineEdit" name="lineEdit_onnx_openvino_cache_path"/>
                       </item>
-                      <item row="7" column="2">
+                      <item row="8" column="2">
                        <widget class="QLabel" name="label_onnx_openvino_cache_path">
                         <property name="text">
                          <string>[OpenVINO] Directory where OpenVINO caches the compiled models (compiling for GPU or NPU takes seconds). Empty means the openvino_cache folder of the working directory.</string>
@@ -29913,17 +29936,17 @@ p, li { white-space: pre-wrap; }
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="9" column="0">
                        <widget class="QToolButton" name="toolButton_onnx_openvino_library_path">
                         <property name="text">
                          <string>...</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
+                      <item row="9" column="1">
                        <widget class="QLineEdit" name="lineEdit_onnx_openvino_library_path"/>
                       </item>
-                      <item row="8" column="2">
+                      <item row="9" column="2">
                        <widget class="QLabel" name="label_onnx_openvino_library_path">
                         <property name="text">
                          <string>[OpenVINO] Path to the OpenVINO plugin of onnxruntime-ep-openvino (libonnxruntime_providers_openvino_plugin.so), used when OpenVINO is not built in the ONNX Runtime library. Empty means its default file name, searched like any shared library.</string>

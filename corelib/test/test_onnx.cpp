@@ -268,9 +268,12 @@ TEST(OnnxSession, OptionsParse)
 	OnnxSession::Options options = OnnxSession::Options::defaults();
 	EXPECT_EQ(Parameters::defaultOnnxProvider(), (int)options.provider);
 	EXPECT_EQ("CPU", options.openVINODevice);
+	EXPECT_EQ(Parameters::defaultOnnxTensorRTMaxKeypoints(), options.tensorRTMaxKeypoints);
+	EXPECT_EQ(Parameters::defaultOnnxTensorRTMaxKeypoints(), OnnxSession::Options().tensorRTMaxKeypoints);
 
 	ParametersMap params;
 	params[Parameters::kOnnxProvider()] = "3";
+	params[Parameters::kOnnxTensorRTMaxKeypoints()] = "2048";
 	params[Parameters::kOnnxOpenVINODevice()] = "GPU";
 	params[Parameters::kOnnxOpenVINOPrecision()] = "FP32";
 	params[Parameters::kRtabmapWorkingDirectory()] = testFile("");
@@ -279,6 +282,7 @@ TEST(OnnxSession, OptionsParse)
 	EXPECT_EQ(OnnxSession::kProviderOpenVINO, parsed.provider);
 	EXPECT_EQ("GPU", parsed.openVINODevice);
 	EXPECT_EQ("FP32", parsed.openVINOPrecision);
+	EXPECT_EQ(2048, parsed.tensorRTMaxKeypoints);
 	EXPECT_EQ(testFile("") + "/openvino_cache", parsed.openVINOCachePath);
 	EXPECT_TRUE(parsed.tensorRTCachePath.empty()); // not TensorRT
 	EXPECT_NE(options, parsed);
@@ -525,6 +529,40 @@ TEST(OnnxSession, TensorRTProviderMatchesCpu)
 	int identity = 0;
 	for(size_t i=0; i<matches.size(); ++i)
 	{
+		if(matches[i].queryIdx == matches[i].trainIdx) ++identity;
+	}
+	EXPECT_GE(identity, (int)matches.size()*9/10);
+	// One engine for 1 to Onnx/TensorRTMaxKeypoints keypoints, built at load.
+	EXPECT_FALSE(matcherTrt.session()->options().tensorRTProfileMaxShapes.empty());
+	EXPECT_EQ(Parameters::defaultOnnxTensorRTMaxKeypoints(), matcherTrt.maxKeypoints());
+
+	// Above Onnx/TensorRTMaxKeypoints, only the strongest keypoints are matched,
+	// with their indices in the given keypoints.
+	OnnxSession::Options capped;
+	capped.provider = OnnxSession::kProviderTensorRT;
+	capped.tensorRTCachePath = testFile("trt_cache");
+	capped.tensorRTMaxKeypoints = 128;
+	ASSERT_GT(kptsCpu.size(), 128u);
+	OnnxMatcher matcherCapped(testFile(kDiskLightGlue), 0.1f, capped);
+	ASSERT_TRUE(matcherCapped.isModelLoaded());
+	EXPECT_EQ(128, matcherCapped.maxKeypoints());
+	matches = matcherCapped.match(descCpu, descCpu, kptsCpu, kptsCpu, image.size());
+	EXPECT_GE(matches.size(), 100u);
+	EXPECT_LE(matches.size(), 128u);
+	std::vector<float> responses;
+	for(size_t i=0; i<kptsCpu.size(); ++i)
+	{
+		responses.push_back(kptsCpu[i].response);
+	}
+	std::nth_element(responses.begin(), responses.begin()+127, responses.end(), std::greater<float>());
+	identity = 0;
+	for(size_t i=0; i<matches.size(); ++i)
+	{
+		ASSERT_GE(matches[i].queryIdx, 0);
+		ASSERT_LT(matches[i].queryIdx, (int)kptsCpu.size());
+		ASSERT_GE(matches[i].trainIdx, 0);
+		ASSERT_LT(matches[i].trainIdx, (int)kptsCpu.size());
+		EXPECT_GE(kptsCpu[matches[i].queryIdx].response, responses[127]);
 		if(matches[i].queryIdx == matches[i].trainIdx) ++identity;
 	}
 	EXPECT_GE(identity, (int)matches.size()*9/10);

@@ -1294,6 +1294,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_onnx_provider->setObjectName(Parameters::kOnnxProvider().c_str());
 	_ui->checkBox_onnx_trt_fp16->setObjectName(Parameters::kOnnxTensorRTFp16().c_str());
 	_ui->lineEdit_onnx_trt_cache_path->setObjectName(Parameters::kOnnxTensorRTCachePath().c_str());
+	_ui->spinBox_onnx_trt_max_keypoints->setObjectName(Parameters::kOnnxTensorRTMaxKeypoints().c_str());
 	connect(_ui->toolButton_onnx_trt_cache_path, SIGNAL(clicked()), this, SLOT(changeOnnxTensorRTCachePath()));
 	_ui->lineEdit_onnx_openvino_device->setObjectName(Parameters::kOnnxOpenVINODevice().c_str());
 	_ui->lineEdit_onnx_openvino_precision->setObjectName(Parameters::kOnnxOpenVINOPrecision().c_str());

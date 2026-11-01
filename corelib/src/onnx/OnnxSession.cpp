@@ -38,12 +38,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <onnxruntime_cxx_api.h>
 
 #include <algorithm>
+#include <chrono>
+#include <condition_variable>
 #include <map>
 #include <set>
 #include <unordered_map>
 #include <mutex>
 #include <cstring>
 #include <sstream>
+#include <thread>
 
 namespace rtabmap {
 
@@ -112,6 +115,45 @@ struct OnnxSession::Impl
 	std::unique_ptr<Ort::Session> session;
 	std::vector<std::string> inputNames;
 	std::vector<std::string> outputNames;
+
+	// The range of each input dimension run so far. Without profile shapes,
+	// TensorRT builds its engine at the first inference and again when an
+	// input is outside the shapes it was built for.
+	std::mutex shapesMutex;
+	std::vector<std::vector<int64_t> > minShapes;
+	std::vector<std::vector<int64_t> > maxShapes;
+
+	/** @brief Extends the ranges with @p inputs, true if they were outside (or the first ones). */
+	bool extendShapes(const std::vector<OnnxTensor> & inputs)
+	{
+		std::lock_guard<std::mutex> lock(shapesMutex);
+		bool extended = minShapes.size() != inputs.size();
+		if(extended)
+		{
+			minShapes.resize(inputs.size());
+			maxShapes.resize(inputs.size());
+		}
+		for(size_t i=0; i<inputs.size(); ++i)
+		{
+			const std::vector<int64_t> & shape = inputs[i].shape;
+			if(minShapes[i].size() != shape.size())
+			{
+				minShapes[i] = maxShapes[i] = shape;
+				extended = true;
+				continue;
+			}
+			for(size_t j=0; j<shape.size(); ++j)
+			{
+				if(shape[j] < minShapes[i][j] || shape[j] > maxShapes[i][j])
+				{
+					minShapes[i][j] = std::min(minShapes[i][j], shape[j]);
+					maxShapes[i][j] = std::max(maxShapes[i][j], shape[j]);
+					extended = true;
+				}
+			}
+		}
+		return extended;
+	}
 };
 
 namespace {
@@ -551,12 +593,57 @@ std::string openVINOLoadConfig(const std::string & device, const std::string & p
 }
 #endif
 
+// Logs a warning when the scope lasts more than delay seconds, while it still
+// runs: a TensorRT engine build blocks for seconds to minutes, the warning
+// explains the freeze when it happens (not when the engine was in the cache).
+class SlowScopeWarning
+{
+public:
+	SlowScopeWarning(double delay, const std::string & message) :
+		done_(false),
+		thread_(&SlowScopeWarning::wait, this, delay, message)
+	{
+	}
+	~SlowScopeWarning()
+	{
+		{
+			std::lock_guard<std::mutex> lock(mutex_);
+			done_ = true;
+		}
+		condition_.notify_one();
+		thread_.join();
+	}
+
+private:
+	void wait(double delay, std::string message)
+	{
+		std::unique_lock<std::mutex> lock(mutex_);
+		if(!condition_.wait_for(lock, std::chrono::duration<double>(delay), [this] {return done_;}))
+		{
+			UWARN("%s", message.c_str());
+		}
+	}
+
+	bool done_;
+	std::mutex mutex_;
+	std::condition_variable condition_;
+	std::thread thread_; // last, started once the others are initialized
+};
+
+std::string engineCacheNote(const std::string & cachePath)
+{
+	return cachePath.empty()?
+			"No cache directory is set, it will be built again at the next start.":
+			uFormat("It will be cached in \"%s\" for the next runs.", cachePath.c_str());
+}
+
 } // namespace
 
 std::string OnnxSession::Options::key() const
 {
-	return uFormat("provider=%d;device=%d;fp16=%d;cache=%s;ovdevice=%s;ovprecision=%s;ovcache=%s;ovlib=%s",
-			(int)provider, deviceId, tensorRTFp16?1:0, tensorRTCachePath.c_str(),
+	return uFormat("provider=%d;device=%d;fp16=%d;cache=%s;maxkpts=%d;profile=%s|%s|%s;ovdevice=%s;ovprecision=%s;ovcache=%s;ovlib=%s",
+			(int)provider, deviceId, tensorRTFp16?1:0, tensorRTCachePath.c_str(), tensorRTMaxKeypoints,
+			tensorRTProfileMinShapes.c_str(), tensorRTProfileOptShapes.c_str(), tensorRTProfileMaxShapes.c_str(),
 			openVINODevice.c_str(), openVINOPrecision.c_str(), openVINOCachePath.c_str(), openVINOLibraryPath.c_str());
 }
 
@@ -566,6 +653,7 @@ OnnxSession::Options OnnxSession::Options::defaults()
 	options.provider = (Provider)Parameters::defaultOnnxProvider();
 	options.tensorRTFp16 = Parameters::defaultOnnxTensorRTFp16();
 	options.tensorRTCachePath = Parameters::defaultOnnxTensorRTCachePath();
+	options.tensorRTMaxKeypoints = Parameters::defaultOnnxTensorRTMaxKeypoints();
 	options.openVINODevice = Parameters::defaultOnnxOpenVINODevice();
 	options.openVINOPrecision = Parameters::defaultOnnxOpenVINOPrecision();
 	options.openVINOCachePath = Parameters::defaultOnnxOpenVINOCachePath();
@@ -585,6 +673,7 @@ void OnnxSession::Options::parse(const ParametersMap & parameters)
 	{
 		tensorRTCachePath = defaultTensorRTCachePath(parameters);
 	}
+	Parameters::parse(parameters, Parameters::kOnnxTensorRTMaxKeypoints(), tensorRTMaxKeypoints);
 	Parameters::parse(parameters, Parameters::kOnnxOpenVINODevice(), openVINODevice);
 	Parameters::parse(parameters, Parameters::kOnnxOpenVINOPrecision(), openVINOPrecision);
 	Parameters::parse(parameters, Parameters::kOnnxOpenVINOCachePath(), openVINOCachePath);
@@ -693,6 +782,32 @@ std::shared_ptr<OnnxSession> OnnxSession::get(const std::string & modelPath, con
 	return session;
 }
 
+bool OnnxSession::readModelInterface(const std::string & modelPath, std::vector<OnnxTensor> & inputs, std::vector<OnnxTensor> & outputs)
+{
+	inputs.clear();
+	outputs.clear();
+	if(!UFile::exists(modelPath))
+	{
+		UERROR("The ONNX model \"%s\" doesn't exist.", modelPath.c_str());
+		return false;
+	}
+	try
+	{
+		Ort::SessionOptions sessionOptions;
+		sessionOptions.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
+		Ort::Session session(ortEnv(), modelPath.c_str(), sessionOptions);
+		std::vector<std::string> names;
+		inputs = describe(session, true, names);
+		outputs = describe(session, false, names);
+		return true;
+	}
+	catch(const Ort::Exception & e)
+	{
+		UERROR("Failed to read ONNX model \"%s\": %s", modelPath.c_str(), e.what());
+	}
+	return false;
+}
+
 OnnxSession::OnnxSession(const std::string & modelPath, const Options & options) :
 		impl_(new Impl),
 		modelPath_(modelPath),
@@ -728,7 +843,7 @@ bool OnnxSession::load()
 	// listed by the library can still fail to load its dependencies (e.g.
 	// cuDNN) or to find a device.
 	Provider requested = options_.provider;
-	for(int attempt = 0; attempt < 2; ++attempt)
+	for(int attempt = 0; attempt < 3; ++attempt)
 	{
 		try
 		{
@@ -758,6 +873,14 @@ bool OnnxSession::load()
 						keyValues.push_back(std::make_pair("trt_engine_cache_path", options_.tensorRTCachePath));
 						keyValues.push_back(std::make_pair("trt_timing_cache_enable", "1"));
 						keyValues.push_back(std::make_pair("trt_timing_cache_path", options_.tensorRTCachePath));
+					}
+					if(!options_.tensorRTProfileMaxShapes.empty())
+					{
+						// One engine for the whole range, built once, instead of
+						// one built again each time an input exceeds the ones seen.
+						keyValues.push_back(std::make_pair("trt_profile_min_shapes", options_.tensorRTProfileMinShapes));
+						keyValues.push_back(std::make_pair("trt_profile_opt_shapes", options_.tensorRTProfileOptShapes));
+						keyValues.push_back(std::make_pair("trt_profile_max_shapes", options_.tensorRTProfileMaxShapes));
 					}
 					updateProviderOptions(trtOptions, Ort::GetApi().UpdateTensorRTProviderOptions, keyValues);
 					sessionOptions.AppendExecutionProvider_TensorRT_V2(*trtOptions);
@@ -851,7 +974,17 @@ bool OnnxSession::load()
 #endif
 			}
 
-			impl_->session.reset(new Ort::Session(env, modelPath_.c_str(), sessionOptions));
+			{
+				// With profile shapes or static inputs, the engine is built here.
+				std::unique_ptr<SlowScopeWarning> slowWarning;
+				if(provider_ == kProviderTensorRT)
+				{
+					slowWarning.reset(new SlowScopeWarning(2.0, uFormat(
+							"TensorRT is building the engine of ONNX model \"%s\", this can take seconds to minutes... %s",
+							modelPath_.c_str(), engineCacheNote(options_.tensorRTCachePath).c_str())));
+				}
+				impl_->session.reset(new Ort::Session(env, modelPath_.c_str(), sessionOptions));
+			}
 			inputs_ = describe(*impl_->session, true, impl_->inputNames);
 			outputs_ = describe(*impl_->session, false, impl_->outputNames);
 			if(provider_ == kProviderTensorRT)
@@ -881,6 +1014,18 @@ bool OnnxSession::load()
 			impl_->session.reset();
 			inputs_.clear();
 			outputs_.clear();
+			if(provider_ == kProviderTensorRT && !options_.tensorRTProfileMaxShapes.empty())
+			{
+				// e.g. the model is split between TensorRT and CUDA: the inputs of
+				// the TensorRT part are not the model's, they would need profiles too.
+				UWARN("Failed to load ONNX model \"%s\" with TensorRT and the profile shapes \"%s\" (%s), "
+						"trying without them (the engine is then built again each time the inputs are larger or smaller than before).",
+						modelPath_.c_str(), options_.tensorRTProfileMaxShapes.c_str(), e.what());
+				options_.tensorRTProfileMinShapes.clear();
+				options_.tensorRTProfileOptShapes.clear();
+				options_.tensorRTProfileMaxShapes.clear();
+				continue;
+			}
 			if(requested != kProviderCPU)
 			{
 				UWARN("Failed to load ONNX model \"%s\" with %s provider (%s), falling back to CPU.",
@@ -994,11 +1139,33 @@ bool OnnxSession::run(const std::vector<OnnxTensor> & inputs, std::vector<OnnxTe
 			outputNames.push_back(impl_->outputNames[i].c_str());
 		}
 
+		// An engine may be built (seconds to minutes) when the inputs are outside
+		// the shapes run so far, unless the engine was built at load for the
+		// range of the profile shapes.
+		std::unique_ptr<SlowScopeWarning> slowWarning;
+		if(provider_ == kProviderTensorRT && options_.tensorRTProfileMaxShapes.empty() && impl_->extendShapes(ordered))
+		{
+			std::string shapes;
+			for(size_t i=0; i<ordered.size(); ++i)
+			{
+				shapes += (i?", ":"") + impl_->inputNames[i] + " [";
+				for(size_t j=0; j<ordered[i].shape.size(); ++j)
+				{
+					shapes += (j?",":"") + uNumber2Str((int)ordered[i].shape[j]);
+				}
+				shapes += "]";
+			}
+			slowWarning.reset(new SlowScopeWarning(2.0, uFormat(
+					"TensorRT is building an engine for ONNX model \"%s\" (first inference, or new input shapes: %s), "
+					"this can take seconds to minutes... %s",
+					modelPath_.c_str(), shapes.c_str(), engineCacheNote(options_.tensorRTCachePath).c_str())));
+		}
 		UTimer timer;
 		std::vector<Ort::Value> results = impl_->session->Run(
 				Ort::RunOptions{nullptr},
 				inputNames.data(), values.data(), values.size(),
 				outputNames.data(), outputNames.size());
+		slowWarning.reset();
 		// TensorRT builds an engine on the first inference, and again when an
 		// input shape falls outside the ones seen so far (it extends the engine's
 		// range): a run that takes seconds is one of these, worth knowing about.

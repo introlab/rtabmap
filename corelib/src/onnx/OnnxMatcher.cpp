@@ -27,10 +27,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "onnx/OnnxMatcher.h"
 
+#include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UTimer.h>
 
 #include <algorithm>
+#include <numeric>
 
 namespace rtabmap {
 
@@ -92,6 +94,41 @@ void copyDescriptors(const cv::Mat & descriptors, std::vector<float> & data)
 	}
 }
 
+// The maxKeypoints keypoints with the highest responses, in their original
+// order, their descriptors and their indices in keypoints.
+void keepStrongest(
+		const std::vector<cv::KeyPoint> & keypoints,
+		const cv::Mat & descriptors,
+		int maxKeypoints,
+		std::vector<cv::KeyPoint> & kept,
+		cv::Mat & keptDescriptors,
+		std::vector<int> & indices)
+{
+	indices.resize(keypoints.size());
+	std::iota(indices.begin(), indices.end(), 0);
+	std::nth_element(indices.begin(), indices.begin()+maxKeypoints, indices.end(),
+			[&keypoints](int a, int b) {return keypoints[a].response > keypoints[b].response;});
+	indices.resize(maxKeypoints);
+	std::sort(indices.begin(), indices.end());
+	kept.resize(maxKeypoints);
+	keptDescriptors = cv::Mat(maxKeypoints, descriptors.cols, descriptors.type());
+	for(int i=0; i<maxKeypoints; ++i)
+	{
+		kept[i] = keypoints[indices[i]];
+		descriptors.row(indices[i]).copyTo(keptDescriptors.row(i));
+	}
+}
+
+std::string joinDims(const std::vector<int64_t> & dims)
+{
+	std::string str;
+	for(size_t i=0; i<dims.size(); ++i)
+	{
+		str += (i?"x":"") + uNumber2Str((int)dims[i]);
+	}
+	return str;
+}
+
 } // namespace
 
 OnnxMatcher::OnnxMatcher(
@@ -101,7 +138,9 @@ OnnxMatcher::OnnxMatcher(
 		bool tensorRTFp16,
 		const std::string & tensorRTCachePath) :
 				modelPath_(OnnxSession::expandTilde(modelPath)),
-				matchThreshold_(matchThreshold)
+				matchThreshold_(matchThreshold),
+				maxKeypoints_(0),
+				maxKeypointsWarned_(false)
 {
 	options_.provider = (OnnxSession::Provider)provider;
 	options_.tensorRTFp16 = tensorRTFp16;
@@ -115,7 +154,9 @@ OnnxMatcher::OnnxMatcher(
 		const OnnxSession::Options & options) :
 				modelPath_(OnnxSession::expandTilde(modelPath)),
 				matchThreshold_(matchThreshold),
-				options_(options)
+				options_(options),
+				maxKeypoints_(0),
+				maxKeypointsWarned_(false)
 {
 	options_.tensorRTCachePath = OnnxSession::expandTilde(options_.tensorRTCachePath);
 	options_.openVINOCachePath = OnnxSession::expandTilde(options_.openVINOCachePath);
@@ -129,11 +170,85 @@ void OnnxMatcher::load()
 		UERROR("Cannot initialize ONNX matcher, the model path is empty.");
 		return;
 	}
-	session_ = OnnxSession::get(modelPath_, options_);
+	// Without a profile, TensorRT builds its engine for the keypoint counts seen
+	// so far, and again (seconds) each time an image has more or fewer.
+	OnnxSession::Options sessionOptions = options_;
+	if(options_.provider == OnnxSession::kProviderTensorRT && options_.tensorRTMaxKeypoints > 0 && options_.tensorRTProfileMaxShapes.empty())
+	{
+		std::vector<OnnxTensor> modelInputs, modelOutputs;
+		if(OnnxSession::readModelInterface(modelPath_, modelInputs, modelOutputs))
+		{
+			setTensorRTProfile(modelInputs, options_.tensorRTMaxKeypoints, sessionOptions);
+		}
+	}
+	session_ = OnnxSession::get(modelPath_, sessionOptions);
 	if(session_.get() == 0)
 	{
 		UERROR("Cannot initialize ONNX matcher with model \"%s\".", modelPath_.c_str());
+		return;
 	}
+	if(session_->provider() == OnnxSession::kProviderTensorRT &&
+	   !session_->options().tensorRTProfileMaxShapes.empty() &&
+	   options_.tensorRTMaxKeypoints > 0)
+	{
+		maxKeypoints_ = options_.tensorRTMaxKeypoints;
+	}
+}
+
+bool OnnxMatcher::setTensorRTProfile(const std::vector<OnnxTensor> & modelInputs, int maxKeypoints, OnnxSession::Options & options) const
+{
+	int indices[4];
+	int scoresIndices[2];
+	if(!findInputs(modelInputs, indices, scoresIndices))
+	{
+		return false;
+	}
+	const int optKeypoints = std::min(maxKeypoints, 1024);
+	std::string minShapes, optShapes, maxShapes;
+	const int all[6] = {indices[0], indices[1], indices[2], indices[3], scoresIndices[0], scoresIndices[1]};
+	for(int k=0; k<6 && all[k]>=0; ++k)
+	{
+		// kpts [1,N,2|4], desc [1,N,D], scores [1,N], the batch dimension optional
+		const OnnxTensor & input = modelInputs[all[k]];
+		const size_t rank = k<4?3:2;
+		if(input.shape.size() != rank && input.shape.size() != rank-1)
+		{
+			UDEBUG("Input %s of ONNX model \"%s\" is not of rank %d: no TensorRT profile.", input.toString().c_str(), modelPath_.c_str(), (int)rank);
+			return false;
+		}
+		std::vector<int64_t> dims = input.shape;
+		const size_t n = k<4?dims.size()-2:dims.size()-1;
+		if(dims.size() == rank && dims[0] < 0)
+		{
+			dims[0] = 1;
+		}
+		if(k<2 && dims.back() < 0)
+		{
+			dims.back() = 2; // as prepareInputs()
+		}
+		for(size_t i=0; i<dims.size(); ++i)
+		{
+			if(i != n && dims[i] < 0)
+			{
+				// e.g. the descriptor dimension: unknown before the first match
+				UDEBUG("Input %s of ONNX model \"%s\" has other dynamic dimensions than the keypoints: no TensorRT profile.", input.toString().c_str(), modelPath_.c_str());
+				return false;
+			}
+		}
+		const std::string sep = minShapes.empty()?"":",";
+		dims[n] = 1;
+		minShapes += sep + input.name + ":" + joinDims(dims);
+		dims[n] = optKeypoints;
+		optShapes += sep + input.name + ":" + joinDims(dims);
+		dims[n] = maxKeypoints;
+		maxShapes += sep + input.name + ":" + joinDims(dims);
+	}
+	options.tensorRTProfileMinShapes = minShapes;
+	options.tensorRTProfileOptShapes = optShapes;
+	options.tensorRTProfileMaxShapes = maxShapes;
+	UINFO("TensorRT engine of ONNX model \"%s\" built for 1 to %d keypoints per image (%s=%d): %s",
+			modelPath_.c_str(), maxKeypoints, Parameters::kOnnxTensorRTMaxKeypoints().c_str(), maxKeypoints, maxShapes.c_str());
+	return true;
 }
 
 OnnxMatcher::~OnnxMatcher()
@@ -174,17 +289,8 @@ void OnnxMatcher::packKeypoints(const std::vector<cv::KeyPoint> & keypoints, con
 	}
 }
 
-bool OnnxMatcher::prepareInputs(
-		const cv::Mat & descriptorsQuery,
-		const cv::Mat & descriptorsTrain,
-		const std::vector<cv::KeyPoint> & keypointsQuery,
-		const std::vector<cv::KeyPoint> & keypointsTrain,
-		const cv::Size & imageSizeQuery,
-		const cv::Size & imageSizeTrain,
-		std::vector<OnnxTensor> & inputs) const
+bool OnnxMatcher::findInputs(const std::vector<OnnxTensor> & modelInputs, int indices[4], int scoresIndices[2]) const
 {
-	UASSERT(session_.get() != 0);
-	const std::vector<OnnxTensor> & modelInputs = session_->inputs();
 	if(modelInputs.size() != 4 && modelInputs.size() != 6)
 	{
 		UERROR("ONNX model \"%s\" has %d inputs, OnnxMatcher expects kpts0, kpts1, desc0 and desc1 (and optionally scores0 and scores1).", modelPath_.c_str(), (int)modelInputs.size());
@@ -192,12 +298,12 @@ bool OnnxMatcher::prepareInputs(
 	}
 
 	// By name, by position when the names differ.
-	int indices[4] = {findByName(modelInputs, {"kpts0", "keypoints0"}),
-					  findByName(modelInputs, {"kpts1", "keypoints1"}),
-					  findByName(modelInputs, {"desc0", "descriptors0"}),
-					  findByName(modelInputs, {"desc1", "descriptors1"})};
-	int scoresIndices[2] = {findByName(modelInputs, {"scores0", "keypoint_scores0"}),
-							findByName(modelInputs, {"scores1", "keypoint_scores1"})};
+	indices[0] = findByName(modelInputs, {"kpts0", "keypoints0"});
+	indices[1] = findByName(modelInputs, {"kpts1", "keypoints1"});
+	indices[2] = findByName(modelInputs, {"desc0", "descriptors0"});
+	indices[3] = findByName(modelInputs, {"desc1", "descriptors1"});
+	scoresIndices[0] = findByName(modelInputs, {"scores0", "keypoint_scores0"});
+	scoresIndices[1] = findByName(modelInputs, {"scores1", "keypoint_scores1"});
 	if(indices[0] < 0 || indices[1] < 0 || indices[2] < 0 || indices[3] < 0)
 	{
 		for(int i=0; i<4; ++i)
@@ -213,6 +319,30 @@ bool OnnxMatcher::prepareInputs(
 	if(modelInputs.size() == 6 && (scoresIndices[0] < 0 || scoresIndices[1] < 0))
 	{
 		UERROR("ONNX model \"%s\" has 6 inputs but no scores0/scores1 among them.", modelPath_.c_str());
+		return false;
+	}
+	if(modelInputs.size() == 4)
+	{
+		scoresIndices[0] = scoresIndices[1] = -1;
+	}
+	return true;
+}
+
+bool OnnxMatcher::prepareInputs(
+		const cv::Mat & descriptorsQuery,
+		const cv::Mat & descriptorsTrain,
+		const std::vector<cv::KeyPoint> & keypointsQuery,
+		const std::vector<cv::KeyPoint> & keypointsTrain,
+		const cv::Size & imageSizeQuery,
+		const cv::Size & imageSizeTrain,
+		std::vector<OnnxTensor> & inputs) const
+{
+	UASSERT(session_.get() != 0);
+	const std::vector<OnnxTensor> & modelInputs = session_->inputs();
+	int indices[4];
+	int scoresIndices[2];
+	if(!findInputs(modelInputs, indices, scoresIndices))
+	{
 		return false;
 	}
 	for(int i=0; i<4; ++i)
@@ -409,8 +539,43 @@ std::vector<cv::DMatch> OnnxMatcher::match(
 		return matches;
 	}
 
+	// Above the keypoints the TensorRT engine is built for, only the strongest.
+	const cv::Mat * descQuery = &descriptorsQuery;
+	const cv::Mat * descTrain = &descriptorsTrain;
+	const std::vector<cv::KeyPoint> * kptsQuery = &keypointsQuery;
+	const std::vector<cv::KeyPoint> * kptsTrain = &keypointsTrain;
+	cv::Mat keptDescQuery, keptDescTrain;
+	std::vector<cv::KeyPoint> keptKptsQuery, keptKptsTrain;
+	std::vector<int> queryIndices, trainIndices; // empty when all are kept
+	if(maxKeypoints_ > 0 && ((int)keypointsQuery.size() > maxKeypoints_ || (int)keypointsTrain.size() > maxKeypoints_))
+	{
+		if(!maxKeypointsWarned_)
+		{
+			UWARN("OnnxMatcher: %d query and %d train keypoints, the TensorRT engine of \"%s\" is built for at most %d "
+					"(%s): only the %d strongest are matched (this warning is shown once).",
+					(int)keypointsQuery.size(), (int)keypointsTrain.size(), modelPath_.c_str(), maxKeypoints_,
+					Parameters::kOnnxTensorRTMaxKeypoints().c_str(), maxKeypoints_);
+			maxKeypointsWarned_ = true;
+		}
+		if((int)keypointsQuery.size() > maxKeypoints_)
+		{
+			keepStrongest(keypointsQuery, descriptorsQuery, maxKeypoints_, keptKptsQuery, keptDescQuery, queryIndices);
+			kptsQuery = &keptKptsQuery;
+			descQuery = &keptDescQuery;
+		}
+		if((int)keypointsTrain.size() > maxKeypoints_)
+		{
+			keepStrongest(keypointsTrain, descriptorsTrain, maxKeypoints_, keptKptsTrain, keptDescTrain, trainIndices);
+			kptsTrain = &keptKptsTrain;
+			descTrain = &keptDescTrain;
+		}
+		UDEBUG("Matching the %d/%d strongest query and %d/%d strongest train keypoints (%s=%d)",
+				(int)kptsQuery->size(), (int)keypointsQuery.size(), (int)kptsTrain->size(), (int)keypointsTrain.size(),
+				Parameters::kOnnxTensorRTMaxKeypoints().c_str(), maxKeypoints_);
+	}
+
 	std::vector<OnnxTensor> inputs;
-	if(!prepareInputs(descriptorsQuery, descriptorsTrain, keypointsQuery, keypointsTrain, imageSizeQuery, imageSizeTrain, inputs))
+	if(!prepareInputs(*descQuery, *descTrain, *kptsQuery, *kptsTrain, imageSizeQuery, imageSizeTrain, inputs))
 	{
 		return matches;
 	}
@@ -423,9 +588,20 @@ std::vector<cv::DMatch> OnnxMatcher::match(
 	}
 	UDEBUG("ONNX matching time = %fs", timer.ticks());
 
-	if(!parseOutputs(outputs, descriptorsQuery.rows, descriptorsTrain.rows, matches))
+	if(!parseOutputs(outputs, descQuery->rows, descTrain->rows, matches))
 	{
 		matches.clear();
+	}
+	for(size_t i=0; i<matches.size(); ++i)
+	{
+		if(!queryIndices.empty())
+		{
+			matches[i].queryIdx = queryIndices[matches[i].queryIdx];
+		}
+		if(!trainIndices.empty())
+		{
+			matches[i].trainIdx = trainIndices[matches[i].trainIdx];
+		}
 	}
 	UDEBUG("Matches %d/%d, threshold=%f, parsing time = %fs", (int)matches.size(), std::min(descriptorsQuery.rows, descriptorsTrain.rows), matchThreshold_, timer.ticks());
 	return matches;

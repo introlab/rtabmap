@@ -73,6 +73,11 @@ namespace rtabmap {
  *
  * A model with a different interface can be supported by overriding
  * prepareInputs() / parseOutputs() in a subclass.
+ *
+ * With TensorRT, the engine is built once at load for 1 to
+ * OnnxSession::Options::tensorRTMaxKeypoints keypoints per image (when the
+ * inputs follow the interface above): above, only that many keypoints with the
+ * highest responses are matched.
  */
 class RTABMAP_CORE_EXPORT OnnxMatcher
 {
@@ -110,6 +115,8 @@ public:
 	bool isModelLoaded() const {return session_.get() != 0;}
 	/** @brief The session (null if the model is not loaded), e.g. to inspect its inputs and outputs. */
 	const std::shared_ptr<OnnxSession> & session() const {return session_;}
+	/** @brief Most keypoints per image matched (the strongest ones), 0 for no limit (see the class description). */
+	int maxKeypoints() const {return maxKeypoints_;}
 
 	/**
 	 * @brief Matches the query features to the train ones.
@@ -160,13 +167,24 @@ protected:
 	 */
 	virtual bool parseOutputs(const std::vector<OnnxTensor> & outputs, int queryCount, int trainCount, std::vector<cv::DMatch> & matches) const;
 
+	/**
+	 * @brief Indices in @p modelInputs of kpts0, kpts1, desc0 and desc1 (by name, by
+	 * position when the names differ), and of scores0 and scores1 (-1 when the model
+	 * doesn't take them).
+	 * @return false if the model doesn't have these inputs (logged).
+	 */
+	bool findInputs(const std::vector<OnnxTensor> & modelInputs, int indices[4], int scoresIndices[2]) const;
+
 private:
 	std::shared_ptr<OnnxSession> session_;
 	std::string modelPath_;
 	float matchThreshold_;
 	OnnxSession::Options options_;
+	int maxKeypoints_;
+	mutable bool maxKeypointsWarned_;
 
 	void load();
+	bool setTensorRTProfile(const std::vector<OnnxTensor> & modelInputs, int maxKeypoints, OnnxSession::Options & options) const;
 };
 
 } // namespace rtabmap

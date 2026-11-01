@@ -98,7 +98,12 @@ support are run on the CPU by ONNX Runtime automatically.
 * **TensorRT** doesn't run the ONNX graph as is: it compiles it into an
   *engine* optimized for the GPU it runs on (fused layers, kernels benchmarked
   per layer), which is why the first start takes seconds to minutes (a warning
-  is logged) and why the engines are cached in `Onnx/TensorRTCachePath`. With
+  is logged) and why the engines are cached in `Onnx/TensorRTCachePath`. An
+  engine is built for a range of input shapes: the matchers' engines are built
+  at load for 1 to `Onnx/TensorRTMaxKeypoints` keypoints per image (above, only
+  the keypoints with the highest responses are matched). With 0, TensorRT
+  builds it for the keypoint counts seen so far, and again (seconds, freezing
+  the odometry) each time an image has more or fewer keypoints than before. With
   `Onnx/TensorRTFp16`, the engine may compute in 16-bit floats instead of
   32-bit: faster on GPUs with Tensor Cores and half the memory, at the cost of
   slightly different scores (keypoints near the threshold) and descriptors,
@@ -197,6 +202,7 @@ is then not loaded.
 | `OnnxDescriptor/Dim` | 0 | Keep the first values of the descriptor, re-normalized (0: all). |
 | `Onnx/Provider` | 1 | Execution provider of all three: 0=CPU, 1=CUDA, 2=TensorRT, 3=OpenVINO. A provider not available in the ONNX Runtime library, or failing to load (missing cuDNN, no device...), falls back to CPU with a warning. |
 | `Onnx/TensorRTFp16` | false | Build the TensorRT engines in FP16. |
+| `Onnx/TensorRTMaxKeypoints` | 4096 | Largest number of keypoints per image the TensorRT engine of `OnnxMatcher` is built for, at load, so that it is built once. Above, only the keypoints with the highest responses are matched. 0: no limit, the engine is built again each time an image has more (or fewer) keypoints than all the previous ones. |
 | `Onnx/TensorRTCachePath` | | Directory caching the TensorRT engines (building one takes seconds to minutes; a warning is logged when it happens). Empty: the `tensorrt_cache` folder of the RTAB-Map working directory. |
 | `Onnx/OpenVINODevice` | CPU | OpenVINO device: `CPU`, `GPU` (`GPU.0`, `GPU.1`... with many), `NPU`, or `AUTO` / `AUTO:GPU,CPU`. |
 | `Onnx/OpenVINOPrecision` | | `FP32`, `FP16` or `ACCURACY` (the model's own precision). Empty: the device's default (FP32 on CPU, FP16 on GPU and NPU). |
@@ -462,9 +468,12 @@ git clone https://github.com/verlab/accelerated_features.git
 python3 export_xfeat_onnx.py --model-dir accelerated_features --output xfeat.onnx
 ```
 
-Options: `--threshold 0.05`, `--max-keypoints 4096` (XFeat's defaults),
-`--interpolation bicubic|bilinear` (descriptor sampling; bicubic is XFeat's,
-bilinear is faster on GPU providers), `--height`/`--width`.
+Options: `--threshold 0.05` (XFeat's default), `--max-keypoints 0` (all, as
+the other scripts: `OnnxDetector` keeps the best ones with `Kp/MaxFeatures`;
+XFeat's 4096 sorts all the candidates in the model, a TopK that TensorRT
+refuses above 3840 candidates, so the inference fails with TensorRT on
+textured images), `--interpolation bicubic|bilinear` (descriptor sampling;
+bicubic is XFeat's, bilinear is faster on GPU providers), `--height`/`--width`.
 
 ### LightGlue
 

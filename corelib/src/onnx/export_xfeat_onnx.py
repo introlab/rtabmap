@@ -112,7 +112,11 @@ def main():
     parser.add_argument("--weights", default="", help="Weights file (default <model-dir>/weights/xfeat.pt)")
     parser.add_argument("--output", required=True, help="Output ONNX file")
     parser.add_argument("--threshold", type=float, default=0.05, help="Detection threshold on the keypoint heatmap (default 0.05, XFeat's)")
-    parser.add_argument("--max-keypoints", type=int, default=4096, help="Keep at most this many keypoints, by score (default 4096, XFeat's; 0: all)")
+    # 0 like the other scripts, not XFeat's 4096: OnnxDetector keeps the best ones
+    # anyway (Kp/MaxFeatures), and the sort is a TopK over all the candidates
+    # (thousands), more than TensorRT's TopK takes (K <= 3840): the inference
+    # fails with TensorRT on textured images.
+    parser.add_argument("--max-keypoints", type=int, default=0, help="Keep at most this many keypoints, by score (default 0: all; XFeat's is 4096, but not with TensorRT, its TopK takes at most 3840 candidates)")
     parser.add_argument("--interpolation", default="bicubic", choices=["bicubic", "bilinear"], help="Descriptor sampling (default bicubic, XFeat's; bilinear is faster on GPU providers)")
     parser.add_argument("--height", type=int, default=0, help="Fixed input height (default 0: dynamic)")
     parser.add_argument("--width", type=int, default=0, help="Fixed input width (default 0: dynamic)")
