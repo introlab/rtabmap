@@ -83,8 +83,9 @@ def selfblock_forward_export(self, x, encoding, mask=None):
     rank inference from the exporter)."""
     lg = sys.modules[self.__module__]
     qkv = self.Wqkv(x)
-    qkv = qkv.unflatten(-1, (self.num_heads, -1, 3)).permute(0, 2, 1, 3, 4)
-    q, k, v = qkv.select(4, 0), qkv.select(4, 1), qkv.select(4, 2)
+    # q, k and v as contiguous blocks (Wqkv reordered by reorder_qkv_weights())
+    c = qkv.shape[-1] // 3
+    q, k, v = (qkv[..., i * c:(i + 1) * c].unflatten(-1, (self.num_heads, -1)).permute(0, 2, 1, 3) for i in range(3))
     q = lg.apply_cached_rotary_emb(encoding, q)
     k = lg.apply_cached_rotary_emb(encoding, k)
     context = self.inner_attn(q, k, v, mask=mask)
@@ -92,6 +93,20 @@ def selfblock_forward_export(self, x, encoding, mask=None):
     # normalized by the exporter with its wrong rank
     message = self.out_proj(merge_heads_export(context))
     return x + self.ffn(torch.cat([x, message], 2))
+
+
+def reorder_qkv_weights(matcher, lg):
+    """Reorders the rows of each SelfBlock's Wqkv from the (heads, dim, 3)
+    interleaved order of LightGlue to contiguous q, k and v blocks, for
+    selfblock_forward_export(). TensorRT fuses the projection and its split
+    into q, k and v assuming contiguous blocks: with the interleaved order
+    (unflatten(-1, (heads, -1, 3)) + select()), it silently computes wrong
+    q, k and v (every keypoint then matches the same few ones)."""
+    for block in matcher.modules():
+        if isinstance(block, lg.SelfBlock):
+            w, b = block.Wqkv.weight.data, block.Wqkv.bias.data
+            block.Wqkv.weight.data = w.reshape(block.num_heads, -1, 3, w.shape[1]).permute(2, 0, 1, 3).reshape(w.shape).contiguous()
+            block.Wqkv.bias.data = b.reshape(block.num_heads, -1, 3).permute(2, 0, 1).reshape(b.shape).contiguous()
 
 
 def crossblock_forward_export(self, x0, x1, mask=None):
@@ -181,10 +196,12 @@ PATCHES = {
 }
 
 
-def patch_for_export(lg, skip=()):
+def patch_for_export(lg, matcher, skip=()):
     for name, apply in PATCHES.items():
         if name not in skip:
             apply(lg)
+    if "self_block" not in skip:
+        reorder_qkv_weights(matcher, lg)
     register_transpose_diagnostic()
 
 
@@ -293,7 +310,7 @@ def main():
     with torch.no_grad():
         ref = [t.numpy() for t in model(**check_inputs)]
 
-    patch_for_export(lg, skip=[s for s in args.skip_patches.split(",") if s])
+    patch_for_export(lg, matcher, skip=[s for s in args.skip_patches.split(",") if s])
 
     print("Exporting to %s (descriptor dimension %d, keypoints with %d columns)" % (args.output, dim, columns))
     with torch.no_grad():

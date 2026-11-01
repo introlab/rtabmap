@@ -530,6 +530,13 @@ installing it and its dependencies), `--weights`/`--input-dim`/`--scale-ori`
 (a custom checkpoint, its descriptor dimension and whether it was trained with
 the keypoint scale and orientation).
 
+The rows of the self-attention projections (`Wqkv`) are reordered in the
+exported model so that q, k and v are contiguous blocks instead of
+LightGlue's interleaved order: TensorRT fuses the projection with its split
+into q, k and v assuming contiguous blocks, and silently computed wrong
+matches with the interleaved order (models exported before this fix match
+correctly on CPU, CUDA and OpenVINO, not with TensorRT: export them again).
+
 ### NetVLAD
 
 [export_netvlad_onnx.py](export_netvlad_onnx.py) exports NetVLAD (VGG16 +
