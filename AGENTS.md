@@ -73,6 +73,13 @@ ctest -L performance                       # benchmarks
   `build/bin/test_corelib --gtest_filter='LinkTest.*'`.
 - A new `corelib/test/test_<class>.cpp` must be added to `corelib_test_sources`
   in `corelib/test/CMakeLists.txt` (one line, with the header it covers as comment).
+- Every bug/regression fix comes with a test that reproduces the original issue.
+  Do a quick A/B check to prove the test actually detects it: the test must
+  fail (or crash) without the fix and pass with it. E.g. stash only the fixed
+  sources, keeping the new test: `git stash push -- <fixed files>`, rebuild,
+  run the test (expect failure), `git stash pop`, rebuild, run it again
+  (expect success). A test that passes in both cases does not
+  cover the bug; rework it. Mention the A/B result in the PR description.
 - Performance benchmarks are separate `perf_*.cpp` executables with the
   `performance` label.
 - Tests that need assets read them from `RTABMAP_TEST_DATA_ROOT` and should
@@ -119,6 +126,40 @@ which generates `Parameters::kGroupName()`, `defaultGroupName()` and
 
 Statistics are declared in `corelib/include/rtabmap/core/Statistics.h` with
 `RTABMAP_STATS(Group, Name, unit)` and are consumed by the GUI and `rtabmap_ros`.
+
+### Adding a dependency or vendored third-party code
+
+Users and packagers must be able to see every dependency and its license. When
+adding a new optional dependency, or vendoring third-party code into the tree,
+register it in all of these places, each time with its corresponding license
+name (BSD, MIT, Apache-2.0, GPLv3, Public Domain, ...) (see #1823 or #1822 for
+examples):
+
+1. **`CMakeLists.txt`**
+   - Optional dependency: add a `WITH_<NAME>` option, and a line in the
+     "Optional dependencies" status summary at the end, with YES/NO and
+     the license, e.g. `With Foo 1.2 = YES (License: BSD)`.
+   - Vendored code (always built): add a line in the "Included dependencies
+     (always built)" summary, with its version and license name. This is only
+     for permissive licenses (BSD, MIT, ...): vendored code under any other
+     license (GPL, LGPL, non-commercial, ...) must get its own `WITH_<NAME>`
+     option so it can be opted out, and be listed with the optional
+     dependencies instead (like `WITH_ORB_OCTREE`, GPLv3).
+2. **`Version.h.in`**: expose it to C++, either as a `@NAME@#define RTABMAP_<NAME>`
+   feature flag (optional dependency) or a `RTABMAP_<NAME>_VERSION` string
+   (vendored code, version parsed from its headers in `CMakeLists.txt`).
+3. **`corelib/src/Parameters.cpp`**: add it to the dependency listing printed by
+   `Parameters::parseArguments()` (`--version` of `rtabmap-console` and the other
+   tools), with its version or true/false and its license name, keeping the
+   existing `"With <Name>:"` alignment.
+4. **`guilib/src/ui/aboutDialog.ui` and `guilib/src/AboutDialog.cpp`**: add
+   title/value/license labels (`label_<name>`, `label_<name>_license`), the
+   license label's text being the license name, and set them in
+   `AboutDialog.cpp` ("Yes"/"No" or the version, license label disabled when
+   not built).
+5. Vendored code keeps its original license file/header next to the sources.
+   Prefer dependencies with a BSD-compatible license; point out explicitly in the
+   PR any non-permissive dependency and its `WITH_<NAME>` opt-out option.
 
 ## Quirks
 

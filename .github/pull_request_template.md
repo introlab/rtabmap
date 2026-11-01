@@ -36,7 +36,7 @@ Notice: Use of AI in Pull Requests
 
 
 ## Results
-<!-- Show some results of the new feature: expected terminal logs, a picture, gif, video... -->
+<!-- Show some results of the new feature or bug fix: expected terminal logs, a picture, gif, video... -->
 
 
 
