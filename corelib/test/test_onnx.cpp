@@ -634,6 +634,105 @@ TEST(OnnxSession, OpenVINOProviderMatchesCpu)
 	EXPECT_GE(identity, (int)matches.size()*9/10);
 }
 
+// ALIKED (dynamic input size, data-dependent number of keypoints, deformable
+// convolutions as grid_sample) and its LightGlue on the GPU providers: CUDA,
+// TensorRT (RTABMAP_TEST_TENSORRT=1) and OpenVINO (see above), each compared
+// to the CPU provider. A provider not available is skipped.
+TEST(OnnxSession, AlikedProvidersMatchCpu)
+{
+	SKIP_WITHOUT(kAlikedModel);
+	SKIP_WITHOUT(kAlikedLightGlue);
+	cv::Mat image = sampleImage();
+	std::unique_ptr<Feature2D> cpu = createDetector(detectorParams(kAlikedModel));
+	std::vector<cv::KeyPoint> kptsCpu;
+	cv::Mat descCpu;
+	detect(*cpu, image, kptsCpu, descCpu);
+	ASSERT_GT(kptsCpu.size(), 100u);
+
+	const char * plugin = std::getenv("RTABMAP_TEST_OPENVINO_PLUGIN");
+	const char * device = std::getenv("RTABMAP_TEST_OPENVINO_DEVICE");
+	std::vector<ParametersMap> providers;
+	ParametersMap params = detectorParams(kAlikedModel);
+	if(OnnxSession::isProviderAvailable(OnnxSession::kProviderCUDA))
+	{
+		params[Parameters::kOnnxProvider()] = "1";
+		providers.push_back(params);
+	}
+	if(std::getenv("RTABMAP_TEST_TENSORRT") && OnnxSession::isProviderAvailable(OnnxSession::kProviderTensorRT))
+	{
+		// show the engine build warnings of OnnxSession
+		ULogger::setType(ULogger::kTypeConsole);
+		ULogger::setLevel(ULogger::kInfo);
+		params[Parameters::kOnnxProvider()] = "2";
+		params[Parameters::kOnnxTensorRTCachePath()] = testFile("trt_cache");
+		UDirectory::makeDir(testFile("trt_cache"));
+		providers.push_back(params);
+	}
+	if(OnnxSession::isProviderAvailable(OnnxSession::kProviderOpenVINO, plugin?plugin:""))
+	{
+		params[Parameters::kOnnxProvider()] = "3";
+		params[Parameters::kOnnxOpenVINODevice()] = device?device:"CPU";
+		params[Parameters::kOnnxOpenVINOPrecision()] = "FP32"; // compared to the CPU provider
+		params[Parameters::kOnnxOpenVINOCachePath()] = testFile("openvino_cache");
+		params[Parameters::kOnnxOpenVINOLibraryPath()] = plugin?plugin:"";
+		UDirectory::makeDir(testFile("openvino_cache"));
+		providers.push_back(params);
+	}
+	int tested = 0;
+	for(size_t p=0; p<providers.size(); ++p)
+	{
+		const int provider = uStr2Int(providers[p].at(Parameters::kOnnxProvider()));
+		SCOPED_TRACE(OnnxSession::providerName((OnnxSession::Provider)provider));
+		std::unique_ptr<Feature2D> gpu = createDetector(providers[p]);
+		OnnxDetector * onnxDetector = static_cast<OnnxDetector*>(gpu.get());
+		ASSERT_TRUE(onnxDetector->isModelLoaded());
+		if(onnxDetector->session()->provider() != provider)
+		{
+			continue; // fell back (libraries or device not found)
+		}
+		++tested;
+
+		std::vector<cv::KeyPoint> kpts;
+		cv::Mat desc;
+		detect(*gpu, image, kpts, desc);
+		EXPECT_NEAR((double)kptsCpu.size(), (double)kpts.size(), kptsCpu.size()*0.1);
+		ASSERT_EQ((int)kpts.size(), desc.rows);
+		ASSERT_EQ(descCpu.cols, desc.cols);
+		// The same keypoints (within float differences), with close descriptors.
+		int same = 0;
+		for(size_t i=0; i<kpts.size(); ++i)
+		{
+			for(size_t j=0; j<kptsCpu.size(); ++j)
+			{
+				if(cv::norm(kpts[i].pt - kptsCpu[j].pt) < 0.1)
+				{
+					++same;
+					EXPECT_GT(desc.row((int)i).dot(descCpu.row((int)j)), 0.99);
+					break;
+				}
+			}
+		}
+		EXPECT_GE(same, (int)kpts.size()*9/10);
+
+		OnnxMatcher matcher(testFile(kAlikedLightGlue), 0.1f, onnxDetector->options());
+		ASSERT_TRUE(matcher.isModelLoaded());
+		EXPECT_EQ(provider, matcher.session()->provider());
+		std::vector<cv::DMatch> matches = matcher.match(descCpu, descCpu, kptsCpu, kptsCpu, image.size());
+		EXPECT_GE(matches.size(), kptsCpu.size()*8/10);
+		int identity = 0;
+		for(size_t i=0; i<matches.size(); ++i)
+		{
+			if(matches[i].queryIdx == matches[i].trainIdx) ++identity;
+		}
+		EXPECT_GE(identity, (int)matches.size()*9/10);
+	}
+	ULogger::setType(ULogger::kTypeNoLog);
+	if(tested == 0)
+	{
+		GTEST_SKIP() << "no GPU provider available (CUDA, TensorRT with RTABMAP_TEST_TENSORRT=1, OpenVINO)";
+	}
+}
+
 //////////////////////////
 // OnnxDetector
 //////////////////////////
