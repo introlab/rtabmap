@@ -357,10 +357,10 @@ combination:
   descriptors it was trained with, it doesn't care which detector
   implementation produced them.
 
-A detector not covered here (e.g. ALIKED, see #1796 for an exporter) needs its own script
-on the same pattern: load the network, write a `forward(image)` returning
-`keypoints [1,N,2]`, `scores [1,N]`, `descriptors [1,N,D]`, export with the
-same `input_names`/`output_names`/`dynamic_axes`. A model exported with
+A detector not covered here needs its own script on the same pattern: load
+the network, write a `forward(image)` returning `keypoints [1,N,2]`,
+`scores [1,N]`, `descriptors [1,N,D]`, export with the same
+`input_names`/`output_names`/`dynamic_axes`. A model exported with
 another interface can also be used by subclassing `OnnxDetector` (see
 [Specializing](#specializing)) instead of changing the export.
 
@@ -474,6 +474,37 @@ XFeat's 4096 sorts all the candidates in the model, a TopK that TensorRT
 refuses above 3840 candidates, so the inference fails with TensorRT on
 textured images), `--interpolation bicubic|bilinear` (descriptor sampling;
 bicubic is XFeat's, bilinear is faster on GPU providers), `--height`/`--width`.
+
+### ALIKED
+
+[export_aliked_onnx.py](export_aliked_onnx.py) (from
+[#1796](https://github.com/introlab/rtabmap/pull/1796)) exports
+[ALIKED](https://github.com/Shiaoming/ALIKED) (BSD-3-Clause, 128-d descriptors,
+64-d for `aliked-t16`) from the implementation of the `lightglue` package
+(installed, or a clone given with `--lightglue-dir`; it downloads the
+weights), so the result pairs with `aliked_lightglue.onnx`
+(`export_lightglue_onnx.py --features aliked`). The padding to a multiple of
+32, the NMS, the threshold and the optional top-k are inside the model, with
+the same results as `lightglue.ALIKED`: the operations that don't export
+(torchvision's deformable convolution, the Python loops of the keypoint
+detection and of the descriptor head) are rewritten with standard ONNX
+operators, and the verification compares the exported model with the
+original code.
+
+```bash
+pip install lightglue onnx onnxruntime
+python3 export_aliked_onnx.py --output aliked.onnx
+python3 export_lightglue_onnx.py --features aliked --output aliked_lightglue.onnx
+rtabmap --Kp/DetectorStrategy 17 --Vis/FeatureType 17 --OnnxDetector/ModelPath aliked.onnx \
+        --Vis/CorNNType 10 --OnnxMatcher/ModelPath aliked_lightglue.onnx --Kp/NNStrategy 3
+```
+
+Options: `--model aliked-n16|aliked-n16rot|aliked-n32|aliked-t16`,
+`--threshold 0.2` (ALIKED's, few keypoints on low-texture images, lower it
+for more), `--max-keypoints 0`, `--height`/`--width`. `--threshold 0` with
+`--max-keypoints K` keeps the K strongest local maxima instead (ALIKED's
+top-k mode): with `--height`/`--width` too, every shape of the model is
+static, the number of keypoints included.
 
 ### LightGlue
 

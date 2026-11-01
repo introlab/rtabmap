@@ -32,8 +32,9 @@ demo_superpoint.py	https://raw.githubusercontent.com/magicleap/SuperPointPretrai
 superpoint_pytorch.py	https://raw.githubusercontent.com/rpautrat/SuperPoint/master/superpoint_pytorch.py	c06e3b0aad7548316ca59db3be9f56c7fcd126a1cf7a73359445fb778598f365
 # ONNX models for test_onnx (OnnxDetector / OnnxMatcher), permissive licenses:
 # DISK and its LightGlue (Apache-2.0) exported by LightGlue-ONNX; the sources
-# of XFeat (Apache-2.0) and of LightGlue, pinned to a commit, from which the
-# fetch script exports xfeat.onnx and sift_lightglue.onnx with the scripts of
+# of XFeat (Apache-2.0) and of LightGlue (with its ALIKED, BSD-3-Clause),
+# pinned to a commit, from which the fetch script exports xfeat.onnx,
+# sift_lightglue.onnx, aliked.onnx and aliked_lightglue.onnx with the scripts of
 # corelib/src/onnx when torch is available (like superpoint_rpautrat.onnx from
 # the rpautrat files above).
 # The magicleap SuperPoint (non-commercial license, tests only) and its
@@ -45,6 +46,8 @@ disk_lightglue.onnx	https://github.com/fabio-sim/LightGlue-ONNX/releases/downloa
 modules/model.py	https://raw.githubusercontent.com/verlab/accelerated_features/e92685f57f8318b18725c5c8c0bd28c7fe188d9a/modules/model.py	d9a665f18fcea5eaf3e278925e1a92103afcba9051e05b2334f3daa29f411964
 xfeat.pt	https://github.com/verlab/accelerated_features/raw/e92685f57f8318b18725c5c8c0bd28c7fe188d9a/weights/xfeat.pt	0f5187fd7bedd26c7fe6acc9685444493a165a35ecc087b33c2db3627f3ea10b
 lightglue/lightglue.py	https://raw.githubusercontent.com/cvg/LightGlue/eb42fee2d71449efb0aa5c10549752b5d75384d8/lightglue/lightglue.py	dcb75b9cad1985c5e7a537c512d4318d47fbcc99df75b39a513de60e027c039f
+lightglue/aliked.py	https://raw.githubusercontent.com/cvg/LightGlue/eb42fee2d71449efb0aa5c10549752b5d75384d8/lightglue/aliked.py	60b24397c52e8a08d838828967cd03f5d6066c1f7c3c433805bf11dcb0d5228e
+lightglue/utils.py	https://raw.githubusercontent.com/cvg/LightGlue/eb42fee2d71449efb0aa5c10549752b5d75384d8/lightglue/utils.py	c6d9260656a24d826128b68c95d0b7798106d04f4244a77f3b1856573f58e690
 # SuperGlue (non-commercial license, tests only): sources and indoor weights
 # pinned to a commit, for PyMatcher (rtabmap_superglue.py, copied by the fetch
 # script) and for the superglue_indoor.onnx the fetch script exports.

@@ -13,7 +13,9 @@
 //    exported from the original implementations by the scripts of
 //    corelib/src/onnx when torch is available;
 //  - sift_lightglue.onnx: LightGlue for (Root)SIFT, exported the same way,
-//    matched with rtabmap's own SIFT (keypoint scale and orientation inputs).
+//    matched with rtabmap's own SIFT (keypoint scale and orientation inputs);
+//  - aliked.onnx (BSD-3-Clause) + aliked_lightglue.onnx: exported the same
+//    way.
 //
 // corelib/test/CMakeLists.txt only registers this test when ONNXRuntime_FOUND,
 // and a defensive #ifdef matches that.
@@ -64,6 +66,8 @@ const std::string kMagicleapLightGlue = "superpoint_magicleap_lightglue.onnx";
 const std::string kSuperPointModel = "superpoint_rpautrat.onnx";
 const std::string kXFeatModel = "xfeat.onnx";
 const std::string kSiftLightGlue = "sift_lightglue.onnx";
+const std::string kAlikedModel = "aliked.onnx";     // export_aliked_onnx.py
+const std::string kAlikedLightGlue = "aliked_lightglue.onnx";
 const std::string kSuperGlue = "superglue_indoor.onnx";
 const std::string kNetVLAD = "netvlad.onnx";
 
@@ -82,7 +86,7 @@ std::ostream & operator<<(std::ostream & os, const ModelPair & pair) {return os 
 std::vector<ModelPair> availableModelPairs()
 {
 	std::vector<ModelPair> pairs;
-	for(const ModelPair & p : {ModelPair{kDiskModel, kDiskLightGlue}, ModelPair{kDiskExportModel, kDiskLightGlue}, ModelPair{kMagicleapModel, kMagicleapLightGlue}})
+	for(const ModelPair & p : {ModelPair{kDiskModel, kDiskLightGlue}, ModelPair{kDiskExportModel, kDiskLightGlue}, ModelPair{kMagicleapModel, kMagicleapLightGlue}, ModelPair{kAlikedModel, kAlikedLightGlue}})
 	{
 		if(UFile::exists(testFile(p.detector)) && UFile::exists(testFile(p.matcher))) pairs.push_back(p);
 	}
@@ -97,7 +101,7 @@ std::vector<ModelPair> availableModelPairs()
 std::vector<std::string> availableDetectorModels()
 {
 	std::vector<std::string> models;
-	for(const std::string & m : {kDiskModel, kDiskExportModel, kMagicleapModel, kSuperPointModel, kXFeatModel})
+	for(const std::string & m : {kDiskModel, kDiskExportModel, kMagicleapModel, kSuperPointModel, kXFeatModel, kAlikedModel})
 	{
 		if(UFile::exists(testFile(m))) models.push_back(m);
 	}
@@ -875,6 +879,8 @@ TEST_P(OnnxDetectorModel, GridKeepsDescriptorsInSync)
 	// The descriptors of a cell are the ones computed on the full image
 	// cropped to it: close to the ones without a grid for the same keypoints
 	// (not equal: the crop changes the receptive field near the cell borders).
+	// Sub-pixel keypoints (ALIKED) are refined from the scores around them,
+	// which the crop changes a bit too: same keypoint within a tenth of a pixel.
 	std::unique_ptr<Feature2D> detectorNoGrid = createDetector(detectorParams(model(), 0));
 	std::vector<cv::KeyPoint> keypointsNoGrid;
 	cv::Mat descriptorsNoGrid;
@@ -884,7 +890,7 @@ TEST_P(OnnxDetectorModel, GridKeepsDescriptorsInSync)
 	{
 		for(size_t j=0; j<keypointsNoGrid.size(); ++j)
 		{
-			if(keypoints[i].pt == keypointsNoGrid[j].pt)
+			if(cv::norm(keypoints[i].pt - keypointsNoGrid[j].pt) < 0.1)
 			{
 				EXPECT_LT(cv::norm(descriptors.row((int)i), descriptorsNoGrid.row((int)j)), 1.0);
 				++found;

@@ -276,6 +276,21 @@ if python3 -c "import kornia" >/dev/null 2>&1; then
 else
 	echo "  disk_rtabmap.onnx: python3 doesn't have kornia (pip install kornia) — skipping export"
 fi
+# ALIKED from LightGlue's implementation (which downloads the weights), and
+# the LightGlue trained on its descriptors. A lower threshold than ALIKED's
+# 0.2, which keeps only about a hundred keypoints on the test image.
+if [[ -f "$DEST_DIR/lightglue/aliked.py" && -f "$DEST_DIR/lightglue/utils.py" ]]; then
+	if python3 -c "import torchvision, kornia, cv2" >/dev/null 2>&1; then
+		export_onnx "aliked.onnx" "$DEST_DIR/aliked.onnx" \
+			"$ONNX_SCRIPTS/export_aliked_onnx.py" --lightglue-dir "$DEST_DIR" --threshold 0.01
+	else
+		echo "  aliked.onnx: python3 doesn't have torchvision, kornia and opencv (pip install torchvision kornia opencv-python) — skipping export"
+	fi
+fi
+if [[ -f "$DEST_DIR/lightglue/lightglue.py" ]]; then
+	export_onnx "aliked_lightglue.onnx" "$DEST_DIR/aliked_lightglue.onnx" \
+		"$ONNX_SCRIPTS/export_lightglue_onnx.py" --features aliked --lightglue-dir "$DEST_DIR"
+fi
 
 # --- PyDetector variant of test_superpoint_perf ---
 # The python wrapper of rpautrat's SuperPoint imports superpoint_pytorch.py from
