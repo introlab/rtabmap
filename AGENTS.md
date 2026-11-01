@@ -94,8 +94,11 @@ ctest -L performance                       # benchmarks
 ## Code conventions
 
 - Match the surrounding code: tabs for indentation, braces on their own line,
-  `camelCase` methods, members with a leading underscore (`_memory`), class
-  names in `PascalCase`. Includes use `<rtabmap/...>` / `"rtabmap/..."` paths.
+  `camelCase` methods, class names in `PascalCase`. Includes use
+  `<rtabmap/...>` / `"rtabmap/..."` paths.
+- Member variables: new classes use a trailing underscore (`memory_`); older
+  classes use a leading one (`_memory`). In an existing class, follow the style
+  it already uses, so each class stays consistent; don't rename existing members.
 - New source files start with the BSD license header used in existing files.
 - Everything lives in `namespace rtabmap` (utilite classes are unprefixed `U*`).
 - Logging and checks come from `rtabmap/utilite/ULogger.h`: `UDEBUG`, `UINFO`,
@@ -112,7 +115,7 @@ All tunable parameters are declared in
 `corelib/include/rtabmap/core/Parameters.h` with
 `RTABMAP_PARAM(Group, Name, type, default, "description")` (also `_STR`, `_COND`),
 which generates `Parameters::kGroupName()`, `defaultGroupName()` and
-`typeGroupName()`. Read them with `Parameters::parse(parameters, Parameters::kGroupName(), _member)`.
+`typeGroupName()`. Read them with `Parameters::parse(parameters, Parameters::kGroupName(), member_)`.
 
 - Descriptions must be under 1024 characters (`test_parameters.cpp`).
 - When renaming or removing a parameter, add the old name to
