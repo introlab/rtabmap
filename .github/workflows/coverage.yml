@@ -27,6 +27,8 @@ permissions:
 
 env:
   BUILD_TYPE: Debug
+  # Keep in sync with the onnxruntime version of cmake-linux.yml.
+  ONNXRUNTIME_VERSION: "1.23.2"
 
 jobs:
   coverage:
@@ -84,6 +86,48 @@ jobs:
             ros-jazzy-gtsam \
             ros-jazzy-libpointmatcher
 
+      # Same ONNX Runtime and test models as the ubuntu-24.04 job of
+      # cmake-linux.yml, so that corelib/src/onnx is measured too.
+      # FindONNXRuntime.cmake reads ONNXRUNTIME_ROOT from the environment.
+      - name: Install ONNX Runtime
+        run: |
+          curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v${{ env.ONNXRUNTIME_VERSION }}/onnxruntime-linux-x64-${{ env.ONNXRUNTIME_VERSION }}.tgz | tar -xz -C ${{ runner.temp }}
+          echo "ONNXRUNTIME_ROOT=${{ runner.temp }}/onnxruntime-linux-x64-${{ env.ONNXRUNTIME_VERSION }}" >> "$GITHUB_ENV"
+
+      # Only for the model exports of scripts/fetch_test_data.sh and the
+      # OpenVINO plugin: the build itself stays WITH_PYTHON=OFF.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          # Not '3.x': onnxruntime has no wheels of the latest Python (3.15) yet
+          python-version: '3.14'
+
+      - name: Install ONNX Export Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install onnx onnxruntime opencv-python-headless kornia scipy onnxruntime-ep-openvino
+          echo "RTABMAP_TEST_OPENVINO_PLUGIN=$(python3 -c 'import onnxruntime_ep_openvino as m; print(m.get_library_path())')" >> "$GITHUB_ENV"
+
+      # Same key as the ubuntu-24.04 job of cmake-linux.yml, so both share one
+      # entry and the exports run only once.
+      - name: Restore ONNX test models
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/tests
+            !data/tests/*.db
+          key: onnx-testdata-ubuntu-24.04-${{ hashFiles('data/tests/manifest.txt', 'scripts/fetch_test_data.sh', 'corelib/src/onnx/*.py') }}
+
+      # Files already there (cache) are checked and skipped. NetVLAD (555 MB of
+      # weights) is left out, as in cmake-linux.yml.
+      - name: Fetch ONNX test models
+        shell: bash
+        env:
+          RTABMAP_FETCH_NETVLAD: 0
+        run: bash scripts/fetch_test_data.sh
+
       - name: Configure CMake
         run: |
           cmake -B ${{ github.workspace }}/build \
@@ -110,7 +154,8 @@ jobs:
             -DWITH_FLYCAPTURE2=OFF \
             -DWITH_ZED=OFF \
             -DWITH_ZEDOC=OFF \
-            -DWITH_REALSENSE=OFF
+            -DWITH_REALSENSE=OFF \
+            -DWITH_ONNXRUNTIME=ON
 
       - name: Build
         run: cmake --build ${{ github.workspace }}/build -j$(nproc)
