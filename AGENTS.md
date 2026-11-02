@@ -237,3 +237,7 @@ writes get committed as-is.
 
 - `./docs-report.sh` builds the Doxygen API docs locally (`--site` for the full site).
 - `./coverage-report.sh` builds with coverage and writes `coverage-html/index.html`.
+- In Markdown files (`*.md`), don't hard-wrap text: write each paragraph, list
+  item or table row on a single line, however long, and let the viewer wrap
+  it. Line breaks inside a paragraph make diffs noisy when a sentence changes.
+  Code blocks keep their own line breaks.
