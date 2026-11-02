@@ -34,7 +34,7 @@ Both `run()` calls go through an `OnnxSession` that holds the `Ort::Session` of 
 
 * **OnnxSession** ([OnnxSession.h](OnnxSession.h)) wraps ONNX Runtime: the one `Ort::Env` of the process (its logging level follows ULogger's), an `Ort::Session` per model with the requested execution provider (CUDA, TensorRT or OpenVINO, appended when the library has them, CPU is the fallback), the description of the model's inputs/outputs (names, element types, shapes with -1 for dynamic dimensions) and `run()`. Sessions are cached by model path and options and shared through `std::shared_ptr`: RTAB-Map creates a `Feature2D` per `RegistrationVis`, `Memory`, odometry... each of them would otherwise load its own copy of the model (and build its own TensorRT engine). Tensors are exchanged as `OnnxTensor` (name, shape, type and a plain data vector), so nothing outside `OnnxSession.cpp` includes the ONNX Runtime headers.
 * **OnnxDetector** ([OnnxDetector.h](OnnxDetector.h)) is a `Feature2D`: `generateKeypointsImpl()` converts the (ROI of the) grayscale image to the model's input tensor (`prepareInputs()`), runs the session, reads the keypoints/scores/descriptors (`parseOutputs()`), then applies the threshold, the mask, `Kp/MaxFeatures` (per grid cell, by response or SSC) and keeps the descriptors for `generateDescriptorsImpl()`, which returns them when called with the same keypoints (there is no separate "compute" pass in these networks: keypoints and descriptors come from the same inference, like `PyDetector`). `Features2d.cpp` creates it for type 17 and skips its own keypoint limiting for it, as for `PyDetector`.
-* **OnnxMatcher** ([OnnxMatcher.h](OnnxMatcher.h)) is used by `RegistrationVis` when `Vis/CorNNType=10`, in the same branch as `PyMatcher` (6) and GMS (7): the descriptors must be float and the image size known, otherwise brute force matching is used. `match()` normalizes the keypoints with the image size, copies the descriptors, runs the session and turns `matches0`/`mscores0` into `cv::DMatch` (query = the "to" signature, train = the "from" one, as for the other matchers). Multi-camera signatures are supported (as with `PyMatcher`): their keypoints are in the side-by-side image, which is what the matcher gets as image size, so all the cameras are matched in one inference; keep in mind that LightGlue was trained on single images.
+* **OnnxMatcher** ([OnnxMatcher.h](OnnxMatcher.h)) is used by `RegistrationVis` when `Vis/CorNNType=10`, in the same branch as `PyMatcher` (6) and GMS (7): the descriptors must be float and the image size known, otherwise brute force matching is used. With a motion guess, `RegistrationVis` matches by projection in a window around the predicted positions instead (`Vis/CorGuessWinSize`, 40 by default): set it to 0 to use the matcher. In odometry, only Frame-to-Frame (`Odom/Strategy=1`) uses it, Frame-to-Map matches against its local map. `match()` normalizes the keypoints with the image size, copies the descriptors, runs the session and turns `matches0`/`mscores0` into `cv::DMatch` (query = the "to" signature, train = the "from" one, as for the other matchers). Multi-camera signatures are supported (as with `PyMatcher`): their keypoints are in the side-by-side image, which is what the matcher gets as image size, so all the cameras are matched in one inference; keep in mind that LightGlue was trained on single images.
 * The model interfaces below are the only coupling between RTAB-Map and a network: a new or re-trained detector/matcher exported with them only needs its path in `OnnxDetector/ModelPath` or `OnnxMatcher/ModelPath`.
 
 ## ONNX, ONNX Runtime and other runtimes
@@ -106,7 +106,7 @@ rtabmap-matcher --Vis/FeatureType 17 --OnnxDetector/ModelPath superpoint.onnx \
                 --Vis/CorNNType 10 --OnnxMatcher/ModelPath superpoint_lightglue.onnx from.png to.png
 
 rtabmap --Kp/DetectorStrategy 17 --Vis/FeatureType 17 --OnnxDetector/ModelPath superpoint.onnx \
-        --Vis/CorNNType 10 --OnnxMatcher/ModelPath superpoint_lightglue.onnx --Kp/NNStrategy 3
+        --Vis/CorNNType 10 --OnnxMatcher/ModelPath superpoint_lightglue.onnx --Vis/CorGuessWinSize 0 --Odom/Strategy 1
 ```
 
 The SuperPoint-LightGlue end-to-end "pipeline" models of LightGlue-ONNX (two images in, matches out) cannot be used: RTAB-Map extracts the features of each image once and matches them later against many images.
@@ -160,7 +160,7 @@ Pre-exported models following these interfaces (SuperPoint, DISK, ALIKED and Lig
 
 ### Export scripts
 
-The scripts here are RTAB-Map's own (not copies of the LightGlue-ONNX ones, which export fused image-pair pipelines and keep their own copies of the networks). Each one loads the original PyTorch implementation of a network family and wraps it in a small `nn.Module` whose `forward()` has the interface above, then calls `torch.onnx.export()` with dynamic axes for the number of keypoints (and the image size), checks the model with `onnx` and, when `onnxruntime` is installed, runs it to compare its outputs with the PyTorch ones. There is one script per network, not per detector/matcher combination:
+The scripts here are RTAB-Map's own (not copies of the LightGlue-ONNX ones, which export fused image-pair pipelines and keep their own copies of the networks). Each one loads the original PyTorch implementation of a network family and wraps it in a small `nn.Module` whose `forward()` has the interface above, then calls `torch.onnx.export()` with the image size (or the number of keypoints of a matcher) declared dynamic, the number of keypoints of a detector being inferred, checks the model with `onnx` and, when `onnxruntime` is installed, runs it to compare its outputs with the PyTorch ones. There is one script per network, not per detector/matcher combination:
 
 * the detector script wraps the network's dense outputs (score map, descriptor map) with an export-friendly post-processing (softmax, depth-to-space, NMS by max-pooling, border mask, threshold with `torch.nonzero`, optional top-k, bilinear descriptor sampling) since the original post-processing uses Python loops and in-place slices that don't export;
 * the matcher script takes the feature type as argument: LightGlue is one architecture with a checkpoint per descriptor type (`superpoint_lightglue`, `disk_lightglue`, `aliked_lightglue`, ...), so `aliked_lightglue.onnx` is the same script with `--features aliked`. The matcher only has to match the descriptors it was trained with, it doesn't care which detector implementation produced them.
@@ -225,7 +225,7 @@ pip install lightglue onnx onnxscript onnxruntime
 python3 export_aliked_onnx.py --output aliked.onnx
 python3 export_lightglue_onnx.py --features aliked --output aliked_lightglue.onnx
 rtabmap --Kp/DetectorStrategy 17 --Vis/FeatureType 17 --OnnxDetector/ModelPath aliked.onnx \
-        --Vis/CorNNType 10 --OnnxMatcher/ModelPath aliked_lightglue.onnx --Kp/NNStrategy 3
+        --Vis/CorNNType 10 --OnnxMatcher/ModelPath aliked_lightglue.onnx --Vis/CorGuessWinSize 0 --Odom/Strategy 1
 ```
 
 Options: `--model aliked-n16|aliked-n16rot|aliked-n32|aliked-t16`, `--threshold 0.2` (ALIKED's, few keypoints on low-texture images, lower it for more), `--max-keypoints 0`, `--height`/`--width`. `--threshold 0` with `--max-keypoints K` keeps the K strongest local maxima instead (ALIKED's top-k mode): with `--height`/`--width` too, every shape of the model is static, the number of keypoints included.
@@ -269,56 +269,12 @@ Options: `--weights indoor|outdoor`, `--iterations 20` (Sinkhorn iterations; `Py
 
 ## Benchmarking the implementations
 
-Two performance tests (built with `BUILD_PERF_TESTS=ON`, run with `ctest -L performance` or directly from `bin/`) compare the implementations and the execution providers on the images of `data/samples`. The variants the build or the machine can't run are skipped; the assets come from `scripts/fetch_test_data.sh` (torch needed to export some models and to run the python scripts). The numbers below are from a GeForce RTX 3080 with 512x384 images, up to 1000 keypoints, torch 2.11, ONNX Runtime 1.23.2 and TensorRT 10.9, the TensorRT engines already cached (their first build takes seconds to minutes, see "first ms" otherwise).
+Two performance tests (built with `BUILD_PERF_TESTS=ON`, run with `ctest -L performance` or directly from `bin/`) compare the implementations and the execution providers on the images of `data/samples`. The variants the build or the machine can't run are skipped; the assets come from `scripts/fetch_test_data.sh` (torch needed to export some models and to run the python scripts). Example timings are on the wiki page [Learned features with ONNX](https://github.com/introlab/rtabmap/wiki/Learned-Features-with-ONNX#choosing-the-execution-provider).
 
-### Matchers
+* `test_matcher_perf` compares, on consecutive frames with SuperPoint (magicleap) features: FLANN kd-tree with the distance ratio test (rtabmap's default, `Vis/CorNNType=1`, with `Vis/CorNNDR` 0.8 and 0.6), brute force matching with cross check, LightGlue and SuperGlue exported to ONNX (`OnnxMatcher`, on each provider) and SuperGlue run by `PyMatcher` (python, CPU/CUDA), with the time per pair, the matches and the inliers of a RANSAC fundamental matrix.
+* `test_superpoint_perf` times the implementations of SuperPoint: the python scripts (`PyDetector`), libtorch (`SuperPointRpautrat` for the rpautrat weights, `SuperPointTorch` for the magicleap ones) and ONNX Runtime (`OnnxDetector`, on each provider), with the model load and first frame times, the time per frame, and whether they find the same keypoints and descriptors (cosine similarity). The magicleap python script needs a `cv2` importable by the embedded interpreter (`pip install opencv-python-headless` in the environment the build uses).
 
-`test_matcher_perf` compares, on consecutive frames with SuperPoint (magicleap) features: FLANN kd-tree with the distance ratio test (rtabmap's default, `Vis/CorNNType=1`, with `Vis/CorNNDR` 0.8 and 0.6), brute force matching with cross check, LightGlue (`OnnxMatcher`, CPU/CUDA/TensorRT/TensorRT FP16), SuperGlue exported to ONNX (`OnnxMatcher`) and SuperGlue run by `PyMatcher` (python, CPU/CUDA), with the time per pair, the matches and the inliers of a RANSAC fundamental matrix (19 pairs, LightGlue threshold 0.1, SuperGlue threshold 0.2 and 20 Sinkhorn iterations):
-
-```
-matcher                      device          first ms   mean ms   matches   inliers   inlier %
-FLANN kd-tree, NNDR 0.8      cpu                 17.0     16.34        76        43      56.9%
-FLANN kd-tree, NNDR 0.6      cpu                 15.9     15.65        16        13      80.4%
-brute force cross check      cpu                  9.0      6.46       273        64      23.6%
-LightGlue (OnnxMatcher)      cpu                569.5    548.19       139        91      65.7%
-LightGlue (OnnxMatcher)      cuda               101.5     18.23       139        91      65.9%
-LightGlue (OnnxMatcher)      tensorrt            96.4     10.09       139        91      65.7%
-LightGlue (OnnxMatcher)      tensorrt-fp16       98.4      5.18       139        92      66.3%
-SuperGlue (OnnxMatcher)      cpu                349.0    340.97       238       122      51.4%
-SuperGlue (OnnxMatcher)      cuda               345.1     20.80       237       122      51.4%
-SuperGlue (OnnxMatcher)      tensorrt           126.3     10.09       237       124      52.1%
-SuperGlue (OnnxMatcher)      tensorrt-fp16       75.3      5.21        26        11      41.8%
-SuperGlue (PyMatcher)        cpu                691.0    522.38       238       122      51.4%
-SuperGlue (PyMatcher)        cuda               276.5     24.79       238       121      50.9%
-```
-
-SuperGlue exported to ONNX gives the same matches as the python implementation, twice as fast on CPU and the same on CUDA. The learned matchers find about twice the inliers of the ratio test at a similar inlier ratio, for a cost that is only acceptable on GPU; on CPU, the kd-tree with the ratio test remains the sensible choice. A stricter ratio (0.6) raises the inlier ratio of the kd-tree but keeps too few matches (16 per pair here) for a registration. TensorRT halves the CUDA time, and FP16 (`Onnx/TensorRTFp16`) halves it again for LightGlue with the same matches. SuperGlue breaks in FP16 (26 matches instead of 237): its Sinkhorn iterations overflow in half precision, as TensorRT warns at build time about the layer normalizations after the self-attention. This is why FP16 has to be validated per model.
-
-### Detectors
-
-`test_superpoint_perf` times the implementations of SuperPoint: the python scripts (`PyDetector`), libtorch (`SuperPointRpautrat` for the rpautrat weights, `SuperPointTorch` for the magicleap ones) and ONNX Runtime (`OnnxDetector`) on CPU, CUDA, TensorRT and TensorRT FP16, with the model load and first frame times, the time per frame, and whether they find the same keypoints and descriptors:
-
-```
-weights    implementation                 device          load ms   first ms   median ms   kpts   same kpts
-rpautrat   OnnxDetector                   cpu                31.8      111.6      108.86    235      100.0%
-rpautrat   OnnxDetector                   cuda              267.8      193.7        4.93    235       99.8%
-rpautrat   OnnxDetector                   tensorrt         2129.3       34.1        2.99    235      100.0%
-rpautrat   OnnxDetector                   tensorrt-fp16    1459.6       16.9        1.70    236       98.4%
-rpautrat   SuperPointRpautrat (libtorch)  cpu                 0.2     2081.9      200.72    235      100.0%
-rpautrat   SuperPointRpautrat (libtorch)  cuda                0.7      348.8        5.26    235       99.8%
-rpautrat   PyDetector (python script)     cpu                 1.6      215.2      197.70    235      100.0%
-rpautrat   PyDetector (python script)     cuda                0.2       28.9        4.73    235       99.8%
-magicleap  OnnxDetector                   cpu                30.6       47.2       46.30    366      100.0%
-magicleap  OnnxDetector                   cuda               34.9       18.1        4.79    365       99.9%
-magicleap  OnnxDetector                   tensorrt         1592.4       21.2        2.96    366      100.0%
-magicleap  OnnxDetector                   tensorrt-fp16    1530.7       18.9        2.01    362       98.3%
-magicleap  SuperPointTorch (libtorch)     cpu                12.5      195.7      188.31    362      100.0%
-magicleap  SuperPointTorch (libtorch)     cuda               11.7        7.4        6.16    361       99.9%
-magicleap  PyDetector (python script)     cpu                28.0      100.2      104.39    366      100.0%
-magicleap  PyDetector (python script)     cuda                0.2       24.3        8.28    365       99.9%
-```
-
-Within each set of weights, the implementations find the same keypoints ("same kpts" compares each row with the first row of its weights; the test also reports the cosine similarity of the descriptors, 1.000 everywhere but for the magicleap python script, 0.978, see below); ONNX Runtime is the fastest on CPU and TensorRT on GPU. FP16 is 1.5x faster again and changes about 2% of the keypoints (the ones near the detection threshold), with the same descriptors (cosine similarity 0.999). The two sets of weights are different trainings, see [SuperPoint](#superpoint) above. The magicleap python script needs a `cv2` importable by the embedded interpreter (`pip install opencv-python-headless` in the environment the build uses).
+FP16 (`Onnx/TensorRTFp16`) has to be validated per model with these tests: it changes a few keypoints near the detection threshold of SuperPoint and keeps LightGlue's matches, but SuperGlue breaks (about 10% of its FP32 matches): its Sinkhorn iterations overflow in half precision, as TensorRT warns at build time about the layer normalizations after the self-attention.
 
 **Don't mix the magicleap python script with the other magicleap implementations in a map.** The network and the keypoints are the same, but magicleap's `demo_superpoint.py` (used by `rtabmap_superpoint.py`) reads the descriptors from the network's 1/8 descriptor map with its own convention, while LightGlue's SuperPoint, which `superpoint.onnx` (`OnnxDetector`) and `SuperPointTorch` follow, reads them at the centers of the 8x8 cells: the descriptors of a same keypoint differ (cosine 0.975). On the 83 consecutive frame pairs of `data/samples` (brute force matching, ratio test, RANSAC), a map made with the python script and localized with `OnnxDetector` gets 35% fewer inliers than `OnnxDetector` on both sides, enough to drop loop closures near `Vis/MinInliers`. The python script on both sides gets 12% fewer, its sampling being a bit blurrier. The rpautrat implementations all give the same descriptors.
 
