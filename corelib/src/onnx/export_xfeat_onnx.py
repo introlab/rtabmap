@@ -24,7 +24,6 @@
 import argparse
 import os
 import sys
-import types
 
 import numpy as np
 import torch
@@ -32,23 +31,12 @@ import torch.nn.functional as F
 from torch import nn
 
 
-def unfold2d_export(self, x, ws=2):
-    """Replaces XFeatModel._unfold2d (space to depth): the original uses
-    Tensor.unfold(), which the ONNX exporter only supports for static sizes.
-    Same output: channel = c * ws^2 + i * ws + j for the pixel (i, j) of each
-    ws x ws block."""
-    b, c, h, w = x.shape
-    x = x.reshape(b, c, h // ws, ws, w // ws, ws)
-    x = x.permute(0, 1, 3, 5, 2, 4)
-    return x.reshape(b, c * ws * ws, h // ws, w // ws)
-
-
 def interpolate_sparse(x, pos, h, w, mode):
     """XFeat's InterpolateSparse2d: samples x [1,C,h',w'] at the pixel positions
     pos [1,N,2] (x,y) of an h x w image (normalized with W-1, H-1 and
     align_corners=False, as in the original), returns [1,N,C]."""
-    # The size as a tensor built from the traced shape, so that the export
-    # stays dynamic (new_tensor([w - 1, h - 1]) would bake the export size in).
+    # The size as a tensor built from the input shape with tensor operations,
+    # so that the export stays dynamic.
     one = pos.new_tensor(1.0)
     grid = 2.0 * (pos / torch.stack([one * (w - 1), one * (h - 1)])) - 1.0
     sampled = F.grid_sample(x, grid.unsqueeze(-2), mode=mode, align_corners=False)
@@ -120,7 +108,7 @@ def main():
     parser.add_argument("--interpolation", default="bicubic", choices=["bicubic", "bilinear"], help="Descriptor sampling (default bicubic, XFeat's; bilinear is faster on GPU providers)")
     parser.add_argument("--height", type=int, default=0, help="Fixed input height (default 0: dynamic)")
     parser.add_argument("--width", type=int, default=0, help="Fixed input width (default 0: dynamic)")
-    parser.add_argument("--opset", type=int, default=17, help="ONNX opset version (default 17)")
+    parser.add_argument("--opset", type=int, default=18, help="ONNX opset version (default 18)")
     parser.add_argument("--no-check", action="store_true", help="Don't verify the exported model with onnxruntime")
     args = parser.parse_args()
 
@@ -132,7 +120,6 @@ def main():
     net = XFeatModel()
     net.load_state_dict(torch.load(weights, map_location="cpu", weights_only=True))
     net = net.eval()
-    net._unfold2d = types.MethodType(unfold2d_export, net)
     model = XFeatOnnx(net, args.threshold, args.max_keypoints, args.interpolation).eval()
 
     height = args.height if args.height > 0 else 480
@@ -141,13 +128,8 @@ def main():
     torch.manual_seed(0)
     image = torch.rand(1, 1, height, width)
 
-    dynamic_axes = {
-        "keypoints": {1: "num_keypoints"},
-        "scores": {1: "num_keypoints"},
-        "descriptors": {1: "num_keypoints"},
-    }
-    if dynamic:
-        dynamic_axes["image"] = {2: "height", 3: "width"}
+    # torch.export infers the dynamic number of keypoints, only the image size is declared
+    dynamic_shapes = ({2: torch.export.Dim("height"), 3: torch.export.Dim("width")},) if dynamic else None
 
     print("Exporting to %s (input %s)" % (args.output, "[1,1,H,W] dynamic" if dynamic else "[1,1,%d,%d]" % (height, width)))
     with torch.no_grad():
@@ -157,10 +139,10 @@ def main():
             args.output,
             input_names=["image"],
             output_names=["keypoints", "scores", "descriptors"],
-            dynamic_axes=dynamic_axes,
+            dynamic_shapes=dynamic_shapes,
             opset_version=args.opset,
-            do_constant_folding=True,
-            dynamo=False,
+            dynamo=True,
+            external_data=False,
         )
 
     import onnx

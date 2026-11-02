@@ -51,47 +51,28 @@ def import_lightglue_module(lightglue_dir):
 
 
 # ---------------------------------------------------------------------------
-# Export-friendly replacements of the LightGlue code that the TorchScript ONNX
-# exporter does not handle with dynamic keypoint counts: Tensor.unflatten()
-# with a -1 size loses the tensor rank, and the exporter then resolves the
-# negative dimensions, flatten() ranges and slice ends that follow against a
-# wrong rank or shape. They compute the same thing (each was checked to be
-# needed by exporting without it, and the verification below compares the
-# exported model with the original code).
+# Replacements of the LightGlue code for the exported model. They compute the
+# same thing (the verification below compares the exported model with the
+# original code).
 # ---------------------------------------------------------------------------
 
-def unflatten_export(self, dim, sizes):
-    dim = dim % self.dim()
-    sizes = list(sizes)
-    if -1 in sizes:
-        known = 1
-        for s in sizes:
-            if s != -1:
-                known *= s
-        sizes[sizes.index(-1)] = self.shape[dim] // known
-    return self.reshape(tuple(self.shape[:dim]) + tuple(sizes) + tuple(self.shape[dim + 1:]))
-
-
-def merge_heads_export(x):
-    """[b,h,n,d] -> [b,n,h*d] with an explicit reshape."""
+def merge_heads(x):
+    """[b,h,n,d] -> [b,n,h*d]."""
     b, h, n, d = x.shape
     return x.permute(0, 2, 1, 3).reshape(b, n, h * d)
 
 
 def selfblock_forward_export(self, x, encoding, mask=None):
-    """SelfBlock.forward with permutes instead of transposes (permute needs no
-    rank inference from the exporter)."""
+    """SelfBlock.forward with q, k and v taken as contiguous blocks of the
+    Wqkv output (reordered by reorder_qkv_weights())."""
     lg = sys.modules[self.__module__]
     qkv = self.Wqkv(x)
-    # q, k and v as contiguous blocks (Wqkv reordered by reorder_qkv_weights())
     c = qkv.shape[-1] // 3
     q, k, v = (qkv[..., i * c:(i + 1) * c].unflatten(-1, (self.num_heads, -1)).permute(0, 2, 1, 3) for i in range(3))
     q = lg.apply_cached_rotary_emb(encoding, q)
     k = lg.apply_cached_rotary_emb(encoding, k)
     context = self.inner_attn(q, k, v, mask=mask)
-    # reshape rather than flatten(start_dim=2): flatten's end_dim=-1 is
-    # normalized by the exporter with its wrong rank
-    message = self.out_proj(merge_heads_export(context))
+    message = self.out_proj(merge_heads(context))
     return x + self.ffn(torch.cat([x, message], 2))
 
 
@@ -110,7 +91,9 @@ def reorder_qkv_weights(matcher, lg):
 
 
 def crossblock_forward_export(self, x0, x1, mask=None):
-    """CrossBlock.forward with matmuls instead of einsums."""
+    """CrossBlock.forward with matmuls instead of einsums: exported as is, the
+    einsums are ONNX Einsum nodes, about twice slower with ONNX Runtime on CPU
+    and 25% on CUDA."""
     qk0, qk1 = self.map_(self.to_qk, x0, x1)
     v0, v1 = self.map_(self.to_v, x0, x1)
     qk0, qk1, v0, v1 = map(lambda t: t.unflatten(-1, (self.heads, -1)).permute(0, 2, 1, 3), (qk0, qk1, v0, v1))
@@ -124,7 +107,7 @@ def crossblock_forward_export(self, x0, x1, mask=None):
     m1 = torch.matmul(attn10, v0)  # [b,h,j,d]
     if mask is not None:
         m0, m1 = m0.nan_to_num(), m1.nan_to_num()
-    m0, m1 = self.map_(merge_heads_export, m0, m1)
+    m0, m1 = self.map_(merge_heads, m0, m1)
     m0, m1 = self.map_(self.to_out, m0, m1)
     x0 = x0 + self.ffn(torch.cat([x0, m0], 2))
     x1 = x1 + self.ffn(torch.cat([x1, m1], 2))
@@ -133,7 +116,8 @@ def crossblock_forward_export(self, x0, x1, mask=None):
 
 def sigmoid_log_double_softmax_export(sim, z0, z1):
     """sigmoid_log_double_softmax built by concatenation instead of in-place
-    writes into a new tensor (same values)."""
+    writes into a new tensor (same values): exported as is, the writes are
+    ScatterND nodes, about 10% slower with ONNX Runtime on CUDA."""
     certainties = F.logsigmoid(z0) + F.logsigmoid(z1).permute(0, 2, 1)
     scores0 = F.log_softmax(sim, 2)
     scores1 = F.log_softmax(sim.permute(0, 2, 1), 2).permute(0, 2, 1)
@@ -144,88 +128,11 @@ def sigmoid_log_double_softmax_export(sim, z0, z1):
     return torch.cat([torch.cat([inner, col], 2), torch.cat([row, corner], 2)], 1)  # [b,m+1,n+1]
 
 
-def filter_matches_export(scores, th):
-    """filter_matches with the slice ends taken from the traced shape: the
-    exporter resolves the literal -1 ends of the original against the wrong
-    shape it believes."""
-    m = scores.shape[1] - 1
-    n = scores.shape[2] - 1
-    inner = scores[:, :m, :n]
-    max0, max1 = inner.max(2), inner.max(1)
-    m0, m1 = max0.indices, max1.indices
-    indices0 = torch.arange(m0.shape[1], device=m0.device)[None]
-    indices1 = torch.arange(m1.shape[1], device=m1.device)[None]
-    mutual0 = indices0 == m1.gather(1, m0)
-    mutual1 = indices1 == m0.gather(1, m1)
-    max0_exp = max0.values.exp()
-    zero = max0_exp.new_tensor(0)
-    mscores0 = torch.where(mutual0, max0_exp, zero)
-    mscores1 = torch.where(mutual1, mscores0.gather(1, m1), zero)
-    valid0 = mutual0 & (mscores0 > th)
-    valid1 = mutual1 & valid0.gather(1, m1)
-    m0 = torch.where(valid0, m0, -1)
-    m1 = torch.where(valid1, m1, -1)
-    return m0, m1, mscores0, mscores1
-
-
-def register_transpose_diagnostic():
-    """Reports which tensor a failing transpose export comes from (the
-    exporter's own error doesn't say)."""
-    try:
-        from torch.onnx._internal.torchscript_exporter import symbolic_opset9 as opset9
-    except ImportError:
-        from torch.onnx import symbolic_opset9 as opset9
-
-    def transpose_diagnostic(g, self, dim0, dim1):
-        try:
-            return opset9.transpose(g, self, dim0, dim1)
-        except Exception:
-            print("transpose export failed on %s (dims %s, %s) produced by %s in %s" % (
-                self.type(), dim0, dim1, self.node().kind(), self.node().scopeName()))
-            raise
-
-    torch.onnx.register_custom_op_symbolic("aten::transpose", transpose_diagnostic, 9)
-
-
-PATCHES = {
-    "unflatten": lambda lg: setattr(torch.Tensor, "unflatten", unflatten_export),
-    "self_block": lambda lg: setattr(lg.SelfBlock, "forward", selfblock_forward_export),
-    "cross_block": lambda lg: setattr(lg.CrossBlock, "forward", crossblock_forward_export),
-    "double_softmax": lambda lg: setattr(lg, "sigmoid_log_double_softmax", sigmoid_log_double_softmax_export),
-    "filter_matches": lambda lg: setattr(lg, "filter_matches", filter_matches_export),
-}
-
-
-def patch_for_export(lg, matcher, skip=()):
-    for name, apply in PATCHES.items():
-        if name not in skip:
-            apply(lg)
-    if "self_block" not in skip:
-        reorder_qkv_weights(matcher, lg)
-    register_transpose_diagnostic()
-
-
-def dump_intermediate_shapes(path, inputs, scopes, top_level=False):
-    """Debugging aid: runs the model with every intermediate tensor of the
-    given scopes (and of the top-level forward with top_level) as an output
-    and prints their shapes."""
-    import onnx
-    import onnxruntime as ort
-    model = onnx.load(path)
-    model = onnx.shape_inference.infer_shapes(model)
-    known = {vi.name: vi for vi in list(model.graph.value_info)}
-    names = []
-    for node in model.graph.node:
-        for out in node.output:
-            selected = any(s in out for s in scopes) or (top_level and out.startswith("/matcher/") and out.count("/") == 2)
-            if out and selected and out in known:
-                model.graph.output.append(known[out])
-                names.append(out)
-    session = ort.InferenceSession(model.SerializeToString(), providers=["CPUExecutionProvider"])
-    results = session.run(names, {k: v.numpy() for k, v in inputs.items()})
-    print("Intermediate shapes (name: runtime shape):")
-    for name, value in zip(names, results):
-        print("  %s: %s" % (name, list(value.shape)))
+def patch_for_export(lg, matcher):
+    lg.SelfBlock.forward = selfblock_forward_export
+    reorder_qkv_weights(matcher, lg)
+    lg.CrossBlock.forward = crossblock_forward_export
+    lg.sigmoid_log_double_softmax = sigmoid_log_double_softmax_export
 
 
 class LightGlueOnnx(nn.Module):
@@ -257,9 +164,8 @@ def main():
     parser.add_argument("--output", required=True, help="Output ONNX file")
     parser.add_argument("--threshold", type=float, default=0.1, help="Match threshold inside the model (default 0.1)")
     parser.add_argument("--lightglue-dir", default="", help="Clone of https://github.com/cvg/LightGlue, when the package is not installed")
-    parser.add_argument("--opset", type=int, default=17, help="ONNX opset version (default 17)")
+    parser.add_argument("--opset", type=int, default=18, help="ONNX opset version (default 18)")
     parser.add_argument("--no-check", action="store_true", help="Don't verify the exported model with onnxruntime")
-    parser.add_argument("--skip-patches", default="", help="Debugging: comma-separated export substitutions to leave out, among " + ", ".join(PATCHES))
     args = parser.parse_args()
 
     lg = import_lightglue_module(args.lightglue_dir)
@@ -310,27 +216,21 @@ def main():
     with torch.no_grad():
         ref = [t.numpy() for t in model(**check_inputs)]
 
-    patch_for_export(lg, matcher, skip=[s for s in args.skip_patches.split(",") if s])
+    patch_for_export(lg, matcher)
 
     print("Exporting to %s (descriptor dimension %d, keypoints with %d columns)" % (args.output, dim, columns))
     with torch.no_grad():
+        n0, n1 = torch.export.Dim("num_keypoints0"), torch.export.Dim("num_keypoints1")
         torch.onnx.export(
             model,
             (kpts0, kpts1, desc0, desc1),
             args.output,
             input_names=["kpts0", "kpts1", "desc0", "desc1"],
             output_names=["matches0", "mscores0"],
-            dynamic_axes={
-                "kpts0": {1: "num_keypoints0"},
-                "kpts1": {1: "num_keypoints1"},
-                "desc0": {1: "num_keypoints0"},
-                "desc1": {1: "num_keypoints1"},
-                "matches0": {1: "num_keypoints0"},
-                "mscores0": {1: "num_keypoints0"},
-            },
+            dynamic_shapes=({1: n0}, {1: n1}, {1: n0}, {1: n1}),
             opset_version=args.opset,
-            do_constant_folding=True,
-            dynamo=False,
+            dynamo=True,
+            external_data=False,
         )
 
     import onnx
@@ -350,7 +250,6 @@ def main():
     out = session.run(None, {k: v.numpy() for k, v in check_inputs.items()})
     for name, r, o in zip(["matches0", "mscores0"], ref, out):
         if r.shape != o.shape:
-            dump_intermediate_shapes(args.output, check_inputs, ["log_assignment"], top_level=True)
             raise RuntimeError("%s: torch %s vs onnx %s" % (name, r.shape, o.shape))
     # The 300 planted correspondences must be found by both; the other query
     # keypoints have near-tied random candidates whose argmax float noise can

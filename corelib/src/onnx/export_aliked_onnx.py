@@ -4,7 +4,7 @@
 # of the lightglue package) to an ONNX model following RTAB-Map's OnnxDetector
 # interface (see README.md).
 #
-# Requirements: pip install lightglue onnx (onnxruntime to verify the export),
+# Requirements: pip install lightglue onnx onnxscript (onnxruntime to verify the export),
 # or a clone of https://github.com/cvg/LightGlue given with --lightglue-dir (its
 # aliked.py and utils.py need torch, torchvision, kornia and opencv). The
 # weights are downloaded by lightglue.
@@ -44,7 +44,6 @@ import types
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.onnx.operators import shape_as_tensor
 
 
 def import_aliked_module(lightglue_dir):
@@ -61,9 +60,10 @@ def import_aliked_module(lightglue_dir):
 
 
 def _image_size(x):
-    """(h, w) of a [B,C,H,W] tensor as an int64 tensor: python ints from
-    x.shape would be constants in the exported graph."""
-    return shape_as_tensor(x)[2:]
+    """(h, w) of a [B,C,H,W] tensor as an int64 tensor, for the index
+    arithmetic: the ONNX translation of the exporter doesn't take the
+    symbolic sizes of x.shape there."""
+    return torch.tensor(x.shape[2:])
 
 
 def _deform_conv_forward(self, x):
@@ -99,8 +99,7 @@ class AlikedOnnx(torch.nn.Module):
         for module in aliked.modules():
             if isinstance(module, aliked_module.DeformableConv2d):
                 # the kernel as a 1x1 convolution on the sampled positions,
-                # computed here: the TorchScript exporter needs a kernel of
-                # known shape
+                # computed once here
                 weight = module.regular_conv.weight.detach()
                 module.register_buffer("weight_1x1", weight.reshape(weight.shape[0], -1, 1, 1).clone())
                 module.forward = types.MethodType(_deform_conv_forward, module)
@@ -154,11 +153,11 @@ class AlikedOnnx(torch.nn.Module):
             cx = torch.minimum(corner[:, 0].clamp(min=0), hw[1] - 1 - k)
             cy = torch.minimum(corner[:, 1].clamp(min=0), hw[0] - 1 - k)
             r = torch.arange(k)
-            idx = (cy[:, None, None] + r[None, :, None]) * w + (cx[:, None, None] + r[None, None, :])
+            idx = (cy[:, None, None] + r[None, :, None]) * hw[1] + (cx[:, None, None] + r[None, None, :])
             patch = flat[:, idx.reshape(-1)].reshape(c, -1, k, k).permute(1, 0, 2, 3)
         else:
             kl = keypoints.long()
-            patch = flat[:, kl[:, 1] * w + kl[:, 0]].permute(1, 0).reshape(-1, c, 1, 1)
+            patch = flat[:, kl[:, 1] * hw[1] + kl[:, 0]].permute(1, 0).reshape(-1, c, 1, 1)
         offset = sddh.offset_conv(patch).clamp(-max_offset, max_offset)  # [n, 2*p, 1, 1]
         offset = offset[:, :, 0, 0].reshape(-1, 2, p).permute(0, 2, 1)  # [n, p, 2]
         pos = 2.0 * (keypoints[:, None, :] + offset) / wh - 1
@@ -186,13 +185,13 @@ class AlikedOnnx(torch.nn.Module):
                 idx = idx[order][: self.max_keypoints]
         else:
             idx = torch.topk(nms_scores, self.max_keypoints).indices
-        x_i = (idx % w).to(score_map.dtype)
-        y_i = torch.div(idx, w, rounding_mode="trunc").to(score_map.dtype)
+        x_i = (idx % hw[1]).to(score_map.dtype)
+        y_i = torch.div(idx, hw[1], rounding_mode="trunc").to(score_map.dtype)
         # local (2r+1)^2 score patches around each keypoint, zero padded like nn.Unfold
         padded = F.pad(score_map, (r, r, r, r)).reshape(-1)
-        wp = w + 2 * r
+        wp = hw[1] + 2 * r
         dxy = self.hw_grid.to(torch.int64)  # (x, y) offsets in [-r, r]
-        patch_idx = (idx[:, None] // w + r + dxy[None, :, 1]) * wp + (idx[:, None] % w + r + dxy[None, :, 0])
+        patch_idx = (idx[:, None] // hw[1] + r + dxy[None, :, 1]) * wp + (idx[:, None] % hw[1] + r + dxy[None, :, 0])
         patch_scores = padded[patch_idx.reshape(-1)].reshape(-1, dxy.shape[0])
         max_v = patch_scores.max(dim=1).values[:, None]
         x_exp = ((patch_scores - max_v) / self.temperature).exp()
@@ -217,7 +216,7 @@ def main():
     parser.add_argument("--max-keypoints", type=int, default=0, help="Keep at most this many keypoints, by score (default 0: all)")
     parser.add_argument("--height", type=int, default=0, help="Fixed input height (default 0: dynamic)")
     parser.add_argument("--width", type=int, default=0, help="Fixed input width (default 0: dynamic)")
-    parser.add_argument("--opset", type=int, default=17, help="ONNX opset version (default 17)")
+    parser.add_argument("--opset", type=int, default=18, help="ONNX opset version (default 18)")
     parser.add_argument("--no-check", action="store_true", help="Don't verify the exported model with onnxruntime")
     args = parser.parse_args()
     if args.threshold <= 0 and args.max_keypoints <= 0:
@@ -234,13 +233,8 @@ def main():
     torch.manual_seed(0)
     image = torch.rand(1, 1, height, width)
 
-    dynamic_axes = {
-        "keypoints": {1: "num_keypoints"},
-        "scores": {1: "num_keypoints"},
-        "descriptors": {1: "num_keypoints"},
-    }
-    if dynamic:
-        dynamic_axes["image"] = {2: "height", 3: "width"}
+    # torch.export infers the dynamic number of keypoints, only the image size is declared
+    dynamic_shapes = ({2: torch.export.Dim("height"), 3: torch.export.Dim("width")},) if dynamic else None
 
     print("Exporting to %s (input %s)" % (args.output, "[1,1,H,W] dynamic" if dynamic else "[1,1,%d,%d]" % (height, width)))
     with torch.no_grad():
@@ -250,10 +244,10 @@ def main():
             args.output,
             input_names=["image"],
             output_names=["keypoints", "scores", "descriptors"],
-            dynamic_axes=dynamic_axes,
+            dynamic_shapes=dynamic_shapes,
             opset_version=args.opset,
-            do_constant_folding=True,
-            dynamo=False,
+            dynamo=True,
+            external_data=False,
         )
 
     import onnx

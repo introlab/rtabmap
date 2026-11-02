@@ -205,8 +205,8 @@ trace_superpoint_pt \
 # --- Optional: ONNX models for test_onnx (OnnxDetector / OnnxMatcher) ---
 # disk.onnx and disk_lightglue.onnx come from the manifest. The others are
 # exported here with the scripts of corelib/src/onnx from the sources and
-# weights of the manifest, when python3 has torch and onnx (onnxruntime too
-# for the scripts to verify what they export). A failure is logged and
+# weights of the manifest, when python3 has torch >= 2.9, onnx and onnxscript
+# (onnxruntime too for the scripts to verify what they export). A failure is logged and
 # skipped: test_onnx skips the tests of a model that isn't there.
 export_onnx() {
 	local label="$1" output="$2"
@@ -215,8 +215,8 @@ export_onnx() {
 		echo "  $label: already exported ($output)"
 		return 0
 	fi
-	if ! command -v python3 >/dev/null 2>&1 || ! python3 -c "import torch, onnx" >/dev/null 2>&1; then
-		echo "  $label: python3 with torch and onnx not found — skipping export"
+	if ! command -v python3 >/dev/null 2>&1 || ! python3 -c "import torch, onnx, onnxscript; assert tuple(int(v) for v in torch.__version__.split('.')[:2]) >= (2, 9)" >/dev/null 2>&1; then
+		echo "  $label: python3 with torch >= 2.9, onnx and onnxscript not found — skipping export"
 		return 0
 	fi
 	echo "Exporting $label -> $output"

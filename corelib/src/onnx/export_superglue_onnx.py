@@ -32,7 +32,9 @@ from torch import nn
 
 
 def attention_export(query, key, value):
-    """SuperGlue's attention() with matmuls instead of einsums: [b,d,h,n] tensors."""
+    """SuperGlue's attention() with matmuls instead of einsums ([b,d,h,n]
+    tensors): exported as is, the einsums are ONNX Einsum nodes, about 30%
+    slower with ONNX Runtime on CPU and CUDA."""
     dim = query.shape[1]
     q = query.permute(0, 2, 3, 1)  # [b,h,n,d]
     k = key.permute(0, 2, 1, 3)    # [b,h,d,m]
@@ -52,7 +54,8 @@ def log_sinkhorn_iterations(Z, log_mu, log_nu, iters):
 
 
 def log_optimal_transport(scores, alpha, iters):
-    """SuperGlue's log_optimal_transport with the sizes from the traced shape."""
+    """SuperGlue's log_optimal_transport with the sizes as tensors built from
+    the input shape, so that the export stays dynamic."""
     b, m, n = scores.shape
     one = scores.new_tensor(1.0)
     ms, ns = m * one, n * one
@@ -112,7 +115,7 @@ def main():
     parser.add_argument("--output", required=True, help="Output ONNX file")
     parser.add_argument("--iterations", type=int, default=20, help="Sinkhorn iterations, unrolled in the graph (default 20, rtabmap's PyMatcher/Iterations default; SuperGlue's own default is 100)")
     parser.add_argument("--threshold", type=float, default=0.2, help="Match threshold inside the model (default 0.2, SuperGlue's)")
-    # 18, not 17 like the other scripts: the Sinkhorn iterations are ReduceLogSumExp
+    # Keep it >= 18: the Sinkhorn iterations are ReduceLogSumExp
     # nodes, and the OpenVINO execution provider ignores their axes attribute of
     # opset <= 17 (it reduces over all the axes: no match), while it reads the axes
     # input of opset 18 correctly. OpenVINO's ONNX frontend bug, fixed in OpenVINO
@@ -166,6 +169,7 @@ def main():
     sg_module.attention = attention_export
 
     print("Exporting to %s (%d Sinkhorn iterations, threshold %g)" % (args.output, args.iterations, args.threshold))
+    n0, n1 = torch.export.Dim("num_keypoints0"), torch.export.Dim("num_keypoints1")
     with torch.no_grad():
         torch.onnx.export(
             model,
@@ -173,15 +177,10 @@ def main():
             args.output,
             input_names=list(inputs.keys()),
             output_names=["matches0", "mscores0"],
-            dynamic_axes={
-                "kpts0": {1: "num_keypoints0"}, "kpts1": {1: "num_keypoints1"},
-                "desc0": {1: "num_keypoints0"}, "desc1": {1: "num_keypoints1"},
-                "scores0": {1: "num_keypoints0"}, "scores1": {1: "num_keypoints1"},
-                "matches0": {1: "num_keypoints0"}, "mscores0": {1: "num_keypoints0"},
-            },
+            dynamic_shapes=({1: n0}, {1: n1}, {1: n0}, {1: n1}, {1: n0}, {1: n1}),
             opset_version=args.opset,
-            do_constant_folding=True,
-            dynamo=False,
+            dynamo=True,
+            external_data=False,
         )
 
     import onnx

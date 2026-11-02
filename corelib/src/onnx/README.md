@@ -360,17 +360,11 @@ combination:
 A detector not covered here needs its own script on the same pattern: load
 the network, write a `forward(image)` returning `keypoints [1,N,2]`,
 `scores [1,N]`, `descriptors [1,N,D]`, export with the same
-`input_names`/`output_names`/`dynamic_axes`. A model exported with
+`input_names`/`output_names`/`dynamic_shapes`. A model exported with
 another interface can also be used by subclassing `OnnxDetector` (see
 [Specializing](#specializing)) instead of changing the export.
 
-The scripts need `torch` and `onnx` (`onnxruntime` to verify the exported
-model); they were written for torch 2.11 and use the TorchScript-based
-exporter (`dynamo=False`). Where that exporter mishandles an operation with
-dynamic sizes (LightGlue's `unflatten`, `einsum` and literal negative
-indices, XFeat's `unfold`), the scripts substitute an equivalent
-implementation for the export only, and the verification step compares the
-exported model with the original code.
+The scripts need `torch` >= 2.9, `onnx` and `onnxscript` (`onnxruntime` to verify the exported model); they use the `torch.export`-based exporter (`dynamo=True`, opset 18) and were tested with torch 2.15. Where the exported graph would be slow or computed wrong by a runtime (`einsum`, exported as `Einsum` nodes slower than matrix products, in-place writes exported as `ScatterND`, LightGlue's interleaved q/k/v projection with TensorRT), the scripts substitute an equivalent implementation for the export only, and the verification step compares the exported model with the original code.
 
 ### SuperPoint
 
@@ -492,7 +486,7 @@ operators, and the verification compares the exported model with the
 original code.
 
 ```bash
-pip install lightglue onnx onnxruntime
+pip install lightglue onnx onnxscript onnxruntime
 python3 export_aliked_onnx.py --output aliked.onnx
 python3 export_lightglue_onnx.py --features aliked --output aliked_lightglue.onnx
 rtabmap --Kp/DetectorStrategy 17 --Vis/FeatureType 17 --OnnxDetector/ModelPath aliked.onnx \

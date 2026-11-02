@@ -78,7 +78,7 @@ def main():
     parser.add_argument("--max-keypoints", type=int, default=0, help="Keep at most this many keypoints, by score (default 0: all)")
     parser.add_argument("--height", type=int, default=0, help="Fixed input height (default 0: dynamic)")
     parser.add_argument("--width", type=int, default=0, help="Fixed input width (default 0: dynamic)")
-    parser.add_argument("--opset", type=int, default=17, help="ONNX opset version (default 17)")
+    parser.add_argument("--opset", type=int, default=18, help="ONNX opset version (default 18)")
     parser.add_argument("--no-check", action="store_true", help="Don't verify the exported model with onnxruntime")
     args = parser.parse_args()
 
@@ -100,13 +100,8 @@ def main():
     torch.manual_seed(0)
     image = torch.rand(1, 3, height, width)
 
-    dynamic_axes = {
-        "keypoints": {1: "num_keypoints"},
-        "scores": {1: "num_keypoints"},
-        "descriptors": {1: "num_keypoints"},
-    }
-    if dynamic:
-        dynamic_axes["image"] = {2: "height", 3: "width"}
+    # torch.export infers the dynamic number of keypoints, only the image size is declared
+    dynamic_shapes = ({2: torch.export.Dim("height"), 3: torch.export.Dim("width")},) if dynamic else None
 
     print("Exporting to %s (input %s)" % (args.output, "[1,3,H,W] dynamic" if dynamic else "[1,3,%d,%d]" % (height, width)))
     with torch.no_grad():
@@ -116,10 +111,10 @@ def main():
             args.output,
             input_names=["image"],
             output_names=["keypoints", "scores", "descriptors"],
-            dynamic_axes=dynamic_axes,
+            dynamic_shapes=dynamic_shapes,
             opset_version=args.opset,
-            do_constant_folding=True,
-            dynamo=False,
+            dynamo=True,
+            external_data=False,
         )
 
     import onnx

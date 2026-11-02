@@ -108,7 +108,7 @@ def main():
     parser.add_argument("--dim", type=int, default=4096, help="Descriptor dimension, the leading PCA components (default 4096, the full whitening)")
     parser.add_argument("--height", type=int, default=0, help="Fixed input height (default 0: dynamic)")
     parser.add_argument("--width", type=int, default=0, help="Fixed input width (default 0: dynamic)")
-    parser.add_argument("--opset", type=int, default=17, help="ONNX opset version (default 17)")
+    parser.add_argument("--opset", type=int, default=18, help="ONNX opset version (default 18)")
     parser.add_argument("--no-check", action="store_true", help="Don't verify the exported model with onnxruntime")
     args = parser.parse_args()
 
@@ -127,9 +127,8 @@ def main():
     dynamic = args.height <= 0 or args.width <= 0
     torch.manual_seed(0)
     image = torch.rand(1, 3, height, width)
-    dynamic_axes = {}
-    if dynamic:
-        dynamic_axes["image"] = {2: "height", 3: "width"}
+    # the image size, dynamic unless --height/--width are given
+    dynamic_shapes = ({2: torch.export.Dim("height"), 3: torch.export.Dim("width")},) if dynamic else None
 
     print("Exporting to %s (input %s)" % (args.output, "[1,3,H,W] dynamic" if dynamic else "[1,3,%d,%d]" % (height, width)))
     with torch.no_grad():
@@ -139,10 +138,10 @@ def main():
             args.output,
             input_names=["image"],
             output_names=["descriptor"],
-            dynamic_axes=dynamic_axes,
+            dynamic_shapes=dynamic_shapes,
             opset_version=args.opset,
-            do_constant_folding=True,
-            dynamo=False,
+            dynamo=True,
+            external_data=False,
         )
 
     import onnx
