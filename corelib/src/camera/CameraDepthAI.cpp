@@ -264,13 +264,23 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		return false;
 	}
 
-	device_ = std::make_unique<dai::Device>(deviceToUse);
+	try {
+		device_ = std::make_unique<dai::Device>(deviceToUse);
+	}
+	catch(const std::exception & e) {
+		UERROR("Failed to initialize DepthAI device: %s", e.what());
+		device_.reset();
+		return false;
+	}
 	auto deviceName = device_->getDeviceName();
 	auto imuType = device_->getConnectedIMU();
 	UINFO("Device Name: %s, Device Serial: %s", deviceName.c_str(), device_->getMxId().c_str());
 	UINFO("Available Camera Sensors: ");
+	std::string colorCameraSensor;
 	for(auto& sensor : device_->getCameraSensorNames()) {
 		UINFO("Socket: CAM_%c - %s", 'A'+(unsigned char)sensor.first, sensor.second.c_str());
+		if(sensor.first == dai::CameraBoardSocket::CAM_A)
+			colorCameraSensor = sensor.second;
 	}
 	UINFO("IMU Type: %s", imuType.c_str());
 
@@ -480,9 +490,12 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 	{
 		rgbCamera = pipeline.create<dai::node::Camera>();
 		rgbCamera->setCamera("color");
+		// Some OAK-D (Pro) W variants share board name "DM9098" with IMX378 models but
+		// ship a 1 MP OV9782 color sensor (max 1280x800), so size by sensor, not board.
+		bool colorIsOV9782 = colorCameraSensor == "OV9782";
 		if(boardName == "BC2087")
 			rgbCamera->setSize(1920, 1200);
-		else if(boardName == "NG2094")
+		else if(boardName == "NG2094" || colorIsOV9782)
 			rgbCamera->setSize(1280, 720);
 		else
 			rgbCamera->setSize(1920, 1080);
@@ -493,7 +506,7 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		if(imagesRectified_ && alphaScaling_>-1.0f)
 			rgbCamera->setCalibrationAlpha(alphaScaling_);
 		rgbCamera->properties.ispScale.horizNumerator = rgbCamera->properties.ispScale.vertNumerator = imageWidth_/640;
-		rgbCamera->properties.ispScale.horizDenominator = rgbCamera->properties.ispScale.vertDenominator = boardName=="NG2094"?2:3;
+		rgbCamera->properties.ispScale.horizDenominator = rgbCamera->properties.ispScale.vertDenominator = (boardName=="NG2094" || colorIsOV9782)?2:3;
 
 		auto rgbEncoder  = pipeline.create<dai::node::VideoEncoder>();
 		rgbEncoder->setDefaultProfilePreset(this->getImageRate(), dai::VideoEncoderProperties::Profile::MJPEG);
@@ -661,7 +674,14 @@ bool CameraDepthAI::init(const std::string & calibrationFolder, const std::strin
 		imu->out.link(xoutIMU->input);
 	}
 
-	device_->startPipeline(pipeline);
+	try {
+		device_->startPipeline(pipeline);
+	}
+	catch(const std::exception & e) {
+		UERROR("Failed to start DepthAI pipeline: %s", e.what());
+		device_.reset();
+		return false;
+	}
 	if(!device_->getIrDrivers().empty())
 	{
 		UINFO("Setting IR intensity");
