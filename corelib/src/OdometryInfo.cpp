@@ -95,6 +95,10 @@ std::map<std::string, float> OdometryInfo::statistics(const Transform & pose)
 	std::map<std::string, float> stats;
 
 	stats.insert(std::make_pair("Odometry/TimeRegistration/ms", reg.totalTime*1000.0f));
+	stats.insert(std::make_pair("Odometry/TimeFeatures/ms", reg.featuresTime*1000.0f));
+	stats.insert(std::make_pair("Odometry/TimeMatching/ms", reg.matchingTime*1000.0f));
+	stats.insert(std::make_pair("Odometry/TimeMotionEstimation/ms", reg.motionEstimationTime*1000.0f));
+	stats.insert(std::make_pair("Odometry/TimeBundleAdjustment/ms", reg.bundleAdjustmentTime*1000.0f));
 	stats.insert(std::make_pair("Odometry/RAM_usage/MB", memoryUsage));
 
 	// Based on rtabmap/MainWindow.cpp

@@ -58,7 +58,20 @@ TEST(LandmarkTest, DeprecatedConstructorUsesZeroSize)
 {
 	const cv::Mat covariance = covarianceDiagonal(1, 1, 1, 9999, 9999, 9999);
 	const Transform pose(0.5f, 0.0f, 0.0f, 0.f, 0.f, 0.f);
+	// Deliberately exercises the deprecated constructor.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4996)
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 	const Landmark landmark(5, pose, covariance);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
+#endif
 
 	EXPECT_EQ(landmark.id(), 5);
 	EXPECT_FLOAT_EQ(landmark.size(), 0.0f);

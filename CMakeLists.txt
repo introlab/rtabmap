@@ -22,7 +22,7 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
 SET(RTABMAP_MINOR_VERSION 24)
-SET(RTABMAP_PATCH_VERSION 2)
+SET(RTABMAP_PATCH_VERSION 3)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
 
@@ -85,6 +85,18 @@ endif()
 # time, so a changed URL actually triggers a rebuild of what depends on them.
 if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
+endif()
+# find_package(Boost) uses the BoostConfig.cmake shipped with Boost (>=1.70)
+# instead of CMake's removed FindBoost module. The default also covers the
+# package configs that reset policies before finding Boost (VTK through PCL).
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+    set(CMAKE_POLICY_DEFAULT_CMP0167 NEW)
+endif()
+# find_package(<Pkg>) also searches the upper-case <PKG>_ROOT variables, e.g.
+# ONNXRUNTIME_ROOT for find_package(ONNXRuntime).
+if(POLICY CMP0144)
+    cmake_policy(SET CMP0144 NEW)
 endif()
 
 IF(MINGW)
@@ -265,6 +277,7 @@ option(WITH_ORB_OCTREE    "Include ORB Octree feature support"   ON)
 option(WITH_TORCH         "Include Torch support (SuperPoint)"   OFF)
 option(WITH_PYTHON        "Include Python3 support (PyMatcher, PyDetector)"  OFF)
 option(WITH_PYTHON_THREADING  "Use more than one Python interpreter."  OFF)
+option(WITH_ONNXRUNTIME   "Include ONNX Runtime support (OnnxDetector, OnnxMatcher)" OFF)
 option(WITH_PDAL          "Include PDAL support"                 ON)
 option(WITH_LIBLAS        "Include libLAS support"               OFF)
 option(WITH_CUDASIFT      "Include CudaSift support (this fork https://github.com/matlabbe/CudaSift)" OFF) 
@@ -333,8 +346,8 @@ set_property(CACHE RTABMAP_QT_VERSION PROPERTY STRINGS AUTO 4 5 6)
 # OpenCV components. calib3d was split into "calib" + "geometry" in OpenCV 5.
 # These lists are reused below to generate RTABMapConfig.cmake so downstream
 # find_package(RTABMap) requests the same components this build used.
-SET(RTABMAP_OpenCV_COMPONENTS_5 core imgproc highgui stitching photo video videoio calib geometry)
-SET(RTABMAP_OpenCV_COMPONENTS_4 core imgproc highgui stitching photo video videoio calib3d)
+SET(RTABMAP_OpenCV_COMPONENTS_5 core imgproc imgcodecs stitching photo video videoio calib geometry)
+SET(RTABMAP_OpenCV_COMPONENTS_4 core imgproc imgcodecs stitching photo video videoio calib3d)
 SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS_5 objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
 SET(RTABMAP_OpenCV_OPTIONAL_COMPONENTS_4 aruco objdetect xfeatures2d nonfree gpu cudafeatures2d cudaoptflow cudaimgproc)
 
@@ -521,6 +534,15 @@ IF(WITH_PYTHON)
         FIND_PACKAGE(pybind11 REQUIRED)
     ENDIF(Python3_FOUND)
 ENDIF(WITH_PYTHON)
+
+IF(WITH_ONNXRUNTIME)
+    # Set ONNXRUNTIME_ROOT to an extracted release archive when ONNX Runtime
+    # is not installed in a standard location.
+    FIND_PACKAGE(ONNXRuntime)
+    IF(ONNXRuntime_FOUND)
+        MESSAGE(STATUS "Found ONNX Runtime ${ONNXRuntime_VERSION}: ${ONNXRuntime_INCLUDE_DIRS}")
+    ENDIF(ONNXRuntime_FOUND)
+ENDIF(WITH_ONNXRUNTIME)
 
 IF(WITH_PDAL)
     FIND_PACKAGE(PDAL QUIET)
@@ -1355,6 +1377,9 @@ IF(NOT WITH_PYTHON OR NOT Python3_FOUND)
 ELSE()
    SET(CONF_WITH_PYTHON 1)
 ENDIF()
+IF(NOT ONNXRuntime_FOUND)
+   SET(ONNXRUNTIME "//")
+ENDIF()
 IF(ADD_VTK_GUI_SUPPORT_QT_TO_CONF)
    SET(CONF_VTK_QT true)
 ELSE()
@@ -1736,6 +1761,14 @@ ELSEIF(NOT WITH_PYTHON)
 MESSAGE(STATUS "  With Python3              = NO (WITH_PYTHON=OFF)")
 ELSE()
 MESSAGE(STATUS "  With Python3              = NO (python not found)")
+ENDIF()
+
+IF(ONNXRuntime_FOUND)
+MESSAGE(STATUS "  With ONNX Runtime         = YES (License: MIT) onnxruntime=${ONNXRuntime_VERSION}")
+ELSEIF(NOT WITH_ONNXRUNTIME)
+MESSAGE(STATUS "  With ONNX Runtime         = NO (WITH_ONNXRUNTIME=OFF)")
+ELSE()
+MESSAGE(STATUS "  With ONNX Runtime         = NO (onnxruntime not found, set ONNXRUNTIME_ROOT)")
 ENDIF()
 
 IF(WITH_MADGWICK)

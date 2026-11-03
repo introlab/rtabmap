@@ -30,7 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/videoio.hpp>
 #include <opencv2/core/core.hpp>
 #if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
@@ -163,6 +164,7 @@ public:
 		kFeatureSurfDaisy=14,  //new 0.20.6
 		kFeaturePyDetector=15, //new 0.20.8
 		kFeatureSuperPointRpautrat=16, // new 0.23.3
+		kFeatureOnnxDetector=17, // new 0.24.3
 		kFeatureEnd}; // Sentinel: always keep last. Used to iterate through types.
 
 	/** @return Human-readable name for @p type (e.g. `"ORB"`, `"GFTT+BRIEF"`). */
@@ -203,6 +205,8 @@ public:
 			return "PyDetector";
 		case kFeatureSuperPointRpautrat:
 			return "SUPERPOINT-RPAUTRAT";
+		case kFeatureOnnxDetector:
+			return "OnnxDetector";
 		default:
 			return "Unknown";
 		}

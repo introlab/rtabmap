@@ -38,12 +38,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UEventsManager.h"
-#include <opencv2/highgui/highgui.hpp>
+#include "rtabmap/utilite/UCv2Qt.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <pcl/visualization/cloud_viewer.h>
 #include <stdio.h>
 #include <signal.h>
 #include <QApplication>
+#include <QKeyEvent>
+#include <QLabel>
+#include <QPixmap>
 #include <QSurfaceFormat>
 #include <vtkVersionMacros.h>
 #if VTK_MAJOR_VERSION > 9 || (VTK_MAJOR_VERSION==9 && VTK_MINOR_VERSION >= 1)
@@ -88,6 +91,33 @@ void sighandler(int sig)
 {
 	printf("\nSignal %d caught...\n", sig);
 	running = false;
+}
+
+// Images are shown with Qt instead of cv::imshow(): linking opencv_highgui
+// can load a different Qt major version than rtabmap_gui (e.g., Qt5 vs Qt6
+// on Ubuntu 26.04), which crashes the application on startup.
+class EscapeFilter : public QObject
+{
+protected:
+	virtual bool eventFilter(QObject * obj, QEvent * event)
+	{
+		if(event->type() == QEvent::KeyPress && ((QKeyEvent*)event)->key() == Qt::Key_Escape)
+		{
+			running = false; // if ESC, quit
+		}
+		return QObject::eventFilter(obj, event);
+	}
+};
+
+void showImage(QLabel & label, const cv::Mat & image, const QString & title)
+{
+	label.setWindowTitle(title);
+	label.setPixmap(QPixmap::fromImage(uCvMat2QImage(image)));
+	if(!label.isVisible())
+	{
+		label.resize(image.cols, image.rows);
+		label.show();
+	}
 }
 
 int main(int argc, char * argv[])
@@ -413,6 +443,12 @@ int main(int argc, char * argv[])
 		signal(SIGTERM, &sighandler);
 		signal(SIGINT, &sighandler);
 
+		QApplication app(argc, argv);
+		EscapeFilter escapeFilter;
+		app.installEventFilter(&escapeFilter);
+		QLabel leftView;
+		QLabel rightView;
+
 		while(!data.imageRaw().empty() && (viewer==0 || !viewer->wasStopped()) && running)
 		{
 			cv::Mat rgb = data.imageRaw();
@@ -452,15 +488,15 @@ int main(int argc, char * argv[])
 				uMinMax((unsigned short*)depth.data, depth.rows*depth.cols, min, max);
 				depth.convertTo(tmp, CV_8UC1, 255.0/max);
 
-				cv::imshow("Video", rgb); // show frame
-				cv::imshow("Depth", tmp);
+				showImage(leftView, rgb, "Video"); // show frame
+				showImage(rightView, tmp, "Depth");
 			}
 			else if(!data.rightRaw().empty())
 			{
 				// stereo
 				cv::Mat right = data.rightRaw();
-				cv::imshow("Left", rgb); // show frame
-				cv::imshow("Right", right);
+				showImage(leftView, rgb, "Left"); // show frame
+				showImage(rightView, right, "Right");
 
 				if(rgb.cols == right.cols && rgb.rows == right.rows && data.stereoCameraModels().size()==1 && data.stereoCameraModels()[0].isValidForProjection())
 				{
@@ -477,9 +513,8 @@ int main(int argc, char * argv[])
 				}
 			}
 
-			int c = cv::waitKey(10); // wait 10 ms or for key stroke
-			if(c == 27)
-				break; // if ESC, break and quit
+			app.processEvents();
+			uSleep(10);
 
 			data = camera->takeData();
 		}
@@ -487,11 +522,6 @@ int main(int argc, char * argv[])
 		if(viewer)
 		{
 			delete viewer;
-		}
-		if(usePCLViz)
-		{
-			cv::destroyWindow("Video");
-			cv::destroyWindow("Depth");
 		}
 		delete camera;
 	}

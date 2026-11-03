@@ -6,4 +6,12 @@
 *.pt
 *.pth
 *.py
+*.onnx
+weights/
+trt_cache/
+tensorrt_cache/
+openvino_cache/
+*.mat
+# interrupted downloads (torch.hub's temporary file)
+*.partial
 __pycache__/
