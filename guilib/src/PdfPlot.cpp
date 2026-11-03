@@ -135,7 +135,7 @@ void PdfPlotCurve::clear()
 
 void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int> & weightsMap)
 {
-	ULOGGER_DEBUG("dataMap=%d, weightsMap=%d", dataMap.size(), weightsMap.size());
+	ULOGGER_DEBUG("dataMap=%d, weightsMap=%d", (int)dataMap.size(), (int)weightsMap.size());
 	if(dataMap.size() > 0)
 	{
 		//match the size of the current data
@@ -155,7 +155,7 @@ void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int
 			--margin;
 		}
 
-		ULOGGER_DEBUG("itemsize=%d", _items.size());
+		ULOGGER_DEBUG("itemsize=%d", (int)_items.size());
 
 		// update values
 		QList<QGraphicsItem*>::iterator iter = _items.begin();

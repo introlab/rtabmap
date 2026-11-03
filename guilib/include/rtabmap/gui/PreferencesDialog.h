@@ -373,6 +373,7 @@ private Q_SLOTS:
 	void updateStereoDisparityVisibility();
 	void updateFeatureMatchingVisibility();
 	void updateGlobalDescriptorVisibility();
+	void updateOnnxProviderVisibility();
 	void updateAvailableMarkerDictionaries();
 	void updateOdometryStackedIndex(int index);
 	void useOdomFeatures();
@@ -393,6 +394,12 @@ private Q_SLOTS:
 	void changePyMatcherModel();
 	void changePyDescriptorPath();
 	void changePyDetectorPath();
+	void changeOnnxDetectorModelPath();
+	void changeOnnxMatcherModelPath();
+	void changeOnnxDescriptorModelPath();
+	void changeOnnxTensorRTCachePath();
+	void changeOnnxOpenVINOCachePath();
+	void changeOnnxOpenVINOLibraryPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();
@@ -459,6 +466,7 @@ private:
 	void addParameters(const QStackedWidget * stackedWidget, int panel = -1);
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
+	void changeOnnxModelPath(QLineEdit * lineEdit);
 	void readSettingsBegin();
 	Camera * createCamera(Src driver, const QString & device, const QString & calibrationPath, bool useRawImages, bool useColor, bool odomOnly, bool odomSensorExtrinsicsCalib); // return camera should be deleted if not null
 

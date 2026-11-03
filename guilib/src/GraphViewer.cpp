@@ -612,7 +612,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	{
 		iter.value()->hide();
 	}
-	UDEBUG("hidden %d links", _linkItems.size());
+	UDEBUG("hidden %d links", (int)_linkItems.size());
 
 	int created = 0;
 	int reused = 0;
@@ -896,7 +896,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
 	}
 
-	UDEBUG("_nodeItems=%d, _linkItems=%d, timer=%fs", _nodeItems.size(), _linkItems.size(), timer.ticks());
+	UDEBUG("_nodeItems=%d, _linkItems=%d, timer=%fs", (int)_nodeItems.size(), (int)_linkItems.size(), timer.ticks());
 }
 
 void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
@@ -1030,7 +1030,7 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 			++iter;
 		}
 	}
-	UDEBUG("_gtNodeItems=%d, _gtLinkItems=%d timer=%fs", _gtNodeItems.size(), _gtLinkItems.size(), timer.ticks());
+	UDEBUG("_gtNodeItems=%d, _gtLinkItems=%d timer=%fs", (int)_gtNodeItems.size(), (int)_gtLinkItems.size(), timer.ticks());
 }
 
 void GraphViewer::updateGPSGraph(
@@ -1151,7 +1151,7 @@ void GraphViewer::updateGPSGraph(
 			++iter;
 		}
 	}
-	UDEBUG("_gpsNodeItems=%d, _gpsLinkItems=%d timer=%fs", _gpsNodeItems.size(), _gpsLinkItems.size(), timer.ticks());
+	UDEBUG("_gpsNodeItems=%d, _gpsLinkItems=%d timer=%fs", (int)_gpsNodeItems.size(), (int)_gpsLinkItems.size(), timer.ticks());
 }
 
 void GraphViewer::updateReferentialPosition(const Transform & t)

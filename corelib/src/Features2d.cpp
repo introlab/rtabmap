@@ -48,10 +48,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
 #include "superpoint_rpautrat/SuperpointRpautrat.h"
+#include <rtabmap/core/PythonInterface.h>
 #endif
 
 #ifdef RTABMAP_PYTHON
 #include "python/PyDetector.h"
+#endif
+
+#ifdef RTABMAP_ONNXRUNTIME
+#include "onnx/OnnxDetector.h"
 #endif
 
 #if CV_MAJOR_VERSION < 3
@@ -674,6 +679,9 @@ bool Feature2D::isAvailable(Feature2D::Type type)
 #ifndef RTABMAP_PYTHON
 	if(type == kFeaturePyDetector) return false;
 #endif
+#ifndef RTABMAP_ONNXRUNTIME
+	if(type == kFeatureOnnxDetector) return false;
+#endif
 	return true;
 }
 Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parameters)
@@ -818,6 +826,11 @@ case Feature2D::kFeatureSuperPointRpautrat:
 		feature2D = new PyDetector(parameters);
 		break;
 #endif
+#ifdef RTABMAP_ONNXRUNTIME
+	case Feature2D::kFeatureOnnxDetector:
+		feature2D = new OnnxDetector(parameters);
+		break;
+#endif
 #ifdef RTABMAP_NONFREE
 	default:
 		feature2D = new SURF(parameters);
@@ -901,7 +914,10 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 			cv::Rect roi(globalRoi.x + j*colSize, globalRoi.y + i*rowSize, colSize, rowSize);
 			std::vector<cv::KeyPoint> subKeypoints;
 			subKeypoints = this->generateKeypointsImpl(image, roi, mask);
-			if (this->getType() != Feature2D::Type::kFeaturePyDetector && this->getType() != Feature2D::Type::kFeatureSuperPointRpautrat)
+			// These detectors limit the keypoints themselves, keeping their descriptors in sync.
+			if (this->getType() != Feature2D::Type::kFeaturePyDetector &&
+				this->getType() != Feature2D::Type::kFeatureSuperPointRpautrat &&
+				this->getType() != Feature2D::Type::kFeatureOnnxDetector)
 			{
 				limitKeypoints(subKeypoints, maxFeatures, roi.size(), this->getSSC());
 			}
@@ -2819,6 +2835,12 @@ SuperPointRpautrat::SuperPointRpautrat(const ParametersMap & parameters) :
 		minDistance_(Parameters::defaultSuperPointRpautratNMSRadius()),
 		cuda_(Parameters::defaultSuperPointRpautratCuda())
 {
+#if defined(RTABMAP_TORCH) && defined(RTABMAP_PYTHON)
+	// The model is traced through the embedded python interpreter on the first
+	// detection: make sure it is initialized (and on the main thread, where it
+	// must be) rather than relying on a PyDetector/PyMatcher created before.
+	PythonInterface::instance("SuperPointRpautrat");
+#endif
 	parseParameters(parameters);
 }
 

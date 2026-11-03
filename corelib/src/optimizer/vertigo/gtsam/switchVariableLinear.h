@@ -23,6 +23,8 @@ namespace vertigo {
    */
   struct SwitchVariableLinear : public rtabmap::DerivedValue<SwitchVariableLinear> {
 
+    using rtabmap::DerivedValue<SwitchVariableLinear>::operator=;
+
     /** default constructor */
     SwitchVariableLinear() : d_(0.0) {};
 

@@ -381,11 +381,15 @@ inline std::string superpointRpautratModel()
 {
 	return std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_pytorch.py";
 }
+inline std::string onnxDetectorModel()
+{
+	return std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/disk.onnx";
+}
 
 // Detector types iterated by the Generate* tests. PyDetector needs a
 // user-supplied script (skipped). SuperPoint variants need libtorch
-// weights + (for Rpautrat) a Python model file; included when those
-// assets are on disk.
+// weights + (for Rpautrat) a Python model file, OnnxDetector an ONNX
+// model; included when those assets are on disk.
 bool isGenericGenerateCandidate(Feature2D::Type t)
 {
 	if(!Feature2D::isAvailable(t)) return false;
@@ -398,6 +402,10 @@ bool isGenericGenerateCandidate(Feature2D::Type t)
 	{
 		return UFile::exists(superpointRpautratWeights())
 				&& UFile::exists(superpointRpautratModel());
+	}
+	if(t == Feature2D::kFeatureOnnxDetector)
+	{
+		return UFile::exists(onnxDetectorModel());
 	}
 	return true;
 }
@@ -416,12 +424,17 @@ ParametersMap detectorAssetParams(Feature2D::Type t)
 		params[Parameters::kSuperPointRpautratModelPath()]   = superpointRpautratModel();
 		params[Parameters::kSuperPointRpautratCuda()]        = "false";
 	}
+	else if(t == Feature2D::kFeatureOnnxDetector)
+	{
+		params[Parameters::kOnnxDetectorModelPath()] = onnxDetectorModel();
+		params[Parameters::kOnnxProvider()]          = "0"; // CPU
+	}
 	return params;
 }
 
 // Flips the per-detector "use GPU" parameter on. Each backend has its own
 // key (SURF/GpuVersion, SIFT/Gpu, ORB/Gpu, FAST/Gpu, GFTT/Gpu,
-// SuperPoint/Cuda, SuperPointRpautrat/Cuda). Detectors that share a key
+// SuperPoint/Cuda, SuperPointRpautrat/Cuda, Onnx/Provider). Detectors that share a key
 // (FAST_BRIEF/FAST_FREAK share FAST/Gpu; the GFTT variants share GFTT/Gpu)
 // are grouped accordingly. Detectors without a GPU backend pass through
 // unchanged.
@@ -440,6 +453,7 @@ void setDetectorGpu(Feature2D::Type t, ParametersMap & params)
 	case Feature2D::kFeatureGfttDaisy:          params[Parameters::kGFTTGpu()]        = "true"; break;
 	case Feature2D::kFeatureSuperPointTorch:    params[Parameters::kSuperPointCuda()] = "true"; break;
 	case Feature2D::kFeatureSuperPointRpautrat: params[Parameters::kSuperPointRpautratCuda()] = "true"; break;
+	case Feature2D::kFeatureOnnxDetector:       params[Parameters::kOnnxProvider()] = "1"; break; // CUDA
 	default: break;
 	}
 }
