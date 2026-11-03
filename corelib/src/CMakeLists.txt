@@ -302,8 +302,8 @@ IF(KinectSDK2_FOUND)
 ENDIF(KinectSDK2_FOUND)
 
 IF(einstar_FOUND)
-	SET(PUBLIC_LIBRARIES
-		${PUBLIC_LIBRARIES}
+	SET(LIBRARIES
+		${LIBRARIES}
 		einstar::einstar
 		einstar::depth
 	)
