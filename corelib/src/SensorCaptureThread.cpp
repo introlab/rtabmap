@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/StereoDense.h"
 #include "rtabmap/core/DBReader.h"
+#include "rtabmap/core/camera/CameraImages.h"
 #include "rtabmap/core/IMUFilter.h"
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/clams/discrete_depth_distortion_model.h"
@@ -139,7 +140,8 @@ SensorCaptureThread::SensorCaptureThread(
 				_imuFilter(0),
 				_imuBaseFrameConversion(false),
 				_featureDetector(0),
-				_depthAsMask(Parameters::defaultVisDepthAsMask())
+				_depthAsMask(Parameters::defaultVisDepthAsMask()),
+				_failedCaptures(0)
 {
 	UASSERT(_camera != 0 || _lidar != 0);
 	if(_lidar && _camera)
@@ -308,6 +310,7 @@ bool SensorCaptureThread::odomProvided() const
 void SensorCaptureThread::mainLoopBegin()
 {
 	ULogger::registerCurrentThread("Camera");
+	_failedCaptures = 0;
 	if(_lidar)
 	{
 		_lidar->resetTimer();
@@ -544,10 +547,20 @@ void SensorCaptureThread::mainLoop()
 	}
 	else if(!data.imageCompressed().empty() || !data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
 	{
+		_failedCaptures = 0;
 		postUpdate(&data, &info);
 		info.cameraName = _lidar?_lidar->getSerial():_camera->getSerial();
 		info.timeTotal = totalTime.ticks();
 		this->post(new SensorEvent(data, info));
+	}
+	else if(++_failedCaptures < 3 &&
+			dynamic_cast<DBReader*>(_camera) == 0 &&
+			dynamic_cast<CameraImages*>(_camera) == 0)
+	{
+		// A live camera can miss a frame (e.g. the RealSense driver times out
+		// when the system is busy): retry before stopping. Databases and
+		// image folders are at their end.
+		UWARN("No data captured (%d consecutive time(s)), retrying...", _failedCaptures);
 	}
 	else
 	{

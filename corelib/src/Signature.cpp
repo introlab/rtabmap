@@ -256,10 +256,17 @@ float Signature::compareTo(const Signature & s) const
 
 	for(size_t i=0; i<this->sensorData().globalDescriptors().size(); ++i)
 	{
-		if(this->sensorData().globalDescriptors()[i].type()==1 && s.sensorData().globalDescriptors()[i].type()==1)
+		// Descriptors of a known extractor (GlobalDescriptorExtractor::Type > 0:
+		// PyDescriptor=1, OnnxDescriptor=2) are compared with their dot product.
+		// Type 0 is reserved to externally provided descriptors of unknown nature.
+		const GlobalDescriptor & a = this->sensorData().globalDescriptors()[i];
+		const GlobalDescriptor & b = s.sensorData().globalDescriptors()[i];
+		if(a.type() > 0 && a.type() == b.type() &&
+		   a.data().type() == CV_32FC1 && b.data().type() == CV_32FC1 &&
+		   a.data().total() == b.data().total() && !a.data().empty())
 		{
 			// rescale dot product from -1<->1 to 0<->1 (we assume normalized vectors!)
-			float dotProd = (this->sensorData().globalDescriptors()[i].data().dot(s.sensorData().globalDescriptors()[i].data()) + 1.0f) / 2.0f;
+			float dotProd = (a.data().dot(b.data()) + 1.0f) / 2.0f;
 			UASSERT_MSG(dotProd>=0, "Global descriptors should be normalized!");
 			similarity += dotProd;
 			totalDescs += 1;

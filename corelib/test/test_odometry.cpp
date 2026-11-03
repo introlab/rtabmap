@@ -778,7 +778,7 @@ double deskewedWallDistance(const Trajectory & trajectory, int frames, const Par
 	parameters.insert(ParametersPair(Parameters::kIcpPointToPlaneK(), "10"));
 	parameters.insert(ParametersPair(Parameters::kIcpMaxTranslation(), "0"));
 	parameters.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), "0.5"));
-	for(const ParametersPair & p : extra) uInsert(parameters, p);
+	uInsert(parameters, extra);
 	std::unique_ptr<Odometry> odometry(Odometry::create(parameters));
 
 	double imuStamp = 0.0;
