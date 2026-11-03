@@ -194,9 +194,11 @@ CameraEinstar::CameraEinstar(
 	Camera(imageRate, localTransform),
 	calibrationPath_(calibrationPath),
 	replayDir_(replayDir),
-	minDepthMm_(130.0f),
-	maxDepthMm_(800.0f)
+	minDepthMm_(0.0f),
+	maxDepthMm_(0.0f),
+	scale_(0.0)
 {
+	getDefaultDepthParameters(minDepthMm_, maxDepthMm_, scale_, stretches_);
 }
 
 CameraEinstar::~CameraEinstar()
@@ -215,6 +217,34 @@ void CameraEinstar::setDepthRange(float minDepthMm, float maxDepthMm)
 {
 	minDepthMm_ = minDepthMm;
 	maxDepthMm_ = maxDepthMm;
+}
+
+void CameraEinstar::setMatchingScale(double scale)
+{
+	scale_ = scale;
+}
+
+void CameraEinstar::setStretches(const std::vector<double> & stretches)
+{
+	stretches_ = stretches;
+}
+
+bool CameraEinstar::getDefaultDepthParameters(
+		float & minDepthMm,
+		float & maxDepthMm,
+		double & scale,
+		std::vector<double> & stretches)
+{
+#ifdef RTABMAP_EINSTAR
+	einstar::DepthParams params;
+	minDepthMm = params.min_depth_mm;
+	maxDepthMm = params.max_depth_mm;
+	scale = params.scale;
+	stretches = params.stretches;
+	return true;
+#else
+	return false;
+#endif
 }
 
 bool CameraEinstar::init(const std::string &, const std::string &)
@@ -270,11 +300,15 @@ bool CameraEinstar::init(const std::string &, const std::string &)
 	einstar::DepthParams params;
 	params.min_depth_mm = minDepthMm_;
 	params.max_depth_mm = maxDepthMm_;
+	params.scale = scale_;
+	params.stretches = stretches_;
 	impl_->depth.reset(new einstar::StereoDepth(*model, cv::Size(kWidth, kHeight), params));
 	// The calibration frame is upside down relative to the scanner's natural
 	// orientation (how the colour stream arrives), so images are rotated by
-	// 180 degrees for output: the principal point mirrors and the optical
-	// frame turns about its z axis.
+	// 180 degrees for output and the principal point mirrors. The output
+	// images are upright, so the optical frame is the standard one given by
+	// the local transform (the 180 degrees roll is only between the
+	// calibration frame and the output images).
 	cv::Mat K = impl_->depth->color_K().clone();
 	K.at<double>(0, 2) = kWidth - 1 - K.at<double>(0, 2);
 	K.at<double>(1, 2) = kHeight - 1 - K.at<double>(1, 2);
@@ -287,7 +321,7 @@ bool CameraEinstar::init(const std::string &, const std::string &)
 			cv::Mat::zeros(1, 5, CV_64FC1),
 			cv::Mat::eye(3, 3, CV_64FC1),
 			P,
-			this->getLocalTransform() * Transform(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0));
+			this->getLocalTransform());
 	UINFO("Einstar: calibration loaded, IR baseline %.1f mm", impl_->depth->baseline_mm());
 
 	if(!live)

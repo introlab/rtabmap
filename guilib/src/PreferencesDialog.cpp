@@ -992,6 +992,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_checkBox_useMKVStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_einstar_calibration, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_einstar_replay, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_einstar_minDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_einstar_maxDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_einstar_scale, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_einstar_stretches, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_source_distortionModel, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->groupBox_bilateral, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2384,6 +2388,23 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_k4a_mkv->clear();
 		_ui->lineEdit_einstar_calibration->clear();
 		_ui->lineEdit_einstar_replay->clear();
+		{
+			float minDepthMm, maxDepthMm;
+			double scale;
+			std::vector<double> stretches;
+			if(CameraEinstar::getDefaultDepthParameters(minDepthMm, maxDepthMm, scale, stretches))
+			{
+				_ui->doubleSpinBox_einstar_minDepth->setValue(minDepthMm);
+				_ui->doubleSpinBox_einstar_maxDepth->setValue(maxDepthMm);
+				_ui->doubleSpinBox_einstar_scale->setValue(scale);
+				QStringList stretchesStr;
+				for(size_t i=0; i<stretches.size(); ++i)
+				{
+					stretchesStr.append(QString::number(stretches[i]));
+				}
+				_ui->lineEdit_einstar_stretches->setText(stretchesStr.join(" "));
+			}
+		}
 		_ui->spinBox_orbbec_sdk_color_width->setValue(800);
 		_ui->spinBox_orbbec_sdk_color_height->setValue(600);
 		_ui->spinBox_orbbec_sdk_depth_width->setValue(800);
@@ -2938,6 +2959,10 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("Einstar");
 	_ui->lineEdit_einstar_calibration->setText(settings.value("calibration", _ui->lineEdit_einstar_calibration->text()).toString());
 	_ui->lineEdit_einstar_replay->setText(settings.value("replay", _ui->lineEdit_einstar_replay->text()).toString());
+	_ui->doubleSpinBox_einstar_minDepth->setValue(settings.value("minDepth", _ui->doubleSpinBox_einstar_minDepth->value()).toDouble());
+	_ui->doubleSpinBox_einstar_maxDepth->setValue(settings.value("maxDepth", _ui->doubleSpinBox_einstar_maxDepth->value()).toDouble());
+	_ui->doubleSpinBox_einstar_scale->setValue(settings.value("scale", _ui->doubleSpinBox_einstar_scale->value()).toDouble());
+	_ui->lineEdit_einstar_stretches->setText(settings.value("stretches", _ui->lineEdit_einstar_stretches->text()).toString());
 	settings.endGroup(); // Einstar
 
 	settings.beginGroup("OrbbecSDK");
@@ -3570,6 +3595,10 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.beginGroup("Einstar");
 	settings.setValue("calibration", _ui->lineEdit_einstar_calibration->text());
 	settings.setValue("replay", _ui->lineEdit_einstar_replay->text());
+	settings.setValue("minDepth", _ui->doubleSpinBox_einstar_minDepth->value());
+	settings.setValue("maxDepth", _ui->doubleSpinBox_einstar_maxDepth->value());
+	settings.setValue("scale", _ui->doubleSpinBox_einstar_scale->value());
+	settings.setValue("stretches", _ui->lineEdit_einstar_stretches->text());
 	settings.endGroup(); // Einstar
 
 	settings.beginGroup("OrbbecSDK");
@@ -6188,12 +6217,14 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2-kSrcRGBD ||
-			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcSeerSense-kSrcRGBD));
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcSeerSense-kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcEinstar-kSrcRGBD));
 	_ui->groupBox_openni2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD);
 	_ui->groupBox_freenect2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD);
 	_ui->groupBox_k4w2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD);
 	_ui->groupBox_k4a->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4A - kSrcRGBD);
 	_ui->groupBox_orbbec_sdk->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOrbbecSDK - kSrcRGBD);
+	_ui->groupBox_einstar->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcEinstar - kSrcRGBD);
 	_ui->groupBox_realsense->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD);
 	_ui->groupBox_realsense2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2 - kSrcRGBD);
 	_ui->groupBox_cameraRGBDImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD);
@@ -7143,12 +7174,48 @@ Camera * PreferencesDialog::createCamera(
 					tr("Einstar replay needs a calibration file."), QMessageBox::Ok);
 			return 0;
 		}
+		if (_ui->doubleSpinBox_einstar_minDepth->value() >= _ui->doubleSpinBox_einstar_maxDepth->value())
+		{
+			QMessageBox::warning(this, tr("Creating camera"),
+					tr("Einstar minimum depth should be lower than maximum depth."), QMessageBox::Ok);
+			return 0;
+		}
+		std::vector<double> stretches;
+		QString stretchesText = _ui->lineEdit_einstar_stretches->text().simplified();
+		QStringList stretchesStr;
+		if(!stretchesText.isEmpty())
+		{
+			stretchesStr = stretchesText.split(' ');
+		}
+		for(int i=0; i<stretchesStr.size(); ++i)
+		{
+			bool ok = false;
+			double k = stretchesStr[i].toDouble(&ok);
+			if(!ok || k <= 0.0)
+			{
+				QMessageBox::warning(this, tr("Creating camera"),
+						tr("Einstar stretches should be positive numbers separated by spaces (e.g., \"1 0.6\"), \"%1\" is not valid.").arg(stretchesStr[i]), QMessageBox::Ok);
+				return 0;
+			}
+			stretches.push_back(k);
+		}
+		if(stretches.empty())
+		{
+			QMessageBox::warning(this, tr("Creating camera"),
+					tr("Einstar needs at least one stretch (\"1\" for plain matching)."), QMessageBox::Ok);
+			return 0;
+		}
 		// Empty calibration: read from the scanner itself.
 		camera = new CameraEinstar(
 			_ui->lineEdit_einstar_calibration->text().toStdString(),
 			_ui->lineEdit_einstar_replay->text().toStdString(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
+		((CameraEinstar*)camera)->setDepthRange(
+			_ui->doubleSpinBox_einstar_minDepth->value(),
+			_ui->doubleSpinBox_einstar_maxDepth->value());
+		((CameraEinstar*)camera)->setMatchingScale(_ui->doubleSpinBox_einstar_scale->value());
+		((CameraEinstar*)camera)->setStretches(stretches);
 	}
 	else if (driver == kSrcRealSense)
 	{

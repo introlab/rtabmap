@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace einstar
 {
@@ -78,8 +79,19 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
-	// Working range used for stereo matching (mm).
+	// Stereo matching parameters (see einstar::DepthParams), defaults are
+	// libeinstar's: working range (mm), scale of the rectified images used
+	// for matching, and horizontal stretches of the right image to match at
+	// (in order, later ones only fill pixels without depth).
 	void setDepthRange(float minDepthMm, float maxDepthMm);
+	void setMatchingScale(double scale);
+	void setStretches(const std::vector<double> & stretches);
+	// Returns false (parameters unchanged) if not built with libeinstar.
+	static bool getDefaultDepthParameters(
+			float & minDepthMm,
+			float & maxDepthMm,
+			double & scale,
+			std::vector<double> & stretches);
 
 protected:
 	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
@@ -90,6 +102,8 @@ private:
 	std::string replayDir_;
 	float minDepthMm_;
 	float maxDepthMm_;
+	double scale_;
+	std::vector<double> stretches_;
 #ifdef RTABMAP_EINSTAR
 	std::unique_ptr<Impl> impl_;
 #endif
