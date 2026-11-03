@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #else
 #include <opencv2/calib3d/calib3d.hpp>
 #endif
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <rtabmap/core/stereo/stereoRectifyFisheye.h>
 
 #include <QFileDialog>

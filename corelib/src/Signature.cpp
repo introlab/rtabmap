@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/EpipolarGeometry.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Compression.h"
-#include <opencv2/highgui/highgui.hpp>
 
 #include <rtabmap/utilite/UtiLite.h>
 
