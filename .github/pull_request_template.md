@@ -28,8 +28,11 @@
 
 
 ### Optional
-<!-- Check any that apply, they help maintainers prioritize and handle the PR, and can speed up the review process. -->
+<!-- Move the lines that apply out of this comment, they help maintainers prioritize and handle the PR, and can speed up the review process:
 
-- [ ] Not urgent: maintainers can look at it whenever they have time.
-- [ ] Maintainers are free to refactor this PR as much as they want, while still crediting me as a contributor.
-- [ ] Inspiration only: this PR can be used as a starting point for maintainers to implement the feature their own way. I don't mind if it is not merged as is, or if my contribution doesn't appear in the commit history or the list of contributors.
+- Not urgent: maintainers can look at it whenever they have time.
+
+- Maintainers are free to refactor this PR as much as they want, while still crediting me as a contributor.
+
+- Inspiration only: this PR can be used as a starting point for maintainers to implement the feature their own way. I don't mind if it is not merged as is, or if my contribution doesn't appear in the commit history or the list of contributors.
+-->
