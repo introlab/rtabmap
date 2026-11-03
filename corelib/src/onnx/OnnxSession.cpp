@@ -552,26 +552,20 @@ std::string jsonString(const std::string & value)
 // provider: they are given as OpenVINO properties of the device in the
 // load_config option instead, e.g. {"GPU":{"INFERENCE_PRECISION_HINT":"f32",
 // "CACHE_DIR":"/path"}}. Empty if there is nothing to set.
-std::string openVINOLoadConfig(const std::string & device, const std::string & precision, const std::string & cachePath)
+std::string openVINOLoadConfig(const std::string & device, OnnxSession::OpenVINOPrecision precision, const std::string & cachePath)
 {
 	std::vector<std::string> properties;
-	std::string p = uToUpperCase(precision);
-	if(p.compare("FP32") == 0)
+	if(precision == OnnxSession::kOpenVINOPrecisionFP32)
 	{
 		properties.push_back(jsonString("INFERENCE_PRECISION_HINT") + ":" + jsonString("f32"));
 	}
-	else if(p.compare("FP16") == 0)
+	else if(precision == OnnxSession::kOpenVINOPrecisionFP16)
 	{
 		properties.push_back(jsonString("INFERENCE_PRECISION_HINT") + ":" + jsonString("f16"));
 	}
-	else if(p.compare("ACCURACY") == 0)
+	else if(precision == OnnxSession::kOpenVINOPrecisionAccuracy)
 	{
 		properties.push_back(jsonString("EXECUTION_MODE_HINT") + ":" + jsonString("ACCURACY"));
-	}
-	else if(!p.empty())
-	{
-		UWARN("Unknown %s \"%s\" (FP32, FP16 or ACCURACY), the device's default is used.",
-				Parameters::kOnnxOpenVINOPrecision().c_str(), precision.c_str());
 	}
 	if(!cachePath.empty())
 	{
@@ -641,10 +635,10 @@ std::string engineCacheNote(const std::string & cachePath)
 
 std::string OnnxSession::Options::key() const
 {
-	return uFormat("provider=%d;device=%d;fp16=%d;cache=%s;maxkpts=%d;profile=%s|%s|%s;ovdevice=%s;ovprecision=%s;ovcache=%s;ovlib=%s",
+	return uFormat("provider=%d;device=%d;fp16=%d;cache=%s;maxkpts=%d;profile=%s|%s|%s;ovdevice=%s;ovprecision=%d;ovcache=%s;ovlib=%s",
 			(int)provider, deviceId, tensorRTFp16?1:0, tensorRTCachePath.c_str(), tensorRTMaxKeypoints,
 			tensorRTProfileMinShapes.c_str(), tensorRTProfileOptShapes.c_str(), tensorRTProfileMaxShapes.c_str(),
-			openVINODevice.c_str(), openVINOPrecision.c_str(), openVINOCachePath.c_str(), openVINOLibraryPath.c_str());
+			openVINODevice.c_str(), (int)openVINOPrecision, openVINOCachePath.c_str(), openVINOLibraryPath.c_str());
 }
 
 OnnxSession::Options OnnxSession::Options::defaults()
@@ -655,7 +649,7 @@ OnnxSession::Options OnnxSession::Options::defaults()
 	options.tensorRTCachePath = Parameters::defaultOnnxTensorRTCachePath();
 	options.tensorRTMaxKeypoints = Parameters::defaultOnnxTensorRTMaxKeypoints();
 	options.openVINODevice = Parameters::defaultOnnxOpenVINODevice();
-	options.openVINOPrecision = Parameters::defaultOnnxOpenVINOPrecision();
+	options.openVINOPrecision = (OpenVINOPrecision)Parameters::defaultOnnxOpenVINOPrecision();
 	options.openVINOCachePath = Parameters::defaultOnnxOpenVINOCachePath();
 	options.openVINOLibraryPath = Parameters::defaultOnnxOpenVINOLibraryPath();
 	return options;
@@ -675,7 +669,17 @@ void OnnxSession::Options::parse(const ParametersMap & parameters)
 	}
 	Parameters::parse(parameters, Parameters::kOnnxTensorRTMaxKeypoints(), tensorRTMaxKeypoints);
 	Parameters::parse(parameters, Parameters::kOnnxOpenVINODevice(), openVINODevice);
-	Parameters::parse(parameters, Parameters::kOnnxOpenVINOPrecision(), openVINOPrecision);
+	// ONNX Runtime's built-in OpenVINO provider only accepts upper case devices
+	openVINODevice = uToUpperCase(openVINODevice);
+	int precisionValue = (int)openVINOPrecision;
+	Parameters::parse(parameters, Parameters::kOnnxOpenVINOPrecision(), precisionValue);
+	if(precisionValue < kOpenVINOPrecisionDefault || precisionValue > kOpenVINOPrecisionAccuracy)
+	{
+		UWARN("Unknown %s=%d (0=device default, 1=FP32, 2=FP16, 3=ACCURACY), the device's default is used.",
+				Parameters::kOnnxOpenVINOPrecision().c_str(), precisionValue);
+		precisionValue = kOpenVINOPrecisionDefault;
+	}
+	openVINOPrecision = (OpenVINOPrecision)precisionValue;
 	Parameters::parse(parameters, Parameters::kOnnxOpenVINOCachePath(), openVINOCachePath);
 	openVINOCachePath = expandTilde(openVINOCachePath);
 	if(openVINOCachePath.empty() && provider == kProviderOpenVINO)
@@ -727,6 +731,17 @@ std::string OnnxSession::providerName(Provider provider)
 	case kProviderTensorRT: return "TensorRT";
 	case kProviderOpenVINO: return "OpenVINO";
 	default: return "CPU";
+	}
+}
+
+std::string OnnxSession::openVINOPrecisionName(OpenVINOPrecision precision)
+{
+	switch(precision)
+	{
+	case kOpenVINOPrecisionFP32: return "FP32";
+	case kOpenVINOPrecisionFP16: return "FP16";
+	case kOpenVINOPrecisionAccuracy: return "ACCURACY";
+	default: return "";
 	}
 }
 
@@ -923,9 +938,9 @@ bool OnnxSession::load()
 				{
 					std::unordered_map<std::string, std::string> openVINOOptions;
 					openVINOOptions["device_type"] = options_.openVINODevice;
-					if(!options_.openVINOPrecision.empty())
+					if(options_.openVINOPrecision != kOpenVINOPrecisionDefault)
 					{
-						openVINOOptions["precision"] = options_.openVINOPrecision;
+						openVINOOptions["precision"] = openVINOPrecisionName(options_.openVINOPrecision);
 					}
 					if(!options_.openVINOCachePath.empty())
 					{
@@ -1004,7 +1019,7 @@ bool OnnxSession::load()
 			{
 				UINFO("ONNX model \"%s\" runs with OpenVINO on device \"%s\" (precision: %s, cache: \"%s\").",
 						modelPath_.c_str(), options_.openVINODevice.c_str(),
-						options_.openVINOPrecision.empty()?"device default":options_.openVINOPrecision.c_str(),
+						options_.openVINOPrecision == kOpenVINOPrecisionDefault?"device default":openVINOPrecisionName(options_.openVINOPrecision).c_str(),
 						options_.openVINOCachePath.c_str());
 			}
 			break;

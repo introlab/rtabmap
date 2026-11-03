@@ -1290,14 +1290,17 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->lineEdit_onnxdetector_model_path->setObjectName(Parameters::kOnnxDetectorModelPath().c_str());
 	connect(_ui->toolButton_onnxdetector_model_path, SIGNAL(clicked()), this, SLOT(changeOnnxDetectorModelPath()));
 	_ui->doubleSpinBox_onnxdetector_threshold->setObjectName(Parameters::kOnnxDetectorThreshold().c_str());
-	// ONNX Runtime options shared with OnnxMatcher
+	// ONNX Runtime options shared by OnnxDetector, OnnxMatcher and OnnxDescriptor
 	_ui->comboBox_onnx_provider->setObjectName(Parameters::kOnnxProvider().c_str());
+	connect(_ui->comboBox_onnx_provider, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_onnx_provider, SLOT(setCurrentIndex(int)));
+	connect(_ui->comboBox_onnx_provider, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOnnxProviderVisibility()));
+	_ui->comboBox_onnx_provider->setCurrentIndex(Parameters::defaultOnnxProvider());
 	_ui->checkBox_onnx_trt_fp16->setObjectName(Parameters::kOnnxTensorRTFp16().c_str());
 	_ui->lineEdit_onnx_trt_cache_path->setObjectName(Parameters::kOnnxTensorRTCachePath().c_str());
 	_ui->spinBox_onnx_trt_max_keypoints->setObjectName(Parameters::kOnnxTensorRTMaxKeypoints().c_str());
 	connect(_ui->toolButton_onnx_trt_cache_path, SIGNAL(clicked()), this, SLOT(changeOnnxTensorRTCachePath()));
 	_ui->lineEdit_onnx_openvino_device->setObjectName(Parameters::kOnnxOpenVINODevice().c_str());
-	_ui->lineEdit_onnx_openvino_precision->setObjectName(Parameters::kOnnxOpenVINOPrecision().c_str());
+	_ui->comboBox_onnx_openvino_precision->setObjectName(Parameters::kOnnxOpenVINOPrecision().c_str());
 	_ui->lineEdit_onnx_openvino_cache_path->setObjectName(Parameters::kOnnxOpenVINOCachePath().c_str());
 	connect(_ui->toolButton_onnx_openvino_cache_path, SIGNAL(clicked()), this, SLOT(changeOnnxOpenVINOCachePath()));
 	_ui->lineEdit_onnx_openvino_library_path->setObjectName(Parameters::kOnnxOpenVINOLibraryPath().c_str());
@@ -1891,6 +1894,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	updateFeatureMatchingVisibility();
 	updateGlobalDescriptorVisibility();
+	updateOnnxProviderVisibility();
 }
 
 PreferencesDialog::~PreferencesDialog() {
@@ -5753,6 +5757,12 @@ void PreferencesDialog::updateFeatureMatchingVisibility()
 	_ui->groupBox_pymatcher->setVisible(_ui->reextract_nn->currentIndex() == 6);
 	_ui->groupBox_gms->setVisible(_ui->reextract_nn->currentIndex() == 7);
 	_ui->groupBox_onnxmatcher->setVisible(_ui->reextract_nn->currentIndex() == 10);
+}
+
+void PreferencesDialog::updateOnnxProviderVisibility()
+{
+	// CPU and CUDA have no specific options
+	_ui->stackedWidget_onnx_provider->setVisible(_ui->comboBox_onnx_provider->currentIndex() >= 2);
 }
 
 void PreferencesDialog::updateGlobalDescriptorVisibility()

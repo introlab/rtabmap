@@ -88,12 +88,31 @@ public:
 class RTABMAP_CORE_EXPORT OnnxSession
 {
 public:
-	/** @brief Execution providers, values of the OnnxDetector/Provider and OnnxMatcher/Provider parameters. */
-	enum Provider {kProviderCPU=0, kProviderCUDA=1, kProviderTensorRT=2, kProviderOpenVINO=3};
+	/** @brief Execution providers, values of the Onnx/Provider parameter. */
+	enum Provider {
+		kProviderCPU=0,
+		kProviderCUDA=1,
+		kProviderTensorRT=2,
+		kProviderOpenVINO=3
+	};
+	/** @brief Values of the Onnx/OpenVINOPrecision parameter. */
+	enum OpenVINOPrecision {
+		kOpenVINOPrecisionDefault=0, ///< The device's default (FP32 on CPU, FP16 on GPU and NPU)
+		kOpenVINOPrecisionFP32=1,
+		kOpenVINOPrecisionFP16=2,
+		kOpenVINOPrecisionAccuracy=3 ///< The model's own precision
+	};
 
 	struct Options
 	{
-		Options() : provider(kProviderCPU), deviceId(0), tensorRTFp16(false), tensorRTMaxKeypoints(Parameters::defaultOnnxTensorRTMaxKeypoints()), openVINODevice("CPU") {}
+		Options() :
+			provider(kProviderCPU),
+			deviceId(0),
+			tensorRTFp16(false),
+			tensorRTMaxKeypoints(Parameters::defaultOnnxTensorRTMaxKeypoints()),
+			openVINODevice("CPU"),
+			openVINOPrecision(kOpenVINOPrecisionDefault)
+		{}
 		Provider provider;
 		int deviceId;                   ///< GPU device for CUDA and TensorRT
 		bool tensorRTFp16;              ///< Build the TensorRT engine in FP16
@@ -109,8 +128,8 @@ public:
 		std::string tensorRTProfileMinShapes;
 		std::string tensorRTProfileOptShapes;
 		std::string tensorRTProfileMaxShapes;
-		std::string openVINODevice;     ///< OpenVINO device_type: CPU, GPU, GPU.1, NPU, AUTO...
-		std::string openVINOPrecision;  ///< FP32, FP16 or ACCURACY (empty = device default)
+		std::string openVINODevice;     ///< OpenVINO device_type (upper case): CPU, GPU, GPU.1, NPU, AUTO...
+		OpenVINOPrecision openVINOPrecision; ///< Inference precision (default: the device's)
 		std::string openVINOCachePath;  ///< Directory caching OpenVINO compiled models (empty = no cache)
 		std::string openVINOLibraryPath;///< OpenVINO plugin library (empty = found by its default name)
 		std::string key() const;        ///< Identifies the options in the session cache
@@ -146,6 +165,8 @@ public:
 	 */
 	static bool isProviderAvailable(Provider provider, const std::string & openVINOLibraryPath = "");
 	static std::string providerName(Provider provider);
+	/** @brief The precision option of ONNX Runtime's OpenVINO provider: "FP32", "FP16", "ACCURACY" or "" (device default). */
+	static std::string openVINOPrecisionName(OpenVINOPrecision precision);
 	/** @brief ONNX Runtime version string, e.g. "1.23.2". */
 	static std::string runtimeVersion();
 	/**

@@ -263,6 +263,10 @@ TEST(OnnxSession, RuntimeInfo)
 	EXPECT_EQ("CUDA", OnnxSession::providerName(OnnxSession::kProviderCUDA));
 	EXPECT_EQ("TensorRT", OnnxSession::providerName(OnnxSession::kProviderTensorRT));
 	EXPECT_EQ("OpenVINO", OnnxSession::providerName(OnnxSession::kProviderOpenVINO));
+	EXPECT_EQ("", OnnxSession::openVINOPrecisionName(OnnxSession::kOpenVINOPrecisionDefault));
+	EXPECT_EQ("FP32", OnnxSession::openVINOPrecisionName(OnnxSession::kOpenVINOPrecisionFP32));
+	EXPECT_EQ("FP16", OnnxSession::openVINOPrecisionName(OnnxSession::kOpenVINOPrecisionFP16));
+	EXPECT_EQ("ACCURACY", OnnxSession::openVINOPrecisionName(OnnxSession::kOpenVINOPrecisionAccuracy));
 }
 
 // Options::parse() reads only the Onnx parameters it is given, and fills the
@@ -278,14 +282,14 @@ TEST(OnnxSession, OptionsParse)
 	ParametersMap params;
 	params[Parameters::kOnnxProvider()] = "3";
 	params[Parameters::kOnnxTensorRTMaxKeypoints()] = "2048";
-	params[Parameters::kOnnxOpenVINODevice()] = "GPU";
-	params[Parameters::kOnnxOpenVINOPrecision()] = "FP32";
+	params[Parameters::kOnnxOpenVINODevice()] = "gpu.1"; // upper case for ONNX Runtime
+	params[Parameters::kOnnxOpenVINOPrecision()] = "1";
 	params[Parameters::kRtabmapWorkingDirectory()] = testFile("");
 	OnnxSession::Options parsed = options;
 	parsed.parse(params);
 	EXPECT_EQ(OnnxSession::kProviderOpenVINO, parsed.provider);
-	EXPECT_EQ("GPU", parsed.openVINODevice);
-	EXPECT_EQ("FP32", parsed.openVINOPrecision);
+	EXPECT_EQ("GPU.1", parsed.openVINODevice);
+	EXPECT_EQ(OnnxSession::kOpenVINOPrecisionFP32, parsed.openVINOPrecision);
 	EXPECT_EQ(2048, parsed.tensorRTMaxKeypoints);
 	EXPECT_EQ(testFile("") + "/openvino_cache", parsed.openVINOCachePath);
 	EXPECT_TRUE(parsed.tensorRTCachePath.empty()); // not TensorRT
@@ -294,11 +298,19 @@ TEST(OnnxSession, OptionsParse)
 	// Parameters not given are kept.
 	OnnxSession::Options kept = parsed;
 	ParametersMap partial;
-	partial[Parameters::kOnnxOpenVINOPrecision()] = "FP16";
+	partial[Parameters::kOnnxOpenVINOPrecision()] = "2";
 	kept.parse(partial);
-	EXPECT_EQ("GPU", kept.openVINODevice);
-	EXPECT_EQ("FP16", kept.openVINOPrecision);
+	EXPECT_EQ("GPU.1", kept.openVINODevice);
+	EXPECT_EQ(OnnxSession::kOpenVINOPrecisionFP16, kept.openVINOPrecision);
 	EXPECT_NE(parsed, kept);
+
+	// Onnx/OpenVINOPrecision values to ONNX Runtime's precision option.
+	partial[Parameters::kOnnxOpenVINOPrecision()] = "3";
+	kept.parse(partial);
+	EXPECT_EQ(OnnxSession::kOpenVINOPrecisionAccuracy, kept.openVINOPrecision);
+	partial[Parameters::kOnnxOpenVINOPrecision()] = "7"; // unknown: device default
+	kept.parse(partial);
+	EXPECT_EQ(OnnxSession::kOpenVINOPrecisionDefault, kept.openVINOPrecision);
 
 	// "~" is expanded in the paths.
 	ParametersMap tilde;
@@ -601,7 +613,7 @@ TEST(OnnxSession, OpenVINOProviderMatchesCpu)
 	ParametersMap params = detectorParams(kDiskModel);
 	params[Parameters::kOnnxProvider()] = "3";
 	params[Parameters::kOnnxOpenVINODevice()] = device?device:"CPU";
-	params[Parameters::kOnnxOpenVINOPrecision()] = "FP32"; // compared to the CPU provider
+	params[Parameters::kOnnxOpenVINOPrecision()] = "1"; // FP32, compared to the CPU provider
 	params[Parameters::kOnnxOpenVINOCachePath()] = testFile("openvino_cache");
 	params[Parameters::kOnnxOpenVINOLibraryPath()] = plugin?plugin:"";
 	UDirectory::makeDir(testFile("openvino_cache"));
@@ -672,7 +684,7 @@ TEST(OnnxSession, AlikedProvidersMatchCpu)
 	{
 		params[Parameters::kOnnxProvider()] = "3";
 		params[Parameters::kOnnxOpenVINODevice()] = device?device:"CPU";
-		params[Parameters::kOnnxOpenVINOPrecision()] = "FP32"; // compared to the CPU provider
+		params[Parameters::kOnnxOpenVINOPrecision()] = "1"; // FP32, compared to the CPU provider
 		params[Parameters::kOnnxOpenVINOCachePath()] = testFile("openvino_cache");
 		params[Parameters::kOnnxOpenVINOLibraryPath()] = plugin?plugin:"";
 		UDirectory::makeDir(testFile("openvino_cache"));

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>980</width>
-    <height>1246</height>
+    <width>994</width>
+    <height>782</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>684</width>
-            <height>5315</height>
+            <width>698</width>
+            <height>5311</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -12553,7 +12553,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                    <property name="title">
                     <string>Loop Closure Detection</string>
                    </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_22" stretch="0,0,0,1,0,0,0">
+                   <layout class="QVBoxLayout" name="verticalLayout_22" stretch="0,0,0,1,0,0,0,0">
                     <item>
                      <widget class="QLabel" name="label">
                       <property name="text">
@@ -13003,7 +13003,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                        <item>
                         <widget class="QLabel" name="label_onnxdescriptor_info">
                          <property name="text">
-                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Global descriptor running an ONNX model with &lt;a href=&quot;https://onnxruntime.ai&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;ONNX Runtime&lt;/span&gt;&lt;/a&gt; (e.g., NetVLAD). The model takes an RGB image and returns the descriptor: see &lt;a href=&quot;https://github.com/introlab/rtabmap/tree/master/corelib/src/onnx&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;corelib/src/onnx&lt;/span&gt;&lt;/a&gt; for the expected input/output and the export script. The execution provider and the TensorRT options (Onnx/*) are set in the OnnxDetector panel. RTAB-Map must be built with ONNX Runtime support to use this feature.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Global descriptor from an ONNX model (e.g., NetVLAD). Execution provider options (Onnx/*) are in the ONNX panel. See this &lt;a href=&quot;https://github.com/introlab/rtabmap/wiki/Learned-Features-with-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;tutorial&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -13018,55 +13018,55 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                        </item>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_onnxdescriptor" columnstretch="0,0,1">
-                        <item row="0" column="0">
-                         <widget class="QToolButton" name="toolButton_onnxdescriptor_model_path">
-                          <property name="text">
-                           <string>...</string>
-                          </property>
-                         </widget>
-                        </item>
-                        <item row="0" column="1">
-                         <widget class="QLineEdit" name="lineEdit_onnxdescriptor_model_path"/>
-                        </item>
-                        <item row="0" column="2">
-                         <widget class="QLabel" name="label_onnxdescriptor_model_path">
-                          <property name="text">
-                           <string>[Required] Path to the ONNX model (*.onnx).</string>
-                          </property>
-                          <property name="wordWrap">
-                           <bool>true</bool>
-                          </property>
-                          <property name="textInteractionFlags">
-                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                          </property>
-                         </widget>
-                        </item>
-                        <item row="1" column="1">
-                         <widget class="QSpinBox" name="spinBox_onnxdescriptor_dim">
-                          <property name="minimum">
-                           <number>0</number>
-                          </property>
-                          <property name="maximum">
-                           <number>999999</number>
-                          </property>
-                          <property name="value">
-                           <number>0</number>
-                          </property>
-                         </widget>
-                        </item>
-                        <item row="1" column="2">
-                         <widget class="QLabel" name="label_onnxdescriptor_dim">
-                          <property name="text">
-                           <string>Keep only the first values of the descriptor (re-normalized), 0 keeps the whole descriptor.</string>
-                          </property>
-                          <property name="wordWrap">
-                           <bool>true</bool>
-                          </property>
-                          <property name="textInteractionFlags">
-                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                          </property>
-                         </widget>
-                        </item>
+                         <item row="0" column="0">
+                          <widget class="QToolButton" name="toolButton_onnxdescriptor_model_path">
+                           <property name="text">
+                            <string>...</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLineEdit" name="lineEdit_onnxdescriptor_model_path"/>
+                         </item>
+                         <item row="0" column="2">
+                          <widget class="QLabel" name="label_onnxdescriptor_model_path">
+                           <property name="text">
+                            <string>[Required] Path to the ONNX model (*.onnx).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QSpinBox" name="spinBox_onnxdescriptor_dim">
+                           <property name="minimum">
+                            <number>0</number>
+                           </property>
+                           <property name="maximum">
+                            <number>999999</number>
+                           </property>
+                           <property name="value">
+                            <number>0</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="2">
+                          <widget class="QLabel" name="label_onnxdescriptor_dim">
+                           <property name="text">
+                            <string>Keep only the first values of the descriptor (re-normalized), 0 keeps the whole descriptor.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
                         </layout>
                        </item>
                        <item>
@@ -17010,7 +17010,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                          <double>0.010000000000000</double>
                         </property>
                         <property name="value">
-                         <double>9.806650000000000</double>
+                         <double>9.806649999999999</double>
                         </property>
                        </widget>
                       </item>
@@ -24069,7 +24069,7 @@ Lower the ratio -&gt; higher the precision.</string>
                           <item>
                            <widget class="QLabel" name="label_onnxmatcher_info">
                             <property name="text">
-                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Feature matcher running an ONNX model with &lt;a href=&quot;https://onnxruntime.ai&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;ONNX Runtime&lt;/span&gt;&lt;/a&gt; (e.g., LightGlue). The model takes the keypoints and descriptors of the two images and returns the matches, like the matchers exported by &lt;a href=&quot;https://github.com/fabio-sim/LightGlue-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;LightGlue-ONNX&lt;/span&gt;&lt;/a&gt;: see &lt;a href=&quot;https://github.com/introlab/rtabmap/tree/master/corelib/src/onnx&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;corelib/src/onnx&lt;/span&gt;&lt;/a&gt; for the expected inputs/outputs of the model, the export scripts and where to download models. &lt;span style=&quot; font-weight:600;&quot;&gt;Important&lt;/span&gt;: Only float descriptors are allowed and the model should have been trained with the descriptors of the feature type used (e.g., SuperPoint-LightGlue with SuperPoint). The execution provider and the TensorRT options (Onnx/*) are set in the OnnxDetector panel. RTAB-Map must be built with ONNX Runtime support to use this feature.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Feature matcher from an ONNX model (e.g., LightGlue), for float descriptors of the feature type it was trained with. Execution provider options (Onnx/*) are in the ONNX panel. See this &lt;a href=&quot;https://github.com/introlab/rtabmap/wiki/Learned-Features-with-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;tutorial&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                             </property>
                             <property name="wordWrap">
                              <bool>true</bool>
@@ -26625,6 +26625,297 @@ Lower the ratio -&gt; higher the precision.</string>
                     <size>
                      <width>20</width>
                      <height>2185</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="page_onnx">
+                <layout class="QVBoxLayout" name="verticalLayout_onnx" stretch="0,1">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_onnx1">
+                   <property name="title">
+                    <string>ONNX</string>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_onnx1" stretch="0,0,1">
+                    <item>
+                     <widget class="QLabel" name="label_onnx_info">
+                      <property name="text">
+                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ONNX Runtime options shared by OnnxDetector, OnnxMatcher and OnnxDescriptor. See this &lt;a href=&quot;https://github.com/introlab/rtabmap/wiki/Learned-Features-with-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;tutorial&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="openExternalLinks">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QGridLayout" name="gridLayout_onnx" columnstretch="0,0,1">
+                      <item row="0" column="1">
+                       <widget class="QComboBox" name="comboBox_onnx_provider">
+                        <item>
+                         <property name="text">
+                          <string>CPU</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>CUDA</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>TensorRT</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>OpenVINO</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="0" column="2">
+                       <widget class="QLabel" name="label_onnx_provider">
+                        <property name="text">
+                         <string>ONNX Runtime execution provider. A provider not available in the ONNX Runtime library falls back to CPU.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="QStackedWidget" name="stackedWidget_onnx_provider">
+                      <property name="currentIndex">
+                       <number>2</number>
+                      </property>
+                      <widget class="QWidget" name="page_onnx_cpu"/>
+                      <widget class="QWidget" name="page_onnx_cuda"/>
+                      <widget class="QWidget" name="page_onnx_tensorrt">
+                       <layout class="QVBoxLayout" name="verticalLayout_onnx_tensorrt">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_onnx_tensorrt">
+                          <property name="title">
+                           <string>TensorRT</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_onnx_tensorrt2">
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_onnx_tensorrt" columnstretch="0,0,1">
+                             <item row="0" column="1">
+                              <widget class="QCheckBox" name="checkBox_onnx_trt_fp16">
+                               <property name="text">
+                                <string/>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="2">
+                              <widget class="QLabel" name="label_onnx_trt_fp16">
+                               <property name="text">
+                                <string>Build the TensorRT engine in FP16.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="0">
+                              <widget class="QToolButton" name="toolButton_onnx_trt_cache_path">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="1">
+                              <widget class="QLineEdit" name="lineEdit_onnx_trt_cache_path"/>
+                             </item>
+                             <item row="1" column="2">
+                              <widget class="QLabel" name="label_onnx_trt_cache_path">
+                               <property name="text">
+                                <string>Directory where the TensorRT engines are cached (building an engine takes minutes, empty means no cache).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QSpinBox" name="spinBox_onnx_trt_max_keypoints">
+                               <property name="maximum">
+                                <number>100000</number>
+                               </property>
+                               <property name="value">
+                                <number>4096</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="2">
+                              <widget class="QLabel" name="label_onnx_trt_max_keypoints">
+                               <property name="text">
+                                <string>Largest number of keypoints per image the TensorRT engine of OnnxMatcher is built for, so that it is built once. Above, only the keypoints with the highest responses are matched. 0 means no limit: the engine is built again (seconds) each time an image has more (or fewer) keypoints than all the previous ones.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_onnx_openvino">
+                       <layout class="QVBoxLayout" name="verticalLayout_onnx_openvino">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_onnx_openvino">
+                          <property name="title">
+                           <string>OpenVINO</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_onnx_openvino2">
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_onnx_openvino" columnstretch="0,0,1">
+                             <item row="0" column="1">
+                              <widget class="QLineEdit" name="lineEdit_onnx_openvino_device"/>
+                             </item>
+                             <item row="0" column="2">
+                              <widget class="QLabel" name="label_onnx_openvino_device">
+                               <property name="text">
+                                <string>Device: CPU, GPU (GPU.0, GPU.1... with many), NPU, or AUTO / AUTO:GPU,CPU to let OpenVINO choose.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="1">
+                              <widget class="QComboBox" name="comboBox_onnx_openvino_precision">
+                               <item>
+                                <property name="text">
+                                 <string>Device default</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>FP32</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>FP16</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>ACCURACY</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                             <item row="1" column="2">
+                              <widget class="QLabel" name="label_onnx_openvino_precision">
+                               <property name="text">
+                                <string>Inference precision. The device default is FP32 on CPU, FP16 on GPU and NPU. ACCURACY keeps the precision of the model.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="0">
+                              <widget class="QToolButton" name="toolButton_onnx_openvino_cache_path">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QLineEdit" name="lineEdit_onnx_openvino_cache_path"/>
+                             </item>
+                             <item row="2" column="2">
+                              <widget class="QLabel" name="label_onnx_openvino_cache_path">
+                               <property name="text">
+                                <string>Directory where OpenVINO caches the compiled models (compiling for GPU or NPU takes seconds). Empty means the openvino_cache folder of the working directory.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="0">
+                              <widget class="QToolButton" name="toolButton_onnx_openvino_library_path">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="1">
+                              <widget class="QLineEdit" name="lineEdit_onnx_openvino_library_path"/>
+                             </item>
+                             <item row="3" column="2">
+                              <widget class="QLabel" name="label_onnx_openvino_library_path">
+                               <property name="text">
+                                <string>Path to the OpenVINO plugin of onnxruntime-ep-openvino (libonnxruntime_providers_openvino_plugin.so), used when OpenVINO is not built in the ONNX Runtime library. Empty means its default file name, searched like any shared library.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_onnx">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>40</height>
                     </size>
                    </property>
                   </spacer>
@@ -29708,7 +29999,7 @@ p, li { white-space: pre-wrap; }
                     <item>
                      <widget class="QLabel" name="label_onnxdetector_info">
                       <property name="text">
-                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Feature detector and descriptor running an ONNX model with &lt;a href=&quot;https://onnxruntime.ai&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;ONNX Runtime&lt;/span&gt;&lt;/a&gt; (e.g., SuperPoint, ALIKED, DISK). The model takes a grayscale image and returns keypoints, scores and descriptors, like the extractors exported by &lt;a href=&quot;https://github.com/fabio-sim/LightGlue-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;LightGlue-ONNX&lt;/span&gt;&lt;/a&gt;: see &lt;a href=&quot;https://github.com/introlab/rtabmap/tree/master/corelib/src/onnx&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;corelib/src/onnx&lt;/span&gt;&lt;/a&gt; for the expected inputs/outputs of the model, the export scripts and where to download models. The execution provider and the TensorRT options (Onnx/*) are set in the OnnxDetector panel. RTAB-Map must be built with ONNX Runtime support to use this feature.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Feature detector and descriptor from an ONNX model (e.g., SuperPoint, ALIKED, DISK). Execution provider options (Onnx/*) are in the ONNX panel. See this &lt;a href=&quot;https://github.com/introlab/rtabmap/wiki/Learned-Features-with-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;tutorial&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -29769,187 +30060,6 @@ p, li { white-space: pre-wrap; }
                        <widget class="QLabel" name="label_onnxdetector_threshold">
                         <property name="text">
                          <string>Keep only keypoints with a score above this threshold (0 means that only the threshold inside the model is used).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QComboBox" name="comboBox_onnx_provider">
-                        <item>
-                         <property name="text">
-                          <string>CPU</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>CUDA</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>TensorRT</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>OpenVINO</string>
-                         </property>
-                        </item>
-                       </widget>
-                      </item>
-                      <item row="2" column="2">
-                       <widget class="QLabel" name="label_onnx_provider">
-                        <property name="text">
-                         <string>ONNX Runtime execution provider, shared by OnnxDetector and OnnxMatcher. A provider not available in the ONNX Runtime library falls back to CPU.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QCheckBox" name="checkBox_onnx_trt_fp16">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="2">
-                       <widget class="QLabel" name="label_onnx_trt_fp16">
-                        <property name="text">
-                         <string>[TensorRT] Build the TensorRT engine in FP16.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="0">
-                       <widget class="QToolButton" name="toolButton_onnx_trt_cache_path">
-                        <property name="text">
-                         <string>...</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="1">
-                       <widget class="QLineEdit" name="lineEdit_onnx_trt_cache_path"/>
-                      </item>
-                      <item row="4" column="2">
-                       <widget class="QLabel" name="label_onnx_trt_cache_path">
-                        <property name="text">
-                         <string>[TensorRT] Directory where the TensorRT engines are cached (building an engine takes minutes, empty means no cache).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="1">
-                       <widget class="QSpinBox" name="spinBox_onnx_trt_max_keypoints">
-                        <property name="maximum">
-                         <number>100000</number>
-                        </property>
-                        <property name="value">
-                         <number>4096</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="2">
-                       <widget class="QLabel" name="label_onnx_trt_max_keypoints">
-                        <property name="text">
-                         <string>[TensorRT] Largest number of keypoints per image the TensorRT engine of OnnxMatcher is built for, so that it is built once. Above, only the keypoints with the highest responses are matched. 0 means no limit: the engine is built again (seconds) each time an image has more (or fewer) keypoints than all the previous ones.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="1">
-                       <widget class="QLineEdit" name="lineEdit_onnx_openvino_device"/>
-                      </item>
-                      <item row="6" column="2">
-                       <widget class="QLabel" name="label_onnx_openvino_device">
-                        <property name="text">
-                         <string>[OpenVINO] Device: CPU, GPU (GPU.0, GPU.1... with many), NPU, or AUTO / AUTO:GPU,CPU to let OpenVINO choose.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="1">
-                       <widget class="QLineEdit" name="lineEdit_onnx_openvino_precision"/>
-                      </item>
-                      <item row="7" column="2">
-                       <widget class="QLabel" name="label_onnx_openvino_precision">
-                        <property name="text">
-                         <string>[OpenVINO] Inference precision: FP32, FP16 or ACCURACY. Empty means the device default (FP32 on CPU, FP16 on GPU and NPU).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="8" column="0">
-                       <widget class="QToolButton" name="toolButton_onnx_openvino_cache_path">
-                        <property name="text">
-                         <string>...</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="8" column="1">
-                       <widget class="QLineEdit" name="lineEdit_onnx_openvino_cache_path"/>
-                      </item>
-                      <item row="8" column="2">
-                       <widget class="QLabel" name="label_onnx_openvino_cache_path">
-                        <property name="text">
-                         <string>[OpenVINO] Directory where OpenVINO caches the compiled models (compiling for GPU or NPU takes seconds). Empty means the openvino_cache folder of the working directory.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="9" column="0">
-                       <widget class="QToolButton" name="toolButton_onnx_openvino_library_path">
-                        <property name="text">
-                         <string>...</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="9" column="1">
-                       <widget class="QLineEdit" name="lineEdit_onnx_openvino_library_path"/>
-                      </item>
-                      <item row="9" column="2">
-                       <widget class="QLabel" name="label_onnx_openvino_library_path">
-                        <property name="text">
-                         <string>[OpenVINO] Path to the OpenVINO plugin of onnxruntime-ep-openvino (libonnxruntime_providers_openvino_plugin.so), used when OpenVINO is not built in the ONNX Runtime library. Empty means its default file name, searched like any shared library.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
