@@ -6,6 +6,7 @@
 #include "rtabmap/utilite/UException.h"
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UFile.h"
+#include "TestUtils.h"
 #include <cmath>
 
 using namespace rtabmap;
@@ -490,8 +491,8 @@ TEST_F(CameraModelTest, Tx)
 TEST_F(CameraModelTest, SaveLoadRoundTrip)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_camera_calibration";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_camera_calibration");
+    const std::string & testDir = tempDir.path();
     
     // Create original camera model with all parameters
     std::string cameraName = "test_camera";
@@ -649,8 +650,8 @@ TEST_F(CameraModelTest, SaveLoadRoundTrip)
 TEST_F(CameraModelTest, SaveLoadRoundTripFullPath)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_camera_calibration2";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_camera_calibration2");
+    const std::string & testDir = tempDir.path();
     
     // Create original camera model
     std::string cameraName = "test_camera2";
@@ -711,8 +712,8 @@ TEST_F(CameraModelTest, SaveLoadRoundTripFullPath)
 TEST_F(CameraModelTest, LoadInitRectificationMaps)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_camera_calibration5";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_camera_calibration5");
+    const std::string & testDir = tempDir.path();
 
     // A model valid for rectification, so the maps would be built on load.
     std::string cameraName = "rect_camera";
@@ -760,8 +761,8 @@ TEST_F(CameraModelTest, LoadInitRectificationMaps)
 TEST_F(CameraModelTest, SaveLoadRoundTripMinimal)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_camera_calibration3";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_camera_calibration3");
+    const std::string & testDir = tempDir.path();
     
     // Create minimal camera model (no distortion, no rectification)
     std::string cameraName = "minimal_camera";
@@ -811,8 +812,8 @@ TEST_F(CameraModelTest, SaveLoadRoundTripMinimal)
 TEST_F(CameraModelTest, SaveLoadRoundTripFisheye)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_camera_calibration4";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_camera_calibration4");
+    const std::string & testDir = tempDir.path();
     
     // Create fisheye camera model (6 distortion parameters: k1, k2, 0, 0, k3, k4)
     // Format: [k1, k2, p1, p2, k3, k4] where p1=p2=0 for fisheye

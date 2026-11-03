@@ -174,6 +174,7 @@ Rtabmap::Rtabmap() :
 	_wDir(""),
 	_mapCorrection(Transform::getIdentity()),
 	_lastLocalizationNodeId(0),
+	_localizationApplied(false),
 	_currentSessionHasGPS(false),
 	_lastRejectedLoopClosureIds(0,0),
 	_pathStatus(0),
@@ -378,6 +379,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	_globalScanMapPoses.clear();
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
+	_localizationApplied = false;
 	_nodesToRepublish.clear();
 
 	// Parse all parameters
@@ -485,6 +487,7 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_lastLocalizationNodeId = 0;
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
+	_localizationApplied = false;
 	_distanceTravelled = 0.0f;
 	_distanceTravelledSinceLastLocalization = 0.0f;
 	_optimizeFromGraphEndChanged = false;
@@ -753,6 +756,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 				}
 				_odomCachePoses.clear();
 				_odomCacheConstraints.clear();
+				_localizationApplied = false;
 			}
 
 			// In both cases, we save the latest optimized graph and latest localization pose
@@ -904,6 +908,7 @@ void Rtabmap::setInitialPose(const Transform & initialPose)
 			_lastLocalizationNodeId = 0;
 			_odomCachePoses.clear();
 			_odomCacheConstraints.clear();
+			_localizationApplied = false;
 			_mapCorrection.setIdentity();
 			_mapCorrectionBackup.setNull();
 
@@ -930,6 +935,7 @@ int Rtabmap::triggerNewMap()
 		_lastLocalizationNodeId = 0;
 		_odomCachePoses.clear();
 		_odomCacheConstraints.clear();
+		_localizationApplied = false;
 		_distanceTravelled = 0.0f;
 		_distanceTravelledSinceLastLocalization = 0.0f;
 
@@ -1114,6 +1120,7 @@ void Rtabmap::resetMemory()
 	_lastLocalizationNodeId = 0;
 	_odomCachePoses.clear();
 	_odomCacheConstraints.clear();
+	_localizationApplied = false;
 	_distanceTravelled = 0.0f;
 	_distanceTravelledSinceLastLocalization = 0.0f;
 	_optimizeFromGraphEndChanged = false;
@@ -1973,30 +1980,14 @@ bool Rtabmap::process(
 	{
 		// localization mode
 
-		// Count how many localization links are in the constraints
-		int localizationLinks = 0;
-		int previousIdWithLocalizationLink = 0;
-		for(std::multimap<int, Link>::iterator iter=_odomCacheConstraints.begin();
-				iter!=_odomCacheConstraints.end(); ++iter)
+		// The localization is lost when all its links left the odometry cache. A
+		// delayed localization (waiting for a second one) is not applied.
+		if(_localizationApplied && !hasLocalizationLinksInOdomCache())
 		{
-			if(previousIdWithLocalizationLink == iter->first)
-			{
-				// ignore links with node already counted
-				continue;
-			}
-			if(iter->second.type() == Link::kGlobalClosure ||
-			   iter->second.type() == Link::kLocalSpaceClosure ||
-			   iter->second.type() == Link::kLocalTimeClosure ||
-			   iter->second.type() == Link::kUserClosure ||
-			   iter->second.type() == Link::kNeighborMerged ||
-			   iter->second.type() == Link::kLandmark)
-			{
-				++localizationLinks;
-				previousIdWithLocalizationLink = iter->first;
-			}
+			UDEBUG("No localization links remaining in odometry cache, the next localization will be delayed.");
+			_localizationApplied = false;
 		}
-
-		localizationOnPreviousUpdate = localizationLinks > 1; // need two links in case we have delayed localization
+		localizationOnPreviousUpdate = _localizationApplied;
 	}
 
 	// Not a bad signature, not an intermediate node, not a small displacement unless the previous signature didn't have a loop closure, not too fast movement
@@ -3228,7 +3219,10 @@ bool Rtabmap::process(
 	float landmarkNormalError = -1.0f; // largest normal error (rad) of the landmarks checked by RGBD/LandmarkMaxNormalError, -1 if none
 	if(!signature->getLandmarks().empty() && !_graphOptimizer->landmarksIgnored() && signature->getWeight()!=-1)
 	{
-		const bool localizedInOdomCache = !_memory->isIncremental() && hasLocalizationLinksInOdomCache();
+		// Localized only if a localization has been applied: if the first one is delayed (see
+		// RGBD/MaxOdomCacheSize), the map correction isn't updated and the pose of the
+		// new node is still in the odometry frame.
+		const bool localizedInOdomCache = !_memory->isIncremental() && _localizationApplied;
 		UDEBUG("localizedInOdomCache=%d", localizedInOdomCache?1:0);
 		std::vector<int> landmarksRejected;
 		for(std::map<int, Link>::const_iterator iter=signature->getLandmarks().begin(); iter!=signature->getLandmarks().end(); ++iter)
@@ -3826,6 +3820,7 @@ bool Rtabmap::process(
 					if(hadAlreadyLocalizationLinks || _maxOdomCacheSize == 0)
 					{
 						UINFO("Update localization");
+						_localizationApplied = true;
 
 						// update odomCachePoses with optimized poses (but make sure to put them back in odom frame)
 						Transform mapToOdomCache = signature->getPose() * newOptPoseInv;
@@ -4460,6 +4455,7 @@ bool Rtabmap::process(
 
 			//Epipolar geometry constraint
 			statistics_.addStatistic(Statistics::kLoopRejectedHypothesis(), rejectedLoopClosure?1.0f:0);
+			statistics_.addStatistic(Statistics::kLoopLocalization_delayed(), delayedLocalization?1.0f:0);
 
 			statistics_.addStatistic(Statistics::kMemorySmall_movement(), smallDisplacement?1.0f:0);
 			statistics_.addStatistic(Statistics::kMemoryDistance_travelled(), _distanceTravelled);
@@ -7263,6 +7259,7 @@ bool Rtabmap::addLink(const Link & link)
 			Transform odomPose = _odomCachePoses.find(newestId)->second;
 			_mapCorrection = _lastLocalizationPose * odomPose.inverse();
 			_lastLocalizationNodeId = oldestId;
+			_localizationApplied = true;
 			return true;
 		}
 	}

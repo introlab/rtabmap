@@ -2239,7 +2239,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				else if(landmarkId!=0)
 				{
 					highestHypothesisId = landmarkNodeRef;
-					if(rejectedHyp)
+					if(rejectedHyp && uValue(stat.data(), Statistics::kLoopLocalization_delayed(), 0.0f) != 0.0f)
+					{
+						// Localization mode: accepted, but waiting for another localization to be applied (RGBD/MaxOdomCacheSize)
+						_ui->imageView_loopClosure->setBackgroundColor(QColor("darkorange"));
+						_ui->label_matchId->setText(QString("Landmark delayed = %1 with %2").arg(landmarkId).arg(landmarkNodeRef));
+						matchId = landmarkNodeRef;
+					}
+					else if(rejectedHyp)
 					{
 						show = _preferencesDialog->imageRejectedShown();
 						if(show)

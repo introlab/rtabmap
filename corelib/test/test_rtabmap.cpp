@@ -3609,9 +3609,9 @@ TEST(RtabmapTest, LandmarkObservationsAcrossFramesShareSameLandmarkPose)
 // RGBD/LandmarkMaxNormalError: a map is created with two nodes at the origin seeing
 // landmark 42 1 m forward, on a wall facing the robot (normal toward -x). Then, in localization mode, new nodes at the origin see the
 // landmark again with the orientations `observations`. Returns, for each of them,
-// whether the landmark is used (it is removed when rejected). If set, `normalRejected` and
-// `normalErrors` get, for each of them, the Loop/Landmark_normal_rejected/ and
-// Loop/Landmark_normal_error/ statistics (-1 if not published).
+// whether the landmark is used (it is removed when rejected). If set, `normalRejected`, `normalErrors` and `delayed` get, for each of them, the
+// Loop/Landmark_normal_rejected/, Loop/Landmark_normal_error/ and Loop/Localization_delayed/
+// statistics (-1 if not published).
 // Landmark 1 m forward, its z axis (normal) toward the robot (-x)
 static const Transform kWallLandmark(1.0f, 0, 0, 0, -M_PI/2.0f, 0);
 
@@ -3621,7 +3621,8 @@ static std::vector<bool> landmarkObservationsKeptInLocalization(
 		bool orientationIgnored = false,
 		bool localizationMode = true,
 		std::vector<float> * normalRejected = 0,
-		std::vector<float> * normalErrors = 0)
+		std::vector<float> * normalErrors = 0,
+		std::vector<float> * delayed = 0)
 {
 	const std::string dbPath = uniqueDbPath();
 	ParametersMap params = defaultRtabmapParams();
@@ -3665,6 +3666,16 @@ static std::vector<bool> landmarkObservationsKeptInLocalization(
 			// In localization mode, the new node may not be kept in memory: use the
 			// landmark used for localization (0 if none) instead of its links.
 			kept.push_back(uValue(rtabmap.getStatistics().data(), Statistics::kLoopLandmark_detected(), 0.0f) == kLm);
+			if(uValue(rtabmap.getStatistics().data(), Statistics::kLoopLocalization_delayed(), 0.0f) != 0.0f)
+			{
+				// The landmark of a delayed localization is still reported (like a rejected one)
+				EXPECT_TRUE(kept.back()) << "observation " << i;
+				EXPECT_EQ(uValue(rtabmap.getStatistics().data(), Statistics::kLoopRejectedHypothesis(), -1.0f), 1.0f) << "observation " << i;
+			}
+			if(delayed)
+			{
+				delayed->push_back(uValue(rtabmap.getStatistics().data(), Statistics::kLoopLocalization_delayed(), -1.0f));
+			}
 			if(normalRejected)
 			{
 				normalRejected->push_back(uValue(rtabmap.getStatistics().data(), Statistics::kLoopLandmark_normal_rejected(), -1.0f));
@@ -3719,20 +3730,60 @@ TEST(RtabmapTest, LandmarkMaxNormalErrorComparesYawOnlyWhenLocalized)
 		GTEST_SKIP() << "neither GTSAM nor g2o is available to optimize landmarks";
 	}
 	// Normal turned by 60 deg about the vertical: its inclination is the same, so it is
-	// kept when not localized. Once localized by a first good detection (in the odom
-	// cache), the full normal is compared and it is rejected.
+	// kept when not localized. The first good detection is delayed (RGBD/MaxOdomCacheSize>0),
+	// so the robot is not localized yet. Once localized by a second good detection, the
+	// full normal is compared and it is rejected.
 	const Transform turned(1.0f, 0, 0, 0, -M_PI/2.0f, 60.0f*M_PI/180.0f);
 	EXPECT_TRUE(landmarkObservationsKeptInLocalization({turned}, 20.0f*M_PI/180.0f)[0]) << "not localized: only the inclination is compared";
-	std::vector<float> rejected, errors;
-	const std::vector<bool> kept = landmarkObservationsKeptInLocalization({kWallLandmark, turned}, 20.0f*M_PI/180.0f, false, true, &rejected, &errors);
-	ASSERT_EQ(kept.size(), 2u);
-	ASSERT_EQ(rejected.size(), 2u);
-	ASSERT_EQ(errors.size(), 2u);
+	EXPECT_TRUE(landmarkObservationsKeptInLocalization({kWallLandmark, turned}, 20.0f*M_PI/180.0f)[1]) << "localization delayed: only the inclination is compared";
+	std::vector<float> rejected, errors, delayed;
+	const std::vector<bool> kept = landmarkObservationsKeptInLocalization({kWallLandmark, kWallLandmark, turned}, 20.0f*M_PI/180.0f, false, true, &rejected, &errors, &delayed);
+	ASSERT_EQ(kept.size(), 3u);
+	ASSERT_EQ(rejected.size(), 3u);
+	ASSERT_EQ(errors.size(), 3u);
+	ASSERT_EQ(delayed.size(), 3u);
 	EXPECT_TRUE(kept[0]) << "good detection";
 	EXPECT_EQ(rejected[0], 0.0f) << "good detection";
-	EXPECT_FALSE(kept[1]) << "localized: the full normal is compared";
-	EXPECT_EQ(rejected[1], 42.0f) << "localized: the full normal is compared";
-	EXPECT_NEAR(errors[1], 60.0f, 0.5f) << "localized: the full normal is compared";
+	EXPECT_EQ(delayed[0], 1.0f) << "first localization is delayed";
+	EXPECT_TRUE(kept[1]) << "good detection";
+	EXPECT_EQ(rejected[1], 0.0f) << "good detection";
+	EXPECT_EQ(delayed[1], 0.0f) << "second localization is applied";
+	EXPECT_FALSE(kept[2]) << "localized: the full normal is compared";
+	EXPECT_EQ(rejected[2], 42.0f) << "localized: the full normal is compared";
+	EXPECT_NEAR(errors[2], 60.0f, 0.5f) << "localized: the full normal is compared";
+	EXPECT_EQ(delayed[2], 0.0f);
+}
+
+TEST(RtabmapTest, LandmarkMaxNormalErrorNotLocalizedWhileLocalizationDelayed)
+{
+	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM) && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		GTEST_SKIP() << "neither GTSAM nor g2o is available to optimize landmarks";
+	}
+	// Regression: in localization mode, the robot doesn't restart where the last localization
+	// saved in the database is (the origin of the map): it is turned by 60 deg about the
+	// vertical, while its odometry is still identity. The first good detection is delayed
+	// (RGBD/MaxOdomCacheSize>0), so the map correction is not updated: the following ones
+	// should not be compared with the full normal of the map using the uncorrected pose
+	// (60 deg error), otherwise they are all rejected and the robot never localizes.
+	const Transform observation = Transform(0, 0, 0, 0, 0, 60.0f*M_PI/180.0f).inverse() * kWallLandmark;
+	std::vector<float> rejected, errors, delayed;
+	const std::vector<bool> kept = landmarkObservationsKeptInLocalization(
+			{observation, observation, observation}, 20.0f*M_PI/180.0f, false, true, &rejected, &errors, &delayed);
+	ASSERT_EQ(kept.size(), 3u);
+	ASSERT_EQ(rejected.size(), 3u);
+	ASSERT_EQ(errors.size(), 3u);
+	ASSERT_EQ(delayed.size(), 3u);
+	for(size_t i=0; i<kept.size(); ++i)
+	{
+		SCOPED_TRACE(uFormat("detection %d", (int)i));
+		EXPECT_TRUE(kept[i]);
+		EXPECT_EQ(rejected[i], 0.0f);
+		EXPECT_NEAR(errors[i], 0.0f, 0.5f);
+	}
+	EXPECT_EQ(delayed[0], 1.0f) << "first localization is delayed";
+	EXPECT_EQ(delayed[1], 0.0f) << "second localization is applied";
+	EXPECT_EQ(delayed[2], 0.0f) << "localized: the full normal is compared with the corrected pose";
 }
 
 // Mapping mode, RGBD/OptimizeMaxError with RGBD/OptimizeMaxErrorRepairRadius: the robot

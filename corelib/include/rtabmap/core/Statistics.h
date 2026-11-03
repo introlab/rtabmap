@@ -108,6 +108,7 @@ class RTABMAP_CORE_EXPORT Statistics
 {
 	RTABMAP_STATS(Loop, Id,); // Combined loop or proximity detection
 	RTABMAP_STATS(Loop, RejectedHypothesis,);
+	RTABMAP_STATS(Loop, Localization_delayed,); // Localization mode: localization accepted but not applied yet, waiting for another one (RGBD/MaxOdomCacheSize>0). RejectedHypothesis is also 1.
 	RTABMAP_STATS(Loop, Accepted_hypothesis_id,);
 	RTABMAP_STATS(Loop, Suppressed_hypothesis_id,);
 	RTABMAP_STATS(Loop, Highest_hypothesis_id,);
