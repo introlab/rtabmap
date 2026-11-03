@@ -429,7 +429,7 @@ var searchData=
   ['defaultonnxopenvinocachepath_426',['defaultOnnxOpenVINOCachePath',['../classrtabmap_1_1Parameters.html#ad3cf492ea43095bdccf37d3ad21eaa4f',1,'rtabmap::Parameters']]],
   ['defaultonnxopenvinodevice_427',['defaultOnnxOpenVINODevice',['../classrtabmap_1_1Parameters.html#a7989ae6723ca563f3c9fd6d6ffeacc78',1,'rtabmap::Parameters']]],
   ['defaultonnxopenvinolibrarypath_428',['defaultOnnxOpenVINOLibraryPath',['../classrtabmap_1_1Parameters.html#abeea2737a4b2bfa0636ff0ac641207c6',1,'rtabmap::Parameters']]],
-  ['defaultonnxopenvinoprecision_429',['defaultOnnxOpenVINOPrecision',['../classrtabmap_1_1Parameters.html#a36cf5c51bc720e58a47f5e5172f192e8',1,'rtabmap::Parameters']]],
+  ['defaultonnxopenvinoprecision_429',['defaultOnnxOpenVINOPrecision',['../classrtabmap_1_1Parameters.html#ad115df375653afc4f20170805d3bbae1',1,'rtabmap::Parameters']]],
   ['defaultonnxprovider_430',['defaultOnnxProvider',['../classrtabmap_1_1Parameters.html#a31ac2bcca4a7cb387b96b50040368698',1,'rtabmap::Parameters']]],
   ['defaultonnxtensorrtcachepath_431',['defaultOnnxTensorRTCachePath',['../classrtabmap_1_1Parameters.html#a8f55002ba42efa0870e90de885db550d',1,'rtabmap::Parameters']]],
   ['defaultonnxtensorrtfp16_432',['defaultOnnxTensorRTFp16',['../classrtabmap_1_1Parameters.html#af9fad20ffa531249b23058e1e6b18de4',1,'rtabmap::Parameters']]],
