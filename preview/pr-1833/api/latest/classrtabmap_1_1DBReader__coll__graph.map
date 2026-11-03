@@ -1,0 +1,7 @@
+<map id="rtabmap::DBReader" name="rtabmap::DBReader">
+<area shape="rect" id="Node000001" title=" " alt="" coords="20,152,171,177"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Camera.html" title=" " alt="" coords="27,79,163,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="98,118,98,152,93,152,93,118"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1SensorCapture.html" title="Abstract base class for sensor data capture (cameras, lidars, etc.)" alt="" coords="5,5,185,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="98,44,98,79,93,79,93,44"/>
+</map>

@@ -1,0 +1,26 @@
+var classrtabmap_1_1RegistrationInfo =
+[
+    [ "copyWithoutData", "classrtabmap_1_1RegistrationInfo.html#ae7abf7e34019a0c27b2de8ac5647f277", null ],
+    [ "covariance", "classrtabmap_1_1RegistrationInfo.html#a347f413d8a96dea23c4fdc6af2a1ddb5", null ],
+    [ "rejectedMsg", "classrtabmap_1_1RegistrationInfo.html#af47520f216ad7259cfcc07254c4daa96", null ],
+    [ "totalTime", "classrtabmap_1_1RegistrationInfo.html#a52c83dd2b8f59c4ed360dc0eadc5de57", null ],
+    [ "inliers", "classrtabmap_1_1RegistrationInfo.html#a9de693920adf2f33eb283018c1e52456", null ],
+    [ "inliersRatio", "classrtabmap_1_1RegistrationInfo.html#a2ffbcc42740094d7cb5e38bcd03006c8", null ],
+    [ "inliersMeanDistance", "classrtabmap_1_1RegistrationInfo.html#a9b5a886b0d4a77966820ed5766ff42fc", null ],
+    [ "inliersDistribution", "classrtabmap_1_1RegistrationInfo.html#a4461db9c85505ed07f6d69b5e0329601", null ],
+    [ "inliersIDs", "classrtabmap_1_1RegistrationInfo.html#a3672f48c403ae0d9a309aa7b3a0715b2", null ],
+    [ "matches", "classrtabmap_1_1RegistrationInfo.html#a5dd0548e61c157636449fb607869f3a8", null ],
+    [ "variance", "classrtabmap_1_1RegistrationInfo.html#a95b6903a7b750f9ada14000dc37800dc", null ],
+    [ "matchesIDs", "classrtabmap_1_1RegistrationInfo.html#aa7a148863f31e6556f483b7d932a40dc", null ],
+    [ "projectedIDs", "classrtabmap_1_1RegistrationInfo.html#aa81f7ffab8e77dfc5240fd7e9a587498", null ],
+    [ "inliersPerCam", "classrtabmap_1_1RegistrationInfo.html#a1537d6d65162a8c84cabcae7fba37c26", null ],
+    [ "matchesPerCam", "classrtabmap_1_1RegistrationInfo.html#ab79de88af655e987d8232d5b86d7ad82", null ],
+    [ "icpInliersRatio", "classrtabmap_1_1RegistrationInfo.html#aa77a6a2994d004c83ce37906d7adce06", null ],
+    [ "icpTranslation", "classrtabmap_1_1RegistrationInfo.html#a0aca4419a027a27d3aa9b65d7019898b", null ],
+    [ "icpRotation", "classrtabmap_1_1RegistrationInfo.html#a9487cf937223f68f2658189298d727e4", null ],
+    [ "icpStructuralComplexity", "classrtabmap_1_1RegistrationInfo.html#a702e62ddd46f3912312be7b55fbba4de", null ],
+    [ "icpStructuralDistribution", "classrtabmap_1_1RegistrationInfo.html#a8b152df7c54273e6e33cdfa1744157f5", null ],
+    [ "icpCorrespondences", "classrtabmap_1_1RegistrationInfo.html#a2cd3a5a3de9c1a07101ef198bf11a495", null ],
+    [ "icpRMS", "classrtabmap_1_1RegistrationInfo.html#a1612de115fbd0bfb6dbe8e3aa3528037", null ],
+    [ "icpIterations", "classrtabmap_1_1RegistrationInfo.html#a4183e994d882e94bd782678a3ab4cd12", null ]
+];

@@ -1,0 +1,5 @@
+<map id="rtabmap::OdometryLOAM" name="rtabmap::OdometryLOAM">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,79,193,104"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Odometry.html" title="Abstract base class for visual, lidar and visual&#45;inertial odometry backends." alt="" coords="24,5,175,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="102,44,102,79,97,79,97,44"/>
+</map>

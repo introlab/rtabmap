@@ -1,0 +1,5 @@
+<map id="rtabmap::graph::MaxGraphErrors" name="rtabmap::graph::MaxGraphErrors">
+<area shape="rect" id="Node000001" title="Largest pose&#45;graph constraint violations after optimization." alt="" coords="5,108,203,148"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Link.html" title="Directed constraint between two nodes in RTAB&#45;Map&#39;s pose graph." alt="" coords="48,5,160,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="107,45,107,108,101,108,101,45"/>
+</map>
