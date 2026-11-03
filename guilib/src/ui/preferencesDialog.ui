@@ -5280,6 +5280,78 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </item>
                                  </layout>
                                 </widget>
+                                <widget class="QWidget" name="page_einstar">
+                                 <layout class="QVBoxLayout" name="verticalLayout_einstar">
+                                  <item>
+                                   <widget class="QGroupBox" name="groupBox_einstar">
+                                    <property name="title">
+                                     <string>SHINING 3D Einstar</string>
+                                    </property>
+                                    <layout class="QGridLayout" name="gridLayout_einstar" columnstretch="0,1,1">
+                                        <item row="0" column="0">
+                                         <widget class="QToolButton" name="toolButton_einstar_calibration">
+                                          <property name="text">
+                                           <string>...</string>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="0" column="1">
+                                         <widget class="QLineEdit" name="lineEdit_einstar_calibration"/>
+                                        </item>
+                                        <item row="0" column="2">
+                                         <widget class="QLabel" name="label_einstar_calibration">
+                                          <property name="text">
+                                           <string>Calibration (custom-info dump, EXStar *.data_cm file or EXStar calibration cache directory). Leave empty to read it from the scanner.</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="1" column="0">
+                                         <widget class="QToolButton" name="toolButton_einstar_replay">
+                                          <property name="text">
+                                           <string>...</string>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="1" column="1">
+                                         <widget class="QLineEdit" name="lineEdit_einstar_replay"/>
+                                        </item>
+                                        <item row="1" column="2">
+                                         <widget class="QLabel" name="label_einstar_replay">
+                                          <property name="text">
+                                           <string>Replay a directory of libeinstar captures (frame_&lt;id&gt;_cam&lt;n&gt;.pgm) instead of a live scanner. Requires a calibration.</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                    </layout>
+                                   </widget>
+                                  </item>
+                                  <item>
+                                   <spacer name="verticalSpacer_einstar">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>0</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
+                                 </layout>
+                                </widget>
                                </widget>
                               </item>
                              </layout>

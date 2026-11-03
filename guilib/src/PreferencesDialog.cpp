@@ -982,12 +982,16 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_k4a_depth_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_k4a_irDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->toolButton_k4a_mkv, SIGNAL(clicked()), this, SLOT(selectSourceMKVPath()));
+	connect(_ui->toolButton_einstar_calibration, SIGNAL(clicked()), this, SLOT(selectSourceEinstarCalibration()));
+	connect(_ui->toolButton_einstar_replay, SIGNAL(clicked()), this, SLOT(selectSourceEinstarReplay()));
 	connect(_ui->toolButton_source_distortionModel, SIGNAL(clicked()), this, SLOT(selectSourceDistortionModel()));
 	connect(_ui->toolButton_distortionModel, SIGNAL(clicked()), this, SLOT(visualizeDistortionModel()));
 	connect(_ui->lineEdit_openniOniPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openni2OniPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_k4a_mkv, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_useMKVStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_einstar_calibration, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_einstar_replay, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_source_distortionModel, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->groupBox_bilateral, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2378,6 +2382,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_k4a_depth_resolution->setCurrentIndex(2);
 		_ui->checkbox_k4a_irDepth->setChecked(false);
 		_ui->lineEdit_k4a_mkv->clear();
+		_ui->lineEdit_einstar_calibration->clear();
+		_ui->lineEdit_einstar_replay->clear();
 		_ui->spinBox_orbbec_sdk_color_width->setValue(800);
 		_ui->spinBox_orbbec_sdk_color_height->setValue(600);
 		_ui->spinBox_orbbec_sdk_depth_width->setValue(800);
@@ -2928,6 +2934,11 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_k4a_mkv->setText(settings.value("mkvPath", _ui->lineEdit_k4a_mkv->text()).toString());
 	_ui->source_checkBox_useMKVStamps->setChecked(settings.value("useMkvStamps", _ui->source_checkBox_useMKVStamps->isChecked()).toBool());
 	settings.endGroup(); // K4A
+
+	settings.beginGroup("Einstar");
+	_ui->lineEdit_einstar_calibration->setText(settings.value("calibration", _ui->lineEdit_einstar_calibration->text()).toString());
+	_ui->lineEdit_einstar_replay->setText(settings.value("replay", _ui->lineEdit_einstar_replay->text()).toString());
+	settings.endGroup(); // Einstar
 
 	settings.beginGroup("OrbbecSDK");
 	_ui->spinBox_orbbec_sdk_color_width->setValue(settings.value("color_width", _ui->spinBox_orbbec_sdk_color_width->value()).toInt());
@@ -3555,6 +3566,11 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("mkvPath", _ui->lineEdit_k4a_mkv->text());
 	settings.setValue("useMkvStamps", _ui->source_checkBox_useMKVStamps->isChecked());
 	settings.endGroup(); // K4A
+
+	settings.beginGroup("Einstar");
+	settings.setValue("calibration", _ui->lineEdit_einstar_calibration->text());
+	settings.setValue("replay", _ui->lineEdit_einstar_replay->text());
+	settings.endGroup(); // Einstar
 
 	settings.beginGroup("OrbbecSDK");
 	settings.setValue("color_width", _ui->spinBox_orbbec_sdk_color_width->value());
@@ -4544,6 +4560,10 @@ void PreferencesDialog::selectSourceDriver(Src src, int variant)
 			_3dRenderingRoiRatios[0]->setText("0.05 0.05 0.05 0.05");
 			_3dRenderingRoiRatios[1]->setText("0.05 0.05 0.05 0.05");
 		}
+		else if (src == kSrcEinstar)
+		{
+			_ui->lineEdit_einstar_replay->clear();
+		}
 		else if (src == kSrcRealSense2)
 		{
 			if(variant > 0) // L515
@@ -5024,6 +5044,34 @@ void PreferencesDialog::selectSourceMKVPath()
 	if (!path.isEmpty())
 	{
 		_ui->lineEdit_k4a_mkv->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceEinstarCalibration()
+{
+	QString dir = _ui->lineEdit_einstar_calibration->text();
+	if (dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select Einstar calibration"), dir, tr("Einstar calibration (*.bin *.data_cm);;All files (*)"));
+	if (!path.isEmpty())
+	{
+		_ui->lineEdit_einstar_calibration->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceEinstarReplay()
+{
+	QString dir = _ui->lineEdit_einstar_replay->text();
+	if (dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select Einstar replay directory"), dir);
+	if (!path.isEmpty())
+	{
+		_ui->lineEdit_einstar_replay->setText(path);
 	}
 }
 
@@ -7088,10 +7136,17 @@ Camera * PreferencesDialog::createCamera(
 	}
 	else if (driver == kSrcEinstar)
 	{
-		// Calibration is read from the scanner itself.
+		if (!_ui->lineEdit_einstar_replay->text().isEmpty() &&
+			_ui->lineEdit_einstar_calibration->text().isEmpty())
+		{
+			QMessageBox::warning(this, tr("Creating camera"),
+					tr("Einstar replay needs a calibration file."), QMessageBox::Ok);
+			return 0;
+		}
+		// Empty calibration: read from the scanner itself.
 		camera = new CameraEinstar(
-			"",
-			"",
+			_ui->lineEdit_einstar_calibration->text().toStdString(),
+			_ui->lineEdit_einstar_replay->text().toStdString(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}

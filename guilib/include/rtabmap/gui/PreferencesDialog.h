@@ -420,6 +420,8 @@ private Q_SLOTS:
 	void selectSourceOni2Path();
 	void selectSourceMKVPath();
 	void selectSourceSvoPath();
+	void selectSourceEinstarCalibration();
+	void selectSourceEinstarReplay();
 	void selectSourceRealsense2JsonPath();
 	void selectSourceDepthaiBlobPath();
 	void selectVlp16PcapPath();
