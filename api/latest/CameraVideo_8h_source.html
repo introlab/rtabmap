@@ -135,66 +135,67 @@ $(document).ready(function(){initNavTree('CameraVideo_8h_source.html',''); initR
 <div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span> </div>
 <div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="preprocessor">#pragma once</span></div>
 <div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span> </div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="preprocessor">#include &lt;opencv2/highgui/highgui.hpp&gt;</span></div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span><span class="preprocessor">#include &quot;rtabmap/core/Camera.h&quot;</span></div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span> </div>
-<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span><span class="keyword">namespace </span><a class="code hl_namespace" href="namespacertabmap.html">rtabmap</a></div>
-<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span>{</div>
-<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span> </div>
-<div class="foldopen" id="foldopen00036" data-start="{" data-end="};">
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno"><a class="line" href="classrtabmap_1_1CameraVideo.html">   36</a></span><span class="keyword">class </span>RTABMAP_CORE_EXPORT <a class="code hl_class" href="classrtabmap_1_1CameraVideo.html">CameraVideo</a> :</div>
-<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>  <span class="keyword">public</span> <a class="code hl_class" href="classrtabmap_1_1Camera.html">Camera</a></div>
-<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>{</div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="keyword">public</span>:</div>
-<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>  <span class="keyword">enum</span> Source{kVideoFile, kUsbDevice};</div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span> </div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span><span class="keyword">public</span>:</div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>  <a class="code hl_class" href="classrtabmap_1_1CameraVideo.html">CameraVideo</a>(<span class="keywordtype">int</span> usbDevice = 0,</div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>      <span class="keywordtype">bool</span> rectifyImages = <span class="keyword">false</span>,</div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span>      <span class="keywordtype">float</span> imageRate = 0,</div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span>      <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> &amp; localTransform = Transform::getIdentity());</div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span>  <a class="code hl_class" href="classrtabmap_1_1CameraVideo.html">CameraVideo</a>(<span class="keyword">const</span> std::string &amp; filePath,</div>
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>      <span class="keywordtype">bool</span> rectifyImages = <span class="keyword">false</span>,</div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>      <span class="keywordtype">float</span> imageRate = 0,</div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>      <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> &amp; localTransform = Transform::getIdentity());</div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>  <span class="keyword">virtual</span> <a class="code hl_class" href="classrtabmap_1_1CameraVideo.html">~CameraVideo</a>();</div>
-<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span> </div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno"><a class="line" href="classrtabmap_1_1CameraVideo.html#a2b20fb67f20ec64e6c43e8d76d5c1f74">   53</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">bool</span> <a class="code hl_function" href="classrtabmap_1_1CameraVideo.html#a2b20fb67f20ec64e6c43e8d76d5c1f74">init</a>(<span class="keyword">const</span> std::string &amp; calibrationFolder = <span class="stringliteral">&quot;.&quot;</span>, <span class="keyword">const</span> std::string &amp; cameraName = <span class="stringliteral">&quot;&quot;</span>);</div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>  <span class="keyword">virtual</span> <span class="keywordtype">bool</span> isCalibrated() <span class="keyword">const</span>;</div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno"><a class="line" href="classrtabmap_1_1CameraVideo.html#ab3400ba7ae983cd1ad9678970079b00a">   55</a></span>  <span class="keyword">virtual</span> std::string <a class="code hl_function" href="classrtabmap_1_1CameraVideo.html#ab3400ba7ae983cd1ad9678970079b00a">getSerial</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>  <span class="keywordtype">int</span> getUsbDevice()<span class="keyword"> const </span>{<span class="keywordflow">return</span> _usbDevice;}</div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>  <span class="keyword">const</span> std::string &amp; getFilePath()<span class="keyword"> const </span>{<span class="keywordflow">return</span> _filePath;}</div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span> </div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno"><a class="line" href="classrtabmap_1_1CameraVideo.html#a7c8c8e9d343f78fdd17aad2db34dbecb">   64</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1CameraVideo.html#a7c8c8e9d343f78fdd17aad2db34dbecb">setResolution</a>(<span class="keywordtype">int</span> width, <span class="keywordtype">int</span> height) {_width=width, _height=height;}</div>
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>  <span class="keywordtype">void</span> setFOURCC(<span class="keyword">const</span> std::string &amp; fourcc) { _fourcc = fourcc; }</div>
-<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span> </div>
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span><span class="keyword">protected</span>:</div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>  <span class="keyword">virtual</span> SensorData captureImage(SensorCaptureInfo * info = 0);</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span> </div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span><span class="keyword">private</span>:</div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>  <span class="comment">// File type</span></div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>  std::string _filePath;</div>
-<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>  <span class="keywordtype">bool</span> _rectifyImages;</div>
-<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span> </div>
-<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>  cv::VideoCapture _capture;</div>
-<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>  Source _src;</div>
-<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span> </div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>  <span class="comment">// Usb camera</span></div>
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>  <span class="keywordtype">int</span> _usbDevice;</div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>  std::string _guid;</div>
-<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>  <span class="keywordtype">int</span> _width;</div>
-<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>  <span class="keywordtype">int</span> _height;</div>
-<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>  std::string _fourcc;</div>
-<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span> </div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>  CameraModel _model;</div>
-<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>};</div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="preprocessor">#include &lt;opencv2/imgcodecs.hpp&gt;</span></div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span><span class="preprocessor">#include &lt;opencv2/videoio.hpp&gt;</span></div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="preprocessor">#include &quot;rtabmap/core/Camera.h&quot;</span></div>
+<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span> </div>
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="keyword">namespace </span><a class="code hl_namespace" href="namespacertabmap.html">rtabmap</a></div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>{</div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span> </div>
+<div class="foldopen" id="foldopen00037" data-start="{" data-end="};">
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno"><a class="line" href="classrtabmap_1_1CameraVideo.html">   37</a></span><span class="keyword">class </span>RTABMAP_CORE_EXPORT <a class="code hl_class" href="classrtabmap_1_1CameraVideo.html">CameraVideo</a> :</div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>  <span class="keyword">public</span> <a class="code hl_class" href="classrtabmap_1_1Camera.html">Camera</a></div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>{</div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span><span class="keyword">public</span>:</div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>  <span class="keyword">enum</span> Source{kVideoFile, kUsbDevice};</div>
+<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span> </div>
+<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span><span class="keyword">public</span>:</div>
+<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>  <a class="code hl_class" href="classrtabmap_1_1CameraVideo.html">CameraVideo</a>(<span class="keywordtype">int</span> usbDevice = 0,</div>
+<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span>      <span class="keywordtype">bool</span> rectifyImages = <span class="keyword">false</span>,</div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span>      <span class="keywordtype">float</span> imageRate = 0,</div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span>      <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> &amp; localTransform = Transform::getIdentity());</div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>  <a class="code hl_class" href="classrtabmap_1_1CameraVideo.html">CameraVideo</a>(<span class="keyword">const</span> std::string &amp; filePath,</div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>      <span class="keywordtype">bool</span> rectifyImages = <span class="keyword">false</span>,</div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>      <span class="keywordtype">float</span> imageRate = 0,</div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>      <span class="keyword">const</span> <a class="code hl_class" href="classrtabmap_1_1Transform.html">Transform</a> &amp; localTransform = Transform::getIdentity());</div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span>  <span class="keyword">virtual</span> <a class="code hl_class" href="classrtabmap_1_1CameraVideo.html">~CameraVideo</a>();</div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span> </div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno"><a class="line" href="classrtabmap_1_1CameraVideo.html#a2b20fb67f20ec64e6c43e8d76d5c1f74">   54</a></span>  <span class="keyword">virtual</span> <span class="keywordtype">bool</span> <a class="code hl_function" href="classrtabmap_1_1CameraVideo.html#a2b20fb67f20ec64e6c43e8d76d5c1f74">init</a>(<span class="keyword">const</span> std::string &amp; calibrationFolder = <span class="stringliteral">&quot;.&quot;</span>, <span class="keyword">const</span> std::string &amp; cameraName = <span class="stringliteral">&quot;&quot;</span>);</div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>  <span class="keyword">virtual</span> <span class="keywordtype">bool</span> isCalibrated() <span class="keyword">const</span>;</div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno"><a class="line" href="classrtabmap_1_1CameraVideo.html#ab3400ba7ae983cd1ad9678970079b00a">   56</a></span>  <span class="keyword">virtual</span> std::string <a class="code hl_function" href="classrtabmap_1_1CameraVideo.html#ab3400ba7ae983cd1ad9678970079b00a">getSerial</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>  <span class="keywordtype">int</span> getUsbDevice()<span class="keyword"> const </span>{<span class="keywordflow">return</span> _usbDevice;}</div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>  <span class="keyword">const</span> std::string &amp; getFilePath()<span class="keyword"> const </span>{<span class="keywordflow">return</span> _filePath;}</div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span> </div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno"><a class="line" href="classrtabmap_1_1CameraVideo.html#a7c8c8e9d343f78fdd17aad2db34dbecb">   65</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classrtabmap_1_1CameraVideo.html#a7c8c8e9d343f78fdd17aad2db34dbecb">setResolution</a>(<span class="keywordtype">int</span> width, <span class="keywordtype">int</span> height) {_width=width, _height=height;}</div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>  <span class="keywordtype">void</span> setFOURCC(<span class="keyword">const</span> std::string &amp; fourcc) { _fourcc = fourcc; }</div>
+<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span> </div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span><span class="keyword">protected</span>:</div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>  <span class="keyword">virtual</span> SensorData captureImage(SensorCaptureInfo * info = 0);</div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span> </div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span><span class="keyword">private</span>:</div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>  <span class="comment">// File type</span></div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>  std::string _filePath;</div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>  <span class="keywordtype">bool</span> _rectifyImages;</div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span> </div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>  cv::VideoCapture _capture;</div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>  Source _src;</div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span> </div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>  <span class="comment">// Usb camera</span></div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>  <span class="keywordtype">int</span> _usbDevice;</div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>  std::string _guid;</div>
+<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>  <span class="keywordtype">int</span> _width;</div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>  <span class="keywordtype">int</span> _height;</div>
+<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>  std::string _fourcc;</div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span> </div>
+<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>  CameraModel _model;</div>
+<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>};</div>
 </div>
-<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span> </div>
 <div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span> </div>
-<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span>} <span class="comment">// namespace rtabmap</span></div>
-<div class="ttc" id="aclassrtabmap_1_1CameraVideo_html"><div class="ttname"><a href="classrtabmap_1_1CameraVideo.html">rtabmap::CameraVideo</a></div><div class="ttdef"><b>Definition</b> <a href="CameraVideo_8h_source.html#l00036">CameraVideo.h:38</a></div></div>
+<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span> </div>
+<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span>} <span class="comment">// namespace rtabmap</span></div>
+<div class="ttc" id="aclassrtabmap_1_1CameraVideo_html"><div class="ttname"><a href="classrtabmap_1_1CameraVideo.html">rtabmap::CameraVideo</a></div><div class="ttdef"><b>Definition</b> <a href="CameraVideo_8h_source.html#l00037">CameraVideo.h:39</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1CameraVideo_html_a2b20fb67f20ec64e6c43e8d76d5c1f74"><div class="ttname"><a href="classrtabmap_1_1CameraVideo.html#a2b20fb67f20ec64e6c43e8d76d5c1f74">rtabmap::CameraVideo::init</a></div><div class="ttdeci">virtual bool init(const std::string &amp;calibrationFolder=&quot;.&quot;, const std::string &amp;cameraName=&quot;&quot;)</div><div class="ttdoc">Initializes the sensor.</div></div>
-<div class="ttc" id="aclassrtabmap_1_1CameraVideo_html_a7c8c8e9d343f78fdd17aad2db34dbecb"><div class="ttname"><a href="classrtabmap_1_1CameraVideo.html#a7c8c8e9d343f78fdd17aad2db34dbecb">rtabmap::CameraVideo::setResolution</a></div><div class="ttdeci">void setResolution(int width, int height)</div><div class="ttdef"><b>Definition</b> <a href="CameraVideo_8h_source.html#l00064">CameraVideo.h:64</a></div></div>
+<div class="ttc" id="aclassrtabmap_1_1CameraVideo_html_a7c8c8e9d343f78fdd17aad2db34dbecb"><div class="ttname"><a href="classrtabmap_1_1CameraVideo.html#a7c8c8e9d343f78fdd17aad2db34dbecb">rtabmap::CameraVideo::setResolution</a></div><div class="ttdeci">void setResolution(int width, int height)</div><div class="ttdef"><b>Definition</b> <a href="CameraVideo_8h_source.html#l00065">CameraVideo.h:65</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1CameraVideo_html_ab3400ba7ae983cd1ad9678970079b00a"><div class="ttname"><a href="classrtabmap_1_1CameraVideo.html#ab3400ba7ae983cd1ad9678970079b00a">rtabmap::CameraVideo::getSerial</a></div><div class="ttdeci">virtual std::string getSerial() const</div><div class="ttdoc">Returns the sensor's serial number or unique identifier.</div></div>
 <div class="ttc" id="aclassrtabmap_1_1Camera_html"><div class="ttname"><a href="classrtabmap_1_1Camera.html">rtabmap::Camera</a></div><div class="ttdef"><b>Definition</b> <a href="Camera_8h_source.html#l00043">Camera.h:44</a></div></div>
 <div class="ttc" id="aclassrtabmap_1_1Transform_html"><div class="ttname"><a href="classrtabmap_1_1Transform.html">rtabmap::Transform</a></div><div class="ttdoc">Represents a 3D rigid body transformation (rotation + translation).</div><div class="ttdef"><b>Definition</b> <a href="Transform_8h_source.html#l00052">Transform.h:53</a></div></div>
