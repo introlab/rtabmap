@@ -1,29 +1,4 @@
 
-<!-- 
-
------------------------------------
-Notice: Use of AI in Pull Requests
------------------------------------
-
- - Make sure authors are human users, not AI models/agents. There should not be any "Co-authored by <AI model/agent> ..." in the commits. To fix it:
-
-   - If the PR has only one commit, do:
-      1. git commit --amend
-      2. Remove "Co-authored by..." line 
-      3. git push origin HEAD --force-with-lease
-
-   - In case there are commits with "Co-authored by <AI model/agent> ...", 
-   squash/rebase all commits in the PR:
-      1. git rebase -i origin/master
-      2. Pick first commit and squash the others, example:
-        pick a1b2c3d Your first commit message
-        squash e4f5g6h Your second commit message
-        squash i7j8k9l Your third commit message
-      3. Cleanup new message of the squashed commit without any "Co-authored by..."
-      4. git push --force-with-lease origin HEAD
-
--->
-
 ## Description
 <!-- What does this change do? -->
 <!-- If it fixes an existing issue, please refer to it -->
