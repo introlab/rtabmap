@@ -19,6 +19,7 @@ var classrtabmap_1_1Feature2D =
       [ "kFeatureSurfDaisy", "classrtabmap_1_1Feature2D.html#a7453189891e489bbcff1f2c971d04fdeaf07356b61730b6cd1b16600908517640", null ],
       [ "kFeaturePyDetector", "classrtabmap_1_1Feature2D.html#a7453189891e489bbcff1f2c971d04fdead8913f72d6353ac08559a6ccee433174", null ],
       [ "kFeatureSuperPointRpautrat", "classrtabmap_1_1Feature2D.html#a7453189891e489bbcff1f2c971d04fdeaca045b13036052150345d539588623aa", null ],
+      [ "kFeatureOnnxDetector", "classrtabmap_1_1Feature2D.html#a7453189891e489bbcff1f2c971d04fdeaf1a12e3f8e29101e11a6036481d2f0ee", null ],
       [ "kFeatureEnd", "classrtabmap_1_1Feature2D.html#a7453189891e489bbcff1f2c971d04fdead5d59eeecae124833d8248767a9a9ab3", null ]
     ] ],
     [ "generateKeypoints", "classrtabmap_1_1Feature2D.html#a78d70d2150b42203ffd1c94d79661248", null ],
