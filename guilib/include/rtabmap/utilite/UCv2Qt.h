@@ -23,6 +23,7 @@
 #include <QtGui/QImage>
 #include <QtGui/QColor>
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UThread.h>
 #include <stdio.h>
@@ -56,31 +57,34 @@ inline QImage uCvMat2QImage(
 	{
 		if(image.channels()==3)
 		{
-			const unsigned char * data = image.data;
-			if(image.channels() == 3)
+			qtemp = QImage(image.cols, image.rows, QImage::Format_RGB32);
+#if Q_BYTE_ORDER == Q_LITTLE_ENDIAN
+			// Format_RGB32 pixels (0xffRRGGBB) are stored as B,G,R,255 bytes: convert directly in the QImage buffer.
+			cv::Mat bgra(image.rows, image.cols, CV_8UC4, qtemp.bits(), qtemp.bytesPerLine());
+			cv::cvtColor(image, bgra, isBgr?cv::COLOR_BGR2BGRA:cv::COLOR_RGB2BGRA);
+#else
+			for(int y = 0; y < image.rows; ++y)
 			{
-				qtemp = QImage(image.cols, image.rows, QImage::Format_RGB32);
-				for(int y = 0; y < image.rows; ++y, data += image.cols*image.elemSize())
+				const unsigned char * data = image.ptr<unsigned char>(y);
+				QRgb * line = (QRgb*)qtemp.scanLine(y);
+				for(int x = 0; x < image.cols; ++x)
 				{
-					for(int x = 0; x < image.cols; ++x)
+					if(isBgr)
 					{
-						QRgb * p = ((QRgb*)qtemp.scanLine (y)) + x;
-						if(isBgr)
-						{
-							*p = qRgb(data[x * image.channels()+2], data[x * image.channels()+1], data[x * image.channels()]);
-						}
-						else
-						{
-							*p = qRgb(data[x * image.channels()], data[x * image.channels()+1], data[x * image.channels()+2]);
-						}
+						line[x] = qRgb(data[x * 3+2], data[x * 3+1], data[x * 3]);
+					}
+					else
+					{
+						line[x] = qRgb(data[x * 3], data[x * 3+1], data[x * 3+2]);
 					}
 				}
 			}
+#endif
 		}
 		else if(image.channels() == 1)
 		{
 			// mono grayscale
-			qtemp = QImage(image.data, image.cols, image.rows, image.cols, QImage::Format_Indexed8).copy();
+			qtemp = QImage(image.data, image.cols, image.rows, image.step, QImage::Format_Indexed8).copy();
 
 			QVector<QRgb> my_table;
 			my_table.reserve(256);
@@ -124,18 +128,25 @@ inline QImage uCvMat2QImage(
 		}
 		else
 		{
-			min = max = data[0];
-			for(unsigned int i=1; i<image.total(); ++i)
+			// range of valid pixels only
+			min = max = 0;
+			bool found = false;
+			for(int y = 0; y < image.rows; ++y)
 			{
-				if(uIsFinite(data[i]) && data[i] != 0)
+				const float * row = image.ptr<float>(y);
+				for(int x = 0; x < image.cols; ++x)
 				{
-					if(!uIsFinite(min) || (data[i] != 0 && data[i]<min))
+					if(uIsFinite(row[x]) && row[x] != 0)
 					{
-						min = data[i];
-					}
-					if(!uIsFinite(max) || (data[i] != 0 && data[i]>max))
-					{
-						max = data[i];
+						if(!found || row[x]<min)
+						{
+							min = row[x];
+						}
+						if(!found || row[x]>max)
+						{
+							max = row[x];
+						}
+						found = true;
 					}
 				}
 			}
@@ -150,11 +161,13 @@ inline QImage uCvMat2QImage(
 		}
 
 		qtemp = QImage(image.cols, image.rows, QImage::Format_Indexed8);
-		for(int y = 0; y < image.rows; ++y, data += image.cols)
+		for(int y = 0; y < image.rows; ++y)
 		{
+			data = image.ptr<float>(y);
+			uchar * line = qtemp.scanLine(y);
 			for(int x = 0; x < image.cols; ++x)
 			{
-				uchar * p = qtemp.scanLine (y) + x;
+				uchar * p = line + x;
 				if(!uIsFinite(data[x]) || max == min || data[x] == 0)
 				{
 					*p = 0;
@@ -205,18 +218,25 @@ inline QImage uCvMat2QImage(
 		}
 		else
 		{
-			min = max = data[0];
-			for(unsigned int i=1; i<image.total(); ++i)
+			// range of valid pixels only
+			min = max = 0;
+			bool found = false;
+			for(int y = 0; y < image.rows; ++y)
 			{
-				if(uIsFinite(data[i]) && data[i] != 0)
+				const unsigned short * row = image.ptr<unsigned short>(y);
+				for(int x = 0; x < image.cols; ++x)
 				{
-					if(!uIsFinite(min) || (data[i] != 0 && data[i]<min))
+					if(uIsFinite(row[x]) && row[x] != 0)
 					{
-						min = data[i];
-					}
-					if(!uIsFinite(max) || (data[i] != 0 && data[i]>max))
-					{
-						max = data[i];
+						if(!found || row[x]<min)
+						{
+							min = row[x];
+						}
+						if(!found || row[x]>max)
+						{
+							max = row[x];
+						}
+						found = true;
 					}
 				}
 			}
@@ -231,11 +251,13 @@ inline QImage uCvMat2QImage(
 		}
 
 		qtemp = QImage(image.cols, image.rows, QImage::Format_Indexed8);
-		for(int y = 0; y < image.rows; ++y, data += image.cols)
+		for(int y = 0; y < image.rows; ++y)
 		{
+			data = image.ptr<unsigned short>(y);
+			uchar * line = qtemp.scanLine(y);
 			for(int x = 0; x < image.cols; ++x)
 			{
-				uchar * p = qtemp.scanLine (y) + x;
+				uchar * p = line + x;
 				if(!uIsFinite(data[x]) || max == min || data[x]==0)
 				{
 					*p = 0;
