@@ -14259,8 +14259,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     </item>
                     <item row="3" column="1">
                      <widget class="QLabel" name="label_795">
+                      <property name="toolTip">
+                       <string>When optimization is accepted, the removed links are also removed from the graph. If the highest error is on a neighbor link (e.g., a bad loop closure with a very small variance pushed its error on adjacent odometry links), the loop closure with the highest error around it (under that radius) is considered instead. Neighbor links are never removed, so a bad odometry link cannot be repaired. If the highest error is on the new landmark link, the old link of the same landmark seen from farther away with the highest error is considered instead. In localization mode, only links still in the odometry cache (RGBD/MaxOdomCacheSize) can be removed.</string>
+                      </property>
                       <property name="text">
-                       <string>Repairing graph radius. If two consecutive loop closures are rejected by the optimization error ratio on the same old loop closure link, we will remove that old link, and other old links under that radius if necessary, until optimization is accepted. When optimization is accepted, the old loop closure links are removed from the graph. This feature is useful to reject bad loop closures that were accepted previously. Set to 0 to disable this feature.</string>
+                       <string>Repairing graph radius. If two consecutive loop closures or landmark detections are rejected by the optimization error ratio on the same old loop closure or landmark link, that old link (and other old links under that radius if necessary) is removed until optimization is accepted. Useful to reject bad loop closures or landmark detections accepted previously. Set to 0 to disable this feature. Mouse over for more details.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
