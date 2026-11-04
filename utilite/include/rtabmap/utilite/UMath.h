@@ -66,7 +66,7 @@ inline bool uIsFinite(const T & value)
 template<class T>
 inline T uMin3( const T& a, const T& b, const T& c)
 {
-	float m=a<b?a:b;
+	T m=a<b?a:b;
 	return m<c?m:c;
 }
 
@@ -77,7 +77,7 @@ inline T uMin3( const T& a, const T& b, const T& c)
 template<class T>
 inline T uMax3( const T& a, const T& b, const T& c)
 {
-	float m=a>b?a:b;
+	T m=a>b?a:b;
 	return m>c?m:c;
 }
 

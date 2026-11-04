@@ -108,6 +108,7 @@ class RTABMAP_CORE_EXPORT Statistics
 {
 	RTABMAP_STATS(Loop, Id,); // Combined loop or proximity detection
 	RTABMAP_STATS(Loop, RejectedHypothesis,);
+	RTABMAP_STATS(Loop, Localization_delayed,); // Localization mode: localization accepted but not applied yet, waiting for another one (RGBD/MaxOdomCacheSize>0). RejectedHypothesis is also 1.
 	RTABMAP_STATS(Loop, Accepted_hypothesis_id,);
 	RTABMAP_STATS(Loop, Suppressed_hypothesis_id,);
 	RTABMAP_STATS(Loop, Highest_hypothesis_id,);
@@ -141,6 +142,8 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(Loop, Angular_variance,);
 	RTABMAP_STATS(Loop, Landmark_detected,);
 	RTABMAP_STATS(Loop, Landmark_detected_node_ref,);
+	RTABMAP_STATS(Loop, Landmark_normal_rejected,);
+	RTABMAP_STATS(Loop, Landmark_normal_error, deg);
 	RTABMAP_STATS(Loop, Visual_inliers_mean_dist,m);
 	RTABMAP_STATS(Loop, Visual_inliers_distribution,);
 	RTABMAP_STATS(Loop, Proximity_links_cleared,);

@@ -6,6 +6,7 @@
 #include "rtabmap/utilite/UException.h"
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UFile.h"
+#include "TestUtils.h"
 #include <cmath>
 #include <limits>
 
@@ -562,8 +563,8 @@ TEST_F(StereoCameraModelTest, NegativeBaseline)
 TEST_F(StereoCameraModelTest, SaveLoadRoundTrip)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_stereo_calibration";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_stereo_calibration");
+    const std::string & testDir = tempDir.path();
     
     // Create original stereo camera model with full parameters
     std::string cameraName = "test_stereo";
@@ -680,8 +681,8 @@ TEST_F(StereoCameraModelTest, SaveLoadRoundTrip)
 TEST_F(StereoCameraModelTest, SaveLoadRoundTripIgnoreTransform)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_stereo_calibration2";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_stereo_calibration2");
+    const std::string & testDir = tempDir.path();
     
     // Create original stereo camera model
     std::string cameraName = "test_stereo2";
@@ -713,8 +714,8 @@ TEST_F(StereoCameraModelTest, SaveLoadRoundTripIgnoreTransform)
 TEST_F(StereoCameraModelTest, LoadInitRectificationMaps)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_stereo_calibration5";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_stereo_calibration5");
+    const std::string & testDir = tempDir.path();
 
     // A stereo pair valid for rectification, so both left and right maps
     // would be built on load.
@@ -755,8 +756,8 @@ TEST_F(StereoCameraModelTest, LoadInitRectificationMaps)
 TEST_F(StereoCameraModelTest, SaveLoadRoundTripMinimal)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_stereo_calibration3";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_stereo_calibration3");
+    const std::string & testDir = tempDir.path();
     
     // Create minimal stereo camera model
     std::string cameraName = "minimal_stereo";
@@ -784,8 +785,8 @@ TEST_F(StereoCameraModelTest, SaveLoadRoundTripMinimal)
 TEST_F(StereoCameraModelTest, SaveStereoTransform)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_stereo_calibration4";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_stereo_calibration4");
+    const std::string & testDir = tempDir.path();
     
     // Create stereo camera model with extrinsics
     std::string cameraName = "stereo_with_extrinsics";

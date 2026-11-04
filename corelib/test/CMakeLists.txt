@@ -179,6 +179,18 @@ IF(BUILD_PERF_TESTS)
 			TIMEOUT ${_perf_timeout}
 			LABELS  "performance")
 
+	# Bad marker orientations (small or nearly frontal markers) per distance and tilt over
+	# rendered markers, for OpenCV, AprilTag and AprilTag with OpenCV's PnP:
+	#   bin/test_markerdetector_perf
+	#   RTABMAP_PERF_MARKER_SIZE=0.1 bin/test_markerdetector_perf   for 10 cm markers (15 cm by default)
+	add_executable(test_markerdetector_perf perf_markerdetector.cpp)
+	target_link_libraries(test_markerdetector_perf GTest::gtest_main rtabmap_core)
+
+	add_test(NAME test_markerdetector_perf COMMAND test_markerdetector_perf)
+	set_tests_properties(test_markerdetector_perf PROPERTIES
+			TIMEOUT ${_perf_timeout}
+			LABELS  "performance")
+
 	# Comparison of the implementations of SuperPoint (rpautrat weights): the python
 	# script (PyDetector), libtorch (SuperPointRpautrat) and ONNX Runtime (OnnxDetector),
 	# on CPU, CUDA and TensorRT, over the images of data/samples: load and per frame

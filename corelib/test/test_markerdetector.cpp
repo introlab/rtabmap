@@ -678,6 +678,38 @@ TEST(MarkerDetectorTest, TiltedMarkerPoseMatchesGroundTruthForAllStrategies)
 #endif
 }
 
+TEST(MarkerDetectorTest, AprilTagLibraryAndOpenCVPnPPosesMatchGroundTruth)
+{
+#if !defined(RTABMAP_TEST_HAVE_ARUCO) || !defined(RTABMAP_APRILTAG)
+	GTEST_SKIP() << "Needs OpenCV aruco/objdetect and the AprilTag library";
+#else
+	// Same tilted pose as TiltedMarkerPoseMatchesGroundTruthForAllStrategies: the pose
+	// from OpenCV's PnP (the default) should be in the same frame as the AprilTag library's one.
+	const Transform facingCamera(
+			1,  0,  0, 0.4f,
+			0, -1,  0, -0.3f,
+			0,  0, -1, 4.0f);
+	const Transform cameraToMarker = facingCamera * Transform(0, 0, 0, 20.0f*M_PI/180.0f, -25.0f*M_PI/180.0f, 30.0f*M_PI/180.0f);
+	for(const StrategyDictionary & c : allStrategiesAndDictionaries())
+	for(bool openCVPnP : {false, true})
+	{
+		if(c.strategy != 1) continue;
+		SCOPED_TRACE(caseName(c) + (openCVPnP?" OpenCVPnP":" AprilTag library pose"));
+		ParametersMap params = strategyParams(c);
+		params.insert(ParametersPair(Parameters::kMarkerAprilTagOpenCVPnP(), uBool2Str(openCVPnP)));
+		MarkerDetector detector(params);
+		std::map<int, MarkerInfo> detections = detector.detect(
+				renderMarkerAtPose(c.dictionary, 0, cameraToMarker), testCameraModel());
+		ASSERT_EQ(detections.count(0), 1u);
+		const Transform & pose = detections.at(0).pose();
+		EXPECT_LT(rotationErrorDeg(cameraToMarker, pose), 5.0f)
+				<< "expected " << cameraToMarker.prettyPrint() << ", got " << pose.prettyPrint();
+		EXPECT_LT((pose.toEigen3f().translation() - cameraToMarker.toEigen3f().translation()).norm(), 0.1f)
+				<< "expected " << cameraToMarker.prettyPrint() << ", got " << pose.prettyPrint();
+	}
+#endif
+}
+
 TEST(MarkerDetectorTest, AprilTagUprightSelectsOpenCVOrOfficialOrientation)
 {
 #ifndef RTABMAP_TEST_HAVE_ARUCO
