@@ -5734,9 +5734,10 @@ bool Rtabmap::isLandmarkNormalValid(const Signature * signature, int landmarkId,
 // error goes on the adjacent neighbor links (#1784). In that case, the loop
 // closure with the highest error ratio around the neighbor link (under
 // RGBD/OptimizeMaxErrorRepairRadius) is returned instead. Loop closures added
-// in this iteration (newLinks) are never returned. In mapping mode, if it is a
-// new landmark observation, the old observation of the same landmark with the
-// highest error ratio, seen from farther away, is returned instead.
+// in this iteration (newLinks) are never returned. If it is a new landmark
+// observation, the old observation of the same landmark with the highest error
+// ratio, seen from farther away, is returned instead (in localization mode, the
+// old observations are the ones in the odometry cache).
 Link Rtabmap::findLoopClosureToRepair(
 	const graph::MaxGraphErrors & maxGraphErrors,
 	const std::map<int, Transform> & poses,
@@ -5771,13 +5772,14 @@ Link Rtabmap::findLoopClosureToRepair(
 	};
 	if(isNewLink(maxErrorLink))
 	{
-		// In mapping mode, when a new observation of a landmark has the highest error, the old
-		// observations of that landmark seen from farther away are more likely to be wrong
-		// (e.g., flipped poses of small or far markers): if they agree with each other, they
-		// would make all new observations rejected. The old one with the highest error is
-		// considered instead for graph repair. Old observations seen from closer are not,
-		// so that a far wrong observation cannot remove good ones.
-		if(maxErrorLink.type() != Link::kLandmark || !_memory->isIncremental())
+		// When a new observation of a landmark has the highest error, the old observations
+		// of that landmark seen from farther away are more likely to be wrong (e.g., flipped
+		// poses of small or far markers): if they agree with each other, they would make all
+		// new observations rejected. The old one with the highest error is considered instead
+		// for graph repair. Old observations seen from closer are not, so that a far wrong
+		// observation cannot remove good ones. In localization mode, this happens when the
+		// robot localized on wrong observations, still in the odometry cache.
+		if(maxErrorLink.type() != Link::kLandmark)
 		{
 			return Link();
 		}

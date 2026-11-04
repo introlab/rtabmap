@@ -4039,6 +4039,110 @@ TEST(RtabmapTest, LandmarkRepairRemovesFarConsistentBadObservationsOnCircle)
 	rtabmap.close(false);
 }
 
+// Localization mode, RGBD/OptimizeMaxErrorRepairRadius: a map is created with two nodes at
+// the origin seeing a landmark on the floor 3 m away. In localization mode, the robot drives
+// toward it: the first observations are bad (normal tilted by 30 deg, e.g., flipped poses of a
+// small marker seen from far away) and agree with each other, so the robot localizes on them
+// (the first localization is delayed, the next ones confirm it). The next good observations
+// are rejected, the error being on them, until they are seen from closer enough than the bad
+// ones: the old bad observations in the odometry cache are then considered instead for graph
+// repair and are removed, like in mapping mode. Then all good observations are accepted.
+TEST(RtabmapTest, LandmarkRepairRemovesFarConsistentBadObservationsInLocalization)
+{
+	int optimizerStrategy = -1;
+	if(Optimizer::isAvailable(Optimizer::kTypeGTSAM)) optimizerStrategy = Optimizer::kTypeGTSAM;
+	else if(Optimizer::isAvailable(Optimizer::kTypeG2O)) optimizerStrategy = Optimizer::kTypeG2O;
+	if(optimizerStrategy < 0)
+	{
+		GTEST_SKIP() << "neither GTSAM nor g2o is available to optimize landmarks";
+	}
+	const std::string dbPath = uniqueDbPath();
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kOptimizerStrategy()] = uNumber2Str(optimizerStrategy);
+	params[Parameters::kOptimizerLandmarksIgnored()] = "false";
+	params[Parameters::kRGBDOptimizeMaxError()] = "3";
+	params[Parameters::kRGBDOptimizeMaxErrorRepairRadius()] = "1";
+	params[Parameters::kRGBDMaxOdomCacheSize()] = "100"; // the bad observations stay in the cache
+
+	const int kLm = 42;
+	const cv::Mat odomCov = cv::Mat::eye(6, 6, CV_64FC1) * 0.0001;
+	cv::Mat lmCov = cv::Mat::eye(6, 6, CV_64FC1);
+	lmCov(cv::Range(0,3), cv::Range(0,3)) *= 0.001; // like Marker/VarianceLinear
+	lmCov(cv::Range(3,6), cv::Range(3,6)) *= 0.01;  // like Marker/VarianceAngular
+	const Transform landmark(-3, 0, 0, 0, 0, 0); // on the floor, 3 m in front of the robot
+	const Transform badLandmark = landmark * Transform(0, 0, 0, 30.0f*M_PI/180.0f, 0, 0); // normal tilted by 30 deg
+	const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+	auto process = [&](Rtabmap & rtabmap, int id, const Transform & pose, const Transform & observation)
+	{
+		SensorData d(image); d.setId(id);
+		Landmarks lms;
+		lms.emplace(kLm, Landmark(kLm, 0.2f, pose.inverse() * observation, lmCov));
+		d.setLandmarks(lms);
+		EXPECT_TRUE(rtabmap.process(d, pose, odomCov));
+	};
+	auto robotPose = [](float x)
+	{
+		return Transform(x, 0, 0, 0, 0, M_PI); // facing the landmark (-x)
+	};
+
+	{
+		Rtabmap rtabmap;
+		rtabmap.init(params, dbPath);
+		for(int id=1; id<=2; ++id)
+		{
+			process(rtabmap, id, robotPose(0), landmark);
+		}
+		rtabmap.close(true);
+	}
+
+	params[Parameters::kMemIncrementalMemory()] = "false";
+	Rtabmap rtabmap;
+	rtabmap.init(params, dbPath);
+	const int kBad = 3; // first observations
+	const int kNodes = 12; // every 0.2 m, from 3 m to 0.8 m of the landmark
+	int firstRepair = 0;
+	int lastRepair = 0;
+	std::map<int, bool> goodAccepted;
+	for(int i=0; i<kNodes; ++i)
+	{
+		SCOPED_TRACE(uFormat("observation %d", i));
+		const bool bad = i < kBad;
+		process(rtabmap, 3+i, robotPose(-0.2f*i), bad?badLandmark:landmark);
+		const std::map<std::string, float> & stats = rtabmap.getStatistics().data();
+		const bool accepted = uValue(stats, Statistics::kLoopLandmark_detected(), 0.0f) == kLm &&
+			(uValue(stats, Statistics::kLoopRejectedHypothesis(), 0.0f) == 0.0f ||
+			 uValue(stats, Statistics::kLoopLocalization_delayed(), 0.0f) != 0.0f);
+		if(uValue(stats, Statistics::kLoopOptimization_max_error_removed_count(), 0.0f) > 0)
+		{
+			const int removedFrom = (int)uValue(stats, Statistics::kLoopOptimization_max_error_removed_from_id(), 0.0f);
+			const int removedTo = (int)uValue(stats, Statistics::kLoopOptimization_max_error_removed_to_id(), 0.0f);
+			const int removedNode = removedFrom<0?removedTo:removedFrom;
+			EXPECT_LT(removedNode, 3+kBad) << "removed observation of node " << removedNode;
+			if(firstRepair == 0) firstRepair = i;
+			lastRepair = i;
+		}
+		if(bad)
+		{
+			EXPECT_TRUE(accepted) << "bad observations agreeing with each other";
+		}
+		else
+		{
+			goodAccepted[i] = accepted;
+		}
+	}
+	rtabmap.close(false);
+	UFile::erase(dbPath.c_str());
+
+	// Good observations are rejected until they are closer enough than the bad
+	// ones, which are then removed by the repair. Then all good ones are accepted.
+	ASSERT_GT(firstRepair, kBad) << "the old bad observations should have been removed";
+	EXPECT_FALSE(goodAccepted.begin()->second) << "first good observation, seen from as far as the bad ones";
+	for(std::map<int, bool>::iterator iter=goodAccepted.lower_bound(lastRepair); iter!=goodAccepted.end(); ++iter)
+	{
+		EXPECT_TRUE(iter->second) << "good observation " << iter->first;
+	}
+}
+
 TEST(RtabmapTest, RejectedLandmarkLoopClosureStillReportsObservationTransform)
 {
 	// Regression for #1817: when a landmark re-observation is rejected after
