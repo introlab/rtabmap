@@ -8,7 +8,7 @@ var searchData=
   ['calcrmse_5',['calcRMSE',['../namespacertabmap_1_1graph.html#a5c36e32a4acd10ac3cdbbf7d73591f88',1,'rtabmap::graph']]],
   ['calcstereocorrespondences_6',['calcStereoCorrespondences',['../namespacertabmap_1_1util2d.html#a53e2ae078c4c5c997fda9f1b6d1dda33',1,'rtabmap::util2d']]],
   ['calibration_7',['Sensors and calibration',['../tools.html#autotoc_md7',1,'']]],
-  ['camera_8',['camera',['../classrtabmap_1_1Camera.html',1,'rtabmap::Camera'],['../classrtabmap_1_1SensorCaptureThread.html#ad6750f6280bdcbb386a051ba9cc36857',1,'rtabmap::SensorCaptureThread::camera()'],['../classrtabmap_1_1Camera.html#aaae7434ffa5e54f5006355779d335dd3',1,'rtabmap::Camera::Camera()']]],
+  ['camera_8',['camera',['../classrtabmap_1_1Camera.html',1,'rtabmap::Camera'],['../classrtabmap_1_1Camera.html#aaae7434ffa5e54f5006355779d335dd3',1,'rtabmap::Camera::Camera()'],['../classrtabmap_1_1SensorCaptureThread.html#ad6750f6280bdcbb386a051ba9cc36857',1,'rtabmap::SensorCaptureThread::camera()']]],
   ['cameradepthai_9',['CameraDepthAI',['../classrtabmap_1_1CameraDepthAI.html',1,'rtabmap']]],
   ['cameraevent_10',['CameraEvent',['../namespacertabmap.html#a02e773b48c5ac372ce67fe4e040d835d',1,'rtabmap']]],
   ['camerafreenect_11',['CameraFreenect',['../classrtabmap_1_1CameraFreenect.html',1,'rtabmap']]],
