@@ -580,9 +580,50 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				const std::map<int, VisualWord *> & addedWords = _vwd->getVisualWords();
 				int nodesRepaired = 0;
 				size_t oldSize = addedWords.size();
-				std::string assertMsg = 
+				std::string assertMsg =
 					"If we assert here, the problem is maybe deeper. Try "
 					"to use rtabmap-recovery tool instead to fix the database.";
+
+				// Words missing from the dictionary are not necessarily missing
+				// from the database: an incremental dictionary is loaded with
+				// only the words of the last session (see DBDriver::load()), so
+				// with Mem/InitWMWithAllNodes the nodes of older sessions
+				// reference words that are still in the Word table. Load those
+				// back from the database: they come marked as saved, so on
+				// close they are updated instead of inserted a second time
+				// ("UNIQUE constraint failed: Word.id"). Only the words that
+				// are really missing from the database are re-created below
+				// from the nodes' descriptors.
+				std::set<int> missingWordIds;
+				for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+				{
+					Signature * s = this->_getSignature(i->first);
+					UASSERT_MSG(s != 0, assertMsg.c_str());
+					if(!s->isEnabled())
+					{
+						for(std::multimap<int, int>::const_iterator iter = s->getWords().begin(); iter!=s->getWords().end(); ++iter)
+						{
+							if(iter->first > 0 && addedWords.find(iter->first) == addedWords.end())
+							{
+								missingWordIds.insert(missingWordIds.end(), iter->first);
+							}
+						}
+					}
+				}
+				size_t wordsFromDatabase = 0;
+				if(!missingWordIds.empty())
+				{
+					std::list<VisualWord *> savedWords;
+					// Some ids are expected to be missing: those are re-created below.
+					_dbDriver->loadWords(missingWordIds, savedWords, true);
+					for(std::list<VisualWord *>::iterator iter=savedWords.begin(); iter!=savedWords.end(); ++iter)
+					{
+						UASSERT((*iter)->isSaved());
+						_vwd->addWord(*iter);
+					}
+					wordsFromDatabase = savedWords.size();
+				}
+
 				for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 				{
 					Signature * s = this->_getSignature(i->first);
@@ -632,10 +673,13 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				}
 
 				msg = uFormat(
-					"Regenerated the dictionary with %ld missing words (%ld -> %ld) from %d nodes.",
+					"Regenerated the dictionary with %ld missing words (%ld -> %ld): %ld loaded back "
+					"from the database, %ld re-created from %d nodes.",
 					addedWords.size() - oldSize,
 					oldSize,
 					addedWords.size(),
+					wordsFromDatabase,
+					addedWords.size() - oldSize - wordsFromDatabase,
 					nodesRepaired);
 				UWARN("%s", msg.c_str());
 				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));

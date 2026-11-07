@@ -623,7 +623,7 @@ void DBDriver::loadSignatures(const std::list<int> & signIds,
 	}
 }
 
-void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws)
+void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws, bool missingWordsExpected)
 {
 	// look up in the trash before the database
 	std::set<int> ids = wordIds;
@@ -655,7 +655,7 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 	if(ids.size())
 	{
 		_dbSafeAccessMutex.lock();
-		this->loadWordsQuery(ids, vws);
+		this->loadWordsQuery(ids, vws, missingWordsExpected);
 		_dbSafeAccessMutex.unlock();
 		uAppend(vws, puttedBack);
 	}
