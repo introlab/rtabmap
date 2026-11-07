@@ -949,6 +949,22 @@ int main(int argc, char * argv[])
 		uInsert(parameters, ParametersPair(iter->first, iter->second));
 	}
 
+	if(republishLoopClosures)
+	{
+		int memoryThr = Parameters::defaultRtabmapMemoryThr();
+		float timeThr = Parameters::defaultRtabmapTimeThr();
+		Parameters::parse(parameters, Parameters::kRtabmapMemoryThr(), memoryThr);
+		Parameters::parse(parameters, Parameters::kRtabmapTimeThr(), timeThr);
+		if(memoryThr != 0 || timeThr != 0.0f)
+		{
+			printf("[Warning] Memory management is enabled (%s=%d, %s=%f): loop closures of the input database "
+					"to nodes transferred to long-term memory cannot be republished and will be ignored. "
+					"Set them to 0 to republish all of them.\n",
+					Parameters::kRtabmapMemoryThr().c_str(), memoryThr,
+					Parameters::kRtabmapTimeThr().c_str(), timeThr);
+		}
+	}
+
 	bool incrementalMemory = Parameters::defaultMemIncrementalMemory();
 	Parameters::parse(parameters, Parameters::kMemIncrementalMemory(), incrementalMemory);
 	Parameters::parse(parameters, Parameters::kDbTargetVersion(), targetVersion);
@@ -1138,6 +1154,9 @@ int main(int argc, char * argv[])
 		}
 	}
 
+	int loopClosuresRepublished = 0;
+	int loopClosuresNotInWM = 0;
+	int loopClosuresRejected = 0;
 	DBReader * dbReader = new DBReader(
 			inputDatabasePath,
 			useDatabaseRate?-1:0,
@@ -1368,11 +1387,22 @@ int main(int argc, char * argv[])
 							iter->second.type() == Link::kUserClosure) &&
 							iter->second.to() < data.id())
 						{
-							if(!iter->second.transform().isNull() &&
-								rtabmap.getMemory()->getWorkingMem().find(iter->second.to()) != rtabmap.getMemory()->getWorkingMem().end() &&
-								rtabmap.addLink(iter->second))
+							if(rtabmap.getMemory()->getWorkingMem().find(iter->second.to()) == rtabmap.getMemory()->getWorkingMem().end())
+							{
+								printf("[Warning] Link %d->%d from input database not republished: node %d is not in working memory.\n",
+										iter->second.from(), iter->second.to(), iter->second.to());
+								++loopClosuresNotInWM;
+							}
+							else if(!iter->second.transform().isNull() && rtabmap.addLink(iter->second))
 							{
 								printf("Added link %d->%d from input database.\n", iter->second.from(), iter->second.to());
+								++loopClosuresRepublished;
+							}
+							else
+							{
+								printf("[Warning] Link %d->%d from input database not republished: rejected.\n",
+										iter->second.from(), iter->second.to());
+								++loopClosuresRejected;
 							}
 						}
 					}
@@ -1684,6 +1714,14 @@ int main(int argc, char * argv[])
 			printf("  %s %s\n", uPad(iter->first+" =", 25).c_str(), iter->second.c_str());
 		}
 		rtabmap.parseParameters(parametersToRestore);
+	}
+
+	if(republishLoopClosures)
+	{
+		const int total = loopClosuresRepublished + loopClosuresNotInWM + loopClosuresRejected;
+		printf("%sRepublished %d/%d loop closures from input database (%d not in working memory, %d rejected).\n",
+				loopClosuresRepublished<total?"[Warning] ":"",
+				loopClosuresRepublished, total, loopClosuresNotInWM, loopClosuresRejected);
 	}
 
 	printf("Closing database \"%s\"...\n", outputDatabasePath.c_str());
