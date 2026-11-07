@@ -296,7 +296,13 @@ public:
 	/** @brief Load one signature by id; caller must delete the returned pointer. */
 	Signature * loadSignature(int id, bool * loadedFromTrash = 0); // returned signature must be freed after usage, call loadSignatures() instead if more than one signature should be loaded
 	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, std::set<int> * loadedFromTrash = 0, bool loadWordIdsOnly = false); // returned signatures must be freed after usage
-	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws); // returned words must be freed after usage
+	/**
+	 * @brief Load words by id (trash first, then the database); returned words must be freed after usage.
+	 * @param missingWordsExpected true when some ids may legitimately be absent from the database
+	 *        (e.g., probing which words exist): the ids not found are then reported at debug level
+	 *        instead of as an error.
+	 */
+	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws, bool missingWordsExpected = false);
 
 	// Specific queries...
 	void loadNodeData(Signature & signature, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
@@ -315,7 +321,14 @@ public:
 	void getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks = true, bool withLandmarks = false) const;
 	void getLastNodeId(int & id) const;
 	void getLastMapId(int & mapId) const;
-	void getLastWordId(int & id) const;
+	/**
+	 * @brief Get the largest word id of the dictionary (trash and Word table).
+	 * @param lookInFeatures also look at the word ids referenced by the nodes' features. They
+	 *        are normally all in the Word table, unless the dictionary was not saved (e.g.,
+	 *        rtabmap was killed before closing). This scans the whole Feature table, which is
+	 *        slow on large databases: only use it when the dictionary is known to be incomplete.
+	 */
+	void getLastWordId(int & id, bool lookInFeatures = false) const;
 	void getInvertedIndexNi(int signatureId, int & ni) const;
 	void getNodesObservingLandmark(int landmarkId, std::map<int, Link> & nodes) const;
 	void getNodeIdByLabel(const std::string & label, int & id) const;
@@ -427,7 +440,7 @@ protected:
 	virtual void loadQuery(VWDictionary & dictionary, bool lastStateOnly = true, bool idsOnly = false) const = 0;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures, bool loadWordIdsOnly) const = 0;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures, bool loadWordIdsOnly) const = 0;
-	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const = 0;
+	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws, bool missingWordsExpected) const = 0;
 	virtual void loadLinksQuery(int signatureId, std::multimap<int, Link> & links, Link::Type type = Link::kUndef) const = 0;
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const = 0;

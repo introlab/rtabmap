@@ -2251,6 +2251,171 @@ TEST(MemoryTest, ReadOnlyLocalizationSavesNothingBackAfterRepair)
 	UFile::erase(dbPath.c_str());
 }
 
+namespace {
+
+void executeSql(const std::string & dbPath, const std::string & sql)
+{
+	DBDriver * driver = DBDriver::create();
+	ASSERT_NE(driver, nullptr);
+	ASSERT_TRUE(driver->openConnection(dbPath, false));
+	driver->executeNoResult(sql);
+	driver->closeConnection(false);
+	delete driver;
+}
+
+int countWordsInDb(const std::string & dbPath)
+{
+	DBDriver * driver = DBDriver::create();
+	EXPECT_NE(driver, nullptr);
+	EXPECT_TRUE(driver->openConnection(dbPath, false));
+	std::set<int> ids;
+	for(int id = 1; id <= 1000; ++id)
+	{
+		ids.insert(id);
+	}
+	std::list<VisualWord *> words;
+	driver->loadWords(ids, words, true);
+	const int count = (int)words.size();
+	for(std::list<VisualWord *>::iterator iter=words.begin(); iter!=words.end(); ++iter)
+	{
+		delete *iter;
+	}
+	driver->closeConnection(false);
+	delete driver;
+	return count;
+}
+
+} // namespace
+
+TEST(MemoryTest, RepairReusesWordsAlreadySavedInDatabase)
+{
+	// Without Mem/InitWMWithAllNodes, only the words of the last dictionary state
+	// (time_enter newer than the last session's close) are loaded. When the last
+	// close was interrupted, words referenced by the working memory can still be in
+	// the Word table but with an older time_enter: the repair must load them back
+	// (as saved) instead of re-creating them, otherwise saving the repaired
+	// dictionary inserts them a second time ("UNIQUE constraint failed: Word.id").
+	const std::string dbPath = uniqueDbPath();
+	const int wordCount = buildDictionaryDb(dbPath);
+	ASSERT_GT(wordCount, 2);
+	executeSql(dbPath, "UPDATE Word SET time_enter = '2000-01-01 00:00:00' WHERE id IN (SELECT id FROM Word ORDER BY id ASC LIMIT 2);");
+
+	{
+		Memory memory(dictionaryDbParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		const std::map<int, VisualWord *> & words = memory.getVWDictionary()->getVisualWords();
+		ASSERT_EQ((int)words.size(), wordCount);
+		for(std::map<int, VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+		{
+			EXPECT_TRUE(iter->second->isSaved()) << "word " << iter->first << " is already in the database";
+		}
+		EXPECT_TRUE(memory.memoryChanged());
+		EXPECT_NO_THROW(memory.close(true));
+	}
+	EXPECT_EQ(countWordsInDb(dbPath), wordCount);
+
+	UFile::erase(dbPath.c_str());
+}
+
+TEST(MemoryTest, EmptyLastWorkingMemoryLoadsAllNodes)
+{
+	// A session killed while closing can leave the database with nodes but no
+	// "last working memory" (no node stamped after the last Info row) and no
+	// dictionary. Opening it must not start from an empty memory: new words would
+	// reuse the ids referenced by the nodes in LTM (e.g., when appending a new
+	// session). All nodes are loaded instead, and the dictionary repaired from them.
+	const std::string dbPath = uniqueDbPath();
+	const int wordCount = buildDictionaryDb(dbPath);
+	ASSERT_GT(wordCount, 0);
+	executeSql(dbPath, "DELETE FROM Word;");
+	executeSql(dbPath, "UPDATE Node SET time_enter = '2000-01-01 00:00:00';");
+
+	std::set<int> nodeIds;
+	{
+		DBDriver * driver = DBDriver::create();
+		ASSERT_NE(driver, nullptr);
+		ASSERT_TRUE(driver->openConnection(dbPath, false));
+		driver->getAllNodeIds(nodeIds);
+		std::set<int> lastIds;
+		driver->getLastNodeIds(lastIds);
+		EXPECT_TRUE(lastIds.empty()) << "the database should look like its last session was not closed correctly";
+		driver->closeConnection(false);
+		delete driver;
+	}
+	ASSERT_FALSE(nodeIds.empty());
+
+	{
+		Memory memory(dictionaryDbParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		for(std::set<int>::iterator iter=nodeIds.begin(); iter!=nodeIds.end(); ++iter)
+		{
+			EXPECT_TRUE(memory.isInWM(*iter)) << "node " << *iter;
+		}
+		EXPECT_EQ((int)memory.getVWDictionary()->getVisualWords().size(), wordCount);
+		EXPECT_GE(memory.getVWDictionary()->getLastWordId(), wordCount);
+		EXPECT_NO_THROW(memory.close(true));
+	}
+
+	// Saved back: the next session opens it normally, without repair.
+	{
+		Memory memory(dictionaryDbParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		for(std::set<int>::iterator iter=nodeIds.begin(); iter!=nodeIds.end(); ++iter)
+		{
+			EXPECT_TRUE(memory.isInWM(*iter)) << "node " << *iter;
+		}
+		EXPECT_EQ((int)memory.getVWDictionary()->getVisualWords().size(), wordCount);
+		EXPECT_FALSE(memory.memoryChanged());
+		memory.close(false);
+	}
+
+	UFile::erase(dbPath.c_str());
+}
+
+TEST(MemoryTest, RepairDoesNotReuseWordIdsOfNodesInLtm)
+{
+	// The repair re-creates the missing words referenced by the nodes in working
+	// memory, but nodes left in LTM can reference larger ids that are missing from
+	// the dictionary too. The next word id must come after them, otherwise new
+	// words would share ids with unrelated features of those nodes.
+	const std::string dbPath = uniqueDbPath();
+	const int wordCount = buildDictionaryDb(dbPath); // word ids 1..wordCount, the last node has the largest
+	ASSERT_GT(wordCount, 0);
+	executeSql(dbPath, "DELETE FROM Word;");
+	executeSql(dbPath, "UPDATE Node SET time_enter = '2000-01-01 00:00:00' WHERE id = (SELECT MAX(id) FROM Node);");
+
+	std::set<int> nodeIds;
+	{
+		DBDriver * driver = DBDriver::create();
+		ASSERT_NE(driver, nullptr);
+		ASSERT_TRUE(driver->openConnection(dbPath, false));
+		driver->getAllNodeIds(nodeIds);
+		driver->closeConnection(false);
+		delete driver;
+	}
+	ASSERT_GT(nodeIds.size(), 1u);
+
+	Memory memory(dictionaryDbParams());
+	ASSERT_TRUE(memory.init(dbPath));
+	for(std::set<int>::iterator iter=nodeIds.begin(); iter!=nodeIds.end(); ++iter)
+	{
+		if(*iter == *nodeIds.rbegin())
+		{
+			ASSERT_TRUE(memory.isInLTM(*iter)) << "the last node should be in LTM";
+		}
+		else
+		{
+			ASSERT_TRUE(memory.isInWM(*iter)) << "node " << *iter << " should be in working memory";
+		}
+	}
+	// Only the words of the nodes in working memory were re-created.
+	ASSERT_LT((int)memory.getVWDictionary()->getVisualWords().size(), wordCount);
+	EXPECT_EQ(memory.getVWDictionary()->getLastWordId(), wordCount);
+	memory.close(false);
+
+	UFile::erase(dbPath.c_str());
+}
+
 TEST(MemoryTest, DiscardedSessionSavesNothingBackWhenMemoryChanged)
 {
 	// The other side of the same branch: a writable memory that did change, but

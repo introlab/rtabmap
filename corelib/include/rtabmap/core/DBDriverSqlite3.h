@@ -168,7 +168,7 @@ protected:
 	void asyncSave(Signature * s) = delete;
 	void asyncSave(VisualWord * vw) = delete;
 	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, std::set<int> * loadedFromTrash = 0, bool loadWordIdsOnly = false) = delete;
-	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws) = delete;
+	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws, bool missingWordsExpected = false) = delete;
 	void loadNodeData(Signature & signature, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const = delete;
 	void loadNodeData(std::list<Signature *> & signatures, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const = delete;
 	void getNodeData(int signatureId, SensorData & data, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const = delete;
@@ -280,7 +280,7 @@ protected:
 	virtual void loadQuery(VWDictionary & dictionary, bool lastStateOnly = true, bool idsOnly = false) const;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures, bool loadWordIdsOnly) const;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures, bool loadWordIdsOnly) const;
-	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const;
+	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws, bool missingWordsExpected) const;
 	virtual void loadLinksQuery(int signatureId, std::multimap<int, Link> & links, Link::Type type = Link::kUndef) const;
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const;
