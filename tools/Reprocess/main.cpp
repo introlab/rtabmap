@@ -958,7 +958,7 @@ int main(int argc, char * argv[])
 		if(memoryThr != 0 || timeThr != 0.0f)
 		{
 			printf("[Warning] Memory management is enabled (%s=%d, %s=%f): loop closures of the input database "
-					"to nodes transferred to long-term memory cannot be republished and will be ignored. "
+					"with a node transferred to long-term memory cannot be republished and will be ignored. "
 					"Set them to 0 to republish all of them.\n",
 					Parameters::kRtabmapMemoryThr().c_str(), memoryThr,
 					Parameters::kRtabmapTimeThr().c_str(), timeThr);
@@ -1155,7 +1155,8 @@ int main(int argc, char * argv[])
 	}
 
 	int loopClosuresRepublished = 0;
-	int loopClosuresNotInWM = 0;
+	int loopClosuresInLTM = 0;
+	int loopClosuresNotInMap = 0;
 	int loopClosuresRejected = 0;
 	DBReader * dbReader = new DBReader(
 			inputDatabasePath,
@@ -1387,11 +1388,30 @@ int main(int argc, char * argv[])
 							iter->second.type() == Link::kUserClosure) &&
 							iter->second.to() < data.id())
 						{
-							if(rtabmap.getMemory()->getWorkingMem().find(iter->second.to()) == rtabmap.getMemory()->getWorkingMem().end())
+							// Both nodes should be loaded in memory (STM or WM)
+							const Memory * memory = rtabmap.getMemory();
+							int notLoadedId = 0;
+							if(!memory->isInSTM(iter->second.to()) && !memory->isInWM(iter->second.to()))
 							{
-								printf("[Warning] Link %d->%d from input database not republished: node %d is not in working memory.\n",
-										iter->second.from(), iter->second.to(), iter->second.to());
-								++loopClosuresNotInWM;
+								notLoadedId = iter->second.to();
+							}
+							else if(!memory->isInSTM(iter->second.from()) && !memory->isInWM(iter->second.from()))
+							{
+								notLoadedId = iter->second.from();
+							}
+							if(notLoadedId && memory->getMapId(notLoadedId, true) >= 0)
+							{
+								printf("[Warning] Link %d->%d from input database not republished: node %d has been "
+										"transferred to long-term memory (memory management).\n",
+										iter->second.from(), iter->second.to(), notLoadedId);
+								++loopClosuresInLTM;
+							}
+							else if(notLoadedId)
+							{
+								printf("[Warning] Link %d->%d from input database not republished: node %d has not been "
+										"added to the map (e.g., skipped or merged with another node).\n",
+										iter->second.from(), iter->second.to(), notLoadedId);
+								++loopClosuresNotInMap;
 							}
 							else if(!iter->second.transform().isNull() && rtabmap.addLink(iter->second))
 							{
@@ -1718,10 +1738,11 @@ int main(int argc, char * argv[])
 
 	if(republishLoopClosures)
 	{
-		const int total = loopClosuresRepublished + loopClosuresNotInWM + loopClosuresRejected;
-		printf("%sRepublished %d/%d loop closures from input database (%d not in working memory, %d rejected).\n",
+		const int total = loopClosuresRepublished + loopClosuresInLTM + loopClosuresNotInMap + loopClosuresRejected;
+		printf("%sRepublished %d/%d loop closures from input database (%d with a node in long-term memory, "
+				"%d with a node not added to the map, %d rejected).\n",
 				loopClosuresRepublished<total?"[Warning] ":"",
-				loopClosuresRepublished, total, loopClosuresNotInWM, loopClosuresRejected);
+				loopClosuresRepublished, total, loopClosuresInLTM, loopClosuresNotInMap, loopClosuresRejected);
 	}
 
 	printf("Closing database \"%s\"...\n", outputDatabasePath.c_str());
