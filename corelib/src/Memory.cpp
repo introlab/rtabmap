@@ -285,6 +285,35 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			// load previous session working memory
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
 			_dbDriver->loadLastNodes(dbSignatures, !_loadVisualLocalFeaturesOnInit);
+
+			if(dbSignatures.empty())
+			{
+				// The last working memory is the nodes stamped when the previous
+				// session closed. None while the database has nodes means that
+				// session didn't close correctly (e.g., rtabmap was killed while
+				// saving), so its dictionary is likely not saved either. Starting
+				// with an empty memory would then create words with ids already
+				// referenced by the nodes in LTM. Load all nodes instead, so that
+				// the dictionary is checked (and repaired if needed) against all
+				// of them.
+				std::set<int> ids;
+				_dbDriver->getAllNodeIds(ids, true);
+				if(!ids.empty())
+				{
+					std::string msg = uFormat(
+						"The last working memory is empty while the database has %d nodes: the database "
+						"may have not been closed correctly the last time. Loading all nodes in working "
+						"memory (like %s=true) so that the dictionary can be checked and repaired against "
+						"all of them. This may use a lot of RAM on a large map; memory management "
+						"(if enabled) will transfer nodes back to long-term memory afterwards.",
+						(int)ids.size(),
+						Parameters::kMemInitWMWithAllNodes().c_str());
+					UWARN("%s", msg.c_str());
+					if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
+					_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures, 0, !_loadVisualLocalFeaturesOnInit);
+					loadAllNodesInWM = true; // load the dictionary accordingly
+				}
+			}
 		}
 		for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
 		{
@@ -670,6 +699,21 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 						nodesRepaired += (repaired?1:0);
 						s->setEnabled(true);
 					}
+				}
+
+				// The words re-created above raised the last word id up to the
+				// largest one referenced by the loaded nodes, but nodes in LTM may
+				// reference larger ones that were not saved either. New words must
+				// not reuse those ids, so look at all the features (slow on large
+				// databases, but only done when the dictionary is incomplete).
+				int lastWordId = 0;
+				_dbDriver->getLastWordId(lastWordId, true);
+				if(lastWordId > _vwd->getLastWordId())
+				{
+					UWARN("Words up to id %d are referenced by nodes not loaded in working memory but "
+						"are missing from the dictionary, new words will start from id %d.",
+						lastWordId, lastWordId+1);
+					_vwd->setLastWordId(lastWordId);
 				}
 
 				msg = uFormat(

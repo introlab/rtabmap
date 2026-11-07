@@ -244,6 +244,12 @@ public:
 	 * @param id Last word ID
 	 */
 	void setLastWordId(int id) {_lastWordId = id;}
+
+	/**
+	 * @brief Get the last word ID: new words are created with the IDs following it.
+	 * @return Last word ID
+	 */
+	int getLastWordId() const {return _lastWordId;}
 	
 	/**
 	 * @brief Get all visual words

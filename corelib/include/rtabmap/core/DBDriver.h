@@ -321,7 +321,14 @@ public:
 	void getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks = true, bool withLandmarks = false) const;
 	void getLastNodeId(int & id) const;
 	void getLastMapId(int & mapId) const;
-	void getLastWordId(int & id) const;
+	/**
+	 * @brief Get the largest word id of the dictionary (trash and Word table).
+	 * @param lookInFeatures also look at the word ids referenced by the nodes' features. They
+	 *        are normally all in the Word table, unless the dictionary was not saved (e.g.,
+	 *        rtabmap was killed before closing). This scans the whole Feature table, which is
+	 *        slow on large databases: only use it when the dictionary is known to be incomplete.
+	 */
+	void getLastWordId(int & id, bool lookInFeatures = false) const;
 	void getInvertedIndexNi(int signatureId, int & ni) const;
 	void getNodesObservingLandmark(int landmarkId, std::map<int, Link> & nodes) const;
 	void getNodeIdByLabel(const std::string & label, int & id) const;
