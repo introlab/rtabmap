@@ -192,7 +192,7 @@ TEST(OdometryTest, DefaultCapabilityFlags)
 	EXPECT_FALSE(odometry.canProcessAsyncIMU());
 }
 
-TEST(OdometryTest, ThreeDoFKalmanPredictionUsesPlanarVelocityStates)
+TEST(OdometryTest, ThreeDoFKalmanUsesPlanarVelocityStates)
 {
 	ParametersMap parameters = baseTestParameters();
 	parameters[Parameters::kRegForce3DoF()] = "true";
@@ -206,14 +206,22 @@ TEST(OdometryTest, ThreeDoFKalmanPredictionUsesPlanarVelocityStates)
 	SensorData initial = makeImageData(0, 0.0);
 	ASSERT_FALSE(odometry.process(initial).isNull());
 
+	// Frame 1 initializes the filter; frames 2 and 3 go through predict
+	// (motion guess) and correct (filtered transform).
 	const Transform step(1.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	odometry.setNextTransform(step);
-	SensorData measured = makeImageData(1, 1.0);
-	ASSERT_FALSE(odometry.process(measured).isNull());
-
-	SensorData predicted = makeImageData(2, 2.0);
-	ASSERT_FALSE(odometry.process(predicted).isNull());
-	expectTransformNear(odometry.lastGuess(), step);
+	for(int i=1; i<=3; ++i)
+	{
+		SCOPED_TRACE("frame " + uNumber2Str(i));
+		SensorData data = makeImageData(i, double(i));
+		OdometryInfo info;
+		ASSERT_FALSE(odometry.process(data, &info).isNull());
+		expectTransformNear(info.transformFiltered, step, 1e-2f);
+		if(i > 1)
+		{
+			expectTransformNear(odometry.lastGuess(), step, 1e-2f);
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------
