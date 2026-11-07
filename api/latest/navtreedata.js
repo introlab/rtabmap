@@ -134,19 +134,19 @@ var NAVTREEINDEX =
 "UStl_8h.html#ab1862437019327ce8419569e3c2ea90f",
 "classrtabmap_1_1BayesFilter.html#a60ad13fd18ac4e595359f3c86c430a80",
 "classrtabmap_1_1CameraStereoZed.html#a80088853404d1c4e89b5f29933d7b020",
-"classrtabmap_1_1FeatureBA.html#a8db953b6f93249d5c28c25073cd4e095",
-"classrtabmap_1_1Landmark.html#a1c1e20cccc5f659743ba48c8afe1a8a0",
-"classrtabmap_1_1Memory.html#a4bb01d27d1ec7776103635b11228626c",
-"classrtabmap_1_1OdometryEvent.html#a461365124cbdf488d3a05874be8c4bb2",
-"classrtabmap_1_1Optimizer.html#a7e3aff943e77603493a358ff522fa2dc",
-"classrtabmap_1_1Rtabmap.html#a4d1e329f0c0fcc341d14f6853ec86750",
-"classrtabmap_1_1SensorCapture.html",
-"classrtabmap_1_1SensorData.html#ab6f18f2eb0340c8f6e800a695424bbbe",
-"classrtabmap_1_1Statistics.html#a8988eb66288df6a4d676b3cbd7b3a7ff",
-"classrtabmap_1_1Transform.html#a9b89b8bbe9cd75986bcb1ba6ceb5b9cd",
-"functions_i.html",
-"group__VoxelFiltering.html#gaf5726b462426b56425604343e51a79c3",
-"namespacertabmap_1_1util3d.html#aee34b5fe56014a9fa058fbdbf90cab71"
+"classrtabmap_1_1FeatureBA.html#a2bea5690d958d81f5edfa6df954d4a8b",
+"classrtabmap_1_1KAZE.html",
+"classrtabmap_1_1Memory.html#a4ae0287262c04905baab2d6f94448486",
+"classrtabmap_1_1OdometryEvent.html#a13be8ff5e398f9fd00d09aac8deddaba",
+"classrtabmap_1_1Optimizer.html#a4477c9a5b6651729944726465b5eba7f",
+"classrtabmap_1_1Rtabmap.html#a49adc83991d6b95c7911f41330cbd467",
+"classrtabmap_1_1SURF__DAISY.html",
+"classrtabmap_1_1SensorData.html#ab4e6b5d917155b94d8b4b6242fe56c6e",
+"classrtabmap_1_1Statistics.html#a82f7c8f962fd5fcea9a5d4fc087cb2ce",
+"classrtabmap_1_1Transform.html#a93af73b3a388d66293d007cb164b2198",
+"functions_func_x.html",
+"group__VoxelFiltering.html#gab974887ed7faf7685d6c8c181827b2c2",
+"namespacertabmap_1_1util3d.html#ae145af1bf4955fa135bcf359fb1fe628"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

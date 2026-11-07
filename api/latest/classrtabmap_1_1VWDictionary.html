@@ -173,6 +173,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:af0b676e13c7dba437147520335289e97" id="r_af0b676e13c7dba437147520335289e97"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1VWDictionary.html#af0b676e13c7dba437147520335289e97">setLastWordId</a> (int id)</td></tr>
 <tr class="memdesc:af0b676e13c7dba437147520335289e97"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the last word ID (used when loading from database)  <br /></td></tr>
 <tr class="separator:af0b676e13c7dba437147520335289e97"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa9cb081a590ae74d2337debb0499593d" id="r_aa9cb081a590ae74d2337debb0499593d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1VWDictionary.html#aa9cb081a590ae74d2337debb0499593d">getLastWordId</a> () const</td></tr>
+<tr class="memdesc:aa9cb081a590ae74d2337debb0499593d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the last word ID: new words are created with the IDs following it.  <br /></td></tr>
+<tr class="separator:aa9cb081a590ae74d2337debb0499593d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6bcad4c04999469001b5ac03b8a61ab4" id="r_a6bcad4c04999469001b5ac03b8a61ab4"><td class="memItemLeft" align="right" valign="top">const std::map&lt; int, <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1VWDictionary.html#a6bcad4c04999469001b5ac03b8a61ab4">getVisualWords</a> () const</td></tr>
 <tr class="memdesc:a6bcad4c04999469001b5ac03b8a61ab4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get all visual words.  <br /></td></tr>
 <tr class="separator:a6bcad4c04999469001b5ac03b8a61ab4"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -798,6 +801,36 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="aa9cb081a590ae74d2337debb0499593d" name="aa9cb081a590ae74d2337debb0499593d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa9cb081a590ae74d2337debb0499593d">&#9670;&#160;</a></span>getLastWordId()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int rtabmap::VWDictionary::getLastWordId </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Get the last word ID: new words are created with the IDs following it. </p>
+<dl class="section return"><dt>Returns</dt><dd>Last word ID </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00252">252</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
+
+</div>
+</div>
 <a id="a6bcad4c04999469001b5ac03b8a61ab4" name="a6bcad4c04999469001b5ac03b8a61ab4"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a6bcad4c04999469001b5ac03b8a61ab4">&#9670;&#160;</a></span>getVisualWords()</h2>
 
@@ -824,7 +857,7 @@ Protected Attributes</h2></td></tr>
 <p>Get all visual words. </p>
 <dl class="section return"><dt>Returns</dt><dd>Map of visual word ID to <a class="el" href="classrtabmap_1_1VisualWord.html" title="Represents a visual word (feature descriptor) used in the bag-of-words (BoW) model.">VisualWord</a> pointer </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00252">252</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00258">258</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
 
 </div>
 </div>
@@ -857,7 +890,7 @@ Protected Attributes</h2></td></tr>
 <dl class="section note"><dt>Note</dt><dd>The NNDR method was introduced in "Distinctive Image Features
 from Scale-Invariant Keypoints" by David Lowe (IJCV 2004). </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00265">265</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00271">271</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
 
 </div>
 </div>
@@ -887,7 +920,7 @@ from Scale-Invariant Keypoints" by David Lowe (IJCV 2004). </dd></dl>
 <p>Get the count of words not yet indexed in the search tree. </p>
 <dl class="section return"><dt>Returns</dt><dd>Number of words waiting to be indexed </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00271">271</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00277">277</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
 
 </div>
 </div>
@@ -937,7 +970,7 @@ from Scale-Invariant Keypoints" by David Lowe (IJCV 2004). </dd></dl>
 <p>Get the total number of active word-to-signature references. </p>
 <dl class="section return"><dt>Returns</dt><dd>Total count of active references </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00283">283</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00289">289</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
 
 </div>
 </div>
@@ -1055,7 +1088,7 @@ from Scale-Invariant Keypoints" by David Lowe (IJCV 2004). </dd></dl>
 <p>Get the current nearest neighbor search strategy. </p>
 <dl class="section return"><dt>Returns</dt><dd>The current NNStrategy </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00316">316</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00322">322</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
 
 </div>
 </div>
@@ -1085,7 +1118,7 @@ from Scale-Invariant Keypoints" by David Lowe (IJCV 2004). </dd></dl>
 <p>Check if the dictionary is in incremental mode. </p>
 <dl class="section return"><dt>Returns</dt><dd>true if incremental, false if fixed </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00322">322</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00328">328</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
 
 </div>
 </div>
@@ -1115,7 +1148,7 @@ from Scale-Invariant Keypoints" by David Lowe (IJCV 2004). </dd></dl>
 <p>Check if FLANN index is updated incrementally. </p>
 <dl class="section return"><dt>Returns</dt><dd>true if incremental FLANN updates are enabled </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00328">328</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00334">334</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
 
 </div>
 </div>
@@ -1404,7 +1437,7 @@ from Scale-Invariant Keypoints" by David Lowe (IJCV 2004). </dd></dl>
 <p>Get the count of unused visual words. </p>
 <dl class="section return"><dt>Returns</dt><dd>Number of unused words </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00418">418</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00424">424</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
 
 </div>
 </div>
@@ -1659,7 +1692,7 @@ from Scale-Invariant Keypoints" by David Lowe (IJCV 2004). </dd></dl>
 <p>Map of visual word ID to <a class="el" href="classrtabmap_1_1VisualWord.html" title="Represents a visual word (feature descriptor) used in the bag-of-words (BoW) model.">VisualWord</a> pointer. </p>
 <dl class="section note"><dt>Note</dt><dd>All visual words (used and unused) are stored here </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00475">475</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00481">481</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
 
 </div>
 </div>
@@ -1686,7 +1719,7 @@ from Scale-Invariant Keypoints" by David Lowe (IJCV 2004). </dd></dl>
 <p>Total count of active word-to-signature references. </p>
 <dl class="section note"><dt>Note</dt><dd>Used to track all references for updating common signatures </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00481">481</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="VWDictionary_8h_source.html#l00487">487</a> of file <a class="el" href="VWDictionary_8h_source.html">VWDictionary.h</a>.</p>
 
 </div>
 </div>

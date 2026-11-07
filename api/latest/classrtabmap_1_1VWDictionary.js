@@ -23,6 +23,7 @@ var classrtabmap_1_1VWDictionary =
     [ "getWord", "classrtabmap_1_1VWDictionary.html#a5cf9981cf11f8f93280b7d0c195159e1", null ],
     [ "getUnusedWord", "classrtabmap_1_1VWDictionary.html#abbd007a028847ecbbdd50e3480ba95e3", null ],
     [ "setLastWordId", "classrtabmap_1_1VWDictionary.html#af0b676e13c7dba437147520335289e97", null ],
+    [ "getLastWordId", "classrtabmap_1_1VWDictionary.html#aa9cb081a590ae74d2337debb0499593d", null ],
     [ "getVisualWords", "classrtabmap_1_1VWDictionary.html#a6bcad4c04999469001b5ac03b8a61ab4", null ],
     [ "getNndrRatio", "classrtabmap_1_1VWDictionary.html#a454639bff3d95b2f9dd346413981d5c5", null ],
     [ "getNotIndexedWordsCount", "classrtabmap_1_1VWDictionary.html#a293c09f00caf84bb991d73983a5f22c8", null ],

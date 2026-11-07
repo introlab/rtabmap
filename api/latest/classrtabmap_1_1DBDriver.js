@@ -31,5 +31,7 @@ var classrtabmap_1_1DBDriver =
     [ "getDatabaseVersion", "classrtabmap_1_1DBDriver.html#a9adb7be1463016917f24a3db5f1e8264", null ],
     [ "executeNoResult", "classrtabmap_1_1DBDriver.html#a835fc23bd4f6532af71f3aadfb8037d8", null ],
     [ "loadSignature", "classrtabmap_1_1DBDriver.html#a0a713d7a6dabdcfbb8d733dba2a20120", null ],
-    [ "loadLinks", "classrtabmap_1_1DBDriver.html#aab00d50127b8b5bb92f8605e35aaca4d", null ]
+    [ "loadWords", "classrtabmap_1_1DBDriver.html#a2c8c20438b138bbb801b9531e106e51c", null ],
+    [ "loadLinks", "classrtabmap_1_1DBDriver.html#aab00d50127b8b5bb92f8605e35aaca4d", null ],
+    [ "getLastWordId", "classrtabmap_1_1DBDriver.html#ae79adf5a2454a62d323d80d4e4f8a4fb", null ]
 ];

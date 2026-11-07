@@ -340,9 +340,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>loadLastNodes</b> (st
 <tr class="memitem:aedd6cce596ad8f6693a3ff412f375f1f inherit pub_methods_classrtabmap_1_1DBDriver" id="r_aedd6cce596ad8f6693a3ff412f375f1f"><td class="memItemLeft" align="right" valign="top">
 void&#160;</td><td class="memItemRight" valign="bottom"><b>loadSignatures</b> (const std::list&lt; int &gt; &amp;ids, std::list&lt; <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> * &gt; &amp;signatures, std::set&lt; int &gt; *loadedFromTrash=0, bool loadWordIdsOnly=false)</td></tr>
 <tr class="separator:aedd6cce596ad8f6693a3ff412f375f1f inherit pub_methods_classrtabmap_1_1DBDriver"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abe5837cd7a9544113de53b9b9f072d4a inherit pub_methods_classrtabmap_1_1DBDriver" id="r_abe5837cd7a9544113de53b9b9f072d4a"><td class="memItemLeft" align="right" valign="top">
-void&#160;</td><td class="memItemRight" valign="bottom"><b>loadWords</b> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws)</td></tr>
-<tr class="separator:abe5837cd7a9544113de53b9b9f072d4a inherit pub_methods_classrtabmap_1_1DBDriver"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2c8c20438b138bbb801b9531e106e51c inherit pub_methods_classrtabmap_1_1DBDriver" id="r_a2c8c20438b138bbb801b9531e106e51c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#a2c8c20438b138bbb801b9531e106e51c">loadWords</a> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws, bool missingWordsExpected=false)</td></tr>
+<tr class="memdesc:a2c8c20438b138bbb801b9531e106e51c inherit pub_methods_classrtabmap_1_1DBDriver"><td class="mdescLeft">&#160;</td><td class="mdescRight">Load words by id (trash first, then the database); returned words must be freed after usage.  <br /></td></tr>
+<tr class="separator:a2c8c20438b138bbb801b9531e106e51c inherit pub_methods_classrtabmap_1_1DBDriver"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac45bb42a45bfe75bb845b716fedcd853 inherit pub_methods_classrtabmap_1_1DBDriver" id="r_ac45bb42a45bfe75bb845b716fedcd853"><td class="memItemLeft" align="right" valign="top">
 void&#160;</td><td class="memItemRight" valign="bottom"><b>loadNodeData</b> (<a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &amp;signature, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const</td></tr>
 <tr class="separator:ac45bb42a45bfe75bb845b716fedcd853 inherit pub_methods_classrtabmap_1_1DBDriver"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -389,9 +389,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>getLastNodeId</b> (in
 <tr class="memitem:aba43b53a98817d34015a19850ead770f inherit pub_methods_classrtabmap_1_1DBDriver" id="r_aba43b53a98817d34015a19850ead770f"><td class="memItemLeft" align="right" valign="top">
 void&#160;</td><td class="memItemRight" valign="bottom"><b>getLastMapId</b> (int &amp;mapId) const</td></tr>
 <tr class="separator:aba43b53a98817d34015a19850ead770f inherit pub_methods_classrtabmap_1_1DBDriver"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acd7bd8d39e782633f8146cb322f12082 inherit pub_methods_classrtabmap_1_1DBDriver" id="r_acd7bd8d39e782633f8146cb322f12082"><td class="memItemLeft" align="right" valign="top">
-void&#160;</td><td class="memItemRight" valign="bottom"><b>getLastWordId</b> (int &amp;id) const</td></tr>
-<tr class="separator:acd7bd8d39e782633f8146cb322f12082 inherit pub_methods_classrtabmap_1_1DBDriver"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae79adf5a2454a62d323d80d4e4f8a4fb inherit pub_methods_classrtabmap_1_1DBDriver" id="r_ae79adf5a2454a62d323d80d4e4f8a4fb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#ae79adf5a2454a62d323d80d4e4f8a4fb">getLastWordId</a> (int &amp;id, bool lookInFeatures=false) const</td></tr>
+<tr class="memdesc:ae79adf5a2454a62d323d80d4e4f8a4fb inherit pub_methods_classrtabmap_1_1DBDriver"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the largest word id of the dictionary (trash and Word table).  <br /></td></tr>
+<tr class="separator:ae79adf5a2454a62d323d80d4e4f8a4fb inherit pub_methods_classrtabmap_1_1DBDriver"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adbf2871e1f6811a462cc9b540a83c835 inherit pub_methods_classrtabmap_1_1DBDriver" id="r_adbf2871e1f6811a462cc9b540a83c835"><td class="memItemLeft" align="right" valign="top">
 void&#160;</td><td class="memItemRight" valign="bottom"><b>getInvertedIndexNi</b> (int signatureId, int &amp;ni) const</td></tr>
 <tr class="separator:adbf2871e1f6811a462cc9b540a83c835 inherit pub_methods_classrtabmap_1_1DBDriver"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -541,8 +541,8 @@ Protected Member Functions</h2></td></tr>
 <tr class="separator:ae43a518ebb37a3663dd290d88e68fc8f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae6e223c8b03b504d28a0c576a9a6ae32" id="r_ae6e223c8b03b504d28a0c576a9a6ae32"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriverSqlite3.html#ae6e223c8b03b504d28a0c576a9a6ae32">loadSignaturesQuery</a> (const std::list&lt; int &gt; &amp;ids, std::list&lt; <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> * &gt; &amp;signatures, bool loadWordIdsOnly) const</td></tr>
 <tr class="separator:ae6e223c8b03b504d28a0c576a9a6ae32"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa184869b07e7c326bfb52a08180ad3fb" id="r_aa184869b07e7c326bfb52a08180ad3fb"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriverSqlite3.html#aa184869b07e7c326bfb52a08180ad3fb">loadWordsQuery</a> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws) const</td></tr>
-<tr class="separator:aa184869b07e7c326bfb52a08180ad3fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a66ef1fbae5bd9447001a1ad2284b430c" id="r_a66ef1fbae5bd9447001a1ad2284b430c"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriverSqlite3.html#a66ef1fbae5bd9447001a1ad2284b430c">loadWordsQuery</a> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws, bool missingWordsExpected) const</td></tr>
+<tr class="separator:a66ef1fbae5bd9447001a1ad2284b430c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1d42e80dccb2e409ce2bfaf98d087ac6" id="r_a1d42e80dccb2e409ce2bfaf98d087ac6"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriverSqlite3.html#a1d42e80dccb2e409ce2bfaf98d087ac6">loadLinksQuery</a> (int signatureId, std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, <a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e">Link::Type</a> type=<a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8a720d632258ba1b468af0319ae8e7d4">Link::kUndef</a>) const</td></tr>
 <tr class="separator:a1d42e80dccb2e409ce2bfaf98d087ac6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae08d1a3be341417f2d6c4170a18898c4" id="r_ae08d1a3be341417f2d6c4170a18898c4"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriverSqlite3.html#ae08d1a3be341417f2d6c4170a18898c4">loadNodeDataQuery</a> (std::list&lt; <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> * &gt; &amp;signatures, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const</td></tr>
@@ -586,9 +586,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>asyncSave</b> (<a cla
 <tr class="memitem:a8618b0d158999aaeb40f6139d5824616" id="r_a8618b0d158999aaeb40f6139d5824616"><td class="memItemLeft" align="right" valign="top"><a id="a8618b0d158999aaeb40f6139d5824616" name="a8618b0d158999aaeb40f6139d5824616"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>loadSignatures</b> (const std::list&lt; int &gt; &amp;ids, std::list&lt; <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> * &gt; &amp;signatures, std::set&lt; int &gt; *loadedFromTrash=0, bool loadWordIdsOnly=false)=delete</td></tr>
 <tr class="separator:a8618b0d158999aaeb40f6139d5824616"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adf9c3693a95b68daf59c9c149d7efba7" id="r_adf9c3693a95b68daf59c9c149d7efba7"><td class="memItemLeft" align="right" valign="top"><a id="adf9c3693a95b68daf59c9c149d7efba7" name="adf9c3693a95b68daf59c9c149d7efba7"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>loadWords</b> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws)=delete</td></tr>
-<tr class="separator:adf9c3693a95b68daf59c9c149d7efba7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a568898cb0f2ca3fe05a6be2f1e984003" id="r_a568898cb0f2ca3fe05a6be2f1e984003"><td class="memItemLeft" align="right" valign="top"><a id="a568898cb0f2ca3fe05a6be2f1e984003" name="a568898cb0f2ca3fe05a6be2f1e984003"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>loadWords</b> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws, bool missingWordsExpected=false)=delete</td></tr>
+<tr class="separator:a568898cb0f2ca3fe05a6be2f1e984003"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a64613f9e5e9ee8d86f0732ba26a4f898" id="r_a64613f9e5e9ee8d86f0732ba26a4f898"><td class="memItemLeft" align="right" valign="top"><a id="a64613f9e5e9ee8d86f0732ba26a4f898" name="a64613f9e5e9ee8d86f0732ba26a4f898"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>loadNodeData</b> (<a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &amp;signature, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const =delete</td></tr>
 <tr class="separator:a64613f9e5e9ee8d86f0732ba26a4f898"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -2592,8 +2592,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="aa184869b07e7c326bfb52a08180ad3fb" name="aa184869b07e7c326bfb52a08180ad3fb"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa184869b07e7c326bfb52a08180ad3fb">&#9670;&#160;</a></span>loadWordsQuery()</h2>
+<a id="a66ef1fbae5bd9447001a1ad2284b430c" name="a66ef1fbae5bd9447001a1ad2284b430c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a66ef1fbae5bd9447001a1ad2284b430c">&#9670;&#160;</a></span>loadWordsQuery()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -2611,7 +2611,13 @@ Additional Inherited Members</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;&#160;</td>
-          <td class="paramname"><em>vws</em>&#160;</td>
+          <td class="paramname"><em>vws</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>missingWordsExpected</em>&#160;</td>
         </tr>
         <tr>
           <td></td>

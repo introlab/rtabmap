@@ -330,9 +330,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>loadLastNodes</b> (st
 <tr class="memitem:aedd6cce596ad8f6693a3ff412f375f1f" id="r_aedd6cce596ad8f6693a3ff412f375f1f"><td class="memItemLeft" align="right" valign="top"><a id="aedd6cce596ad8f6693a3ff412f375f1f" name="aedd6cce596ad8f6693a3ff412f375f1f"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>loadSignatures</b> (const std::list&lt; int &gt; &amp;ids, std::list&lt; <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> * &gt; &amp;signatures, std::set&lt; int &gt; *loadedFromTrash=0, bool loadWordIdsOnly=false)</td></tr>
 <tr class="separator:aedd6cce596ad8f6693a3ff412f375f1f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abe5837cd7a9544113de53b9b9f072d4a" id="r_abe5837cd7a9544113de53b9b9f072d4a"><td class="memItemLeft" align="right" valign="top"><a id="abe5837cd7a9544113de53b9b9f072d4a" name="abe5837cd7a9544113de53b9b9f072d4a"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>loadWords</b> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws)</td></tr>
-<tr class="separator:abe5837cd7a9544113de53b9b9f072d4a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2c8c20438b138bbb801b9531e106e51c" id="r_a2c8c20438b138bbb801b9531e106e51c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#a2c8c20438b138bbb801b9531e106e51c">loadWords</a> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws, bool missingWordsExpected=false)</td></tr>
+<tr class="memdesc:a2c8c20438b138bbb801b9531e106e51c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Load words by id (trash first, then the database); returned words must be freed after usage.  <br /></td></tr>
+<tr class="separator:a2c8c20438b138bbb801b9531e106e51c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac45bb42a45bfe75bb845b716fedcd853" id="r_ac45bb42a45bfe75bb845b716fedcd853"><td class="memItemLeft" align="right" valign="top"><a id="ac45bb42a45bfe75bb845b716fedcd853" name="ac45bb42a45bfe75bb845b716fedcd853"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>loadNodeData</b> (<a class="el" href="classrtabmap_1_1Signature.html">Signature</a> &amp;signature, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const</td></tr>
 <tr class="separator:ac45bb42a45bfe75bb845b716fedcd853"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -379,9 +379,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>getLastNodeId</b> (in
 <tr class="memitem:aba43b53a98817d34015a19850ead770f" id="r_aba43b53a98817d34015a19850ead770f"><td class="memItemLeft" align="right" valign="top"><a id="aba43b53a98817d34015a19850ead770f" name="aba43b53a98817d34015a19850ead770f"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>getLastMapId</b> (int &amp;mapId) const</td></tr>
 <tr class="separator:aba43b53a98817d34015a19850ead770f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acd7bd8d39e782633f8146cb322f12082" id="r_acd7bd8d39e782633f8146cb322f12082"><td class="memItemLeft" align="right" valign="top"><a id="acd7bd8d39e782633f8146cb322f12082" name="acd7bd8d39e782633f8146cb322f12082"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>getLastWordId</b> (int &amp;id) const</td></tr>
-<tr class="separator:acd7bd8d39e782633f8146cb322f12082"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae79adf5a2454a62d323d80d4e4f8a4fb" id="r_ae79adf5a2454a62d323d80d4e4f8a4fb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1DBDriver.html#ae79adf5a2454a62d323d80d4e4f8a4fb">getLastWordId</a> (int &amp;id, bool lookInFeatures=false) const</td></tr>
+<tr class="memdesc:ae79adf5a2454a62d323d80d4e4f8a4fb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the largest word id of the dictionary (trash and Word table).  <br /></td></tr>
+<tr class="separator:ae79adf5a2454a62d323d80d4e4f8a4fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adbf2871e1f6811a462cc9b540a83c835" id="r_adbf2871e1f6811a462cc9b540a83c835"><td class="memItemLeft" align="right" valign="top"><a id="adbf2871e1f6811a462cc9b540a83c835" name="adbf2871e1f6811a462cc9b540a83c835"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>getInvertedIndexNi</b> (int signatureId, int &amp;ni) const</td></tr>
 <tr class="separator:adbf2871e1f6811a462cc9b540a83c835"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -614,9 +614,9 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>loadLastNodes
 <tr class="memitem:a8335597595e18cd0f060d03a6f69ced1" id="r_a8335597595e18cd0f060d03a6f69ced1"><td class="memItemLeft" align="right" valign="top"><a id="a8335597595e18cd0f060d03a6f69ced1" name="a8335597595e18cd0f060d03a6f69ced1"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>loadSignaturesQuery</b> (const std::list&lt; int &gt; &amp;ids, std::list&lt; <a class="el" href="classrtabmap_1_1Signature.html">Signature</a> * &gt; &amp;signatures, bool loadWordIdsOnly) const =0</td></tr>
 <tr class="separator:a8335597595e18cd0f060d03a6f69ced1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ada1a2add5977feb1a197b64946d982fe" id="r_ada1a2add5977feb1a197b64946d982fe"><td class="memItemLeft" align="right" valign="top"><a id="ada1a2add5977feb1a197b64946d982fe" name="ada1a2add5977feb1a197b64946d982fe"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>loadWordsQuery</b> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws) const =0</td></tr>
-<tr class="separator:ada1a2add5977feb1a197b64946d982fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aafd10e5657ab340fe7e53168f20720df" id="r_aafd10e5657ab340fe7e53168f20720df"><td class="memItemLeft" align="right" valign="top"><a id="aafd10e5657ab340fe7e53168f20720df" name="aafd10e5657ab340fe7e53168f20720df"></a>
+virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>loadWordsQuery</b> (const std::set&lt; int &gt; &amp;wordIds, std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;vws, bool missingWordsExpected) const =0</td></tr>
+<tr class="separator:aafd10e5657ab340fe7e53168f20720df"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a905e2ec8c1029c6704145cbbe1a61e81" id="r_a905e2ec8c1029c6704145cbbe1a61e81"><td class="memItemLeft" align="right" valign="top"><a id="a905e2ec8c1029c6704145cbbe1a61e81" name="a905e2ec8c1029c6704145cbbe1a61e81"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>loadLinksQuery</b> (int signatureId, std::multimap&lt; int, <a class="el" href="classrtabmap_1_1Link.html">Link</a> &gt; &amp;links, <a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91e">Link::Type</a> type=<a class="el" href="classrtabmap_1_1Link.html#a925bb7ca93eb95a3a873b0a9e8d5e91ea8a720d632258ba1b468af0319ae8e7d4">Link::kUndef</a>) const =0</td></tr>
 <tr class="separator:a905e2ec8c1029c6704145cbbe1a61e81"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1348,6 +1348,84 @@ Additional Inherited Members</h2></td></tr>
 </dl>
 <dl class="section note"><dt>Note</dt><dd>The connection must be open (<a class="el" href="classrtabmap_1_1DBDriver.html#a7b1222cf6e75d7365b5b90c37bca2a85">isConnected()</a>). On failure the driver aborts with an assertion (SQLite backend). </dd></dl>
 <dl class="section warning"><dt>Warning</dt><dd><code>sql</code> is passed verbatim; sanitize any user-controlled values before calling. </dd></dl>
+
+</div>
+</div>
+<a id="a2c8c20438b138bbb801b9531e106e51c" name="a2c8c20438b138bbb801b9531e106e51c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2c8c20438b138bbb801b9531e106e51c">&#9670;&#160;</a></span>loadWords()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void rtabmap::DBDriver::loadWords </td>
+          <td>(</td>
+          <td class="paramtype">const std::set&lt; int &gt; &amp;&#160;</td>
+          <td class="paramname"><em>wordIds</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::list&lt; <a class="el" href="classrtabmap_1_1VisualWord.html">VisualWord</a> * &gt; &amp;&#160;</td>
+          <td class="paramname"><em>vws</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>missingWordsExpected</em> = <code>false</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Load words by id (trash first, then the database); returned words must be freed after usage. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">missingWordsExpected</td><td>true when some ids may legitimately be absent from the database (e.g., probing which words exist): the ids not found are then reported at debug level instead of as an error. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="ae79adf5a2454a62d323d80d4e4f8a4fb" name="ae79adf5a2454a62d323d80d4e4f8a4fb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae79adf5a2454a62d323d80d4e4f8a4fb">&#9670;&#160;</a></span>getLastWordId()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void rtabmap::DBDriver::getLastWordId </td>
+          <td>(</td>
+          <td class="paramtype">int &amp;&#160;</td>
+          <td class="paramname"><em>id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>lookInFeatures</em> = <code>false</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Get the largest word id of the dictionary (trash and Word table). </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">lookInFeatures</td><td>also look at the word ids referenced by the nodes' features. They are normally all in the Word table, unless the dictionary was not saved (e.g., rtabmap was killed before closing). This scans the whole Feature table, which is slow on large databases: only use it when the dictionary is known to be incomplete. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
