@@ -7,7 +7,7 @@ using namespace rtabmap;
 
 TEST(VisualWordTest, ConstructorAndAccessors)
 {
-    cv::Mat descriptor = (cv::Mat_<float>(1, 3) << 1.0, 2.0, 3.0);
+    cv::Mat descriptor = cv::Mat_<float>({1, 3}, {1.0, 2.0, 3.0});
     int wordId = 123;
     int signatureId = 10;
 

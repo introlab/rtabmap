@@ -170,7 +170,7 @@ void expectTranslatedMatches(Feature2D & detector, const OnnxMatcher & matcher, 
 {
 	cv::Mat train = sampleImage();
 	cv::Mat query;
-	cv::Mat affine = (cv::Mat_<double>(2,3) << 1, 0, dx, 0, 1, dy);
+	cv::Mat affine = cv::Mat_<double>({2,3}, {1, 0, dx, 0, 1, dy});
 	cv::warpAffine(train, query, affine, train.size());
 
 	std::vector<cv::KeyPoint> kptsTrain, kptsQuery;
