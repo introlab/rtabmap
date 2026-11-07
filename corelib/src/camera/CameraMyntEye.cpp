@@ -250,8 +250,8 @@ bool CameraMyntEye::init(const std::string & calibrationFolder, const std::strin
 		auto in_left = *std::dynamic_pointer_cast<mynteye::IntrinsicsPinhole>(in_left_base);
 		auto in_right = *std::dynamic_pointer_cast<mynteye::IntrinsicsPinhole>(in_right_base);
 
-		K1 = (cv::Mat_<double>(3, 3) << in_left.fx, 0, in_left.cx, 0, in_left.fy, in_left.cy, 0, 0, 1);
-		K2 = (cv::Mat_<double>(3, 3) << in_right.fx, 0, in_right.cx, 0, in_right.fy, in_right.cy, 0, 0, 1);
+		K1 = cv::Mat_<double>({3, 3}, {in_left.fx, 0, in_left.cx, 0, in_left.fy, in_left.cy, 0, 0, 1});
+		K2 = cv::Mat_<double>({3, 3}, {in_right.fx, 0, in_right.cx, 0, in_right.fy, in_right.cy, 0, 0, 1});
 		D1 = cv::Mat(1, 5, CV_64F, in_left.coeffs).clone();
 		D2 = cv::Mat(1, 5, CV_64F, in_right.coeffs).clone();
 	}
@@ -270,11 +270,11 @@ bool CameraMyntEye::init(const std::string & calibrationFolder, const std::strin
 				in_left.coeffs[0], in_left.coeffs[1], in_left.coeffs[2], in_left.coeffs[3],
 				in_left.coeffs[4], in_left.coeffs[5], in_left.coeffs[6], in_left.coeffs[7]);
 
-		K1 = (cv::Mat_<double>(3, 3) << in_left.coeffs[4], 0, in_left.coeffs[6], 0, in_left.coeffs[5], in_left.coeffs[7], 0, 0, 1);
-		K2 = (cv::Mat_<double>(3, 3) << in_right.coeffs[4], 0, in_right.coeffs[6], 0, in_right.coeffs[5], in_right.coeffs[7], 0, 0, 1);
+		K1 = cv::Mat_<double>({3, 3}, {in_left.coeffs[4], 0, in_left.coeffs[6], 0, in_left.coeffs[5], in_left.coeffs[7], 0, 0, 1});
+		K2 = cv::Mat_<double>({3, 3}, {in_right.coeffs[4], 0, in_right.coeffs[6], 0, in_right.coeffs[5], in_right.coeffs[7], 0, 0, 1});
 		// convert to (k1,k2,p1,p2,k3,k4)
-		D1 = (cv::Mat_<double>(1, 6) << in_left.coeffs[0], in_left.coeffs[1], 0, 0, in_left.coeffs[2], in_left.coeffs[3]);
-		D2 = (cv::Mat_<double>(1, 6) << in_right.coeffs[0], in_right.coeffs[1], 0, 0, in_right.coeffs[2], in_right.coeffs[3]);
+		D1 = cv::Mat_<double>({1, 6}, {in_left.coeffs[0], in_left.coeffs[1], 0, 0, in_left.coeffs[2], in_left.coeffs[3]});
+		D2 = cv::Mat_<double>({1, 6}, {in_right.coeffs[0], in_right.coeffs[1], 0, 0, in_right.coeffs[2], in_right.coeffs[3]});
 	}
 
 	bool is_data_use_mm_instead_of_m =

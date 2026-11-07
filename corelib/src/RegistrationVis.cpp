@@ -696,13 +696,13 @@ Transform RegistrationVis::computeTransformationImpl(
 					{
 						Transform localTransform = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].localTransform():toSignature.sensorData().stereoCameraModels()[0].left().localTransform();
 						Transform guessCameraRef = (guess * localTransform).inverse();
-						cv::Mat R = (cv::Mat_<double>(3,3) <<
+						cv::Mat R = cv::Mat_<double>({3,3}, {
 								(double)guessCameraRef.r11(), (double)guessCameraRef.r12(), (double)guessCameraRef.r13(),
 								(double)guessCameraRef.r21(), (double)guessCameraRef.r22(), (double)guessCameraRef.r23(),
-								(double)guessCameraRef.r31(), (double)guessCameraRef.r32(), (double)guessCameraRef.r33());
+								(double)guessCameraRef.r31(), (double)guessCameraRef.r32(), (double)guessCameraRef.r33()});
 						cv::Mat rvec(1,3, CV_64FC1);
 						cv::Rodrigues(R, rvec);
-						cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z());
+						cv::Mat tvec = cv::Mat_<double>({1,3}, {(double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z()});
 						cv::Mat K = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].K():toSignature.sensorData().stereoCameraModels()[0].left().K();
 						cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), cornersTo);
 					}
@@ -1139,13 +1139,13 @@ Transform RegistrationVis::computeTransformationImpl(
 					for(size_t m=0; m<models.size(); ++m)
 					{
 						Transform guessCameraRef = (guess * models[m].localTransform()).inverse();
-						cv::Mat R = (cv::Mat_<double>(3,3) <<
+						cv::Mat R = cv::Mat_<double>({3,3}, {
 								(double)guessCameraRef.r11(), (double)guessCameraRef.r12(), (double)guessCameraRef.r13(),
 								(double)guessCameraRef.r21(), (double)guessCameraRef.r22(), (double)guessCameraRef.r23(),
-								(double)guessCameraRef.r31(), (double)guessCameraRef.r32(), (double)guessCameraRef.r33());
+								(double)guessCameraRef.r31(), (double)guessCameraRef.r32(), (double)guessCameraRef.r33()});
 						cv::Mat rvec(1,3, CV_64FC1);
 						cv::Rodrigues(R, rvec);
-						cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z());
+						cv::Mat tvec = cv::Mat_<double>({1,3}, {(double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z()});
 						cv::Mat K = models[m].K();
 						std::vector<cv::Point2f> projected;
 						cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), projected);

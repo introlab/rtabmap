@@ -400,15 +400,15 @@ cv::Mat EpipolarGeometry::findFFromCalibratedStereoCameras(double fx, double fy,
 	double Bx = Tx/-fx;
 	double By = Ty/-fy;
 
-	cv::Mat tx = (cv::Mat_<double>(3,3) <<
+	cv::Mat tx = cv::Mat_<double>({3,3}, {
 			0, 0, By,
 			0, 0, -Bx,
-			-By, Bx, 0);
+			-By, Bx, 0});
 
-	cv::Mat K = (cv::Mat_<double>(3,3) <<
+	cv::Mat K = cv::Mat_<double>({3,3}, {
 			fx, 0, cx,
 			0, fy, cy,
-			0, 0, 1);
+			0, 0, 1});
 
 	cv::Mat E = tx*R;
 
@@ -431,17 +431,17 @@ cv::Mat EpipolarGeometry::linearLSTriangulation(
     //build matrix A for homogenous equation system Ax = 0
     //assume X = (x,y,z,1), for Linear-LS method
     //which turns it into a AX = B system, where A is 4x3, X is 3x1 and B is 4x1
-    cv::Mat A = (cv::Mat_<double>(4,3) <<
+    cv::Mat A = cv::Mat_<double>({4,3}, {
     		u.x*P(2,0)-P(0,0),    u.x*P(2,1)-P(0,1),      u.x*P(2,2)-P(0,2),
 			u.y*P(2,0)-P(1,0),    u.y*P(2,1)-P(1,1),      u.y*P(2,2)-P(1,2),
 			u1.x*P1(2,0)-P1(0,0), u1.x*P1(2,1)-P1(0,1),   u1.x*P1(2,2)-P1(0,2),
 			u1.y*P1(2,0)-P1(1,0), u1.y*P1(2,1)-P1(1,1),   u1.y*P1(2,2)-P1(1,2)
-              );
-    cv::Mat B = (cv::Mat_<double>(4,1) <<
+              });
+    cv::Mat B = cv::Mat_<double>({4,1}, {
 			-(u.x*P(2,3)    -P(0,3)),
 			-(u.y*P(2,3)  -P(1,3)),
 			-(u1.x*P1(2,3)    -P1(0,3)),
-			-(u1.y*P1(2,3)    -P1(1,3)));
+			-(u1.y*P1(2,3)    -P1(1,3))});
 
     cv::Mat X;
     solve(A,B,X,cv::DECOMP_SVD);
@@ -482,16 +482,16 @@ cv::Mat EpipolarGeometry::iterativeLinearLSTriangulation(
         wi1 = p2x1;
 
         //reweight equations and solve
-        cv::Mat A = (cv::Mat_<double>(4,3) <<
+        cv::Mat A = cv::Mat_<double>({4,3}, {
         		(u.x*P(2,0)-P(0,0))/wi,       (u.x*P(2,1)-P(0,1))/wi,         (u.x*P(2,2)-P(0,2))/wi,
 				(u.y*P(2,0)-P(1,0))/wi,       (u.y*P(2,1)-P(1,1))/wi,         (u.y*P(2,2)-P(1,2))/wi,
 				(u1.x*P1(2,0)-P1(0,0))/wi1,   (u1.x*P1(2,1)-P1(0,1))/wi1,     (u1.x*P1(2,2)-P1(0,2))/wi1,
-				(u1.y*P1(2,0)-P1(1,0))/wi1,   (u1.y*P1(2,1)-P1(1,1))/wi1,     (u1.y*P1(2,2)-P1(1,2))/wi1);
-        cv::Mat B = (cv::Mat_<double>(4,1) <<
+				(u1.y*P1(2,0)-P1(1,0))/wi1,   (u1.y*P1(2,1)-P1(1,1))/wi1,     (u1.y*P1(2,2)-P1(1,2))/wi1});
+        cv::Mat B = cv::Mat_<double>({4,1}, {
         		-(u.x*P(2,3)    -P(0,3))/wi,
 				-(u.y*P(2,3)  -P(1,3))/wi,
 				-(u1.x*P1(2,3)    -P1(0,3))/wi1,
-				-(u1.y*P1(2,3)    -P1(1,3))/wi1);
+				-(u1.y*P1(2,3)    -P1(1,3))/wi1});
 
         solve(A,B,X_,cv::DECOMP_SVD);
         X.at<double>(0) = X_.at<double>(0);
