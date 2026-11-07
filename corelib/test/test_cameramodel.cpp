@@ -24,22 +24,22 @@ protected:
         imageSize_ = cv::Size(imageWidth_, imageHeight_);
         
         // Create intrinsic matrix K
-        K_ = (cv::Mat_<double>(3, 3) <<
+        K_ = cv::Mat_<double>({3, 3}, {
             fx_, 0.0, cx_,
             0.0, fy_, cy_,
-            0.0, 0.0, 1.0);
+            0.0, 0.0, 1.0});
         
         // Create distortion coefficients (4 parameters: k1, k2, p1, p2)
-        D_ = (cv::Mat_<double>(1, 4) << -0.1, 0.05, 0.001, -0.001);
+        D_ = cv::Mat_<double>({1, 4}, {-0.1, 0.05, 0.001, -0.001});
         
         // Create rectification matrix (identity for simplicity)
         R_ = cv::Mat::eye(3, 3, CV_64FC1);
         
         // Create projection matrix P
-        P_ = (cv::Mat_<double>(3, 4) <<
+        P_ = cv::Mat_<double>({3, 4}, {
             fx_, 0.0, cx_, 0.0,
             0.0, fy_, cy_, 0.0,
-            0.0, 0.0, 1.0, 0.0);
+            0.0, 0.0, 1.0, 0.0});
     }
 
     void TearDown() override {
@@ -456,7 +456,7 @@ TEST_F(CameraModelTest, IsFisheye)
     EXPECT_FALSE(standard.isFisheye());
     
     // Fisheye distortion (6 parameters: k1, k2, 0, 0, k3, k4)
-    cv::Mat D_fisheye = (cv::Mat_<double>(1, 6) << 0.1, 0.05, 0.0, 0.0, 0.01, 0.005);
+    cv::Mat D_fisheye = cv::Mat_<double>({1, 6}, {0.1, 0.05, 0.0, 0.0, 0.01, 0.005});
     CameraModel fisheye("test", imageSize_, K_, D_fisheye, R_, P_);
     EXPECT_TRUE(fisheye.isFisheye());
 }
@@ -821,7 +821,7 @@ TEST_F(CameraModelTest, SaveLoadRoundTripFisheye)
     double k2 = 0.05;
     double k3 = 0.01;
     double k4 = 0.005;
-    cv::Mat D_fisheye = (cv::Mat_<double>(1, 6) << k1, k2, 0.0, 0.0, k3, k4);
+    cv::Mat D_fisheye = cv::Mat_<double>({1, 6}, {k1, k2, 0.0, 0.0, k3, k4});
     std::string cameraName = "fisheye_camera";
     CameraModel original(cameraName, imageSize_, K_, D_fisheye, R_, P_);
     

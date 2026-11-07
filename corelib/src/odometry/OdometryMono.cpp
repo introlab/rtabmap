@@ -250,13 +250,13 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 			{
 				cv::Mat K = cameraModel.K();
 				Transform pnpGuess = ((this->getPose() * (guess.isNull()?Transform::getIdentity():guess)) * cameraModel.localTransform()).inverse();
-				cv::Mat R = (cv::Mat_<double>(3,3) <<
+				cv::Mat R = cv::Mat_<double>({3,3}, {
 						(double)pnpGuess.r11(), (double)pnpGuess.r12(), (double)pnpGuess.r13(),
 						(double)pnpGuess.r21(), (double)pnpGuess.r22(), (double)pnpGuess.r23(),
-						(double)pnpGuess.r31(), (double)pnpGuess.r32(), (double)pnpGuess.r33());
+						(double)pnpGuess.r31(), (double)pnpGuess.r32(), (double)pnpGuess.r33()});
 				cv::Mat rvec(1,3, CV_64FC1);
 				cv::Rodrigues(R, rvec);
-				cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)pnpGuess.x(), (double)pnpGuess.y(), (double)pnpGuess.z());
+				cv::Mat tvec = cv::Mat_<double>({1,3}, {(double)pnpGuess.x(), (double)pnpGuess.y(), (double)pnpGuess.z()});
 
 				std::vector<cv::Point3f> objectPoints;
 				std::vector<cv::Point2f> imagePoints;
@@ -272,13 +272,13 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 				std::vector<cv::Point2f> prevImagePoints;
 				const Signature * prevS = memory_->getSignature(*(++memory_->getStMem().rbegin()));
 				Transform prevGuess = (keyFramePoses_.at(prevS->id()) * cameraModel.localTransform()).inverse();
-				cv::Mat prevR = (cv::Mat_<double>(3,3) <<
+				cv::Mat prevR = cv::Mat_<double>({3,3}, {
 						(double)prevGuess.r11(), (double)prevGuess.r12(), (double)prevGuess.r13(),
 						(double)prevGuess.r21(), (double)prevGuess.r22(), (double)prevGuess.r23(),
-						(double)prevGuess.r31(), (double)prevGuess.r32(), (double)prevGuess.r33());
+						(double)prevGuess.r31(), (double)prevGuess.r32(), (double)prevGuess.r33()});
 				cv::Mat prevRvec(1,3, CV_64FC1);
 				cv::Rodrigues(prevR, prevRvec);
-				cv::Mat prevTvec = (cv::Mat_<double>(1,3) << (double)prevGuess.x(), (double)prevGuess.y(), (double)prevGuess.z());
+				cv::Mat prevTvec = cv::Mat_<double>({1,3}, {(double)prevGuess.x(), (double)prevGuess.y(), (double)prevGuess.z()});
 				cv::projectPoints(objectPoints, prevRvec, prevTvec, K, cv::Mat(), prevImagePoints);
 
 				// compute current projection

@@ -41,7 +41,7 @@ void expectMatEqual(const cv::Mat & a, const cv::Mat & b)
 
 TEST(CompressionTest, CompressImagePngRoundTrip)
 {
-	const cv::Mat image = (cv::Mat_<uchar>(2, 3) << 10, 20, 30, 40, 50, 60);
+	const cv::Mat image = cv::Mat_<uchar>({2, 3}, {10, 20, 30, 40, 50, 60});
 	const std::vector<unsigned char> bytes = compressImage(image, ".png");
 	ASSERT_FALSE(bytes.empty());
 	EXPECT_EQ(compressedDepthFormat(bytes), ".png");
@@ -115,7 +115,7 @@ TEST(CompressionTest, CompressImageRvlRoundTrip)
 
 TEST(CompressionTest, CompressDataRoundTrip)
 {
-	const cv::Mat data = (cv::Mat_<float>(2, 2) << 1.f, 2.f, 3.f, 4.f);
+	const cv::Mat data = cv::Mat_<float>({2, 2}, {1.f, 2.f, 3.f, 4.f});
 	const std::vector<unsigned char> bytes = compressData(data);
 	ASSERT_FALSE(bytes.empty());
 
@@ -125,7 +125,7 @@ TEST(CompressionTest, CompressDataRoundTrip)
 
 TEST(CompressionTest, CompressData2RoundTrip)
 {
-	const cv::Mat data = (cv::Mat_<double>(1, 4) << 1.0, -2.0, 3.5, 4.25);
+	const cv::Mat data = cv::Mat_<double>({1, 4}, {1.0, -2.0, 3.5, 4.25});
 	const cv::Mat bytes = compressData2(data);
 	ASSERT_FALSE(bytes.empty());
 	ASSERT_EQ(bytes.type(), CV_8UC1);
@@ -171,7 +171,7 @@ TEST(CompressionTest, CompressionThreadUncompressImage)
 
 TEST(CompressionTest, CompressionThreadDataRoundTrip)
 {
-	const cv::Mat data = (cv::Mat_<int>(2, 3) << 1, 2, 3, 4, 5, 6);
+	const cv::Mat data = cv::Mat_<int>({2, 3}, {1, 2, 3, 4, 5, 6});
 
 	CompressionThread compressThread(data);
 	compressThread.start();

@@ -253,7 +253,7 @@ void agreement(const Frame & a, const Frame & b, double & found, double & cosine
 	double cosineSum = 0.0;
 	for(size_t i=0; i<b.keypoints.size(); ++i)
 	{
-		cv::Mat query = (cv::Mat_<float>(1,2) << b.keypoints[i].pt.x, b.keypoints[i].pt.y);
+		cv::Mat query = cv::Mat_<float>({1,2}, {b.keypoints[i].pt.x, b.keypoints[i].pt.y});
 		cv::Mat indices, dists;
 		index.knnSearch(query, indices, dists, 1, cv::flann::SearchParams());
 		if(dists.at<float>(0,0) <= 1.0f) // squared distance

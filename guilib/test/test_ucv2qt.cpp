@@ -104,7 +104,7 @@ TEST(UCv2QtTest, RgbImage)
 
 TEST(UCv2QtTest, GrayImage)
 {
-	cv::Mat image = (cv::Mat_<unsigned char>(2, 3) << 0, 1, 2, 127, 128, 255);
+	cv::Mat image = cv::Mat_<unsigned char>({2, 3}, {0, 1, 2, 127, 128, 255});
 	const uCvQtDepthColorMap maps[4] = {uCvQtDepthWhiteToBlack, uCvQtDepthBlackToWhite, uCvQtDepthRedToBlue, uCvQtDepthBlueToRed};
 	const QVector<QRgb> tables[4] = {grayTable(true), grayTable(false), hsvTable(false, false), hsvTable(true, false)};
 	for(int i = 0; i < 4; ++i)
@@ -119,7 +119,7 @@ TEST(UCv2QtTest, GrayImage)
 TEST(UCv2QtTest, FloatDepthAutoRange)
 {
 	// meters, 0 and NaN are invalid
-	cv::Mat depth = (cv::Mat_<float>(1, 5) << 1.0f, 0.0f, std::numeric_limits<float>::quiet_NaN(), 2.0f, 3.0f);
+	cv::Mat depth = cv::Mat_<float>({1, 5}, {1.0f, 0.0f, std::numeric_limits<float>::quiet_NaN(), 2.0f, 3.0f});
 
 	// min=1, max=3: index = 255-(d-min)*255/(max-min) clamped to [1,255]
 	QImage qimage = uCvMat2QImage(depth, true, uCvQtDepthWhiteToBlack);
@@ -143,7 +143,7 @@ TEST(UCv2QtTest, FloatDepthAutoRange)
 
 TEST(UCv2QtTest, FloatDepthFixedRange)
 {
-	cv::Mat depth = (cv::Mat_<float>(1, 4) << 0.0f, 1.0f, 2.0f, 3.0f);
+	cv::Mat depth = cv::Mat_<float>({1, 4}, {0.0f, 1.0f, 2.0f, 3.0f});
 	// below min -> 255, above max -> 1
 	QImage qimage = uCvMat2QImage(depth, true, uCvQtDepthWhiteToBlack, 1.5f, 2.5f);
 	EXPECT_EQ(std::vector<int>({0, 255, 127, 1}), indices(qimage));
@@ -152,19 +152,19 @@ TEST(UCv2QtTest, FloatDepthFixedRange)
 // The automatic range is computed only on valid pixels, whatever the first pixel is.
 TEST(UCv2QtTest, FloatDepthAutoRangeInvalidFirstPixel)
 {
-	cv::Mat depth = (cv::Mat_<float>(1, 4) << 0.0f, 1.0f, 2.0f, 3.0f);
+	cv::Mat depth = cv::Mat_<float>({1, 4}, {0.0f, 1.0f, 2.0f, 3.0f});
 	EXPECT_EQ(std::vector<int>({0, 255, 127, 1}), indices(uCvMat2QImage(depth, true, uCvQtDepthWhiteToBlack)));
-	depth = (cv::Mat_<float>(1, 4) << std::numeric_limits<float>::quiet_NaN(), 1.0f, 2.0f, 3.0f);
+	depth = cv::Mat_<float>({1, 4}, {std::numeric_limits<float>::quiet_NaN(), 1.0f, 2.0f, 3.0f});
 	EXPECT_EQ(std::vector<int>({0, 255, 127, 1}), indices(uCvMat2QImage(depth, true, uCvQtDepthWhiteToBlack)));
 	// no valid pixels
-	depth = (cv::Mat_<float>(1, 2) << 0.0f, std::numeric_limits<float>::quiet_NaN());
+	depth = cv::Mat_<float>({1, 2}, {0.0f, std::numeric_limits<float>::quiet_NaN()});
 	EXPECT_EQ(std::vector<int>({0, 0}), indices(uCvMat2QImage(depth, true, uCvQtDepthWhiteToBlack)));
 }
 
 TEST(UCv2QtTest, ShortDepthAutoRange)
 {
 	// millimeters, 0 is invalid
-	cv::Mat depth = (cv::Mat_<unsigned short>(1, 4) << 1000, 0, 2000, 3000);
+	cv::Mat depth = cv::Mat_<unsigned short>({1, 4}, {1000, 0, 2000, 3000});
 	QImage qimage = uCvMat2QImage(depth, true, uCvQtDepthWhiteToBlack);
 	ASSERT_EQ(QImage::Format_Indexed8, qimage.format());
 	EXPECT_EQ(std::vector<int>({255, 0, 127, 1}), indices(qimage));
@@ -176,7 +176,7 @@ TEST(UCv2QtTest, ShortDepthAutoRange)
 
 TEST(UCv2QtTest, ShortDepthAutoRangeInvalidFirstPixel)
 {
-	cv::Mat depth = (cv::Mat_<unsigned short>(1, 4) << 0, 1000, 2000, 3000);
+	cv::Mat depth = cv::Mat_<unsigned short>({1, 4}, {0, 1000, 2000, 3000});
 	EXPECT_EQ(std::vector<int>({0, 255, 127, 1}), indices(uCvMat2QImage(depth, true, uCvQtDepthWhiteToBlack)));
 	// no valid pixels
 	depth = cv::Mat::zeros(1, 2, CV_16UC1);
@@ -185,7 +185,7 @@ TEST(UCv2QtTest, ShortDepthAutoRangeInvalidFirstPixel)
 
 TEST(UCv2QtTest, ShortDepthFixedRange)
 {
-	cv::Mat depth = (cv::Mat_<unsigned short>(1, 4) << 0, 1000, 2000, 3000);
+	cv::Mat depth = cv::Mat_<unsigned short>({1, 4}, {0, 1000, 2000, 3000});
 	// range in meters
 	QImage qimage = uCvMat2QImage(depth, true, uCvQtDepthWhiteToBlack, 1.5f, 2.5f);
 	EXPECT_EQ(std::vector<int>({0, 255, 127, 1}), indices(qimage));
