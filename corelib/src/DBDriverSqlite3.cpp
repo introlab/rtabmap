@@ -3681,7 +3681,7 @@ void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly, b
 }
 
 //may be slower than the previous version but don't have a limit of words that can be loaded at the same time
-void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const
+void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws, bool missingWordsExpected) const
 {
 	ULOGGER_DEBUG("size=%d", (int)wordIds.size());
 	if(_ppDb && wordIds.size())
@@ -3771,7 +3771,15 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 					UDEBUG("Not found word %d", *iter);
 				}
 			}
-			UERROR("Query (%d) doesn't match loaded words (%d)", (int)wordIds.size(), (int)loaded.size());
+			if(missingWordsExpected)
+			{
+				UDEBUG("%d/%d words not found in the database (expected by the caller)",
+					(int)(wordIds.size() - loaded.size()), (int)wordIds.size());
+			}
+			else
+			{
+				UERROR("Query (%d) doesn't match loaded words (%d)", (int)wordIds.size(), (int)loaded.size());
+			}
 		}
 	}
 }
