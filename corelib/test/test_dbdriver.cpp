@@ -467,10 +467,10 @@ TEST_F(DbDriverFixture, SaveAndLoadSignatureAllMembers)
 		cv::Point3f(0.1f, 0.2f, 0.3f),
 		cv::Point3f(0.4f, 0.5f, 0.6f),
 		cv::Point3f(0.7f, 0.8f, 0.9f)};
-	const cv::Mat descriptors = (cv::Mat_<float>(3, 8) <<
+	const cv::Mat descriptors = cv::Mat_<float>({3, 8}, {
 		1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f,
 		9.f, 10.f, 11.f, 12.f, 13.f, 14.f, 15.f, 16.f,
-		17.f, 18.f, 19.f, 20.f, 21.f, 22.f, 23.f, 24.f);
+		17.f, 18.f, 19.f, 20.f, 21.f, 22.f, 23.f, 24.f});
 	setSignatureFeatures(*sig, wordIds, keypoints, words3, descriptors);
 
 	sig->addLink(Link(1, 2, Link::kNeighbor,
@@ -488,7 +488,7 @@ TEST_F(DbDriverFixture, SaveAndLoadSignatureAllMembers)
 	sig->sensorData().setEnvSensors(envSensors);
 	sig->sensorData().setCameraModels({CameraModel(525.0, 525.0, 320.0, 240.0)});
 	sig->sensorData().setGlobalDescriptors({GlobalDescriptor(0,
-			(cv::Mat_<float>(1, 4) << 1.f, 2.f, 3.f, 4.f))});
+			cv::Mat_<float>({1, 4}, {1.f, 2.f, 3.f, 4.f}))});
 
 	Signature expected = *sig;
 	saveSignature(sig);
@@ -568,8 +568,8 @@ TEST_F(DbDriverFixture, SaveAndLoadSignaturesWithFeatures)
 	Signature * sig1 = new Signature(1);
 	Signature * sig2 = new Signature(2);
 
-	cv::Mat descriptors1 = (cv::Mat_<float>(2, 4) << 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f);
-	cv::Mat descriptors2 = (cv::Mat_<float>(1, 4) << 10.f, 11.f, 12.f, 13.f);
+	cv::Mat descriptors1 = cv::Mat_<float>({2, 4}, {1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f});
+	cv::Mat descriptors2 = cv::Mat_<float>({1, 4}, {10.f, 11.f, 12.f, 13.f});
 	setSignatureFeatures(*sig1,
 			{100, 101},
 			{cv::KeyPoint(1.f, 2.f, 4.f), cv::KeyPoint(3.f, 4.f, 4.f)},
@@ -684,8 +684,8 @@ TEST_F(DbDriverFixture, GetAllNodeIdsAfterSave)
 
 TEST_F(DbDriverFixture, SaveAndLoadVisualWordFloatDescriptor)
 {
-	cv::Mat descriptor = (cv::Mat_<float>(1, 8) <<
-		1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f);
+	cv::Mat descriptor = cv::Mat_<float>({1, 8}, {
+		1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f});
 	saveVisualWord(new VisualWord(42, descriptor));
 
 	EXPECT_EQ(driver_->getTotalDictionarySize(), 1);
@@ -709,8 +709,8 @@ TEST_F(DbDriverFixture, SaveAndLoadVisualWordFloatDescriptor)
 
 TEST_F(DbDriverFixture, SaveAndLoadMultipleVisualWords)
 {
-	cv::Mat d1 = (cv::Mat_<float>(1, 4) << 0.f, 1.f, 2.f, 3.f);
-	cv::Mat d2 = (cv::Mat_<float>(1, 4) << 10.f, 11.f, 12.f, 13.f);
+	cv::Mat d1 = cv::Mat_<float>({1, 4}, {0.f, 1.f, 2.f, 3.f});
+	cv::Mat d2 = cv::Mat_<float>({1, 4}, {10.f, 11.f, 12.f, 13.f});
 	saveVisualWord(new VisualWord(1, d1));
 	saveVisualWord(new VisualWord(2, d2));
 
@@ -885,7 +885,7 @@ TEST_F(DbDriverFixture, AddInfoAfterRunRestoresSessionInfo)
 	EXPECT_EQ(driver_->getLastNodesSize(), 1);
 
 	std::this_thread::sleep_for(std::chrono::seconds(1));
-	saveVisualWord(new VisualWord(50, (cv::Mat_<float>(1, 4) << 1.f, 2.f, 3.f, 4.f)));
+	saveVisualWord(new VisualWord(50, cv::Mat_<float>({1, 4}, {1.f, 2.f, 3.f, 4.f})));
 	EXPECT_EQ(driver_->getLastDictionarySize(), 1);
 }
 
@@ -1007,7 +1007,7 @@ TEST_F(DbDriverFixture, GetNodeDataAndLocalFeatures)
 {
 	Signature * sig = new Signature(1);
 	attachSensorDataForDatabaseSave(*sig);
-	const cv::Mat descriptors = (cv::Mat_<float>(1, 4) << 1.f, 2.f, 3.f, 4.f);
+	const cv::Mat descriptors = cv::Mat_<float>({1, 4}, {1.f, 2.f, 3.f, 4.f});
 	setSignatureFeatures(*sig, {10}, {cv::KeyPoint(5.f, 6.f, 4.f)}, {cv::Point3f(0.f, 0.f, 1.f)}, descriptors);
 	saveSignature(sig);
 
@@ -1034,8 +1034,8 @@ TEST_F(DbDriverFixture, GetNodeDataAndLocalFeatures)
 
 TEST_F(DbDriverFixture, LoadVWDictionaryFromDatabase)
 {
-	cv::Mat d1 = (cv::Mat_<float>(1, 4) << 0.f, 1.f, 2.f, 3.f);
-	cv::Mat d2 = (cv::Mat_<float>(1, 4) << 4.f, 5.f, 6.f, 7.f);
+	cv::Mat d1 = cv::Mat_<float>({1, 4}, {0.f, 1.f, 2.f, 3.f});
+	cv::Mat d2 = cv::Mat_<float>({1, 4}, {4.f, 5.f, 6.f, 7.f});
 	saveVisualWord(new VisualWord(1, d1));
 	saveVisualWord(new VisualWord(2, d2));
 
@@ -1139,7 +1139,7 @@ TEST_F(DbDriverFixture, MemoryUsageCountersAfterSave)
 {
 	Signature * sig = new Signature(1);
 	attachSensorDataForDatabaseSave(*sig);
-	const cv::Mat descriptors = (cv::Mat_<float>(1, 4) << 1.f, 2.f, 3.f, 4.f);
+	const cv::Mat descriptors = cv::Mat_<float>({1, 4}, {1.f, 2.f, 3.f, 4.f});
 	setSignatureFeatures(*sig, {10}, {cv::KeyPoint(5.f, 6.f, 4.f)}, {cv::Point3f(0.f, 0.f, 1.f)}, descriptors);
 	saveSignature(sig);
 	saveVisualWord(new VisualWord(1, descriptors));

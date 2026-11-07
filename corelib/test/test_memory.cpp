@@ -2736,7 +2736,7 @@ TEST_F(MemoryFixture, ComputeLikelihoodUsesGlobalDescriptors)
 	auto addNode = [&](int type, float x, float y)
 	{
 		SensorData data(image_);
-		cv::Mat d = (cv::Mat_<float>(1, 2) << x, y);
+		cv::Mat d = cv::Mat_<float>({1, 2}, {x, y});
 		data.addGlobalDescriptor(GlobalDescriptor(type, d / cv::norm(d)));
 		Transform pose(float(updateCount_), 0.0f, 0.0f, 0, 0, 0);
 		EXPECT_TRUE(memory_->update(data, pose, covariance_));
@@ -3185,7 +3185,7 @@ TEST(MemoryTest, UpdateKeepsUserDataThatArrivesCompressed)
 	// stored as it is, like already-compressed images, rather than dropped for lack of
 	// raw data to compress. Checked with and without Mem/BinDataKept, which build the
 	// signature in two different branches, and with and without parallel compression.
-	const cv::Mat userData = (cv::Mat_<float>(1, 4) << 1.0f, 2.0f, 3.0f, 4.0f);
+	const cv::Mat userData = cv::Mat_<float>({1, 4}, {1.0f, 2.0f, 3.0f, 4.0f});
 	for(const char * binDataKept : {"true", "false"})
 	{
 		for(const char * parallel : {"true", "false"})
@@ -3377,7 +3377,7 @@ TEST(MemoryTest, GetNodeDataLoadsEachPayloadTypeFromDatabase)
 	const LaserScan scan(scanData, /*maxPoints=*/4, /*maxRange=*/10.0f, LaserScan::kXYZ);
 	seeded.setLaserScan(scan);
 	// User data: 4 floats.
-	cv::Mat userData = (cv::Mat_<float>(1, 4) << 1.0f, 2.0f, 3.0f, 4.0f);
+	cv::Mat userData = cv::Mat_<float>({1, 4}, {1.0f, 2.0f, 3.0f, 4.0f});
 	seeded.setUserData(userData);
 	// Occupancy grid: a few obstacle cells.
 	cv::Mat obstacles(1, 3, CV_32FC3);
@@ -4684,10 +4684,10 @@ TEST(MemoryTest, CreateSignatureRecompressesAfterRectification)
 	// rectified pixels.
 	const int size = 32;
 	const double f = 16.0, c = 16.0;
-	const cv::Mat K = (cv::Mat_<double>(3, 3) << f, 0.0, c, 0.0, f, c, 0.0, 0.0, 1.0);
-	const cv::Mat D = (cv::Mat_<double>(1, 4) << -0.3, 0.1, 0.001, -0.001);
+	const cv::Mat K = cv::Mat_<double>({3, 3}, {f, 0.0, c, 0.0, f, c, 0.0, 0.0, 1.0});
+	const cv::Mat D = cv::Mat_<double>({1, 4}, {-0.3, 0.1, 0.001, -0.001});
 	const cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
-	const cv::Mat P = (cv::Mat_<double>(3, 4) << f, 0.0, c, 0.0, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0);
+	const cv::Mat P = cv::Mat_<double>({3, 4}, {f, 0.0, c, 0.0, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0});
 	const CameraModel model("rectifiable", cv::Size(size, size), K, D, R, P);
 	ASSERT_TRUE(model.isValidForRectification());
 
@@ -4754,14 +4754,14 @@ TEST(MemoryTest, CreateSignatureRecompressesStereoPairAfterRectification)
 	// carries the right image.
 	const int size = 32;
 	const double f = 16.0, c = 16.0, baseline = 0.1;
-	const cv::Mat K = (cv::Mat_<double>(3, 3) << f, 0.0, c, 0.0, f, c, 0.0, 0.0, 1.0);
-	const cv::Mat D = (cv::Mat_<double>(1, 4) << -0.3, 0.1, 0.001, -0.001);
+	const cv::Mat K = cv::Mat_<double>({3, 3}, {f, 0.0, c, 0.0, f, c, 0.0, 0.0, 1.0});
+	const cv::Mat D = cv::Mat_<double>({1, 4}, {-0.3, 0.1, 0.001, -0.001});
 	const cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
-	const cv::Mat Pleft = (cv::Mat_<double>(3, 4) <<
-			f, 0.0, c, baseline * f, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0);
-	const cv::Mat Pright = (cv::Mat_<double>(3, 4) <<
-			f, 0.0, c, 0.0, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0);
-	const cv::Mat T = (cv::Mat_<double>(3, 1) << -baseline, 0.0, 0.0);
+	const cv::Mat Pleft = cv::Mat_<double>({3, 4}, {
+			f, 0.0, c, baseline * f, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0});
+	const cv::Mat Pright = cv::Mat_<double>({3, 4}, {
+			f, 0.0, c, 0.0, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0});
+	const cv::Mat T = cv::Mat_<double>({3, 1}, {-baseline, 0.0, 0.0});
 	const StereoCameraModel model("stereo",
 			CameraModel("left", cv::Size(size, size), K, D, R, Pleft),
 			CameraModel("right", cv::Size(size, size), K, D, R, Pright),
@@ -4919,10 +4919,10 @@ TEST(MemoryTest, DecodesCompressedImagesToRectifyThem)
 
 		cv::Mat rgb(48, 64, CV_8UC3);
 		cv::randu(rgb, 0, 255);
-		const cv::Mat K = (cv::Mat_<double>(3, 3) << 50, 0, 32, 0, 50, 24, 0, 0, 1);
-		const cv::Mat D = (cv::Mat_<double>(1, 5) << -0.3, 0.1, 0, 0, 0);
+		const cv::Mat K = cv::Mat_<double>({3, 3}, {50, 0, 32, 0, 50, 24, 0, 0, 1});
+		const cv::Mat D = cv::Mat_<double>({1, 5}, {-0.3, 0.1, 0, 0, 0});
 		const cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
-		const cv::Mat P = (cv::Mat_<double>(3, 4) << 50, 0, 32, 0, 0, 50, 24, 0, 0, 0, 1, 0);
+		const cv::Mat P = cv::Mat_<double>({3, 4}, {50, 0, 32, 0, 0, 50, 24, 0, 0, 0, 1, 0});
 		const CameraModel model("cam", cv::Size(64, 48), K, D, R, P, CameraModel::opticalRotation());
 		ASSERT_TRUE(model.isValidForRectification());
 		const cv::Mat compressed = compressImage2(rgb, ".png");

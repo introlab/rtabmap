@@ -754,8 +754,8 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 
 						// As we don't know the angle_min or angle_max, ray trace between
 						// the first and last obstacle (counterclockwise).
-						cv::Mat rotation = (cv::Mat_<float>(2,2) << cos(angleIncrement), -sin(angleIncrement),
-																	 sin(angleIncrement), cos(angleIncrement));
+						cv::Mat rotation = cv::Mat_<float>({2,2}, {cos(angleIncrement), -sin(angleIncrement),
+																	 sin(angleIncrement), cos(angleIncrement)});
 						cv::Mat origin(2,1,CV_32F), obsFirst(2,1,CV_32F), obsLast(2,1,CV_32F);
 						origin.at<float>(0) = pose.x()+viewpoint.x;
 						origin.at<float>(1) = pose.y()+viewpoint.y;

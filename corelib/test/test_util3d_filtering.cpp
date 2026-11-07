@@ -478,7 +478,7 @@ TEST(Util3dFilteringTest, RangeFilteringNoFilteringAppliedWhenEmpty)
 TEST(Util3dFilteringTest, RangeFilteringNoFilteringWhenMinMaxZero)
 {
     // Simulate a simple 2D scan with 3 points: (1,0), (3,0), (6,0)
-    cv::Mat data = (cv::Mat_<float>(1, 3*2) << 1.0f, 0.0f, 3.0f, 0.0f, 6.0f, 0.0f);
+    cv::Mat data = cv::Mat_<float>({1, 3*2}, {1.0f, 0.0f, 3.0f, 0.0f, 6.0f, 0.0f});
     data = data.reshape(2, 1); // Reshape to 1 row, 3 columns with 2 floats per point
 
     LaserScan scan(data, 0, 0, LaserScan::kXY); // assuming kXY means 2D points
@@ -493,7 +493,7 @@ TEST(Util3dFilteringTest, RangeFilteringNoFilteringWhenMinMaxZero)
 TEST(Util3dFilteringTest, RangeFilteringFilteringRemovesOutOfRangePoints)
 {
     // 2D points: (1,0) [1m], (3,0) [3m], (6,0) [6m]
-    cv::Mat data = (cv::Mat_<float>(1, 3*2) << 1.0f, 0.0f, 3.0f, 0.0f, 6.0f, 0.0f);
+    cv::Mat data = cv::Mat_<float>({1, 3*2}, {1.0f, 0.0f, 3.0f, 0.0f, 6.0f, 0.0f});
     data = data.reshape(2, 1);
 
     LaserScan scan(data, 0, 0, LaserScan::kXY);
@@ -504,7 +504,7 @@ TEST(Util3dFilteringTest, RangeFilteringFilteringRemovesOutOfRangePoints)
     EXPECT_FLOAT_EQ(result.data().at<cv::Vec2f>(0)[1], 0.0f); // y
 
     // 3D points: (1,0) [1m], (3,0) [3m], (6,0) [6m]
-    data = (cv::Mat_<float>(1, 3*3) << 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 6.0f);
+    data = cv::Mat_<float>({1, 3*3}, {0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 6.0f});
     data = data.reshape(3, 1);
 
     scan = LaserScan(data, 0, 0, LaserScan::kXYZ);
@@ -519,7 +519,7 @@ TEST(Util3dFilteringTest, RangeFilteringFilteringRemovesOutOfRangePoints)
 TEST(Util3dFilteringTest, RangeFilteringFilteringWithOnlyMinOrMax)
 {
     // 2D points: (1,0) [1m], (4,0) [4m]
-    cv::Mat data = (cv::Mat_<float>(1, 2*2) << 1.0f, 0.0f, 4.0f, 0.0f);
+    cv::Mat data = cv::Mat_<float>({1, 2*2}, {1.0f, 0.0f, 4.0f, 0.0f});
     data = data.reshape(2, 1);
 
     LaserScan scan(data, 0, 0, LaserScan::kXY);
@@ -769,7 +769,7 @@ TEST(Util3dFilteringTest, DownsampleImplStepOne) {
 
     //LaserScan version
     {
-        cv::Mat data = (cv::Mat_<float>(1, 3) << 1.0f, 2.0f, 3.0f);
+        cv::Mat data = cv::Mat_<float>({1, 3}, {1.0f, 2.0f, 3.0f});
         data = data.reshape(3, 1);
         auto scan = LaserScan(data, 0, 0, LaserScan::kXYZ);
         auto result = util3d::downsample(scan, 1);

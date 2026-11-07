@@ -137,15 +137,15 @@ Transform estimateMotion3DTo2D(
 		cv::Mat K = cameraModel.K();
 		cv::Mat D = cameraModel.D();
 		Transform guessCameraFrame = (guess * cameraModel.localTransform()).inverse();
-		cv::Mat R = (cv::Mat_<double>(3,3) <<
+		cv::Mat R = cv::Mat_<double>({3,3}, {
 				(double)guessCameraFrame.r11(), (double)guessCameraFrame.r12(), (double)guessCameraFrame.r13(),
 				(double)guessCameraFrame.r21(), (double)guessCameraFrame.r22(), (double)guessCameraFrame.r23(),
-				(double)guessCameraFrame.r31(), (double)guessCameraFrame.r32(), (double)guessCameraFrame.r33());
+				(double)guessCameraFrame.r31(), (double)guessCameraFrame.r32(), (double)guessCameraFrame.r33()});
 
 		cv::Mat rvec(3,1, CV_64FC1);
 		cv::Rodrigues(R, rvec);
-		cv::Mat tvec = (cv::Mat_<double>(3,1) <<
-				(double)guessCameraFrame.x(), (double)guessCameraFrame.y(), (double)guessCameraFrame.z());
+		cv::Mat tvec = cv::Mat_<double>({3,1}, {
+				(double)guessCameraFrame.x(), (double)guessCameraFrame.y(), (double)guessCameraFrame.z()});
 
 		util3d::solvePnPRansac(
 				objectPoints,

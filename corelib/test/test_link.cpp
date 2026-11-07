@@ -150,7 +150,7 @@ TEST(LinkTest, MergeGlobalClosureKeepsLinkWithLowerInformationOnX)
 
 TEST(LinkTest, UserDataCompressesAndRoundTrips)
 {
-	const cv::Mat userData = (cv::Mat_<float>(2, 2) << 1.f, 2.f, 3.f, 4.f);
+	const cv::Mat userData = cv::Mat_<float>({2, 2}, {1.f, 2.f, 3.f, 4.f});
 	Link link(1, 2, Link::kNeighbor, Transform::getIdentity(), cv::Mat::eye(6, 6, CV_64FC1), userData);
 
 	EXPECT_FALSE(link.userDataCompressed().empty());

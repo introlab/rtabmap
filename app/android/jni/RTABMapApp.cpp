@@ -4730,14 +4730,14 @@ void RTABMapApp::postOdometryEvent(
 						}
 						rtabmap::Transform rgbToDepth = motion*rgbFrame.inverse()*depthFrame;
 						float scale = (float)outputDepth.cols/(float)outputRGB.cols;
-						cv::Mat colorK = (cv::Mat_<double>(3,3) <<
+						cv::Mat colorK = cv::Mat_<double>({3,3}, {
 								rgb_fx*scale, 0, rgb_cx*scale,
 								0, rgb_fy*scale, rgb_cy*scale,
-								0, 0, 1);
-						cv::Mat depthK = (cv::Mat_<double>(3,3) <<
+								0, 0, 1});
+						cv::Mat depthK = cv::Mat_<double>({3,3}, {
 								depth_fx, 0, depth_cx,
 								0, depth_fy, depth_cy,
-								0, 0, 1);
+								0, 0, 1});
 						cv::Mat regConfidence;
 						outputDepth = rtabmap::util2d::registerDepth(outputDepth, outputDepthConfidence, depthK, outputDepth.size(), colorK, rgbToDepth, regConfidence);
 						outputDepthConfidence = regConfidence;

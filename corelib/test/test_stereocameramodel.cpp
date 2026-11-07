@@ -26,35 +26,35 @@ protected:
         imageSize_ = cv::Size(imageWidth_, imageHeight_);
         
         // Create intrinsic matrix K
-        K_ = (cv::Mat_<double>(3, 3) <<
+        K_ = cv::Mat_<double>({3, 3}, {
             fx_, 0.0, cx_,
             0.0, fy_, cy_,
-            0.0, 0.0, 1.0);
+            0.0, 0.0, 1.0});
         
         // Create distortion coefficients
-        D_ = (cv::Mat_<double>(1, 4) << -0.1, 0.05, 0.001, -0.001);
+        D_ = cv::Mat_<double>({1, 4}, {-0.1, 0.05, 0.001, -0.001});
         
         // Create rectification matrix
         R_ = cv::Mat::eye(3, 3, CV_64FC1);
         
         // Create projection matrix P (with Tx = baseline * fx for left camera)
         double Tx = baseline_ * fx_;
-        P_left_ = (cv::Mat_<double>(3, 4) <<
+        P_left_ = cv::Mat_<double>({3, 4}, {
             fx_, 0.0, cx_, Tx,
             0.0, fy_, cy_, 0.0,
-            0.0, 0.0, 1.0, 0.0);
+            0.0, 0.0, 1.0, 0.0});
         
         // Right camera projection matrix (Tx = 0 typically)
-        P_right_ = (cv::Mat_<double>(3, 4) <<
+        P_right_ = cv::Mat_<double>({3, 4}, {
             fx_, 0.0, cx_, 0.0,
             0.0, fy_, cy_, 0.0,
-            0.0, 0.0, 1.0, 0.0);
+            0.0, 0.0, 1.0, 0.0});
         
         // Create stereo extrinsic parameters
         // R and T represent the left camera relative to the right camera coordinate system
         // For parallel cameras with baseline along x-axis, T is negative baseline
         // Translation of left camera relative to right camera coordinate system
-        T_ = (cv::Mat_<double>(3, 1) << -baseline_, 0.0, 0.0);
+        T_ = cv::Mat_<double>({3, 1}, {-baseline_, 0.0, 0.0});
         
         // Rotation matrix of left camera relative to right camera coordinate system
         // (identity for parallel cameras)
@@ -431,7 +431,7 @@ TEST_F(StereoCameraModelTest, StereoTransformBaselineExample)
     CameraModel right("right", imageSize_, K_, D_, R_, P_right_);
     
     // Create T with negative baseline (left camera relative to right camera coordinate system)
-    cv::Mat T_test = (cv::Mat_<double>(3, 1) << -testBaseline, 0.0, 0.0);
+    cv::Mat T_test = cv::Mat_<double>({3, 1}, {-testBaseline, 0.0, 0.0});
     cv::Mat R_test = cv::Mat::eye(3, 3, CV_64FC1);
     
     StereoCameraModel model("stereo", left, right, R_test, T_test);
