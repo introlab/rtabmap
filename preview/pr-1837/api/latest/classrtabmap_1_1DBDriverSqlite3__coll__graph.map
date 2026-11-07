@@ -1,0 +1,9 @@
+<map id="rtabmap::DBDriverSqlite3" name="rtabmap::DBDriverSqlite3">
+<area shape="rect" id="Node000001" title="SQLite3 implementation of DBDriver for RTAB&#45;Map map databases." alt="" coords="5,225,195,251"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1DBDriver.html" title="Abstract database driver for RTAB&#45;Map maps (signatures, links, words, statistics)." alt="" coords="28,152,172,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="103,191,103,225,97,225,97,191"/>
+<area shape="rect" id="Node000003" href="$classUThread.html" title=" " alt="" coords="45,79,155,104"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="103,118,103,152,97,152,97,118"/>
+<area shape="rect" id="Node000004" href="$classUThreadC_3_01void_01_4.html" title=" " alt="" coords="28,5,172,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="103,44,103,79,97,79,97,44"/>
+</map>

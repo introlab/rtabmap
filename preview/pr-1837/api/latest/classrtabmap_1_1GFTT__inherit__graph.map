@@ -1,0 +1,13 @@
+<map id="rtabmap::GFTT" name="rtabmap::GFTT">
+<area shape="rect" id="Node000001" title="Good&#45;features&#45;to&#45;track detector (Shi–Tomasi / Harris)." alt="" coords="310,79,429,104"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1GFTT__BRIEF.html" title="GFTT corners + BRIEF descriptors." alt="" coords="5,152,168,177"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="311,110,133,154,132,149,310,105"/>
+<area shape="rect" id="Node000004" href="$classrtabmap_1_1GFTT__DAISY.html" title="GFTT corners + DAISY descriptors (OpenCV 3+ xfeatures2d)." alt="" coords="193,152,357,177"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="345,114,292,154,289,150,342,110"/>
+<area shape="rect" id="Node000005" href="$classrtabmap_1_1GFTT__FREAK.html" title="GFTT corners + FREAK descriptors." alt="" coords="381,152,549,177"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="397,110,451,150,448,154,394,114"/>
+<area shape="rect" id="Node000006" href="$classrtabmap_1_1GFTT__ORB.html" title="GFTT corners + ORB descriptors (common default when SURF is unavailable)." alt="" coords="574,152,727,177"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="428,105,606,149,604,154,427,110"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Feature2D.html" title="Abstract 2D feature detector and descriptor extractor for visual SLAM." alt="" coords="293,5,445,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="372,44,372,79,367,79,367,44"/>
+</map>
