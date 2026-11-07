@@ -192,6 +192,30 @@ TEST(OdometryTest, DefaultCapabilityFlags)
 	EXPECT_FALSE(odometry.canProcessAsyncIMU());
 }
 
+TEST(OdometryTest, ThreeDoFKalmanPredictionUsesPlanarVelocityStates)
+{
+	ParametersMap parameters = baseTestParameters();
+	parameters[Parameters::kRegForce3DoF()] = "true";
+	parameters[Parameters::kOdomFilteringStrategy()] = "1";
+	parameters[Parameters::kOdomGuessMotion()] = "true";
+
+	MockOdometry odometry(parameters);
+	odometry.reset(Transform::getIdentity());
+
+	odometry.setNextTransform(Transform::getIdentity());
+	SensorData initial = makeImageData(0, 0.0);
+	ASSERT_FALSE(odometry.process(initial).isNull());
+
+	const Transform step(1.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	odometry.setNextTransform(step);
+	SensorData measured = makeImageData(1, 1.0);
+	ASSERT_FALSE(odometry.process(measured).isNull());
+
+	SensorData predicted = makeImageData(2, 2.0);
+	ASSERT_FALSE(odometry.process(predicted).isNull());
+	expectTransformNear(odometry.lastGuess(), step);
+}
+
 // ---------------------------------------------------------------------------
 // Strategies driven through the public API on real frames committed under
 // data/. The tests above use MockOdometry, which overrides computeTransform(),
