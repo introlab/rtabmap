@@ -2177,6 +2177,7 @@ bool Rtabmap::process(
 					 (!_memory->isIncremental() && !hasLoopClosureConstraints)) && // not yet localized to any previous sessions
 					_memory->getWorkingMemSize(true)>0 && // should have an old map
 					_rgbdSlamMode &&
+					loopThr < 1.0f && // loop closure detection not disabled
 					loopThr > _aggressiveLoopThr)
 				{
 					// use the best hypothesis directly.
@@ -2184,8 +2185,8 @@ bool Rtabmap::process(
 					loopThr = _aggressiveLoopThr;
 				}
 
-				// Loop closure Threshold
-				if(_highestHypothesis.second >= loopThr)
+				// Loop closure Threshold (1 or more: loop closure detection disabled)
+				if(loopThr < 1.0f && _highestHypothesis.second >= loopThr)
 				{
 					rejectedLoopClosure = true;
 					if(_bayesFilter->getPosteriorIds().size() <= 2 && loopThr>0.0f)
@@ -6760,13 +6761,28 @@ int Rtabmap::detectMoreLoopClosures(
 		{
 			_memory->addLink(*iter, true);
 		}
-		// Update optimized poses
-		for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+		// Update optimized poses. The new links may connect to the local graph
+		// nodes in WM that were not (e.g., linked to it only through nodes in
+		// LTM), so recompute the local graph (nodes in WM connected to the last
+		// node) like after a detected loop closure, using the global optimization
+		// above as guess.
+		const Signature * lastSignature = _memory->getLastWorkingSignature(true);
+		if(lastSignature)
 		{
-			std::map<int, Transform>::iterator jter = poses.find(iter->first);
-			if(jter != poses.end())
+			std::map<int, Transform> localPoses = poses;
+			cv::Mat covariance;
+			this->optimizeCurrentMap(lastSignature->id(), false, localPoses, covariance);
+			if(localPoses.empty())
 			{
-				iter->second = jter->second;
+				UERROR("Optimization of the local graph failed! Keeping the previous one.");
+			}
+			else
+			{
+				_optimizedPoses = localPoses;
+				if(_memory->isIncremental() && !_optimizeFromGraphEnd)
+				{
+					_mapCorrection = _optimizedPoses.rbegin()->second * _memory->getSignature(_optimizedPoses.rbegin()->first)->getPose().inverse();
+				}
 			}
 		}
 		std::map<int, Transform> tmp;
@@ -7054,15 +7070,10 @@ bool Rtabmap::addLink(const Link & link)
 			return false;
 		}
 
-		// Update optimized poses
-		for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
-		{
-			std::map<int, Transform>::iterator jter = poses.find(iter->first);
-			if(jter != poses.end())
-			{
-				iter->second = jter->second;
-			}
-		}
+		// Update optimized poses. Like after a detected loop closure, the local
+		// graph becomes the whole graph connected to the last node: a link to a
+		// session not yet in the local graph adds the nodes of that session.
+		_optimizedPoses = poses;
 		if(!_optimizeFromGraphEnd)
 		{
 			_mapCorrection = _optimizedPoses.rbegin()->second * _memory->getSignature(_optimizedPoses.rbegin()->first)->getPose().inverse();

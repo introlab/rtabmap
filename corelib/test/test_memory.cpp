@@ -3270,6 +3270,59 @@ TEST(MemoryTest, UpdateReusesTheGivenCompressedData)
 	}
 }
 
+TEST(MemoryTest, LocalGridOfTheInputDataIsUsedAsIs)
+{
+	// With RGBD/CreateOccupancyGrid, the local grid is generated from the sensor
+	// (here the laser scan), unless the input data already has one (e.g., read
+	// from a database with DBReader's grids published): it is then kept as is.
+	const float kInputCellSize = 0.123f;
+	cv::Mat obstacles(1, 3, CV_32FC3);
+	for(int i = 0; i < 3; ++i)
+	{
+		obstacles.at<cv::Vec3f>(0, i) = cv::Vec3f(float(i) * 0.1f, 0.0f, 0.0f);
+	}
+	cv::Mat scanData(1, 4, CV_32FC2);
+	for(int i = 0; i < 4; ++i)
+	{
+		scanData.at<cv::Vec2f>(0, i) = cv::Vec2f(1.0f, float(i) * 0.1f);
+	}
+
+	for(int pass = 0; pass < 2; ++pass)
+	{
+		const bool withInputGrid = pass == 1;
+		SCOPED_TRACE(uFormat("input grid=%s", withInputGrid?"true":"false"));
+
+		ParametersMap params = defaultMemoryParams();
+		params[Parameters::kRGBDCreateOccupancyGrid()] = "true";
+		params[Parameters::kGridSensor()] = "0"; // from laser scan
+		params[Parameters::kGridCellSize()] = "0.05";
+		Memory memory(params);
+		ASSERT_TRUE(memory.init(""));
+
+		SensorData data(cv::Mat(8, 8, CV_8UC1, cv::Scalar(128)));
+		data.setLaserScan(LaserScan(scanData, 0, 10.0f, LaserScan::kXY));
+		if(withInputGrid)
+		{
+			data.setOccupancyGrid(cv::Mat(), obstacles, cv::Mat(), kInputCellSize, cv::Point3f(0, 0, 0));
+		}
+		ASSERT_TRUE(memory.update(data, Transform::getIdentity(), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+
+		const Signature * s = memory.getSignature(memory.getLastSignatureId());
+		ASSERT_NE(s, nullptr);
+		if(withInputGrid)
+		{
+			EXPECT_FLOAT_EQ(s->sensorData().gridCellSize(), kInputCellSize) << "the input grid should have been kept";
+			ASSERT_EQ(s->sensorData().gridObstacleCellsRaw().total(), obstacles.total());
+			EXPECT_EQ(cv::norm(s->sensorData().gridObstacleCellsRaw(), obstacles, cv::NORM_INF), 0.0);
+		}
+		else
+		{
+			EXPECT_FLOAT_EQ(s->sensorData().gridCellSize(), 0.05f) << "the grid should have been generated from the scan";
+		}
+		memory.close(false);
+	}
+}
+
 TEST(MemoryTest, GetNodeDataLoadsTheGridOfASavedSignatureFromDatabase)
 {
 	// Once a signature still in WM is saved (Rtabmap::process() does it right after

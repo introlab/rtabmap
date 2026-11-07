@@ -540,6 +540,45 @@ TEST_F(RtabmapFixture, GraphDeformsAfterLoopClosureWithOptimizeFromGraphEndTrue)
 	EXPECT_TRUE(rtabmap_->getMapCorrection().isIdentity());
 }
 
+TEST_F(RtabmapFixture, AddLinkToPreviousSessionAddsItToTheLocalGraph)
+{
+	// A link added with addLink() between the current session and a previous one
+	// that is not yet in the local graph (no loop closure merged them) connects
+	// them: the nodes of the previous session must be added to the local
+	// optimized graph, as after a detected loop closure, otherwise they are
+	// missing from the published map and from the optimized graph saved on close.
+	process();
+	const int N1 = rtabmap_->getLastLocationId();
+	process();
+	process();
+	rtabmap_->triggerNewMap();
+	process();
+	process();
+	const int N5 = rtabmap_->getLastLocationId();
+	ASSERT_EQ(0u, rtabmap_->getLocalOptimizedPoses().count(N1)) << "the sessions should not be connected yet";
+	const size_t sessionNodes = rtabmap_->getLocalOptimizedPoses().size();
+
+	Link link(N5, N1, Link::kUserClosure, Transform::getIdentity(), cv::Mat::eye(6, 6, CV_64FC1) * 100.0);
+	ASSERT_TRUE(rtabmap_->addLink(link));
+
+	const std::map<int, Transform> & poses = rtabmap_->getLocalOptimizedPoses();
+	EXPECT_EQ(sessionNodes + 3u, poses.size()) << "the nodes of the previous session should have been added";
+	for(int id = N1; id <= N5; ++id)
+	{
+		EXPECT_EQ(1u, poses.count(id)) << "node " << id;
+	}
+	ASSERT_EQ(1u, poses.count(N1));
+	EXPECT_LT(poses.at(N5).getDistance(poses.at(N1)), 0.01f) << "the link should have been applied";
+	bool linkInConstraints = false;
+	for(std::multimap<int, Link>::const_iterator iter=rtabmap_->getLocalConstraints().begin(); iter!=rtabmap_->getLocalConstraints().end(); ++iter)
+	{
+		linkInConstraints = linkInConstraints ||
+				(iter->second.type() == Link::kUserClosure &&
+				 ((iter->second.from() == N5 && iter->second.to() == N1) || (iter->second.from() == N1 && iter->second.to() == N5)));
+	}
+	EXPECT_TRUE(linkInConstraints);
+}
+
 TEST(RtabmapTest, AddLinkInLocalizationModeUpdatesMapCorrectionAndLocalizationPose)
 {
 	// Build a 2-node map (N1=(1,0), N2=(2,0)) in mapping mode, persist it, then
@@ -2417,6 +2456,62 @@ TEST(RtabmapTest, ProcessRejectsBadLoopClosureWhenMaxErrorExceeded)
 	rtabmap.close(false);
 }
 
+TEST(RtabmapTest, AggressiveLoopThrIgnoredWhenLoopClosureDetectionDisabled)
+{
+	// In a new session not yet linked to the map of the highest hypothesis,
+	// RGBD/AggressiveLoopThr replaces Rtabmap/LoopThr when it is lower. A
+	// Rtabmap/LoopThr >= 1 disables loop closure detection: the aggressive
+	// threshold must not re-enable it.
+	auto run = [](const std::string & loopThr, float * highestHypothesisValue) -> int
+	{
+		ParametersMap params = badLoopClosureParams();
+		params[Parameters::kRtabmapLoopThr()] = loopThr;
+		params[Parameters::kRGBDAggressiveLoopThr()] = "0.05";
+		params[Parameters::kBayesVirtualPlacePriorThr()] = "0.1"; // appearance likelihood dominates
+		Rtabmap rtabmap;
+		rtabmap.init(params);
+		const cv::Mat cov = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+
+		// First session: N4 has all its features in the match slot, N3 and N5
+		// partially (so that the likelihood has some variance).
+		const int kMatchSlot = 30;
+		EXPECT_TRUE(rtabmap.process(makeFeaturesData(1, 0), Transform(0.0f, 0, 0, 0, 0, 0), cov));
+		EXPECT_TRUE(rtabmap.process(makeFeaturesData(2, 1), Transform(1.0f, 0, 0, 0, 0, 0), cov));
+		EXPECT_TRUE(rtabmap.process(makeFeaturesMixedSlots(3, {kMatchSlot, kMatchSlot, 23, 23, 23, 23, 23, 23}), Transform(2.0f, 0, 0, 0, 0, 0), cov));
+		EXPECT_TRUE(rtabmap.process(makeFeaturesData(4, kMatchSlot), Transform(3.0f, 0, 0, 0, 0, 0), cov));
+		EXPECT_TRUE(rtabmap.process(makeFeaturesMixedSlots(5, {kMatchSlot, kMatchSlot, 25, 25, 25, 25, 25, 25}), Transform(4.0f, 0, 0, 0, 0, 0), cov));
+		for(int i = 6; i <= 9; ++i)
+		{
+			EXPECT_TRUE(rtabmap.process(makeFeaturesData(i, i), Transform(float(i - 1), 0, 0, 0, 0, 0), cov));
+		}
+
+		// Second session, starting where N4 was seen.
+		rtabmap.triggerNewMap();
+		EXPECT_TRUE(rtabmap.process(makeFeaturesData(10, kMatchSlot), Transform::getIdentity(), cov));
+
+		const std::map<std::string, float> & stats = rtabmap.getStatistics().data();
+		std::map<std::string, float>::const_iterator iter = stats.find(Statistics::kLoopHighest_hypothesis_value());
+		*highestHypothesisValue = iter!=stats.end()?iter->second:0.0f;
+		const int loopClosureId = rtabmap.getLoopClosureId();
+		rtabmap.close(false);
+		return loopClosureId;
+	};
+
+	// Reference: the hypothesis is below Rtabmap/LoopThr, but the aggressive
+	// threshold accepts it because the new session is not linked yet.
+	float highestHypothesisValue = 0.0f;
+	EXPECT_EQ(4, run("0.99", &highestHypothesisValue));
+	ASSERT_GT(highestHypothesisValue, 0.05f);
+	ASSERT_LT(highestHypothesisValue, 0.99f) << "the loop closure should have been accepted only by the aggressive threshold";
+
+	for(const std::string & loopThr : {std::string("1"), std::string("1.1")})
+	{
+		SCOPED_TRACE(Parameters::kRtabmapLoopThr() + "=" + loopThr);
+		EXPECT_EQ(0, run(loopThr, &highestHypothesisValue)) << "loop closure detection should be disabled";
+		EXPECT_GT(highestHypothesisValue, 0.05f) << "the hypothesis should still have been computed";
+	}
+}
+
 // In localization mode the OptimizeMaxError check is fed by the odom cache
 // chain rather than by the mapping graph: a first loop closure on N4 anchors
 // the localization, then a chain of unique-feature nodes builds up odometry
@@ -3379,6 +3474,62 @@ TEST(RtabmapTest, DetectMoreLoopClosuresAddsLinksBetweenSpatialRevisits)
 	};
 	EXPECT_TRUE(hasClosureTo(s5, 1) || hasClosureTo(s1, 5)) << "expected a non-neighbor link between N1 and N5";
 	rtabmap.close(false);
+}
+
+TEST(RtabmapTest, DetectMoreLoopClosuresAddsConnectedWmNodesToTheLocalGraph)
+{
+	// Nodes in WM can be outside the local graph (e.g., linked to it only through
+	// nodes in LTM, or here, a database reopened without its optimized graph).
+	// When detectMoreLoopClosures() adds links connecting them, the local graph
+	// must be recomputed to include them, not only have its existing poses updated.
+	const std::string dbPath = uniqueDbPath();
+	ParametersMap params = badLoopClosureParams();
+	params[Parameters::kRGBDOptimizeMaxError()] = "0";
+	params[Parameters::kRtabmapLoopThr()] = "1"; // suppress online loop detection
+	params[Parameters::kMemBinDataKept()] = "true"; // keep feature data for post-hoc registration
+	params[Parameters::kMemSTMSize()] = "2";
+	const int kMatchSlot = 30;
+	{
+		Rtabmap rtabmap;
+		rtabmap.init(params, dbPath);
+		const cv::Mat cov = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+		ASSERT_TRUE(rtabmap.process(makeFeaturesData(1, kMatchSlot), Transform(0.01f, 0, 0, 0, 0, 0), cov));
+		ASSERT_TRUE(rtabmap.process(makeFeaturesData(2, 2), Transform(1.0f, 0, 0, 0, 0, 0), cov));
+		ASSERT_TRUE(rtabmap.process(makeFeaturesData(3, 3), Transform(2.0f, 0, 0, 0, 0, 0), cov));
+		ASSERT_TRUE(rtabmap.process(makeFeaturesData(4, 4), Transform(1.0f, 0, 0, 0, 0, 0), cov));
+		// N5 revisits N1 with the same features.
+		ASSERT_TRUE(rtabmap.process(makeFeaturesData(5, kMatchSlot), Transform(0.01f, 0, 0, 0, 0, 0), cov));
+		ASSERT_EQ(rtabmap.getLoopClosureId(), 0);
+		rtabmap.close(true);
+	}
+	// Drop the saved optimized graph: on reopen, all nodes are in WM but the
+	// local graph is empty.
+	{
+		DBDriver * driver = DBDriver::create();
+		ASSERT_TRUE(driver->openConnection(dbPath, false));
+		driver->saveOptimizedPoses(std::map<int, Transform>(), Transform());
+		driver->closeConnection(true);
+		delete driver;
+	}
+
+	Rtabmap rtabmap;
+	rtabmap.init(params, dbPath);
+	ASSERT_TRUE(rtabmap.getLocalOptimizedPoses().empty());
+	for(int id = 1; id <= 5; ++id)
+	{
+		ASSERT_TRUE(rtabmap.getMemory()->isInWM(id)) << "node " << id;
+	}
+
+	const int added = rtabmap.detectMoreLoopClosures(0.5f, M_PI/6.0f, 1, true, false);
+	ASSERT_GE(added, 1);
+
+	const std::map<int, Transform> & poses = rtabmap.getLocalOptimizedPoses();
+	for(int id = 1; id <= 5; ++id)
+	{
+		EXPECT_EQ(1u, poses.count(id)) << "node " << id << " should be in the local graph";
+	}
+	rtabmap.close(false);
+	UFile::erase(dbPath);
 }
 
 // ---------------------------------------------------------------------------

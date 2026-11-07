@@ -3,8 +3,6 @@
 #include <rtabmap/core/DBDriverSqlite3.h>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Parameters.h>
-#include <rtabmap/core/DBReader.h>
-#include <rtabmap/core/SensorCaptureInfo.h>
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/core/Compression.h>
@@ -189,12 +187,10 @@ TEST_F(DBDriverSqlite3Fixture, ExecuteNoResultPragma)
 
 // ---------------------------------------------------------------------------
 // Full write/read round trip: build a small database with rich sensor data,
-// then replay it with DBReader.
+// then load it back (DBReader is tested in test_dbreader.cpp).
 //
 // The tests above save bare Signatures, which exercises the schema but not the
-// payload paths (compressed image/depth/scan blobs, calibration, links) nor
-// DBReader at all -- until now those only ran during the end-to-end replay
-// tests, which need the fetched sample databases.
+// payload paths (compressed image/depth/scan blobs, calibration, links).
 // ---------------------------------------------------------------------------
 
 namespace {
@@ -258,54 +254,6 @@ TEST_F(DBDriverSqlite3Fixture, SavesAndLoadsRichSensorData)
 	{
 		delete *iter;
 	}
-}
-
-TEST_F(DBDriverSqlite3Fixture, DBReaderReplaysWrittenDatabase)
-{
-	// Three consecutive nodes with odometry poses and neighbour links, i.e.
-	// the minimum a recorded session needs to be replayable.
-	const int kNodes = 3;
-	for(int i = 1; i <= kNodes; ++i)
-	{
-		const Transform pose(0.5f * i, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-		Signature * s = new Signature(i, 0, 1, static_cast<double>(i), "", pose, Transform(),
-				makeRichData(i, static_cast<double>(i)));
-		if(i > 1)
-		{
-			const Transform motion(0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-			s->addLink(Link(i, i - 1, Link::kNeighbor, motion.inverse()));
-		}
-		saveSignature(s);
-	}
-	// Close so the file is complete before DBReader opens it.
-	driver_->closeConnection(true);
-	delete driver_;
-	driver_ = nullptr;
-
-	std::unique_ptr<DBReader> reader(new DBReader(dbPath_, /*frameRate=*/0.0f,
-			/*odometryIgnored=*/false));
-	ASSERT_TRUE(reader->init()) << "DBReader could not open " << dbPath_;
-
-	int frames = 0;
-	Transform previousPose;
-	while(frames < kNodes + 1)
-	{
-		SensorCaptureInfo info;
-		SensorData data = reader->takeData(&info);
-		if(data.id() == 0 && data.imageRaw().empty() && data.imageCompressed().empty())
-		{
-			break;  // end of database
-		}
-		++frames;
-		EXPECT_FALSE(info.odomPose.isNull()) << "frame " << data.id() << " has no odometry pose";
-		if(!previousPose.isNull() && !info.odomPose.isNull())
-		{
-			// Poses were written 50 cm apart along x.
-			EXPECT_NEAR(previousPose.getDistance(info.odomPose), 0.5f, 1e-3f);
-		}
-		previousPose = info.odomPose;
-	}
-	EXPECT_EQ(kNodes, frames) << "DBReader returned " << frames << " of " << kNodes << " nodes";
 }
 
 // Only compressed buffers are persisted, so raw-only sensor data is stored with
