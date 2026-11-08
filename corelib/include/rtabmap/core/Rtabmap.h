@@ -910,6 +910,12 @@ public:
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 
 private:
+	void setInitialGuessFromPreviousMaps(
+			int fromId,
+			const std::map<int, Transform> & guessPoses,
+			const std::multimap<int, Link> & links,
+			std::map<int, Transform> & poses) const;
+	void updatePreviousMapsOptimizedPoses(const std::multimap<int, Link> * newLinks = 0);
 	void optimizeCurrentMap(int id,
 			bool lookInDatabase,
 			std::map<int, Transform> & optimizedPoses,
@@ -1047,6 +1053,7 @@ private:
 
 	std::map<int, Transform> _optimizedPoses;
 	std::multimap<int, Link> _constraints;
+	std::list<std::map<int, Transform> > _previousMapsOptimizedPoses; ///< Optimized poses (nodes and landmarks) of the previous maps not connected to the current one (kept by triggerNewMap()), used as initial guess when links connect them, until they are merged.
 	Transform _mapCorrection;
 	Transform _mapCorrectionBackup;     ///< Used in localization mode when odometry is lost.
 	Transform _lastLocalizationPose;    ///< Corrected odometry pose; in mapping mode, last pose of getLocalOptimizedPoses().

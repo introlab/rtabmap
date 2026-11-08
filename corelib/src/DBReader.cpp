@@ -59,7 +59,8 @@ DBReader::DBReader(const std::string & databasePath,
 				   bool imuIgnored,
 				   bool intermediateNodesAreNormalNodes,
 				   const std::vector<Transform> & cameraLocalTransformOverrides,
-				   bool occupancyGridsIgnored) :
+				   bool occupancyGridsIgnored,
+				   bool odometryFromNeighborLinks) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
 	_odometryIgnored(odometryIgnored),
@@ -78,12 +79,14 @@ DBReader::DBReader(const std::string & databasePath,
 	_stopMapId(stopMapId),
 	_cameraLocalTransformOverrides(cameraLocalTransformOverrides),
 	_occupancyGridsIgnored(occupancyGridsIgnored),
+	_odometryFromNeighborLinks(odometryFromNeighborLinks),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
 	_previousStamp(0),
 	_previousMapID(0),
-	_calibrated(false)
+	_calibrated(false),
+	_lastNeighborLinksMapId(-1)
 {
 	checkArguments();
 }
@@ -105,7 +108,8 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   bool imuIgnored,
 				   bool intermediateNodesAreNormalNodes,
 				   const std::vector<Transform> & cameraLocalTransformOverrides,
-				   bool occupancyGridsIgnored) :
+				   bool occupancyGridsIgnored,
+				   bool odometryFromNeighborLinks) :
 	Camera(frameRate),
    _paths(databasePaths),
 	_odometryIgnored(odometryIgnored),
@@ -124,12 +128,14 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_stopMapId(stopMapId),
 	_cameraLocalTransformOverrides(cameraLocalTransformOverrides),
 	_occupancyGridsIgnored(occupancyGridsIgnored),
+	_odometryFromNeighborLinks(odometryFromNeighborLinks),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
 	_previousStamp(0),
 	_previousMapID(0),
-	_calibrated(false)
+	_calibrated(false),
+	_lastNeighborLinksMapId(-1)
 {
 	checkArguments();
 }
@@ -191,6 +197,9 @@ bool DBReader::init(
 	_currentId=_ids.end();
 	_previousMapId = -1;
 	_previousInfMatrix = cv::Mat();
+	_neighborLinksPoses.clear();
+	_lastRawOdomPose.setNull();
+	_lastNeighborLinksMapId = -1;
 	_previousStamp = 0;
 	_previousMapID = 0;
 	_calibrated = false;
@@ -226,6 +235,25 @@ bool DBReader::init(
 
 	_dbDriver->getAllNodeIds(_ids);
 	_currentId = _ids.begin();
+
+	if(_odometryFromNeighborLinks && !_odometryIgnored)
+	{
+		// With a reduced graph, the merged neighbor links skip the removed nodes,
+		// which would be published anyway: the links cannot be reproduced.
+		std::multimap<int, Link> links;
+		_dbDriver->getAllLinks(links, true, false);
+		for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+		{
+			if(iter->second.type() == Link::kNeighborMerged)
+			{
+				UWARN("The database \"%s\" has merged neighbor links (reduced graph, e.g., link %d->%d): "
+					  "the odometry cannot be rebuilt from the neighbor links, using the odometry poses of the database.",
+					  path.c_str(), iter->second.from(), iter->second.to());
+				_odometryFromNeighborLinks = false;
+				break;
+			}
+		}
+	}
 	if(_startId>0 && _ids.size())
 	{
 		std::set<int>::iterator iter = _ids.find(_startId);
@@ -561,6 +589,50 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 							}
 						}
 					}
+				}
+				if(_odometryFromNeighborLinks && !pose.isNull())
+				{
+					// Odometry poses rebuilt from the neighbor links of the database (which
+					// may have been refined after mapping), so that the links recomputed
+					// from consecutive odometry poses are the same as in the database.
+					const Transform rawPose = pose;
+					Transform newPose;
+					for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end() && iter->first < *_currentId; ++iter)
+					{
+						std::map<int, Transform>::iterator jter = _neighborLinksPoses.find(iter->first);
+						if(jter != _neighborLinksPoses.end() && !iter->second.transform().isNull())
+						{
+							// link from current node to a previous one: previous = current * t
+							newPose = jter->second * iter->second.transform().inverse();
+						}
+					}
+					if(newPose.isNull())
+					{
+						if(_lastNeighborLinksMapId == s->mapId() && !_lastRawOdomPose.isNull() && !_neighborLinksPoses.empty())
+						{
+							// no link to a previous node (e.g., node removed from the graph): keep the
+							// odometry motion since the last published node
+							std::map<int, Transform>::reverse_iterator last = _neighborLinksPoses.rbegin();
+							newPose = last->second * _lastRawOdomPose.inverse() * rawPose;
+							if(s->getWeight() == -9)
+							{
+								// removed from the graph (e.g., by rehearsal or not moving), it has no links
+								UDEBUG("Node %d removed from the graph (no neighbor link), using the odometry motion since node %d.", s->id(), last->first);
+							}
+							else
+							{
+								UWARN("Node %d of map %d has no neighbor link to a previous node, using the odometry motion since node %d.", s->id(), s->mapId(), last->first);
+							}
+						}
+						else
+						{
+							newPose = rawPose; // first node of a map
+						}
+					}
+					_neighborLinksPoses[s->id()] = newPose;
+					_lastRawOdomPose = rawPose;
+					_lastNeighborLinksMapId = s->mapId();
+					pose = newPose;
 				}
 				_previousMapId = s->mapId();
 			}

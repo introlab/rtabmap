@@ -540,6 +540,139 @@ TEST_F(RtabmapFixture, GraphDeformsAfterLoopClosureWithOptimizeFromGraphEndTrue)
 	EXPECT_TRUE(rtabmap_->getMapCorrection().isIdentity());
 }
 
+TEST_F(RtabmapFixture, AddLinkWithOptimizationDisabledSkipsGraphErrorCheck)
+{
+	// With graph optimization disabled (Optimizer/Iterations=0), the graph errors
+	// computed on the poses not optimized are not meaningful: like in process(),
+	// addLink() must not reject links on them.
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kOptimizerIterations()] = "0";
+	params[Parameters::kRGBDOptimizeMaxError()] = "1";
+	reinit(params);
+
+	process(); // N1 at odom (1, 0)
+	const int N1 = rtabmap_->getLastLocationId();
+	process(); // N2 at odom (2, 0)
+	process(); // N3 at odom (3, 0)
+	const int N3 = rtabmap_->getLastLocationId();
+
+	// N3 at the same place than N1, while odometry says they are 2 m apart.
+	Link loop(N3, N1, Link::kUserClosure, Transform::getIdentity(), cv::Mat::eye(6, 6, CV_64FC1) * 100.0);
+	EXPECT_TRUE(rtabmap_->addLink(loop));
+	EXPECT_EQ(1u, rtabmap_->getLocalOptimizedPoses().count(N1));
+}
+
+TEST_F(RtabmapFixture, PreviousMapOptimizedPosesUsedAsInitialGuess)
+{
+	// When a new session is connected to the previous one, the optimized poses of
+	// the previous session are used as initial guess, instead of poses recomputed
+	// from the links (here from an odometry with a large yaw drift, which the loop
+	// closure of the previous session corrected). The connecting link adds no
+	// constraint inside the previous session, so its optimized shape is kept even
+	// with only one optimization iteration.
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kRGBDOptimizeMaxError()] = "0";
+	params[Parameters::kOptimizerIterations()] = "100";
+	reinit(params);
+
+	// Session 1: a square loop, but odometry turns 110 deg instead of 90 deg at each corner.
+	Transform odom(0.01f, 0, 0, 0, 0, 0); // not identity (odometry reset)
+	const Transform step(1.0f, 0, 0, 0, 0, 110.0f*float(M_PI)/180.0f);
+	std::vector<int> session1;
+	for(int i=0; i<5; ++i)
+	{
+		ASSERT_TRUE(processWith(odom));
+		session1.push_back(rtabmap_->getLastLocationId());
+		odom = odom * step;
+	}
+	// Closing the loop: the last node is at the first one.
+	ASSERT_TRUE(rtabmap_->addLink(Link(session1.back(), session1.front(), Link::kUserClosure, Transform::getIdentity(), cv::Mat::eye(6, 6, CV_64FC1) * 100.0)));
+	const std::map<int, Transform> optimizedSession1 = rtabmap_->getLocalOptimizedPoses();
+	ASSERT_EQ(session1.size(), optimizedSession1.size());
+
+	// Session 2, connected to the middle of session 1 with one link.
+	rtabmap_->triggerNewMap();
+	ASSERT_TRUE(processWith(Transform(0.01f, 0, 0, 0, 0, 0)));
+	ASSERT_TRUE(processWith(Transform(1.0f, 0, 0, 0, 0, 0)));
+	const int lastId = rtabmap_->getLastLocationId();
+	ParametersMap oneIteration;
+	oneIteration[Parameters::kOptimizerIterations()] = "1";
+	rtabmap_->parseParameters(oneIteration);
+	ASSERT_TRUE(rtabmap_->addLink(Link(lastId, session1[2], Link::kUserClosure, Transform(0, 1.0f, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 100.0)));
+
+	// Shape of session 1 unchanged: same relative poses between its nodes.
+	const std::map<int, Transform> & poses = rtabmap_->getLocalOptimizedPoses();
+	for(size_t i=1; i<session1.size(); ++i)
+	{
+		SCOPED_TRACE(uFormat("nodes %d->%d", session1[0], session1[i]));
+		ASSERT_EQ(1u, poses.count(session1[i]));
+		const Transform before = optimizedSession1.at(session1[0]).inverse() * optimizedSession1.at(session1[i]);
+		const Transform after = poses.at(session1[0]).inverse() * poses.at(session1[i]);
+		EXPECT_LT((before.inverse() * after).getNorm(), 0.01f) << "before=" << before.prettyPrint() << " after=" << after.prettyPrint();
+	}
+}
+
+TEST_F(RtabmapFixture, OptimizedPosesOfAllPreviousMapsUsedAsInitialGuess)
+{
+	// Sessions 1 and 2 are disjoint, then session 3 is connected to session 1, and
+	// later to session 2: the optimized poses of both previous sessions are used as
+	// initial guess (not only the ones of the last session before session 3).
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kRGBDOptimizeMaxError()] = "0";
+	params[Parameters::kOptimizerIterations()] = "100";
+	reinit(params);
+
+	// A square loop with odometry turning 110 deg instead of 90 deg at each corner,
+	// closed by a user link, fully optimized.
+	auto addSquareSession = [&](std::vector<int> & ids)
+	{
+		Transform odom(0.01f, 0, 0, 0, 0, 0); // not identity (odometry reset)
+		const Transform step(1.0f, 0, 0, 0, 0, 110.0f*float(M_PI)/180.0f);
+		for(int i=0; i<5; ++i)
+		{
+			ASSERT_TRUE(processWith(odom));
+			ids.push_back(rtabmap_->getLastLocationId());
+			odom = odom * step;
+		}
+		ASSERT_TRUE(rtabmap_->addLink(Link(ids.back(), ids.front(), Link::kUserClosure, Transform::getIdentity(), cv::Mat::eye(6, 6, CV_64FC1) * 100.0)));
+	};
+	std::vector<int> session1, session2;
+	addSquareSession(session1);
+	const std::map<int, Transform> optimizedSession1 = rtabmap_->getLocalOptimizedPoses();
+	rtabmap_->triggerNewMap();
+	addSquareSession(session2);
+	const std::map<int, Transform> optimizedSession2 = rtabmap_->getLocalOptimizedPoses();
+	ASSERT_EQ(0u, optimizedSession2.count(session1[0]));
+
+	// Session 3, connected to session 1 then to session 2 with one optimization iteration.
+	rtabmap_->triggerNewMap();
+	ASSERT_TRUE(processWith(Transform(0.01f, 0, 0, 0, 0, 0)));
+	ASSERT_TRUE(processWith(Transform(1.0f, 0, 0, 0, 0, 0)));
+	const int lastId = rtabmap_->getLastLocationId();
+	ParametersMap oneIteration;
+	oneIteration[Parameters::kOptimizerIterations()] = "1";
+	rtabmap_->parseParameters(oneIteration);
+	ASSERT_TRUE(rtabmap_->addLink(Link(lastId, session1[2], Link::kUserClosure, Transform(0, 1.0f, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 100.0)));
+	ASSERT_TRUE(rtabmap_->addLink(Link(lastId, session2[2], Link::kUserClosure, Transform(0, -1.0f, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 100.0)));
+
+	// Shapes of sessions 1 and 2 unchanged.
+	const std::map<int, Transform> & poses = rtabmap_->getLocalOptimizedPoses();
+	const std::vector<int> * sessions[2] = {&session1, &session2};
+	const std::map<int, Transform> * optimized[2] = {&optimizedSession1, &optimizedSession2};
+	for(int s=0; s<2; ++s)
+	{
+		const std::vector<int> & ids = *sessions[s];
+		for(size_t i=1; i<ids.size(); ++i)
+		{
+			SCOPED_TRACE(uFormat("session %d nodes %d->%d", s+1, ids[0], ids[i]));
+			ASSERT_EQ(1u, poses.count(ids[i]));
+			const Transform before = optimized[s]->at(ids[0]).inverse() * optimized[s]->at(ids[i]);
+			const Transform after = poses.at(ids[0]).inverse() * poses.at(ids[i]);
+			EXPECT_LT((before.inverse() * after).getNorm(), 0.01f) << "before=" << before.prettyPrint() << " after=" << after.prettyPrint();
+		}
+	}
+}
+
 TEST_F(RtabmapFixture, AddLinkToPreviousSessionAddsItToTheLocalGraph)
 {
 	// A link added with addLink() between the current session and a previous one

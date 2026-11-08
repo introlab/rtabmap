@@ -49,9 +49,83 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/pcd_io.h>
 #include <signal.h>
 #include <algorithm>
+#include <tuple>
 #include <iterator>
 
 using namespace rtabmap;
+
+// Links between the nodes of a graph, one per pair of nodes and type, with the
+// transform from the lowest id to the highest. Self links (priors, gravity),
+// landmarks and virtual links are ignored.
+std::map<std::tuple<int, int, int>, Transform> graphLinks(const std::multimap<int, Link> & links, const std::set<int> & nodes)
+{
+	std::map<std::tuple<int, int, int>, Transform> out;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		const Link & link = iter->second;
+		if(link.from() == link.to() || link.from() <= 0 || link.to() <= 0 ||
+		   link.type() == Link::kVirtualClosure || link.type() >= Link::kPosePrior ||
+		   nodes.find(link.from()) == nodes.end() || nodes.find(link.to()) == nodes.end())
+		{
+			continue;
+		}
+		const bool forward = link.from() < link.to();
+		out.insert(std::make_pair(
+				std::make_tuple(forward?link.from():link.to(), forward?link.to():link.from(), (int)link.type()),
+				forward?link.transform():link.transform().inverse()));
+	}
+	return out;
+}
+
+// Compares the nodes and links of two graphs, returns an empty string if they are the same.
+std::string compareGraphs(
+		const std::set<int> & nodesA, const std::multimap<int, Link> & linksA,
+		const std::set<int> & nodesB, const std::multimap<int, Link> & linksB)
+{
+	if(nodesA != nodesB)
+	{
+		std::vector<int> onlyA, onlyB;
+		std::set_difference(nodesA.begin(), nodesA.end(), nodesB.begin(), nodesB.end(), std::back_inserter(onlyA));
+		std::set_difference(nodesB.begin(), nodesB.end(), nodesA.begin(), nodesA.end(), std::back_inserter(onlyB));
+		return uFormat("different nodes (%d vs %d): %d only in the original (e.g., %d), %d only in the reprocessed (e.g., %d)",
+				(int)nodesA.size(), (int)nodesB.size(),
+				(int)onlyA.size(), onlyA.empty()?0:onlyA.front(), (int)onlyB.size(), onlyB.empty()?0:onlyB.front());
+	}
+	std::map<std::tuple<int, int, int>, Transform> a = graphLinks(linksA, nodesA);
+	std::map<std::tuple<int, int, int>, Transform> b = graphLinks(linksB, nodesB);
+	int onlyA = 0, onlyB = 0, different = 0;
+	std::string example;
+	for(std::map<std::tuple<int, int, int>, Transform>::iterator iter=a.begin(); iter!=a.end(); ++iter)
+	{
+		std::map<std::tuple<int, int, int>, Transform>::iterator jter = b.find(iter->first);
+		if(jter == b.end())
+		{
+			if(onlyA++ == 0 && example.empty())
+				example = uFormat("link %d->%d (type %d) only in the original", std::get<0>(iter->first), std::get<1>(iter->first), std::get<2>(iter->first));
+		}
+		else
+		{
+			const Transform d = iter->second.inverse() * jter->second;
+			const float angle = Eigen::AngleAxisf(d.toEigen3f().rotation()).angle();
+			if(d.getNorm() > 0.001f || fabs(angle) > 0.001f)
+			{
+				if(different++ == 0 && example.empty())
+					example = uFormat("link %d->%d (type %d) differs by %f m and %f rad", std::get<0>(iter->first), std::get<1>(iter->first), std::get<2>(iter->first), d.getNorm(), angle);
+			}
+		}
+	}
+	for(std::map<std::tuple<int, int, int>, Transform>::iterator iter=b.begin(); iter!=b.end(); ++iter)
+	{
+		if(a.find(iter->first) == a.end() && onlyB++ == 0 && example.empty())
+			example = uFormat("link %d->%d (type %d) only in the reprocessed", std::get<0>(iter->first), std::get<1>(iter->first), std::get<2>(iter->first));
+	}
+	if(onlyA || onlyB || different)
+	{
+		return uFormat("different links (%d vs %d): %d only in the original, %d only in the reprocessed, %d with a different transform (e.g., %s)",
+				(int)a.size(), (int)b.size(), onlyA, onlyB, different, example.c_str());
+	}
+	return "";
+}
 
 void showUsage()
 {
@@ -107,7 +181,11 @@ void showUsage()
 			"                      parameters changed to do so are restored before saving the output database.\n"
 			"     -keep_opt_graph  When reprocessing a single database, save back its original optimized graph,\n"
 			"                      last localization pose, 2D map and optimized mesh (if any) in the output\n"
-			"                      database, only if the output graph has exactly the same nodes.\n"
+			"                      database, only if the reprocessed graph has exactly the same nodes and links.\n"
+			"                      The odometry is rebuilt from the neighbor links of the input database (which\n"
+			"                      may have been refined), and graph optimization is disabled while reprocessing\n"
+			"                      (Optimizer/Iterations=0 unless set explicitly, restored before saving). If the\n"
+			"                      graphs differ, the reprocessed graph is optimized once at the end instead.\n"
 			"     -pub_inter_as_normal Republish intermediate nodes as normal nodes.\n"
 			"     -abort_disconnected_sessions Return error if not all sessions are connected together.\n"
 			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
@@ -571,7 +649,7 @@ int main(int argc, char * argv[])
 		else if(strcmp(argv[i], "-keep_opt_graph") == 0 || strcmp(argv[i], "--keep_opt_graph") == 0)
 		{
 			keepOptimizedGraph = true;
-			printf("Keep original optimized graph of the input database if the nodes match (-keep_opt_graph option).\n");
+			printf("Keep original optimized graph of the input database if the nodes and links match (-keep_opt_graph option).\n");
 		}
 		else if(strcmp(argv[i], "-pub_inter_as_normal") == 0 || strcmp(argv[i], "--pub_inter_as_normal") == 0)
 		{
@@ -935,6 +1013,14 @@ int main(int argc, char * argv[])
 		toolParameters.insert(ParametersPair(Parameters::kRGBDProximityByTime(), "false"));
 		toolParameters.insert(ParametersPair(Parameters::kRtabmapLoopThr(), "1.1"));
 	}
+	if(keepOptimizedGraph &&
+	   customParameters.find(Parameters::kOptimizerIterations()) == customParameters.end() &&
+	   configParameters.find(Parameters::kOptimizerIterations()) == configParameters.end())
+	{
+		// The optimized graph is replaced by the original one at the end, no need
+		// to optimize it while reprocessing (unless set explicitly).
+		toolParameters.insert(ParametersPair(Parameters::kOptimizerIterations(), "0"));
+	}
 	for(ParametersMap::iterator iter=toolParameters.begin(); iter!=toolParameters.end(); ++iter)
 	{
 		if(customParameters.find(iter->first) != customParameters.end() ||
@@ -1176,7 +1262,8 @@ int main(int argc, char * argv[])
 			ignoreImu,
 			pubInterNodesAsNormalNodes,
 			cameraLocalTransformOverrides,
-			ignoreLocalGrids);
+			ignoreLocalGrids,
+			keepOptimizedGraph); // odometry from the neighbor links, so that they are the same in the reprocessed graph
 
 	dbReader->init();
 
@@ -1736,6 +1823,90 @@ int main(int argc, char * argv[])
 		rtabmap.parseParameters(parametersToRestore);
 	}
 
+	bool originalGraphKept = false;
+	if(keepOptimizedGraph && incrementalMemory)
+	{
+		// The graph was not optimized while reprocessing: the original optimized graph
+		// is saved back only if the reprocessed graph has the same nodes and links,
+		// otherwise optimize the reprocessed graph now so that the output database
+		// doesn't keep a graph not optimized.
+		std::shared_ptr<DBDriver> inputDriver(DBDriver::create());
+		std::set<int> originalIds;
+		std::multimap<int, Link> originalLinks;
+		if(inputDriver->openConnection(singleInputDatabasePath, false, true))
+		{
+			std::map<int, Transform> originalPoses = inputDriver->loadOptimizedPoses();
+			for(std::map<int, Transform>::iterator iter=originalPoses.lower_bound(1); iter!=originalPoses.end(); ++iter)
+			{
+				originalIds.insert(iter->first);
+			}
+			inputDriver->getAllLinks(originalLinks, true, false);
+			inputDriver->closeConnection(false);
+		}
+		std::set<int> reprocessedIds;
+		for(std::map<int, Transform>::const_iterator iter=rtabmap.getLocalOptimizedPoses().lower_bound(1); iter!=rtabmap.getLocalOptimizedPoses().end(); ++iter)
+		{
+			reprocessedIds.insert(iter->first);
+		}
+		std::string differences;
+		if(originalIds.empty())
+		{
+			differences = "the input database doesn't have an optimized graph";
+		}
+		else
+		{
+			differences = compareGraphs(originalIds, originalLinks, reprocessedIds, rtabmap.getLocalConstraints());
+		}
+		originalGraphKept = differences.empty();
+		if(originalGraphKept)
+		{
+			printf("-keep_opt_graph: The reprocessed graph has the same nodes and links as the original optimized graph (%d nodes).\n", (int)originalIds.size());
+		}
+		else
+		{
+			printf("[Warning] -keep_opt_graph: The original optimized graph cannot be kept, %s. Optimizing the reprocessed graph...\n", differences.c_str());
+			std::map<int, Transform> poses;
+			std::multimap<int, Link> constraints;
+			// The poses of the local graph are not optimized (each session in its own
+			// odometry frame): clear them so that they are not used as initial guess,
+			// the poses are then recomputed from the links.
+			rtabmap.setOptimizedPoses(std::map<int, Transform>(), std::multimap<int, Link>());
+			rtabmap.getGraph(poses, constraints, /*optimized*/ true, /*global*/ true);
+			const Memory * memory = rtabmap.getMemory();
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();)
+			{
+				if(iter->first > 0 && !memory->isInWM(iter->first) && !memory->isInSTM(iter->first))
+				{
+					poses.erase(iter++); // only nodes loaded in memory can be in the optimized graph
+				}
+				else
+				{
+					++iter;
+				}
+			}
+			for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end();)
+			{
+				if(poses.find(iter->second.from()) == poses.end() || poses.find(iter->second.to()) == poses.end())
+				{
+					constraints.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
+			}
+			if(poses.empty())
+			{
+				printf("[Error] -keep_opt_graph: Optimization of the reprocessed graph failed, the output optimized graph is not optimized.\n");
+			}
+			else
+			{
+				rtabmap.setOptimizedPoses(poses, constraints);
+				printf("-keep_opt_graph: Optimizing the reprocessed graph... done (%d nodes).\n", (int)poses.size());
+			}
+		}
+	}
+
 	if(republishLoopClosures)
 	{
 		const int total = loopClosuresRepublished + loopClosuresInLTM + loopClosuresNotInMap + loopClosuresRejected;
@@ -1961,26 +2132,9 @@ int main(int argc, char * argv[])
 		}
 		Transform lastLocalizationPose;
 		std::map<int, Transform> inputPoses = inputDriver->loadOptimizedPoses(&lastLocalizationPose);
-		std::map<int, Transform> outputPoses = outputDriver->loadOptimizedPoses();
-		std::set<int> inputIds = uKeysSet(inputPoses);
-		std::set<int> outputIds = uKeysSet(outputPoses);
-		if(inputPoses.empty())
+		if(!originalGraphKept)
 		{
-			printf("[Warning] -keep_opt_graph: The input database doesn't have an optimized graph saved, "
-					"keeping the reprocessed one.\n");
-		}
-		else if(inputIds != outputIds)
-		{
-			std::vector<int> onlyInput, onlyOutput;
-			std::set_difference(inputIds.begin(), inputIds.end(), outputIds.begin(), outputIds.end(), std::back_inserter(onlyInput));
-			std::set_difference(outputIds.begin(), outputIds.end(), inputIds.begin(), inputIds.end(), std::back_inserter(onlyOutput));
-			printf("[Warning] -keep_opt_graph: The reprocessed optimized graph (%d nodes) doesn't have the same "
-					"nodes as the original one (%d nodes): %d only in the original, %d only in the reprocessed "
-					"(first ones: %d and %d). Keeping the reprocessed optimized graph and map.\n",
-					(int)outputIds.size(), (int)inputIds.size(),
-					(int)onlyInput.size(), (int)onlyOutput.size(),
-					onlyInput.empty()?0:onlyInput.front(),
-					onlyOutput.empty()?0:onlyOutput.front());
+			printf("[Warning] -keep_opt_graph: Keeping the reprocessed optimized graph and map (see warning above).\n");
 		}
 		else
 		{

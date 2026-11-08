@@ -62,7 +62,8 @@ public:
 			 bool imuIgnored = false,
 			 bool intermediateNodesAreNormalNodes = false,
 			 const std::vector<Transform> & cameraLocalTransformOverrides = std::vector<Transform>(),
-			 bool occupancyGridsIgnored = false);
+			 bool occupancyGridsIgnored = false,
+			 bool odometryFromNeighborLinks = false);
 	DBReader(const std::list<std::string> & databasePaths,
 			 float frameRate = 0.0f, // -1 = use Database stamps, 0 = inf
 			 bool odometryIgnored = false,
@@ -80,7 +81,8 @@ public:
 			 bool imuIgnored = false,
 			 bool intermediateNodesAreNormalNodes = false,
 			 const std::vector<Transform> & cameraLocalTransformOverrides = std::vector<Transform>(),
-			 bool occupancyGridsIgnored = false);
+			 bool occupancyGridsIgnored = false,
+			 bool odometryFromNeighborLinks = false);
 	virtual ~DBReader();
 
 	virtual bool init(
@@ -119,6 +121,7 @@ private:
 	int _stopMapId;
 	std::vector<Transform> _cameraLocalTransformOverrides;
 	bool _occupancyGridsIgnored;
+	bool _odometryFromNeighborLinks;
 
 	DBDriver * _dbDriver;
 	UTimer _timer;
@@ -129,6 +132,11 @@ private:
 	double _previousStamp;
 	int _previousMapID;
 	bool _calibrated;
+	// odometryFromNeighborLinks: published odometry poses, and the raw odometry
+	// pose and map id of the last published node
+	std::map<int, Transform> _neighborLinksPoses;
+	Transform _lastRawOdomPose;
+	int _lastNeighborLinksMapId;
 };
 
 } /* namespace rtabmap */

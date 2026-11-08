@@ -374,6 +374,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	}
 
 	_optimizedPoses.clear();
+	_previousMapsOptimizedPoses.clear();
 	_constraints.clear();
 	_globalScanMap.clear();
 	_globalScanMapPoses.clear();
@@ -543,6 +544,7 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 		_memory = 0;
 	}
 	_optimizedPoses.clear();
+	_previousMapsOptimizedPoses.clear();
 	_lastLocalizationPose.setNull();
 
 	if(_bayesFilter)
@@ -951,6 +953,13 @@ int Rtabmap::triggerNewMap()
 		std::map<int, int> reducedIds;
 		mapId = _memory->incrementMapId(&reducedIds);
 		UINFO("New map triggered, new map = %d", mapId);
+		if(_optimizedPoses.lower_bound(1) != _optimizedPoses.end())
+		{
+			// Keep the optimized poses of the map that ends (nodes and landmarks): they
+			// are used as initial guess when links connect it to a new map (see
+			// optimizeGraph()). The maps it already merged are not in the list anymore.
+			_previousMapsOptimizedPoses.push_back(_optimizedPoses);
+		}
 		_optimizedPoses.clear();
 		_constraints.clear();
 		_lastRejectedLoopClosureIds = std::make_pair(0,0);
@@ -1112,6 +1121,7 @@ void Rtabmap::resetMemory()
 	_lastProcessTime = 0.0;
 	_someNodesHaveBeenTransferred = false;
 	_optimizedPoses.clear();
+	_previousMapsOptimizedPoses.clear();
 	_constraints.clear();
 	_mapCorrection.setIdentity();
 	_mapCorrectionBackup.setNull();
@@ -4793,6 +4803,12 @@ bool Rtabmap::process(
 			_constraints.clear();
 		}
 	}
+	if(!_previousMapsOptimizedPoses.empty() && _memory->getLastWorkingSignature(false))
+	{
+		// only the links of the new node can have merged previous maps
+		updatePreviousMapsOptimizedPoses(&_memory->getLastWorkingSignature(false)->getLinks());
+	}
+
 	// just some verifications to make sure that planning path is still in the local map!
 	if(_path.size())
 	{
@@ -5269,6 +5285,154 @@ void Rtabmap::setOptimizedPoses(const std::map<int, Transform> & poses, const st
 {
 	_optimizedPoses = poses;
     _constraints = constraints;
+	updatePreviousMapsOptimizedPoses();
+}
+
+// When the graph to optimize connects the current local map to previous maps
+// (e.g., the first loop closure of a new session), the poses of the previous maps
+// recomputed from the links by Optimizer::getConnectedGraph() can be a poor initial
+// guess (e.g., a large map with odometry drift corrected by many loop closures),
+// on which the optimization may diverge. Use the last optimized poses of the maps
+// instead: the map containing the root keeps its frame, the others are moved in
+// it through the links connecting them (directly or through other maps). Other
+// poses (e.g., new nodes) are kept as recomputed.
+void Rtabmap::setInitialGuessFromPreviousMaps(
+		int fromId,
+		const std::map<int, Transform> & guessPoses,
+		const std::multimap<int, Link> & links,
+		std::map<int, Transform> & poses) const
+{
+	if(_previousMapsOptimizedPoses.empty() || poses.find(fromId) == poses.end())
+	{
+		return;
+	}
+	// Groups of poses: 0 is the current local map (guess), then the previous maps
+	std::vector<const std::map<int, Transform> *> groups;
+	groups.push_back(&guessPoses);
+	for(std::list<std::map<int, Transform> >::const_iterator iter=_previousMapsOptimizedPoses.begin(); iter!=_previousMapsOptimizedPoses.end(); ++iter)
+	{
+		groups.push_back(&(*iter));
+	}
+	std::map<int, int> nodeGroups; // node id -> group
+	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		if(iter->first <= 0)
+		{
+			continue;
+		}
+		for(size_t i=0; i<groups.size(); ++i)
+		{
+			if(groups[i]->find(iter->first) != groups[i]->end())
+			{
+				nodeGroups.insert(std::make_pair(iter->first, (int)i));
+				break;
+			}
+		}
+	}
+	std::map<int, int>::iterator rootGroup = nodeGroups.find(fromId);
+	if(rootGroup == nodeGroups.end())
+	{
+		return;
+	}
+
+	// Alignment of each group in the root's frame (the root keeps its pose)
+	std::vector<Transform> alignments(groups.size());
+	alignments[rootGroup->second] = poses.at(fromId) * groups[rootGroup->second]->at(fromId).inverse();
+	bool added = true;
+	while(added)
+	{
+		added = false;
+		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+		{
+			const Link & link = iter->second;
+			std::map<int, int>::iterator from = nodeGroups.find(link.from());
+			std::map<int, int>::iterator to = nodeGroups.find(link.to());
+			if(link.transform().isNull() || from == nodeGroups.end() || to == nodeGroups.end() || from->second == to->second)
+			{
+				continue;
+			}
+			const int fromGroup = from->second;
+			const int toGroup = to->second;
+			if(!alignments[fromGroup].isNull() && alignments[toGroup].isNull())
+			{
+				alignments[toGroup] = alignments[fromGroup] * groups[fromGroup]->at(link.from()) * link.transform() * groups[toGroup]->at(link.to()).inverse();
+				added = true;
+			}
+			else if(alignments[fromGroup].isNull() && !alignments[toGroup].isNull())
+			{
+				alignments[fromGroup] = alignments[toGroup] * groups[toGroup]->at(link.to()) * link.transform().inverse() * groups[fromGroup]->at(link.from()).inverse();
+				added = true;
+			}
+		}
+	}
+	int alignedPreviousMaps = 0;
+	for(size_t i=1; i<alignments.size(); ++i)
+	{
+		alignedPreviousMaps += alignments[i].isNull()?0:1;
+	}
+	if(alignedPreviousMaps == 0 || (alignedPreviousMaps == 1 && alignments[0].isNull()))
+	{
+		return; // only the root's group: not connected to previous maps
+	}
+
+	int fromPrevious = 0;
+	int fromGuess = 0;
+	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		std::map<int, int>::iterator group = nodeGroups.find(iter->first);
+		if(iter->first == fromId || group == nodeGroups.end() || alignments[group->second].isNull())
+		{
+			continue;
+		}
+		iter->second = alignments[group->second] * groups[group->second]->at(iter->first);
+		if(group->second == 0)
+		{
+			++fromGuess;
+		}
+		else
+		{
+			++fromPrevious;
+		}
+	}
+	UINFO("Initial guess: %d poses from the optimized poses of %d previous maps, %d from the current local map, %d recomputed from the links.",
+			fromPrevious, alignedPreviousMaps, fromGuess, (int)poses.size()-fromPrevious-fromGuess-1);
+}
+
+// The optimized poses of a previous map are not needed anymore once it is
+// merged with the current local map. Only new links can merge it: if they are
+// given, check only them (a node of a previous map, or a landmark it observed,
+// now in the local map).
+void Rtabmap::updatePreviousMapsOptimizedPoses(const std::multimap<int, Link> * newLinks)
+{
+	for(std::list<std::map<int, Transform> >::iterator iter=_previousMapsOptimizedPoses.begin(); iter!=_previousMapsOptimizedPoses.end();)
+	{
+		bool merged = false;
+		if(newLinks)
+		{
+			for(std::multimap<int, Link>::const_iterator jter=newLinks->begin(); jter!=newLinks->end() && !merged; ++jter)
+			{
+				const Link & link = jter->second;
+				merged = (iter->find(link.to()) != iter->end() && _optimizedPoses.find(link.to()) != _optimizedPoses.end()) ||
+						 (iter->find(link.from()) != iter->end() && _optimizedPoses.find(link.from()) != _optimizedPoses.end());
+			}
+		}
+		else
+		{
+			for(std::map<int, Transform>::const_iterator jter=iter->begin(); jter!=iter->end() && !merged; ++jter)
+			{
+				merged = _optimizedPoses.find(jter->first) != _optimizedPoses.end();
+			}
+		}
+		if(merged)
+		{
+			UDEBUG("A previous map (%d poses) is merged with the current local map, clearing its optimized poses.", (int)iter->size());
+			iter = _previousMapsOptimizedPoses.erase(iter);
+		}
+		else
+		{
+			++iter;
+		}
+	}
 }
 
 void Rtabmap::dumpData() const
@@ -5630,6 +5794,7 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 			std::map<int, Transform> posesOut;
 			std::multimap<int, Link> edgeConstraintsOut;
 			_graphOptimizer->getConnectedGraph(fromId, poses, edgeConstraints, posesOut, edgeConstraintsOut);
+			setInitialGuessFromPreviousMaps(fromId, guessPoses, edgeConstraintsOut, posesOut);
 			optimizedPoses = _graphOptimizer->optimize(fromId, posesOut, edgeConstraintsOut, covariance, 0, error, iterationsDone);
 			if(constraints)
 			{
@@ -6779,6 +6944,7 @@ int Rtabmap::detectMoreLoopClosures(
 			else
 			{
 				_optimizedPoses = localPoses;
+				updatePreviousMapsOptimizedPoses();
 				if(_memory->isIncremental() && !_optimizeFromGraphEnd)
 				{
 					_mapCorrection = _optimizedPoses.rbegin()->second * _memory->getSignature(_optimizedPoses.rbegin()->first)->getPose().inverse();
@@ -6991,7 +7157,7 @@ bool Rtabmap::addLink(const Link & link)
 		{
 			msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!", link.from(), link.to());
 		}
-		else
+		else if(_graphOptimizer->iterations() > 0) // the errors of a graph not optimized are not meaningful (like in process())
 		{
 			graph::MaxGraphErrors maxGraphErrors;
 
@@ -7074,6 +7240,11 @@ bool Rtabmap::addLink(const Link & link)
 		// graph becomes the whole graph connected to the last node: a link to a
 		// session not yet in the local graph adds the nodes of that session.
 		_optimizedPoses = poses;
+		{
+			std::multimap<int, Link> newLinks;
+			newLinks.insert(std::make_pair(link.from(), link));
+			updatePreviousMapsOptimizedPoses(&newLinks);
+		}
 		if(!_optimizeFromGraphEnd)
 		{
 			_mapCorrection = _optimizedPoses.rbegin()->second * _memory->getSignature(_optimizedPoses.rbegin()->first)->getPose().inverse();
