@@ -5287,10 +5287,11 @@ void Rtabmap::setOptimizedPoses(const std::map<int, Transform> & poses, const st
 // (e.g., the first loop closure of a new session), the poses of the previous maps
 // recomputed from the links by Optimizer::getConnectedGraph() can be a poor initial
 // guess (e.g., a large map with odometry drift corrected by many loop closures),
-// on which the optimization may diverge. Use the last optimized poses of the maps
-// instead: the map containing the root keeps its frame, the others are moved in
-// it through the links connecting them (directly or through other maps). Other
-// poses (e.g., new nodes) are kept as recomputed.
+// on which the optimization may diverge. Use the last optimized poses (nodes and
+// landmarks) of the maps instead: the map containing the root keeps its frame, the
+// others are moved in it through the links connecting them (directly or through
+// other maps, a landmark observed by two maps included). Other poses (e.g., new
+// nodes) are kept as recomputed.
 void Rtabmap::setInitialGuessFromPreviousMaps(
 		int fromId,
 		const std::map<int, Transform> & guessPoses,
@@ -5308,13 +5309,9 @@ void Rtabmap::setInitialGuessFromPreviousMaps(
 	{
 		groups.push_back(&(*iter));
 	}
-	std::map<int, int> nodeGroups; // node id -> group
+	std::map<int, int> nodeGroups; // node or landmark id -> group (the current local map first)
 	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 	{
-		if(iter->first <= 0)
-		{
-			continue;
-		}
 		for(size_t i=0; i<groups.size(); ++i)
 		{
 			if(groups[i]->find(iter->first) != groups[i]->end())
@@ -5389,7 +5386,7 @@ void Rtabmap::setInitialGuessFromPreviousMaps(
 			++fromPrevious;
 		}
 	}
-	UINFO("Initial guess: %d poses from the optimized poses of %d previous maps, %d from the current local map, %d recomputed from the links.",
+	UINFO("Initial guess: %d poses from the optimized poses of %d previous map(s), %d from the current local map, %d recomputed from the links.",
 			fromPrevious, alignedPreviousMaps, fromGuess, (int)poses.size()-fromPrevious-fromGuess-1);
 }
 

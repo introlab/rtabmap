@@ -673,6 +673,79 @@ TEST_F(RtabmapFixture, OptimizedPosesOfAllPreviousMapsUsedAsInitialGuess)
 	}
 }
 
+TEST(RtabmapTest, PreviousMapConnectedByLandmarkUsedAsInitialGuess)
+{
+	// Like PreviousMapOptimizedPosesUsedAsInitialGuess, but the new session is
+	// connected to the previous one only by a landmark that both observed: the
+	// previous map is aligned through the landmark, so its optimized poses are
+	// still used as initial guess (its shape kept with one optimization iteration).
+	int optimizerStrategy = -1;
+	if(Optimizer::isAvailable(Optimizer::kTypeG2O)) optimizerStrategy = Optimizer::kTypeG2O;
+	else if(Optimizer::isAvailable(Optimizer::kTypeGTSAM)) optimizerStrategy = Optimizer::kTypeGTSAM;
+	if(optimizerStrategy < 0)
+	{
+		GTEST_SKIP() << "neither g2o nor GTSAM is available (landmarks are not optimized by the other optimizers)";
+	}
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kOptimizerStrategy()] = uNumber2Str(optimizerStrategy);
+	params[Parameters::kOptimizerLandmarksIgnored()] = "false";
+	params[Parameters::kRGBDOptimizeMaxError()] = "0";
+	params[Parameters::kOptimizerIterations()] = "100";
+	Rtabmap rtabmap;
+	rtabmap.init(params);
+	const cv::Mat cov = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+	const int kLm = 7;
+	int id = 0;
+	auto process = [&](const Transform & odom, const Transform & landmarkObservation)
+	{
+		SensorData data(image);
+		data.setId(++id);
+		if(!landmarkObservation.isNull())
+		{
+			Landmarks landmarks;
+			landmarks.emplace(kLm, Landmark(kLm, 0.1f, landmarkObservation, cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+			data.setLandmarks(landmarks);
+		}
+		return rtabmap.process(data, odom, cov);
+	};
+
+	// Session 1: square loop with odometry turning 110 deg instead of 90 deg,
+	// closed by a user link, the landmark seen from its first node.
+	Transform odom(0.01f, 0, 0, 0, 0, 0);
+	const Transform step(1.0f, 0, 0, 0, 0, 110.0f*float(M_PI)/180.0f);
+	std::vector<int> session1;
+	for(int i=0; i<5; ++i)
+	{
+		ASSERT_TRUE(process(odom, i==0?Transform(0.5f, 0, 0, 0, 0, 0):Transform()));
+		session1.push_back(rtabmap.getLastLocationId());
+		odom = odom * step;
+	}
+	ASSERT_TRUE(rtabmap.addLink(Link(session1.back(), session1.front(), Link::kUserClosure, Transform::getIdentity(), cv::Mat::eye(6, 6, CV_64FC1) * 100.0)));
+	const std::map<int, Transform> optimizedSession1 = rtabmap.getLocalOptimizedPoses();
+	ASSERT_EQ(1u, optimizedSession1.count(-kLm));
+
+	// Session 2 sees the landmark, with one optimization iteration.
+	rtabmap.triggerNewMap();
+	ASSERT_TRUE(process(Transform(0.01f, 0, 0, 0, 0, 0), Transform()));
+	ParametersMap oneIteration;
+	oneIteration[Parameters::kOptimizerIterations()] = "1";
+	rtabmap.parseParameters(oneIteration);
+	ASSERT_TRUE(process(Transform(1.0f, 0, 0, 0, 0, 0), Transform(1.0f, 0, 0, 0, 0, 0)));
+
+	// Session 1 merged, with its shape unchanged.
+	const std::map<int, Transform> & poses = rtabmap.getLocalOptimizedPoses();
+	for(size_t i=1; i<session1.size(); ++i)
+	{
+		SCOPED_TRACE(uFormat("nodes %d->%d", session1[0], session1[i]));
+		ASSERT_EQ(1u, poses.count(session1[i])) << "session 1 should be merged through the landmark";
+		const Transform before = optimizedSession1.at(session1[0]).inverse() * optimizedSession1.at(session1[i]);
+		const Transform after = poses.at(session1[0]).inverse() * poses.at(session1[i]);
+		EXPECT_LT((before.inverse() * after).getNorm(), 0.01f) << "before=" << before.prettyPrint() << " after=" << after.prettyPrint();
+	}
+	rtabmap.close(false);
+}
+
 TEST_F(RtabmapFixture, AddLinkToPreviousSessionAddsItToTheLocalGraph)
 {
 	// A link added with addLink() between the current session and a previous one

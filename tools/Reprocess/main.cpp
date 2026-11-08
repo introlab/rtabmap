@@ -183,9 +183,10 @@ void showUsage()
 			"                      last localization pose, 2D map and optimized mesh (if any) in the output\n"
 			"                      database, only if the reprocessed graph has exactly the same nodes and links.\n"
 			"                      The odometry is rebuilt from the neighbor links of the input database (which\n"
-			"                      may have been refined), and graph optimization is disabled while reprocessing\n"
-			"                      (Optimizer/Iterations=0 unless set explicitly, restored before saving). If the\n"
-			"                      graphs differ, the reprocessed graph is optimized once at the end instead.\n"
+			"                      may have been refined). With -pub_loops_only, graph optimization is disabled\n"
+			"                      while reprocessing (Optimizer/Iterations=0 unless set explicitly, restored\n"
+			"                      before saving). If the graphs differ, the reprocessed graph is optimized once\n"
+			"                      at the end instead (if it was not optimized).\n"
 			"     -pub_inter_as_normal Republish intermediate nodes as normal nodes.\n"
 			"     -abort_disconnected_sessions Return error if not all sessions are connected together.\n"
 			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
@@ -1012,14 +1013,15 @@ int main(int argc, char * argv[])
 		toolParameters.insert(ParametersPair(Parameters::kRGBDProximityBySpace(), "false"));
 		toolParameters.insert(ParametersPair(Parameters::kRGBDProximityByTime(), "false"));
 		toolParameters.insert(ParametersPair(Parameters::kRtabmapLoopThr(), "1.1"));
-	}
-	if(keepOptimizedGraph &&
-	   customParameters.find(Parameters::kOptimizerIterations()) == customParameters.end() &&
-	   configParameters.find(Parameters::kOptimizerIterations()) == configParameters.end())
-	{
-		// The optimized graph is replaced by the original one at the end, no need
-		// to optimize it while reprocessing (unless set explicitly).
-		toolParameters.insert(ParametersPair(Parameters::kOptimizerIterations(), "0"));
+		if(keepOptimizedGraph &&
+		   customParameters.find(Parameters::kOptimizerIterations()) == customParameters.end() &&
+		   configParameters.find(Parameters::kOptimizerIterations()) == configParameters.end())
+		{
+			// Only the links of the input database (no new loop closures to validate with
+			// the optimization error): the optimized graph is replaced by the original one
+			// at the end, no need to optimize it while reprocessing (unless set explicitly).
+			toolParameters.insert(ParametersPair(Parameters::kOptimizerIterations(), "0"));
+		}
 	}
 	for(ParametersMap::iterator iter=toolParameters.begin(); iter!=toolParameters.end(); ++iter)
 	{
@@ -1034,6 +1036,9 @@ int main(int argc, char * argv[])
 		parametersToRestore.insert(ParametersPair(iter->first, originalValue));
 		uInsert(parameters, ParametersPair(iter->first, iter->second));
 	}
+	int optimizerIterations = Parameters::defaultOptimizerIterations();
+	Parameters::parse(parameters, Parameters::kOptimizerIterations(), optimizerIterations);
+	const bool graphOptimizedWhileReprocessing = optimizerIterations > 0;
 
 	if(republishLoopClosures)
 	{
@@ -1826,10 +1831,10 @@ int main(int argc, char * argv[])
 	bool originalGraphKept = false;
 	if(keepOptimizedGraph && incrementalMemory)
 	{
-		// The graph was not optimized while reprocessing: the original optimized graph
-		// is saved back only if the reprocessed graph has the same nodes and links,
-		// otherwise optimize the reprocessed graph now so that the output database
-		// doesn't keep a graph not optimized.
+		// The original optimized graph is saved back only if the reprocessed graph has
+		// the same nodes and links. Otherwise, if the graph was not optimized while
+		// reprocessing, optimize it now so that the output database doesn't keep a
+		// graph not optimized.
 		std::shared_ptr<DBDriver> inputDriver(DBDriver::create());
 		std::set<int> originalIds;
 		std::multimap<int, Link> originalLinks;
@@ -1861,6 +1866,10 @@ int main(int argc, char * argv[])
 		if(originalGraphKept)
 		{
 			printf("-keep_opt_graph: The reprocessed graph has the same nodes and links as the original optimized graph (%d nodes).\n", (int)originalIds.size());
+		}
+		else if(graphOptimizedWhileReprocessing)
+		{
+			printf("[Warning] -keep_opt_graph: The original optimized graph cannot be kept, %s. Keeping the reprocessed one.\n", differences.c_str());
 		}
 		else
 		{
