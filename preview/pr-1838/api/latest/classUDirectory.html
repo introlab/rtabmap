@@ -147,6 +147,8 @@ Static Public Member Functions</h2></td></tr>
 <tr class="separator:a78d8896627c8675a19b0c6fe6d9e274a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3338b47405f65f25a4256e0ea86bff07" id="r_a3338b47405f65f25a4256e0ea86bff07"><td class="memItemLeft" align="right" valign="top">static std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classUDirectory.html#a3338b47405f65f25a4256e0ea86bff07">homeDir</a> ()</td></tr>
 <tr class="separator:a3338b47405f65f25a4256e0ea86bff07"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aee88c4166f7df1a6ce195de0732a513f" id="r_aee88c4166f7df1a6ce195de0732a513f"><td class="memItemLeft" align="right" valign="top">static std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classUDirectory.html#aee88c4166f7df1a6ce195de0732a513f">expandHomeDir</a> (const std::string &amp;path)</td></tr>
+<tr class="separator:aee88c4166f7df1a6ce195de0732a513f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a66750846a899e436808d4eadbcafced0" id="r_a66750846a899e436808d4eadbcafced0"><td class="memItemLeft" align="right" valign="top">static std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classUDirectory.html#a66750846a899e436808d4eadbcafced0">separator</a> ()</td></tr>
 <tr class="separator:a66750846a899e436808d4eadbcafced0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -383,6 +385,39 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="aee88c4166f7df1a6ce195de0732a513f" name="aee88c4166f7df1a6ce195de0732a513f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aee88c4166f7df1a6ce195de0732a513f">&#9670;&#160;</a></span>expandHomeDir()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">static std::string UDirectory::expandHomeDir </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>path</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Replace a leading "~" by the "home" directory (see <a class="el" href="classUDirectory.html#a3338b47405f65f25a4256e0ea86bff07">homeDir()</a>), e.g., "~/maps/rtabmap.db". A "~" elsewhere in the path is kept as is (e.g., in Windows short paths like "C:\Users\RUNNER~1\..."). </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">path</td><td>the path to expand </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>the expanded path. </dd></dl>
+
+</div>
+</div>
 <a id="a66750846a899e436808d4eadbcafced0" name="a66750846a899e436808d4eadbcafced0"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a66750846a899e436808d4eadbcafced0">&#9670;&#160;</a></span>separator()</h2>
 
@@ -540,7 +575,7 @@ Static Public Member Functions</h2></td></tr>
 <p>Get all file names. </p><dl class="section see"><dt>See also</dt><dd><a class="el" href="classUDirectory.html">UDirectory()</a> </dd></dl>
 <dl class="section return"><dt>Returns</dt><dd>all the file names in directory matching the set extensions. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="UDirectory_8h_source.html#l00129">129</a> of file <a class="el" href="UDirectory_8h_source.html">UDirectory.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UDirectory_8h_source.html#l00138">138</a> of file <a class="el" href="UDirectory_8h_source.html">UDirectory.h</a>.</p>
 
 </div>
 </div>
