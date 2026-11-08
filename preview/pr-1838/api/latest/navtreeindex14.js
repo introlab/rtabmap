@@ -1,5 +1,7 @@
 var NAVTREEINDEX14 =
 {
+"functions_func_v.html":[7,3,1,20],
+"functions_func_w.html":[7,3,1,21],
 "functions_func_x.html":[7,3,1,22],
 "functions_func_y.html":[7,3,1,23],
 "functions_func_z.html":[7,3,1,24],
@@ -247,7 +249,5 @@ var NAVTREEINDEX14 =
 "group__VoxelFiltering.html":[5,7],
 "group__VoxelFiltering.html#ga3ea1e68d63d45c84d2c3b6b3bcac4653":[5,7,7],
 "group__VoxelFiltering.html#ga751ff8adfdf8e6f824a7bef0d4630044":[5,7,10],
-"group__VoxelFiltering.html#ga8fce5075a28203045c3865b1d068c084":[5,7,8],
-"group__VoxelFiltering.html#ga94af1db82b1faffff875a9902d44285b":[5,7,1],
-"group__VoxelFiltering.html#gab2a9294812a8c0fcaed92d0f119eaa31":[5,7,2]
+"group__VoxelFiltering.html#ga8fce5075a28203045c3865b1d068c084":[5,7,8]
 };

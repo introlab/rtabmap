@@ -20,6 +20,7 @@ var classrtabmap_1_1Link =
     [ "Link", "classrtabmap_1_1Link.html#a2dce9c7a3ef04085d51f702002107c7b", null ],
     [ "Link", "classrtabmap_1_1Link.html#a8f624aa84862d7abafae5cfc7175f885", null ],
     [ "isValid", "classrtabmap_1_1Link.html#a53974a2cea4315106cf12065ace8bb96", null ],
+    [ "isLoopClosure", "classrtabmap_1_1Link.html#ad7fd56ca6d8b108a8925b1367dc3afb9", null ],
     [ "from", "classrtabmap_1_1Link.html#a185194e8e766ca979e4de7e179f0e534", null ],
     [ "to", "classrtabmap_1_1Link.html#a8d534b311c37d789276dd58bd7dc89e4", null ],
     [ "transform", "classrtabmap_1_1Link.html#a49186880bde84ca3dd43c2d95449fbfb", null ],
