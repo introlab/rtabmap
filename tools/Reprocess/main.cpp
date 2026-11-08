@@ -1191,6 +1191,28 @@ int main(int argc, char * argv[])
 	Rtabmap rtabmap;
 	rtabmap.init(parameters, outputDatabasePath);
 
+	// -pub_loops_only: a node not moving enough is kept if a loop closure is detected
+	// on its update, but the loop closures of the input database are republished after
+	// its update. The update thresholds are disabled for the nodes having loop closures
+	// with previous nodes in the input database, so that they are kept as in the input
+	// database.
+	ParametersMap updateThresholds;
+	ParametersMap updateThresholdsDisabled;
+	if(republishLoopClosuresOnly)
+	{
+		float linearUpdate = Parameters::defaultRGBDLinearUpdate();
+		float angularUpdate = Parameters::defaultRGBDAngularUpdate();
+		Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), linearUpdate);
+		Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), angularUpdate);
+		if(linearUpdate > 0.0f || angularUpdate > 0.0f)
+		{
+			updateThresholds.insert(ParametersPair(Parameters::kRGBDLinearUpdate(), uNumber2Str(linearUpdate)));
+			updateThresholds.insert(ParametersPair(Parameters::kRGBDAngularUpdate(), uNumber2Str(angularUpdate)));
+			updateThresholdsDisabled.insert(ParametersPair(Parameters::kRGBDLinearUpdate(), "0"));
+			updateThresholdsDisabled.insert(ParametersPair(Parameters::kRGBDAngularUpdate(), "0"));
+		}
+	}
+
 	if(!incrementalMemory && locNull)
 	{
 		rtabmap.setInitialPose(Transform());
@@ -1462,63 +1484,76 @@ int main(int argc, char * argv[])
 				data.setGroundTruth(gt.find(data.id()) != gt.end()?gt.at(data.id()):Transform());
 			}
 
+			// Loop closures of the input database with previous nodes, republished after the update
+			std::multimap<int, Link> inputLoopClosures;
+			if(republishLoopClosures && dbReader->driver())
+			{
+				std::multimap<int, Link> links;
+				dbReader->driver()->loadLinks(data.id(), links);
+				for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+				{
+					if(iter->second.isLoopClosure() && iter->second.to() < data.id())
+					{
+						inputLoopClosures.insert(*iter);
+					}
+				}
+			}
+			const bool updateThresholdsIgnored = !updateThresholdsDisabled.empty() && !inputLoopClosures.empty();
+			if(updateThresholdsIgnored)
+			{
+				rtabmap.parseParameters(updateThresholdsDisabled);
+			}
+
 			UTimer t;
-			if(!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity, globalMapStats))
+			const bool processSucceeded = rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity, globalMapStats);
+			if(updateThresholdsIgnored)
+			{
+				rtabmap.parseParameters(updateThresholds);
+			}
+			if(!processSucceeded)
 			{
 				printf("Failed processing node %d.\n", data.id());
 				globalMapStats.clear();
 			}
 			else
 			{
-				if(republishLoopClosures && dbReader->driver())
+				for(std::multimap<int, Link>::iterator iter=inputLoopClosures.begin(); iter!=inputLoopClosures.end(); ++iter)
 				{
-					std::multimap<int, Link> links;
-					dbReader->driver()->loadLinks(data.id(), links);
-					for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+					// Both nodes should be loaded in memory (STM or WM)
+					const Memory * memory = rtabmap.getMemory();
+					int notLoadedId = 0;
+					if(!memory->isInSTM(iter->second.to()) && !memory->isInWM(iter->second.to()))
 					{
-						if((iter->second.type() == Link::kGlobalClosure ||
-							iter->second.type() == Link::kLocalSpaceClosure ||
-							iter->second.type() == Link::kLocalTimeClosure ||
-							iter->second.type() == Link::kUserClosure) &&
-							iter->second.to() < data.id())
-						{
-							// Both nodes should be loaded in memory (STM or WM)
-							const Memory * memory = rtabmap.getMemory();
-							int notLoadedId = 0;
-							if(!memory->isInSTM(iter->second.to()) && !memory->isInWM(iter->second.to()))
-							{
-								notLoadedId = iter->second.to();
-							}
-							else if(!memory->isInSTM(iter->second.from()) && !memory->isInWM(iter->second.from()))
-							{
-								notLoadedId = iter->second.from();
-							}
-							if(notLoadedId && memory->getMapId(notLoadedId, true) >= 0)
-							{
-								printf("[Warning] Link %d->%d from input database not republished: node %d has been "
-										"transferred to long-term memory (memory management).\n",
-										iter->second.from(), iter->second.to(), notLoadedId);
-								++loopClosuresInLTM;
-							}
-							else if(notLoadedId)
-							{
-								printf("[Warning] Link %d->%d from input database not republished: node %d has not been "
-										"added to the map (e.g., skipped or merged with another node).\n",
-										iter->second.from(), iter->second.to(), notLoadedId);
-								++loopClosuresNotInMap;
-							}
-							else if(!iter->second.transform().isNull() && rtabmap.addLink(iter->second))
-							{
-								printf("Added link %d->%d from input database.\n", iter->second.from(), iter->second.to());
-								++loopClosuresRepublished;
-							}
-							else
-							{
-								printf("[Warning] Link %d->%d from input database not republished: rejected.\n",
-										iter->second.from(), iter->second.to());
-								++loopClosuresRejected;
-							}
-						}
+						notLoadedId = iter->second.to();
+					}
+					else if(!memory->isInSTM(iter->second.from()) && !memory->isInWM(iter->second.from()))
+					{
+						notLoadedId = iter->second.from();
+					}
+					if(notLoadedId && memory->getMapId(notLoadedId, true) >= 0)
+					{
+						printf("[Warning] Link %d->%d from input database not republished: node %d has been "
+								"transferred to long-term memory (memory management).\n",
+								iter->second.from(), iter->second.to(), notLoadedId);
+						++loopClosuresInLTM;
+					}
+					else if(notLoadedId)
+					{
+						printf("[Warning] Link %d->%d from input database not republished: node %d has not been "
+								"added to the map (e.g., skipped or merged with another node).\n",
+								iter->second.from(), iter->second.to(), notLoadedId);
+						++loopClosuresNotInMap;
+					}
+					else if(!iter->second.transform().isNull() && rtabmap.addLink(iter->second))
+					{
+						printf("Added link %d->%d from input database.\n", iter->second.from(), iter->second.to());
+						++loopClosuresRepublished;
+					}
+					else
+					{
+						printf("[Warning] Link %d->%d from input database not republished: rejected.\n",
+								iter->second.from(), iter->second.to());
+						++loopClosuresRejected;
 					}
 				}
 

@@ -5169,10 +5169,7 @@ void Rtabmap::rejectLastLoopClosure()
 		bool linksRemoved = false;
 		for(std::multimap<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
 		{
-			if(iter->second.type() == Link::kGlobalClosure ||
-				iter->second.type() == Link::kLocalSpaceClosure ||
-				iter->second.type() == Link::kLocalTimeClosure ||
-				iter->second.type() == Link::kUserClosure)
+			if(iter->second.isLoopClosure())
 			{
 				_memory->removeLink(iter->second.from(), iter->second.to());
 				std::multimap<int, Link>::iterator jter = graph::findLink(_constraints, iter->second.from(), iter->second.to(), true);

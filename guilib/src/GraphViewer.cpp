@@ -268,6 +268,7 @@ public:
 	}
 
 	Link::Type linkType() const {return _link.type();}
+	bool isLoopClosure() const {return _link.isLoopClosure();}
 	bool isInterSession() const {return _interSession;}
 	int from() const {return _from;}
 	int to() const {return _to;}
@@ -1954,10 +1955,7 @@ void GraphViewer::setIntraSessionLoopColor(const QColor & color)
 	{
 		for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
 		{
-			if((iter.value()->linkType() == Link::kGlobalClosure ||
-				iter.value()->linkType() == Link::kLocalSpaceClosure ||
-				iter.value()->linkType() == Link::kLocalTimeClosure ||
-				iter.value()->linkType() == Link::kUserClosure) &&
+			if(iter.value()->isLoopClosure() &&
 				!iter.value()->isInterSession())
 			{
 				iter.value()->setColor(_loopIntraSessionColor);
@@ -1973,10 +1971,7 @@ void GraphViewer::setInterSessionLoopColor(const QColor & color)
 	{
 		for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
 		{
-			if((iter.value()->linkType() == Link::kGlobalClosure ||
-				iter.value()->linkType() == Link::kLocalSpaceClosure ||
-				iter.value()->linkType() == Link::kLocalTimeClosure ||
-				iter.value()->linkType() == Link::kUserClosure) &&
+			if(iter.value()->isLoopClosure() &&
 				iter.value()->isInterSession())
 			{
 				iter.value()->setColor(_loopInterSessionColor);
