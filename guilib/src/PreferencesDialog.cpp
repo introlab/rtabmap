@@ -808,6 +808,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_checkBox_ignorePriors, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreIMU, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreGrids, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_checkBox_odomFromNeighborLinks, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_intermediateNodesAreNormalNodes, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStartId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStopId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2332,6 +2333,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_checkBox_ignorePriors->setChecked(false);
 		_ui->source_checkBox_ignoreIMU->setChecked(false);
 		_ui->source_checkBox_ignoreGrids->setChecked(true);
+		_ui->source_checkBox_odomFromNeighborLinks->setChecked(false);
 		_ui->source_checkBox_intermediateNodesAreNormalNodes->setChecked(false);
 		_ui->source_spinBox_databaseStartId->setValue(0);
 		_ui->source_spinBox_databaseStopId->setValue(0);
@@ -3154,6 +3156,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_checkBox_ignorePriors->setChecked(settings.value("ignorePriors", _ui->source_checkBox_ignorePriors->isChecked()).toBool());
 	_ui->source_checkBox_ignoreIMU->setChecked(settings.value("ignoreImu", _ui->source_checkBox_ignoreIMU->isChecked()).toBool());
 	_ui->source_checkBox_ignoreGrids->setChecked(settings.value("ignoreGrids", _ui->source_checkBox_ignoreGrids->isChecked()).toBool());
+	_ui->source_checkBox_odomFromNeighborLinks->setChecked(settings.value("odomFromNeighborLinks", _ui->source_checkBox_odomFromNeighborLinks->isChecked()).toBool());
 	_ui->source_checkBox_intermediateNodesAreNormalNodes->setChecked(settings.value("intermediateNodesAreNormalNodes", _ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked()).toBool());
 	
 	_ui->source_spinBox_databaseStartId->setValue(settings.value("startId", _ui->source_spinBox_databaseStartId->value()).toInt());
@@ -3780,6 +3783,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("ignorePriors",  _ui->source_checkBox_ignorePriors->isChecked());
 	settings.setValue("ignoreImu",  _ui->source_checkBox_ignoreIMU->isChecked());
 	settings.setValue("ignoreGrids",  _ui->source_checkBox_ignoreGrids->isChecked());
+	settings.setValue("odomFromNeighborLinks",  _ui->source_checkBox_odomFromNeighborLinks->isChecked());
 	settings.setValue("intermediateNodesAreNormalNodes", _ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked());
 	settings.setValue("startId",          _ui->source_spinBox_databaseStartId->value());
 	settings.setValue("stopId",          _ui->source_spinBox_databaseStopId->value());
@@ -7655,7 +7659,8 @@ Camera * PreferencesDialog::createCamera(
 				_ui->source_checkBox_ignoreIMU->isChecked(),
 				_ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked(),
 				localTransformOverrides,
-				_ui->source_checkBox_ignoreGrids->isChecked());
+				_ui->source_checkBox_ignoreGrids->isChecked(),
+				_ui->source_checkBox_odomFromNeighborLinks->isChecked());
 	}
 	else
 	{
