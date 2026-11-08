@@ -240,7 +240,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
 	{
-		_workingDir = uReplaceChar(iter->second, '~', UDirectory::homeDir());
+		_workingDir = UDirectory::expandHomeDir(iter->second);
 	}
 
 	bool pointToPlane = _pointToPlane;
@@ -278,7 +278,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	_libpointmatcherICPFilters = 0;
 	if(_strategy==1)
 	{
-		_libpointmatcherConfig = uReplaceChar(_libpointmatcherConfig, '~', UDirectory::homeDir());
+		_libpointmatcherConfig = UDirectory::expandHomeDir(_libpointmatcherConfig);
 		UDEBUG("libpointmatcher enabled! config=\"%s\"", _libpointmatcherConfig.c_str());
 		_libpointmatcherICP = new PM::ICP();
 		PM::ICP * icp = (PM::ICP*)_libpointmatcherICP;

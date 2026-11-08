@@ -800,8 +800,8 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	std::string inputDatabasePath = uReplaceChar(argv[argc-2], '~', UDirectory::homeDir());
-	std::string outputDatabasePath = uReplaceChar(argv[argc-1], '~', UDirectory::homeDir());
+	std::string inputDatabasePath = UDirectory::expandHomeDir(argv[argc-2]);
+	std::string outputDatabasePath = UDirectory::expandHomeDir(argv[argc-1]);
 
 	std::list<std::string> databases = uSplit(inputDatabasePath, ';');
 	if (databases.empty())

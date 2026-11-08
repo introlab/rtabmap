@@ -115,7 +115,7 @@ bool OdometryORBSLAM3::init(const rtabmap::CameraModel & model1, const rtabmap::
 		return false;
 	}
 	//Load ORB Vocabulary
-	vocabularyPath = uReplaceChar(vocabularyPath, '~', UDirectory::homeDir());
+	vocabularyPath = UDirectory::expandHomeDir(vocabularyPath);
 	if(!UFile::exists(vocabularyPath))
 	{
 		UERROR("ORB_SLAM vocabulary path \"%s\" doesn't exist! (Parameter name=\"%s\")",

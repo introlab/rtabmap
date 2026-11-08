@@ -81,7 +81,7 @@ int main(int argc, char * argv[])
 			++i;
 			if(i<argc-1 && argv[i][0] != '-')
 			{
-				otherDatabasePath = uReplaceChar(argv[i], '~', UDirectory::homeDir());
+				otherDatabasePath = UDirectory::expandHomeDir(argv[i]);
 				printf("Comparing with other database \"%s\"...\n", otherDatabasePath.c_str());
 			}
 			diff = true;
@@ -91,7 +91,7 @@ int main(int argc, char * argv[])
 			++i;
 			if(i<argc-1)
 			{
-				dumpFilePath = uReplaceChar(argv[i], '~', UDirectory::homeDir());
+				dumpFilePath = UDirectory::expandHomeDir(argv[i]);
 			}
 			else
 			{
@@ -101,7 +101,7 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	std::string databasePath = uReplaceChar(argv[argc-1], '~', UDirectory::homeDir());
+	std::string databasePath = UDirectory::expandHomeDir(argv[argc-1]);
 	if(!UFile::exists(databasePath))
 	{
 		printf("Database \"%s\" doesn't exist!\n", databasePath.c_str());

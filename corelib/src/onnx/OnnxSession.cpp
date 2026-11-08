@@ -762,11 +762,7 @@ std::string OnnxSession::defaultOpenVINOCachePath(const ParametersMap & paramete
 
 std::string OnnxSession::expandTilde(const std::string & path)
 {
-	if(!path.empty() && path[0] == '~' && (path.size() == 1 || path[1] == '/' || path[1] == '\\'))
-	{
-		return UDirectory::homeDir() + path.substr(1);
-	}
-	return path;
+	return UDirectory::expandHomeDir(path);
 }
 
 std::shared_ptr<OnnxSession> OnnxSession::get(const std::string & modelPath, const Options & options)

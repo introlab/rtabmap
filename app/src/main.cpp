@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
     std::string database;
     for(int i=1; i<argc; ++i)
     {
-        std::string value = uReplaceChar(argv[i], '~', UDirectory::homeDir());
+        std::string value = UDirectory::expandHomeDir(argv[i]);
         if(UFile::exists(value) &&
            UFile::getExtension(value).compare("db") == 0)
         {

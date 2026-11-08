@@ -44,14 +44,7 @@ bool databaseRecovery(
 {
 	UDEBUG("Recovering \"%s\"", corruptedDatabase.c_str());
 
-	std::string databasePath = corruptedDatabase;
-	if(!databasePath.empty() && databasePath[0] == '~' &&
-	   (databasePath.size() == 1 || databasePath[1] == '/' || databasePath[1] == '\\'))
-	{
-		// Expand only a leading '~' (home directory): paths can contain '~'
-		// elsewhere (e.g., Windows short paths like C:\Users\RUNNER~1\...).
-		databasePath = UDirectory::homeDir() + databasePath.substr(1);
-	}
+	std::string databasePath = UDirectory::expandHomeDir(corruptedDatabase);
 	if(!UFile::exists(databasePath))
 	{
 		if(errorMsg)

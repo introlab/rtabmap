@@ -5128,14 +5128,9 @@ void Rtabmap::setMemoryThreshold(int maxMemoryAllowed)
 
 void Rtabmap::setWorkingDirectory(std::string path)
 {
-	// Expand leading "~" to the user's home directory (shell convention).
-	// We do NOT replace every "~" in the path -- Windows 8.3 short names
-	// embed "~" in the middle (e.g. C:\Users\RUNNER~1\...), and a blanket
-	// uReplaceChar would corrupt those.
-	if(!path.empty() && path[0] == '~')
-	{
-		path = UDirectory::homeDir() + path.substr(1);
-	}
+	// Expand leading "~" to the user's home directory (shell convention), not
+	// the ones in Windows 8.3 short names (e.g. C:\Users\RUNNER~1\...).
+	path = UDirectory::expandHomeDir(path);
 	if(!path.empty() && UDirectory::exists(path))
 	{
 		ULOGGER_DEBUG("Comparing new working directory path \"%s\" with \"%s\"", path.c_str(), _wDir.c_str());

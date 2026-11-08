@@ -94,7 +94,7 @@ int main(int argc, char * argv[])
 	}
 	else
 	{
-		filepath = uReplaceChar(filepath, '~', UDirectory::homeDir());
+		filepath = UDirectory::expandHomeDir(filepath);
 		printf("Using file=%s\n", filepath.c_str());
 		lidar = new LidarVLP16(filepath);
 	}

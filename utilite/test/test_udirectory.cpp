@@ -84,6 +84,19 @@ TEST(UDirectoryTest, HomeDir)
     EXPECT_GT(home.size(), 0);
 }
 
+TEST(UDirectoryTest, ExpandHomeDir)
+{
+    const std::string home = UDirectory::homeDir();
+    EXPECT_EQ(home, UDirectory::expandHomeDir("~"));
+    EXPECT_EQ(home + "/maps/rtabmap.db", UDirectory::expandHomeDir("~/maps/rtabmap.db"));
+    EXPECT_EQ(home + "\\maps\\rtabmap.db", UDirectory::expandHomeDir("~\\maps\\rtabmap.db"));
+    // '~' elsewhere is not the home directory (e.g., Windows short paths), and "~user" is not expanded
+    EXPECT_EQ("C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\a.db", UDirectory::expandHomeDir("C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\a.db"));
+    EXPECT_EQ("/tmp/rtabmap~test.db", UDirectory::expandHomeDir("/tmp/rtabmap~test.db"));
+    EXPECT_EQ("~user/maps", UDirectory::expandHomeDir("~user/maps"));
+    EXPECT_EQ("", UDirectory::expandHomeDir(""));
+}
+
 TEST(UDirectoryTest, Separator)
 {
     std::string sep = UDirectory::separator();
