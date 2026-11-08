@@ -7,7 +7,7 @@
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/core/Compression.h>
 #include <rtabmap/core/Link.h>
-#include <rtabmap/core/Link.h>
+#include <rtabmap/core/Version.h>
 #include <opencv2/core.hpp>
 #include <memory>
 #include <rtabmap/utilite/UFile.h>
@@ -395,3 +395,37 @@ INSTANTIATE_TEST_SUITE_P(
 			}
 			return "v" + name;
 		});
+
+TEST(DBDriverSqlite3Test, TargetVersionIsTheDatabaseVersion)
+{
+	// A database created with Db/TargetVersion has the version of the target, whatever
+	// the schema it is created from (e.g., 0.23.x versions use the schema introduced in
+	// 0.23.0 and still used by later versions, not the one of 0.22.0). From the oldest
+	// supported version (0.16) to the current one.
+	ASSERT_EQ(0, RTABMAP_VERSION_MAJOR) << "update the versions tested";
+	for(int minor = 16; minor <= RTABMAP_VERSION_MINOR; ++minor)
+	{
+		const std::string majorMinor = uFormat("0.%d", minor);
+		const std::string target = majorMinor + ".1";
+		SCOPED_TRACE("target version " + target);
+		const std::string dbPath = uniqueDbPath();
+		ParametersMap parameters;
+		parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), target));
+		{
+			DBDriverSqlite3 driver(parameters);
+			ASSERT_TRUE(driver.openConnection(dbPath, true));
+			driver.closeConnection(false);
+		}
+		DBDriverSqlite3 driver;
+		ASSERT_TRUE(driver.openConnection(dbPath, false));
+		const std::string version = driver.getDatabaseVersion();
+		driver.closeConnection(false);
+		UFile::erase(dbPath);
+
+		EXPECT_EQ(majorMinor, version.substr(0, version.find('.', version.find('.')+1)));
+		if(uStrNumCmp(target, RTABMAP_VERSION) < 0)
+		{
+			EXPECT_EQ(target, version);
+		}
+	}
+}
