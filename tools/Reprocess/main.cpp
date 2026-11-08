@@ -78,9 +78,12 @@ std::map<std::tuple<int, int, int>, Transform> graphLinks(const std::multimap<in
 }
 
 // Compares the nodes and links of two graphs, returns an empty string if they are the same.
+// With neighborTransformsIgnored, only the nodes of the neighbor links are compared,
+// not their transform.
 std::string compareGraphs(
 		const std::set<int> & nodesA, const std::multimap<int, Link> & linksA,
-		const std::set<int> & nodesB, const std::multimap<int, Link> & linksB)
+		const std::set<int> & nodesB, const std::multimap<int, Link> & linksB,
+		bool neighborTransformsIgnored = false)
 {
 	if(nodesA != nodesB)
 	{
@@ -103,7 +106,7 @@ std::string compareGraphs(
 			if(onlyA++ == 0 && example.empty())
 				example = uFormat("link %d->%d (type %d) only in the original", std::get<0>(iter->first), std::get<1>(iter->first), std::get<2>(iter->first));
 		}
-		else
+		else if(!neighborTransformsIgnored || std::get<2>(iter->first) != Link::kNeighbor)
 		{
 			const Transform d = iter->second.inverse() * jter->second;
 			const float angle = Eigen::AngleAxisf(d.toEigen3f().rotation()).angle();
@@ -180,10 +183,10 @@ void showUsage()
 			"                      so that the output graph has only the links of the input database. The\n"
 			"                      parameters changed to do so are restored before saving the output database.\n"
 			"     -keep_opt_graph  When reprocessing a single database, save back its original optimized graph,\n"
-			"                      last localization pose, 2D map and optimized mesh (if any) in the output\n"
-			"                      database, only if the reprocessed graph has exactly the same nodes and links.\n"
-			"                      The odometry is rebuilt from the neighbor links of the input database (which\n"
-			"                      may have been refined). With -pub_loops_only, graph optimization is disabled\n"
+			"                      last localization pose, 2D map, optimized mesh (if any) and neighbor links in\n"
+			"                      the output database, only if the reprocessed graph has exactly the same nodes\n"
+			"                      and links (the transforms of the neighbor links, recomputed from the odometry\n"
+			"                      poses, can differ). With -pub_loops_only, graph optimization is disabled\n"
 			"                      while reprocessing (Optimizer/Iterations=0 unless set explicitly, restored\n"
 			"                      before saving). If the graphs differ, the reprocessed graph is optimized once\n"
 			"                      at the end instead (if it was not optimized).\n"
@@ -1267,8 +1270,7 @@ int main(int argc, char * argv[])
 			ignoreImu,
 			pubInterNodesAsNormalNodes,
 			cameraLocalTransformOverrides,
-			ignoreLocalGrids,
-			keepOptimizedGraph); // odometry from the neighbor links, so that they are the same in the reprocessed graph
+			ignoreLocalGrids);
 
 	dbReader->init();
 
@@ -1829,7 +1831,7 @@ int main(int argc, char * argv[])
 	}
 
 	bool originalGraphKept = false;
-	if(keepOptimizedGraph && incrementalMemory)
+	if(keepOptimizedGraph)
 	{
 		// The original optimized graph is saved back only if the reprocessed graph has
 		// the same nodes and links. Otherwise, if the graph was not optimized while
@@ -1860,7 +1862,10 @@ int main(int argc, char * argv[])
 		}
 		else
 		{
-			differences = compareGraphs(originalIds, originalLinks, reprocessedIds, rtabmap.getLocalConstraints());
+			// The neighbor links are recomputed from the odometry poses (and refined if
+			// RGBD/NeighborLinkRefining is enabled), the ones of the input database are
+			// restored with the original optimized graph.
+			differences = compareGraphs(originalIds, originalLinks, reprocessedIds, rtabmap.getLocalConstraints(), true);
 		}
 		originalGraphKept = differences.empty();
 		if(originalGraphKept)
@@ -2173,6 +2178,52 @@ int main(int argc, char * argv[])
 				outputDriver->saveOptimizedMesh(cloud, polygons, texCoords, textures);
 				printf("-keep_opt_graph: Saved back the original optimized mesh.\n");
 			}
+
+			// The neighbor links of the input database may have been refined (e.g.,
+			// RGBD/NeighborLinkRefining or post-processing), the original optimized graph
+			// was optimized with them. They may be saved in one direction only.
+			std::multimap<int, Link> inputLinks;
+			std::multimap<int, Link> outputLinks;
+			inputDriver->getAllLinks(inputLinks, true, false);
+			outputDriver->getAllLinks(outputLinks, true, false);
+			std::map<std::pair<int, int>, Link> inputNeighborLinks;
+			for(std::multimap<int, Link>::iterator iter=inputLinks.begin(); iter!=inputLinks.end(); ++iter)
+			{
+				if(iter->second.type() == Link::kNeighbor)
+				{
+					inputNeighborLinks.insert(std::make_pair(std::make_pair(iter->second.from(), iter->second.to()), iter->second));
+				}
+			}
+			int neighborLinksRestored = 0;
+			outputDriver->executeNoResult("BEGIN TRANSACTION;");
+			for(std::multimap<int, Link>::iterator iter=outputLinks.begin(); iter!=outputLinks.end(); ++iter)
+			{
+				const Link & link = iter->second;
+				if(link.type() != Link::kNeighbor)
+				{
+					continue;
+				}
+				Link inputLink;
+				std::map<std::pair<int, int>, Link>::iterator jter = inputNeighborLinks.find(std::make_pair(link.from(), link.to()));
+				if(jter != inputNeighborLinks.end())
+				{
+					inputLink = jter->second;
+				}
+				else if((jter = inputNeighborLinks.find(std::make_pair(link.to(), link.from()))) != inputNeighborLinks.end())
+				{
+					inputLink = jter->second.inverse();
+				}
+				if(inputLink.isValid() &&
+				   (inputLink.transform() != link.transform() ||
+				    inputLink.infMatrix().size() != link.infMatrix().size() ||
+				    (!link.infMatrix().empty() && cv::norm(inputLink.infMatrix(), link.infMatrix(), cv::NORM_INF) > 0.0)))
+				{
+					outputDriver->updateLink(inputLink);
+					++neighborLinksRestored;
+				}
+			}
+			outputDriver->executeNoResult("COMMIT;");
+			printf("-keep_opt_graph: Saved back the original neighbor links (%d updated).\n", neighborLinksRestored);
 		}
 		inputDriver->closeConnection(false);
 		outputDriver->closeConnection(true);

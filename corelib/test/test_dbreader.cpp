@@ -110,7 +110,6 @@ struct ReaderOptions
 	bool intermediateNodesAreNormalNodes = false;
 	std::vector<Transform> cameraLocalTransformOverrides;
 	bool occupancyGridsIgnored = false;
-	bool odometryFromNeighborLinks = false;
 };
 
 std::unique_ptr<DBReader> makeReader(const std::string & paths, const ReaderOptions & o = ReaderOptions())
@@ -118,7 +117,7 @@ std::unique_ptr<DBReader> makeReader(const std::string & paths, const ReaderOpti
 	return std::unique_ptr<DBReader>(new DBReader(paths, 0.0f, o.odometryIgnored, o.ignoreGoalDelay, o.goalsIgnored,
 			o.startId, o.cameraIndices, o.stopId, o.intermediateNodesIgnored, o.landmarksIgnored, o.featuresIgnored,
 			o.startMapId, o.stopMapId, o.priorsIgnored, o.imuIgnored, o.intermediateNodesAreNormalNodes,
-			o.cameraLocalTransformOverrides, o.occupancyGridsIgnored, o.odometryFromNeighborLinks));
+			o.cameraLocalTransformOverrides, o.occupancyGridsIgnored));
 }
 
 struct Frame
@@ -237,77 +236,6 @@ TEST_F(DBReaderFixture, OdometryCovarianceComesFromNeighborLinksAndIsHighOnNewMa
 		SCOPED_TRACE(uFormat("node %d", frames[i].data.id()));
 		ASSERT_EQ(6, frames[i].info.odomCovariance.rows);
 		EXPECT_NEAR(expected[i], frames[i].info.odomCovariance.at<double>(0, 0), expected[i]*1e-6);
-	}
-}
-
-TEST_F(DBReaderFixture, OdometryFromNeighborLinks)
-{
-	// Neighbor links may have been refined after mapping, so they don't match the
-	// odometry poses anymore. With odometryFromNeighborLinks, the published
-	// odometry poses are rebuilt from the links, so that the links recomputed from
-	// consecutive poses (e.g., when reprocessing) are the same as in the database.
-	// Raw odometry poses are at x=id.
-	{
-		DatabaseWriter writer(dbPath_);
-		Signature * n1 = writer.addNode(1, 0);
-		Signature * n2 = writer.addNode(2, 0);
-		Signature * n3 = writer.addNode(3, 0);
-		writer.addNode(4, 0); // no neighbor link (e.g., removed from the graph)
-		Signature * n5 = writer.addNode(5, 1); // first node of a new map
-		Signature * n6 = writer.addNode(6, 1);
-		const cv::Mat info = cv::Mat::eye(6, 6, CV_64FC1) * 100.0;
-		// link from a node to the previous one: previous = current * t
-		n2->addLink(Link(2, 1, Link::kNeighbor, Transform(-1.5f, 0, 0, 0, 0, 0), info)); // refined: 1.5 m instead of 1 m
-		n3->addLink(Link(3, 2, Link::kNeighbor, Transform(-0.5f, 0, 0, 0, 0, 0), info));
-		n6->addLink(Link(6, 5, Link::kNeighbor, Transform(-2.0f, 0, 0, 0, 0, 0), info));
-		(void)n1;
-		(void)n5;
-	}
-
-	const float expectedRaw[] = {1, 2, 3, 4, 5, 6};
-	const float expectedFromLinks[] = {1, 2.5f, 3.0f, 4.0f, 5, 7};
-	for(int pass = 0; pass < 2; ++pass)
-	{
-		const bool fromLinks = pass == 1;
-		SCOPED_TRACE(uFormat("odometryFromNeighborLinks=%s", fromLinks?"true":"false"));
-		ReaderOptions options;
-		options.odometryFromNeighborLinks = fromLinks;
-		std::unique_ptr<DBReader> reader = makeReader(dbPath_, options);
-		ASSERT_TRUE(reader->init());
-		std::vector<Frame> frames = readAll(*reader);
-		ASSERT_EQ(6u, frames.size());
-		for(size_t i=0; i<frames.size(); ++i)
-		{
-			SCOPED_TRACE(uFormat("node %d", frames[i].data.id()));
-			const float expected = fromLinks?expectedFromLinks[i]:expectedRaw[i];
-			EXPECT_TRUE(isApprox(Transform(expected, 0, 0, 0, 0, 0), frames[i].info.odomPose)) << frames[i].info.odomPose.prettyPrint();
-		}
-	}
-}
-
-TEST_F(DBReaderFixture, OdometryFromNeighborLinksDisabledWithMergedNeighborLinks)
-{
-	// With a reduced graph (merged neighbor links skipping removed nodes), the
-	// links cannot be reproduced: the odometry poses of the database are used.
-	{
-		DatabaseWriter writer(dbPath_);
-		writer.addNode(1);
-		Signature * n2 = writer.addNode(2);
-		Signature * n3 = writer.addNode(3);
-		const cv::Mat info = cv::Mat::eye(6, 6, CV_64FC1) * 100.0;
-		n2->addLink(Link(2, 1, Link::kNeighbor, Transform(-1.5f, 0, 0, 0, 0, 0), info));
-		n3->addLink(Link(3, 1, Link::kNeighborMerged, Transform(-3.0f, 0, 0, 0, 0, 0), info));
-	}
-	ReaderOptions options;
-	options.odometryFromNeighborLinks = true;
-	std::unique_ptr<DBReader> reader = makeReader(dbPath_, options);
-	ASSERT_TRUE(reader->init());
-	std::vector<Frame> frames = readAll(*reader);
-	ASSERT_EQ(3u, frames.size());
-	for(size_t i=0; i<frames.size(); ++i)
-	{
-		SCOPED_TRACE(uFormat("node %d", frames[i].data.id()));
-		EXPECT_TRUE(isApprox(Transform(float(frames[i].data.id()), 0, 0, 0, 0, 0), frames[i].info.odomPose)) << frames[i].info.odomPose.prettyPrint();
 	}
 }
 
