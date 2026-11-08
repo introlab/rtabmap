@@ -48,8 +48,87 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <pcl/io/pcd_io.h>
 #include <signal.h>
+#include <algorithm>
+#include <tuple>
+#include <iterator>
 
 using namespace rtabmap;
+
+// Links between the nodes of a graph, one per pair of nodes and type, with the
+// transform from the lowest id to the highest. Self links (priors, gravity),
+// landmarks and virtual links are ignored.
+std::map<std::tuple<int, int, int>, Transform> graphLinks(const std::multimap<int, Link> & links, const std::set<int> & nodes)
+{
+	std::map<std::tuple<int, int, int>, Transform> out;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		const Link & link = iter->second;
+		if(link.from() == link.to() || link.from() <= 0 || link.to() <= 0 ||
+		   link.type() == Link::kVirtualClosure || link.type() >= Link::kPosePrior ||
+		   nodes.find(link.from()) == nodes.end() || nodes.find(link.to()) == nodes.end())
+		{
+			continue;
+		}
+		const bool forward = link.from() < link.to();
+		out.insert(std::make_pair(
+				std::make_tuple(forward?link.from():link.to(), forward?link.to():link.from(), (int)link.type()),
+				forward?link.transform():link.transform().inverse()));
+	}
+	return out;
+}
+
+// Compares the nodes and links of two graphs, returns an empty string if they are the same.
+// With neighborTransformsIgnored, only the nodes of the neighbor links are compared,
+// not their transform.
+std::string compareGraphs(
+		const std::set<int> & nodesA, const std::multimap<int, Link> & linksA,
+		const std::set<int> & nodesB, const std::multimap<int, Link> & linksB,
+		bool neighborTransformsIgnored = false)
+{
+	if(nodesA != nodesB)
+	{
+		std::vector<int> onlyA, onlyB;
+		std::set_difference(nodesA.begin(), nodesA.end(), nodesB.begin(), nodesB.end(), std::back_inserter(onlyA));
+		std::set_difference(nodesB.begin(), nodesB.end(), nodesA.begin(), nodesA.end(), std::back_inserter(onlyB));
+		return uFormat("different nodes (%d vs %d): %d only in the original (e.g., %d), %d only in the reprocessed (e.g., %d)",
+				(int)nodesA.size(), (int)nodesB.size(),
+				(int)onlyA.size(), onlyA.empty()?0:onlyA.front(), (int)onlyB.size(), onlyB.empty()?0:onlyB.front());
+	}
+	std::map<std::tuple<int, int, int>, Transform> a = graphLinks(linksA, nodesA);
+	std::map<std::tuple<int, int, int>, Transform> b = graphLinks(linksB, nodesB);
+	int onlyA = 0, onlyB = 0, different = 0;
+	std::string example;
+	for(std::map<std::tuple<int, int, int>, Transform>::iterator iter=a.begin(); iter!=a.end(); ++iter)
+	{
+		std::map<std::tuple<int, int, int>, Transform>::iterator jter = b.find(iter->first);
+		if(jter == b.end())
+		{
+			if(onlyA++ == 0 && example.empty())
+				example = uFormat("link %d->%d (type %d) only in the original", std::get<0>(iter->first), std::get<1>(iter->first), std::get<2>(iter->first));
+		}
+		else if(!neighborTransformsIgnored || std::get<2>(iter->first) != Link::kNeighbor)
+		{
+			const Transform d = iter->second.inverse() * jter->second;
+			const float angle = Eigen::AngleAxisf(d.toEigen3f().rotation()).angle();
+			if(d.getNorm() > 0.001f || fabs(angle) > 0.001f)
+			{
+				if(different++ == 0 && example.empty())
+					example = uFormat("link %d->%d (type %d) differs by %f m and %f rad", std::get<0>(iter->first), std::get<1>(iter->first), std::get<2>(iter->first), d.getNorm(), angle);
+			}
+		}
+	}
+	for(std::map<std::tuple<int, int, int>, Transform>::iterator iter=b.begin(); iter!=b.end(); ++iter)
+	{
+		if(a.find(iter->first) == a.end() && onlyB++ == 0 && example.empty())
+			example = uFormat("link %d->%d (type %d) only in the reprocessed", std::get<0>(iter->first), std::get<1>(iter->first), std::get<2>(iter->first));
+	}
+	if(onlyA || onlyB || different)
+	{
+		return uFormat("different links (%d vs %d): %d only in the original, %d only in the reprocessed, %d with a different transform (e.g., %s)",
+				(int)a.size(), (int)b.size(), onlyA, onlyB, different, example.c_str());
+	}
+	return "";
+}
 
 void showUsage()
 {
@@ -96,7 +175,21 @@ void showUsage()
 			"     -nolandmark Don't republish landmarks contained in input database.\n"
 			"     -nopriors   Don't republish priors contained in input database.\n"
 			"     -noimu      Don't republish IMU contained in input database.\n"
+			"     -nogrids    Don't republish local occupancy grids contained in input database: they are\n"
+			"                 regenerated from the depth images or laser scans. Enabled automatically if a\n"
+			"                 \"Grid/\" parameter is overridden.\n"
 			"     -pub_loops  Republish loop closures contained in input database.\n"
+			"     -pub_loops_only  Same as -pub_loops, but loop closure and proximity detection are disabled,\n"
+			"                      so that the output graph has only the links of the input database. The\n"
+			"                      parameters changed to do so are restored before saving the output database.\n"
+			"     -keep_opt_graph  When reprocessing a single database, save back its original optimized graph,\n"
+			"                      last localization pose, 2D map, optimized mesh (if any) and neighbor links in\n"
+			"                      the output database, only if the reprocessed graph has exactly the same nodes\n"
+			"                      and links (the transforms of the neighbor links, recomputed from the odometry\n"
+			"                      poses, can differ). With -pub_loops_only, graph optimization is disabled\n"
+			"                      while reprocessing (Optimizer/Iterations=0 unless set explicitly, restored\n"
+			"                      before saving). If the graphs differ, the reprocessed graph is optimized once\n"
+			"                      at the end instead (if it was not optimized).\n"
 			"     -pub_inter_as_normal Republish intermediate nodes as normal nodes.\n"
 			"     -abort_disconnected_sessions Return error if not all sessions are connected together.\n"
 			"     -loc_null   On localization mode, reset localization pose to null and map correction to identity between sessions.\n"
@@ -306,6 +399,9 @@ int main(int argc, char * argv[])
 	bool ignorePriors = false;
 	bool ignoreImu = false;
 	bool republishLoopClosures = false;
+	bool republishLoopClosuresOnly = false;
+	bool ignoreLocalGrids = false;
+	bool keepOptimizedGraph = false;
 	bool pubInterNodesAsNormalNodes = false;
 	bool abortDisconnectedSessions = false;
 	bool locNull = false;
@@ -543,6 +639,22 @@ int main(int argc, char * argv[])
 			republishLoopClosures = true;
 			printf("Republish loop closures from input database (-pub_loops option).\n");
 		}
+		else if(strcmp(argv[i], "-pub_loops_only") == 0 || strcmp(argv[i], "--pub_loops_only") == 0)
+		{
+			republishLoopClosures = true;
+			republishLoopClosuresOnly = true;
+			printf("Republish loop closures from input database, without detecting new ones (-pub_loops_only option).\n");
+		}
+		else if(strcmp(argv[i], "-nogrids") == 0 || strcmp(argv[i], "--nogrids") == 0)
+		{
+			ignoreLocalGrids = true;
+			printf("Ignoring local occupancy grids from input database, they will be regenerated (-nogrids option).\n");
+		}
+		else if(strcmp(argv[i], "-keep_opt_graph") == 0 || strcmp(argv[i], "--keep_opt_graph") == 0)
+		{
+			keepOptimizedGraph = true;
+			printf("Keep original optimized graph of the input database if the nodes and links match (-keep_opt_graph option).\n");
+		}
 		else if(strcmp(argv[i], "-pub_inter_as_normal") == 0 || strcmp(argv[i], "--pub_inter_as_normal") == 0)
 		{
 			pubInterNodesAsNormalNodes = true;
@@ -692,8 +804,8 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	std::string inputDatabasePath = uReplaceChar(argv[argc-2], '~', UDirectory::homeDir());
-	std::string outputDatabasePath = uReplaceChar(argv[argc-1], '~', UDirectory::homeDir());
+	std::string inputDatabasePath = UDirectory::expandHomeDir(argv[argc-2]);
+	std::string outputDatabasePath = UDirectory::expandHomeDir(argv[argc-1]);
 
 	std::list<std::string> databases = uSplit(inputDatabasePath, ';');
 	if (databases.empty())
@@ -764,7 +876,16 @@ int main(int argc, char * argv[])
 		{
 			printf("[Warning] Failed getting parameters from database, reprocessing will be done with default parameters! Database version may be too old (%s).\n", targetVersion.c_str());
 		}
-		parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
+	}
+	// Parameters of the input database (defaults for the missing ones), to show
+	// below which ones are changed for the reprocessing.
+	ParametersMap inputParameters = Parameters::getDefaultParameters();
+	uInsert(inputParameters, parameters);
+	if(!useDefaultParameters)
+	{
+		// Output database with the same version as the input database (overwriting
+		// the one saved in its parameters), unless set explicitly (e.g., "" for latest).
+		uInsert(parameters, ParametersPair(Parameters::kDbTargetVersion(), targetVersion));
 	}
 
 	if(customParameters.size())
@@ -775,6 +896,11 @@ int main(int argc, char * argv[])
 			printf("  %s %s\n", uPad(iter->first+" =", 25).c_str(), iter->second.c_str());
 		}
 	}
+
+	// Parameters changed only for this reprocessing by the options of this tool,
+	// with their original values, restored before saving the output database
+	// so that it doesn't keep them.
+	ParametersMap parametersToRestore;
 
 	bool useOdomFeatures = Parameters::defaultMemUseOdomFeatures();
 	if((configParameters.find(Parameters::kKpDetectorStrategy())!=configParameters.end() ||
@@ -794,6 +920,7 @@ int main(int argc, char * argv[])
 					Parameters::kVisFeatureType().c_str(),
 					Parameters::kMemUseOdomFeatures().c_str(),
 					Parameters::kMemUseOdomFeatures().c_str());
+			parametersToRestore.insert(ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
 			uInsert(parameters, ParametersPair(Parameters::kMemUseOdomFeatures(), "false"));
 			useOdomFeatures = false;
 		}
@@ -811,6 +938,18 @@ int main(int argc, char * argv[])
 				Parameters::kMemUseOdomFeatures().c_str());
 		useOdomFeatures = false;
 	}
+
+	if(republishLoopClosuresOnly && databases.size() > 1)
+	{
+		printf("[Error] \"pub_loops_only\" option cannot be used with multiple databases input. Aborting.\n");
+		return 1;
+	}
+	if(keepOptimizedGraph && databases.size() > 1)
+	{
+		printf("[Error] \"keep_opt_graph\" option cannot be used with multiple databases input. Aborting.\n");
+		return 1;
+	}
+	const std::string singleInputDatabasePath = databases.front();
 
 	if(republishLoopClosures)
 	{
@@ -842,6 +981,7 @@ int main(int argc, char * argv[])
 							"Setting parameter %s to false for convenience so that republished loop closure ids match.\n",
 							Parameters::kMemGenerateIds().c_str(),
 							Parameters::kMemGenerateIds().c_str());
+					parametersToRestore.insert(ParametersPair(Parameters::kMemGenerateIds(), "true"));
 					uInsert(parameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
 				}
 			}
@@ -849,6 +989,75 @@ int main(int argc, char * argv[])
 	}
 	uInsert(parameters, configParameters);
 	uInsert(parameters, customParameters);
+
+	if(!ignoreLocalGrids)
+	{
+		// The local occupancy grids of the input database are republished and used
+		// as is, unless the parameters used to generate them are changed.
+		for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end() && !ignoreLocalGrids; ++iter)
+		{
+			if(iter->first.compare(0, 5, "Grid/") == 0 &&
+			   (customParameters.find(iter->first) != customParameters.end() ||
+			    configParameters.find(iter->first) != configParameters.end()))
+			{
+				printf("Parameter %s is overridden, local occupancy grids of the input database are ignored "
+						"and will be regenerated (like -nogrids option).\n", iter->first.c_str());
+				ignoreLocalGrids = true;
+			}
+		}
+	}
+
+	ParametersMap toolParameters;
+	if(republishLoopClosuresOnly)
+	{
+		// Only the republished links: no proximity detection, and loop closure
+		// detection disabled (a threshold the hypotheses (<=1) cannot reach,
+		// which also disables RGBD/AggressiveLoopThr).
+		toolParameters.insert(ParametersPair(Parameters::kRGBDProximityBySpace(), "false"));
+		toolParameters.insert(ParametersPair(Parameters::kRGBDProximityByTime(), "false"));
+		toolParameters.insert(ParametersPair(Parameters::kRtabmapLoopThr(), "1.1"));
+		if(keepOptimizedGraph &&
+		   customParameters.find(Parameters::kOptimizerIterations()) == customParameters.end() &&
+		   configParameters.find(Parameters::kOptimizerIterations()) == configParameters.end())
+		{
+			// Only the links of the input database (no new loop closures to validate with
+			// the optimization error): the optimized graph is replaced by the original one
+			// at the end, no need to optimize it while reprocessing (unless set explicitly).
+			toolParameters.insert(ParametersPair(Parameters::kOptimizerIterations(), "0"));
+		}
+	}
+	for(ParametersMap::iterator iter=toolParameters.begin(); iter!=toolParameters.end(); ++iter)
+	{
+		if(customParameters.find(iter->first) != customParameters.end() ||
+		   configParameters.find(iter->first) != configParameters.end())
+		{
+			printf("[Warning] Parameter %s is set explicitly, but it is overwritten to %s by the selected options.\n",
+					iter->first.c_str(), iter->second.c_str());
+		}
+		ParametersMap::const_iterator jter = parameters.find(iter->first);
+		std::string originalValue = jter!=parameters.end()?jter->second:Parameters::getDefaultParameters().at(iter->first);
+		parametersToRestore.insert(ParametersPair(iter->first, originalValue));
+		uInsert(parameters, ParametersPair(iter->first, iter->second));
+	}
+	int optimizerIterations = Parameters::defaultOptimizerIterations();
+	Parameters::parse(parameters, Parameters::kOptimizerIterations(), optimizerIterations);
+	const bool graphOptimizedWhileReprocessing = optimizerIterations > 0;
+
+	if(republishLoopClosures)
+	{
+		int memoryThr = Parameters::defaultRtabmapMemoryThr();
+		float timeThr = Parameters::defaultRtabmapTimeThr();
+		Parameters::parse(parameters, Parameters::kRtabmapMemoryThr(), memoryThr);
+		Parameters::parse(parameters, Parameters::kRtabmapTimeThr(), timeThr);
+		if(memoryThr != 0 || timeThr != 0.0f)
+		{
+			printf("[Warning] Memory management is enabled (%s=%d, %s=%f): loop closures of the input database "
+					"with a node transferred to long-term memory cannot be republished and will be ignored. "
+					"Set them to 0 to republish all of them.\n",
+					Parameters::kRtabmapMemoryThr().c_str(), memoryThr,
+					Parameters::kRtabmapTimeThr().c_str(), timeThr);
+		}
+	}
 
 	bool incrementalMemory = Parameters::defaultMemIncrementalMemory();
 	Parameters::parse(parameters, Parameters::kMemIncrementalMemory(), incrementalMemory);
@@ -921,7 +1130,52 @@ int main(int argc, char * argv[])
 		printf("Target database version: \"%s\" (set explicitly --%s \"\" to output with latest version.\n", targetVersion.c_str(), Parameters::kDbTargetVersion().c_str());
 	}
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapWorkingDirectory(), workingDirectory));
+	{
+		ParametersMap::const_iterator iter = parameters.find(Parameters::kRtabmapPublishStats());
+		parametersToRestore.insert(ParametersPair(Parameters::kRtabmapPublishStats(),
+				iter!=parameters.end()?iter->second:uBool2Str(Parameters::defaultRtabmapPublishStats())));
+	}
 	uInsert(parameters, ParametersPair(Parameters::kRtabmapPublishStats(), "true")); // to log status below
+
+	{
+		std::list<std::string> changes;
+		for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
+		{
+			if(iter->first == Parameters::kRtabmapWorkingDirectory())
+			{
+				continue; // not saved in the database
+			}
+			ParametersMap::const_iterator jter = inputParameters.find(iter->first);
+			const std::string original = jter!=inputParameters.end()?jter->second:"";
+			if(original != iter->second)
+			{
+				std::string source;
+				if(parametersToRestore.find(iter->first) != parametersToRestore.end())
+				{
+					source = "tool option, restored before saving";
+				}
+				else if(customParameters.find(iter->first) != customParameters.end())
+				{
+					source = "argument";
+				}
+				else if(configParameters.find(iter->first) != configParameters.end())
+				{
+					source = "config file";
+				}
+				else
+				{
+					source = "tool";
+				}
+				changes.push_back(uFormat("  %s %s -> %s (%s)",
+						uPad(iter->first+":", 30).c_str(), original.c_str(), iter->second.c_str(), source.c_str()));
+			}
+		}
+		printf("Parameters changed from the %s (%d):\n", useDefaultParameters?"default ones":"input database", (int)changes.size());
+		for(std::list<std::string>::iterator iter=changes.begin(); iter!=changes.end(); ++iter)
+		{
+			printf("%s\n", iter->c_str());
+		}
+	}
 
 	if((!incrementalMemory || appendMode ) && databases.size() > 1)
 	{
@@ -936,6 +1190,28 @@ int main(int argc, char * argv[])
 
 	Rtabmap rtabmap;
 	rtabmap.init(parameters, outputDatabasePath);
+
+	// -pub_loops_only: a node not moving enough is kept if a loop closure is detected
+	// on its update, but the loop closures of the input database are republished after
+	// its update. The update thresholds are disabled for the nodes having loop closures
+	// with previous nodes in the input database, so that they are kept as in the input
+	// database.
+	ParametersMap updateThresholds;
+	ParametersMap updateThresholdsDisabled;
+	if(republishLoopClosuresOnly)
+	{
+		float linearUpdate = Parameters::defaultRGBDLinearUpdate();
+		float angularUpdate = Parameters::defaultRGBDAngularUpdate();
+		Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), linearUpdate);
+		Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), angularUpdate);
+		if(linearUpdate > 0.0f || angularUpdate > 0.0f)
+		{
+			updateThresholds.insert(ParametersPair(Parameters::kRGBDLinearUpdate(), uNumber2Str(linearUpdate)));
+			updateThresholds.insert(ParametersPair(Parameters::kRGBDAngularUpdate(), uNumber2Str(angularUpdate)));
+			updateThresholdsDisabled.insert(ParametersPair(Parameters::kRGBDLinearUpdate(), "0"));
+			updateThresholdsDisabled.insert(ParametersPair(Parameters::kRGBDAngularUpdate(), "0"));
+		}
+	}
 
 	if(!incrementalMemory && locNull)
 	{
@@ -994,6 +1270,10 @@ int main(int argc, char * argv[])
 		}
 	}
 
+	int loopClosuresRepublished = 0;
+	int loopClosuresInLTM = 0;
+	int loopClosuresNotInMap = 0;
+	int loopClosuresRejected = 0;
 	DBReader * dbReader = new DBReader(
 			inputDatabasePath,
 			useDatabaseRate?-1:0,
@@ -1011,7 +1291,8 @@ int main(int argc, char * argv[])
 			ignorePriors,
 			ignoreImu,
 			pubInterNodesAsNormalNodes,
-			cameraLocalTransformOverrides);
+			cameraLocalTransformOverrides,
+			ignoreLocalGrids);
 
 	dbReader->init();
 
@@ -1203,33 +1484,76 @@ int main(int argc, char * argv[])
 				data.setGroundTruth(gt.find(data.id()) != gt.end()?gt.at(data.id()):Transform());
 			}
 
+			// Loop closures of the input database with previous nodes, republished after the update
+			std::multimap<int, Link> inputLoopClosures;
+			if(republishLoopClosures && dbReader->driver())
+			{
+				std::multimap<int, Link> links;
+				dbReader->driver()->loadLinks(data.id(), links);
+				for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+				{
+					if(iter->second.isLoopClosure() && iter->second.to() < data.id())
+					{
+						inputLoopClosures.insert(*iter);
+					}
+				}
+			}
+			const bool updateThresholdsIgnored = !updateThresholdsDisabled.empty() && !inputLoopClosures.empty();
+			if(updateThresholdsIgnored)
+			{
+				rtabmap.parseParameters(updateThresholdsDisabled);
+			}
+
 			UTimer t;
-			if(!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity, globalMapStats))
+			const bool processSucceeded = rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity, globalMapStats);
+			if(updateThresholdsIgnored)
+			{
+				rtabmap.parseParameters(updateThresholds);
+			}
+			if(!processSucceeded)
 			{
 				printf("Failed processing node %d.\n", data.id());
 				globalMapStats.clear();
 			}
 			else
 			{
-				if(republishLoopClosures && dbReader->driver())
+				for(std::multimap<int, Link>::iterator iter=inputLoopClosures.begin(); iter!=inputLoopClosures.end(); ++iter)
 				{
-					std::multimap<int, Link> links;
-					dbReader->driver()->loadLinks(data.id(), links);
-					for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+					// Both nodes should be loaded in memory (STM or WM)
+					const Memory * memory = rtabmap.getMemory();
+					int notLoadedId = 0;
+					if(!memory->isInSTM(iter->second.to()) && !memory->isInWM(iter->second.to()))
 					{
-						if((iter->second.type() == Link::kGlobalClosure ||
-							iter->second.type() == Link::kLocalSpaceClosure ||
-							iter->second.type() == Link::kLocalTimeClosure ||
-							iter->second.type() == Link::kUserClosure) &&
-							iter->second.to() < data.id())
-						{
-							if(!iter->second.transform().isNull() &&
-								rtabmap.getMemory()->getWorkingMem().find(iter->second.to()) != rtabmap.getMemory()->getWorkingMem().end() &&
-								rtabmap.addLink(iter->second))
-							{
-								printf("Added link %d->%d from input database.\n", iter->second.from(), iter->second.to());
-							}
-						}
+						notLoadedId = iter->second.to();
+					}
+					else if(!memory->isInSTM(iter->second.from()) && !memory->isInWM(iter->second.from()))
+					{
+						notLoadedId = iter->second.from();
+					}
+					if(notLoadedId && memory->getMapId(notLoadedId, true) >= 0)
+					{
+						printf("[Warning] Link %d->%d from input database not republished: node %d has been "
+								"transferred to long-term memory (memory management).\n",
+								iter->second.from(), iter->second.to(), notLoadedId);
+						++loopClosuresInLTM;
+					}
+					else if(notLoadedId)
+					{
+						printf("[Warning] Link %d->%d from input database not republished: node %d has not been "
+								"added to the map (e.g., skipped or merged with another node).\n",
+								iter->second.from(), iter->second.to(), notLoadedId);
+						++loopClosuresNotInMap;
+					}
+					else if(!iter->second.transform().isNull() && rtabmap.addLink(iter->second))
+					{
+						printf("Added link %d->%d from input database.\n", iter->second.from(), iter->second.to());
+						++loopClosuresRepublished;
+					}
+					else
+					{
+						printf("[Warning] Link %d->%d from input database not republished: rejected.\n",
+								iter->second.from(), iter->second.to());
+						++loopClosuresRejected;
 					}
 				}
 
@@ -1531,6 +1855,116 @@ int main(int argc, char * argv[])
 		}
 	}
 
+	if(!parametersToRestore.empty())
+	{
+		printf("Restoring original parameters before saving the output database:\n");
+		for(ParametersMap::iterator iter=parametersToRestore.begin(); iter!=parametersToRestore.end(); ++iter)
+		{
+			printf("  %s %s\n", uPad(iter->first+" =", 25).c_str(), iter->second.c_str());
+		}
+		rtabmap.parseParameters(parametersToRestore);
+	}
+
+	bool originalGraphKept = false;
+	if(keepOptimizedGraph)
+	{
+		// The original optimized graph is saved back only if the reprocessed graph has
+		// the same nodes and links. Otherwise, if the graph was not optimized while
+		// reprocessing, optimize it now so that the output database doesn't keep a
+		// graph not optimized.
+		std::shared_ptr<DBDriver> inputDriver(DBDriver::create());
+		std::set<int> originalIds;
+		std::multimap<int, Link> originalLinks;
+		if(inputDriver->openConnection(singleInputDatabasePath, false, true))
+		{
+			std::map<int, Transform> originalPoses = inputDriver->loadOptimizedPoses();
+			for(std::map<int, Transform>::iterator iter=originalPoses.lower_bound(1); iter!=originalPoses.end(); ++iter)
+			{
+				originalIds.insert(iter->first);
+			}
+			inputDriver->getAllLinks(originalLinks, true, false);
+			inputDriver->closeConnection(false);
+		}
+		std::set<int> reprocessedIds;
+		for(std::map<int, Transform>::const_iterator iter=rtabmap.getLocalOptimizedPoses().lower_bound(1); iter!=rtabmap.getLocalOptimizedPoses().end(); ++iter)
+		{
+			reprocessedIds.insert(iter->first);
+		}
+		std::string differences;
+		if(originalIds.empty())
+		{
+			differences = "the input database doesn't have an optimized graph";
+		}
+		else
+		{
+			// The neighbor links are recomputed from the odometry poses (and refined if
+			// RGBD/NeighborLinkRefining is enabled), the ones of the input database are
+			// restored with the original optimized graph.
+			differences = compareGraphs(originalIds, originalLinks, reprocessedIds, rtabmap.getLocalConstraints(), true);
+		}
+		originalGraphKept = differences.empty();
+		if(originalGraphKept)
+		{
+			printf("-keep_opt_graph: The reprocessed graph has the same nodes and links as the original optimized graph (%d nodes).\n", (int)originalIds.size());
+		}
+		else if(graphOptimizedWhileReprocessing)
+		{
+			printf("[Warning] -keep_opt_graph: The original optimized graph cannot be kept, %s. Keeping the reprocessed one.\n", differences.c_str());
+		}
+		else
+		{
+			printf("[Warning] -keep_opt_graph: The original optimized graph cannot be kept, %s. Optimizing the reprocessed graph...\n", differences.c_str());
+			std::map<int, Transform> poses;
+			std::multimap<int, Link> constraints;
+			// The poses of the local graph are not optimized (each session in its own
+			// odometry frame): clear them so that they are not used as initial guess,
+			// the poses are then recomputed from the links.
+			rtabmap.setOptimizedPoses(std::map<int, Transform>(), std::multimap<int, Link>());
+			rtabmap.getGraph(poses, constraints, /*optimized*/ true, /*global*/ true);
+			const Memory * memory = rtabmap.getMemory();
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();)
+			{
+				if(iter->first > 0 && !memory->isInWM(iter->first) && !memory->isInSTM(iter->first))
+				{
+					poses.erase(iter++); // only nodes loaded in memory can be in the optimized graph
+				}
+				else
+				{
+					++iter;
+				}
+			}
+			for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end();)
+			{
+				if(poses.find(iter->second.from()) == poses.end() || poses.find(iter->second.to()) == poses.end())
+				{
+					constraints.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
+			}
+			if(poses.empty())
+			{
+				printf("[Error] -keep_opt_graph: Optimization of the reprocessed graph failed, the output optimized graph is not optimized.\n");
+			}
+			else
+			{
+				rtabmap.setOptimizedPoses(poses, constraints);
+				printf("-keep_opt_graph: Optimizing the reprocessed graph... done (%d nodes).\n", (int)poses.size());
+			}
+		}
+	}
+
+	if(republishLoopClosures)
+	{
+		const int total = loopClosuresRepublished + loopClosuresInLTM + loopClosuresNotInMap + loopClosuresRejected;
+		printf("%sRepublished %d/%d loop closures from input database (%d with a node in long-term memory, "
+				"%d with a node not added to the map, %d rejected).\n",
+				loopClosuresRepublished<total?"[Warning] ":"",
+				loopClosuresRepublished, total, loopClosuresInLTM, loopClosuresNotInMap, loopClosuresRejected);
+	}
+
 	printf("Closing database \"%s\"...\n", outputDatabasePath.c_str());
 	rtabmap.close(true);
 	printf("Closing database \"%s\"... done!\n", outputDatabasePath.c_str());
@@ -1726,6 +2160,109 @@ int main(int argc, char * argv[])
 		}
 	}
 #endif
+
+	if(keepOptimizedGraph)
+	{
+		// Put back the original optimized graph (and what was generated from it),
+		// so that the output map stays exactly aligned with the input one. Only
+		// if the reprocessed graph has the same nodes, otherwise it would not
+		// match the output database anymore.
+		std::shared_ptr<DBDriver> inputDriver(DBDriver::create());
+		std::shared_ptr<DBDriver> outputDriver(DBDriver::create());
+		if(!inputDriver->openConnection(singleInputDatabasePath, false, true))
+		{
+			printf("[Error] -keep_opt_graph: Failed opening input database \"%s\".\n", singleInputDatabasePath.c_str());
+			return 1;
+		}
+		if(!outputDriver->openConnection(outputDatabasePath, false))
+		{
+			printf("[Error] -keep_opt_graph: Failed opening output database \"%s\".\n", outputDatabasePath.c_str());
+			return 1;
+		}
+		Transform lastLocalizationPose;
+		std::map<int, Transform> inputPoses = inputDriver->loadOptimizedPoses(&lastLocalizationPose);
+		if(!originalGraphKept)
+		{
+			printf("[Warning] -keep_opt_graph: Keeping the reprocessed optimized graph and map (see warning above).\n");
+		}
+		else
+		{
+			outputDriver->saveOptimizedPoses(inputPoses, lastLocalizationPose);
+			printf("-keep_opt_graph: Saved back the original optimized graph (%d nodes) and last localization pose.\n", (int)inputPoses.size());
+
+			float xMin=0.0f, yMin=0.0f, cellSize=0.0f;
+			cv::Mat map = inputDriver->load2DMap(xMin, yMin, cellSize);
+			if(!map.empty())
+			{
+				outputDriver->save2DMap(map, xMin, yMin, cellSize);
+				printf("-keep_opt_graph: Saved back the original 2D map (%dx%d, cell=%fm)%s.\n",
+						map.cols, map.rows, cellSize,
+						save2DMap?", replacing the one assembled with -db":"");
+			}
+
+			std::vector<std::vector<std::vector<RTABMAP_PCL_INDEX> > > polygons;
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
+#else
+			std::vector<std::vector<Eigen::Vector2f> > texCoords;
+#endif
+			cv::Mat textures;
+			cv::Mat cloud = inputDriver->loadOptimizedMesh(&polygons, &texCoords, &textures);
+			if(!cloud.empty())
+			{
+				outputDriver->saveOptimizedMesh(cloud, polygons, texCoords, textures);
+				printf("-keep_opt_graph: Saved back the original optimized mesh.\n");
+			}
+
+			// The neighbor links of the input database may have been refined (e.g.,
+			// RGBD/NeighborLinkRefining or post-processing), the original optimized graph
+			// was optimized with them. They may be saved in one direction only.
+			std::multimap<int, Link> inputLinks;
+			std::multimap<int, Link> outputLinks;
+			inputDriver->getAllLinks(inputLinks, true, false);
+			outputDriver->getAllLinks(outputLinks, true, false);
+			std::map<std::pair<int, int>, Link> inputNeighborLinks;
+			for(std::multimap<int, Link>::iterator iter=inputLinks.begin(); iter!=inputLinks.end(); ++iter)
+			{
+				if(iter->second.type() == Link::kNeighbor)
+				{
+					inputNeighborLinks.insert(std::make_pair(std::make_pair(iter->second.from(), iter->second.to()), iter->second));
+				}
+			}
+			int neighborLinksRestored = 0;
+			outputDriver->executeNoResult("BEGIN TRANSACTION;");
+			for(std::multimap<int, Link>::iterator iter=outputLinks.begin(); iter!=outputLinks.end(); ++iter)
+			{
+				const Link & link = iter->second;
+				if(link.type() != Link::kNeighbor)
+				{
+					continue;
+				}
+				Link inputLink;
+				std::map<std::pair<int, int>, Link>::iterator jter = inputNeighborLinks.find(std::make_pair(link.from(), link.to()));
+				if(jter != inputNeighborLinks.end())
+				{
+					inputLink = jter->second;
+				}
+				else if((jter = inputNeighborLinks.find(std::make_pair(link.to(), link.from()))) != inputNeighborLinks.end())
+				{
+					inputLink = jter->second.inverse();
+				}
+				if(inputLink.isValid() &&
+				   (inputLink.transform() != link.transform() ||
+				    inputLink.infMatrix().size() != link.infMatrix().size() ||
+				    (!link.infMatrix().empty() && cv::norm(inputLink.infMatrix(), link.infMatrix(), cv::NORM_INF) > 0.0)))
+				{
+					outputDriver->updateLink(inputLink);
+					++neighborLinksRestored;
+				}
+			}
+			outputDriver->executeNoResult("COMMIT;");
+			printf("-keep_opt_graph: Saved back the original neighbor links (%d updated).\n", neighborLinksRestored);
+		}
+		inputDriver->closeConnection(false);
+		outputDriver->closeConnection(true);
+	}
 
 	return 0;
 }

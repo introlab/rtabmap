@@ -134,9 +134,9 @@ int main (int argc, char * argv[])
 		showUsage();
 	}
 	configFile = argv[argc-2];
-	configFile = uReplaceChar(configFile, '~', UDirectory::homeDir());
+	configFile = UDirectory::expandHomeDir(configFile);
 	fileName = argv[argc-1]; // the last is the output path
-	fileName = uReplaceChar(fileName, '~', UDirectory::homeDir());
+	fileName = UDirectory::expandHomeDir(fileName);
 
 	if(UFile::getExtension(fileName).compare("db") != 0)
 	{

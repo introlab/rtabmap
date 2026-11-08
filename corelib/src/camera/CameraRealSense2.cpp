@@ -505,7 +505,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 	{
 		// playback (bag recorded by realsense-viewer)
 		dev_.resize(1);
-		dev_[0] = ctx_.load_device(uReplaceChar(deviceId_, '~', UDirectory::homeDir()));
+		dev_[0] = ctx_.load_device(UDirectory::expandHomeDir(deviceId_));
 		playback_ = true;
 		UINFO("Device ID is a bag (\"%s\"), using playback mode", deviceId_.c_str());
 	}

@@ -393,6 +393,15 @@ std::string UDirectory::homeDir()
 	return path;
 }
 
+std::string UDirectory::expandHomeDir(const std::string & path)
+{
+	if(!path.empty() && path[0] == '~' && (path.size() == 1 || path[1] == '/' || path[1] == '\\'))
+	{
+		return homeDir() + path.substr(1);
+	}
+	return path;
+}
+
 std::string UDirectory::separator()
 {
 #ifdef _WIN32

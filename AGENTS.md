@@ -129,6 +129,19 @@ The repository has a historical mix of CRLF and LF files (~230 CRLF, a few mixed
 
   A diff where every line of the file shows as changed means its endings were rewritten: revert and redo the edit.
 
+### Version bumps
+
+When to bump:
+
+- Database schema change (`corelib/src/resources/DatabaseSchema.sql.in`): bump the minor version (patch back to 0). Keep the previous schema so that databases can still be created for older versions (`Db/TargetVersion`): save it as `corelib/src/resources/backward_compatibility/DatabaseSchema_<major>_<minor>_0.sql` with the previous `<major>.<minor>` (ending with `INSERT INTO Admin(version) VALUES('<major>.<minor>.0');`), add it to `RESOURCES` in `corelib/src/CMakeLists.txt`, and include it and add it to the target version schemas in `DBDriverSqlite3::connectDatabaseQuery()` (`corelib/src/DBDriverSqlite3.cpp`), where the version labeling the current schema is also set to the new `<major>.<minor>.0`. Guard the queries using the new schema with `uStrNumCmp(_version, "<new major>.<new minor>.0") >= 0` so that older databases still work. See #1569 for an example.
+- New or removed parameter (`Parameters.h`): bump the patch version.
+- Default behavior change (e.g., a parameter default value, or what a tool does without new options): bump the patch version, so that downstream projects can check which behavior to expect with `RTABMAP_VERSION_COMPARE`.
+
+What to update:
+
+- Patch version: update `RTABMAP_PATCH_VERSION` in the top-level `CMakeLists.txt`, `<version>` in `package.xml`, and the iOS app version `MARKETING_VERSION` in `app/ios/RTABMapApp.xcodeproj/project.pbxproj` (one entry per build configuration). The Android app version name is generated from CMake. Don't edit the version in `app/ios/Settings.bundle/Root.plist`: a build phase script of the app overwrites it with `MARKETING_VERSION`.
+- Major or minor version: also update the iOS app header search path `RTABMapApp/Libraries/include/rtabmap-<major>.<minor>` in `app/ios/RTABMapApp.xcodeproj/project.pbxproj` (one entry per build configuration), as the installed headers directory is versioned.
+
 ## Docs
 
 - `./docs-report.sh` builds the Doxygen API docs locally (`--site` for the full site).

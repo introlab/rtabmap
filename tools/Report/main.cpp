@@ -354,7 +354,7 @@ int main(int argc, char * argv[])
 	}
 
 	std::string path = argv[argc-1];
-	path = uReplaceChar(path, '~', UDirectory::homeDir());
+	path = UDirectory::expandHomeDir(path);
 
 	if(!UDirectory::exists(path) && UFile::getExtension(path).compare("db") == 0)
 	{

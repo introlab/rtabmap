@@ -102,6 +102,8 @@ public:
 
 	/** @return True if ids, transform, and type are valid for use in the graph. */
 	bool isValid() const {return from_ != 0 && to_ != 0 && !transform_.isNull() && type_!=kUndef;}
+	/** @return True for a loop closure: @ref kGlobalClosure, @ref kLocalSpaceClosure, @ref kLocalTimeClosure or @ref kUserClosure. */
+	bool isLoopClosure() const {return type_ == kGlobalClosure || type_ == kLocalSpaceClosure || type_ == kLocalTimeClosure || type_ == kUserClosure;}
 
 	/** @return Source signature id. */
 	int from() const {return from_;}

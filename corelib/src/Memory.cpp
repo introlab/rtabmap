@@ -5415,7 +5415,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			 _detectMarkers ||
 			 _rotateImagesUpsideUp ||
 			 _imagePostDecimation > 1 ||
-			 (_createOccupancyGrid && _localMapMaker->isGridFromDepth()))) ||
+			 (_createOccupancyGrid && _localMapMaker->isGridFromDepth() &&
+			  data.gridCellSize() == 0.0f))) ||
 			// Images rectified below: stereo always, RGB-D unless only its features are
 			(!_imagesAlreadyRectified && !(_rectifyOnlyFeatures && data.stereoCameraModels().empty()));
 
@@ -7148,8 +7149,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	// Occupancy grid map stuff
 	if(_createOccupancyGrid && !isIntermediateNode)
 	{
-		if( (_localMapMaker->isGridFromDepth() && !data.depthOrRightRaw().empty()) ||
-			(!_localMapMaker->isGridFromDepth() && !data.laserScanRaw().empty()))
+		// A local grid already in the input data (e.g., read from a database
+		// by DBReader) is used as is.
+		if(data.gridCellSize() == 0.0f &&
+		   ((_localMapMaker->isGridFromDepth() && !data.depthOrRightRaw().empty()) ||
+			(!_localMapMaker->isGridFromDepth() && !data.laserScanRaw().empty())))
 		{
 			cv::Mat ground, obstacles, empty;
 			float cellSize = 0.0f;

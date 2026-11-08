@@ -76,6 +76,15 @@ public:
 	static std::string homeDir();
 
 	/**
+	 * Replace a leading "~" by the "home" directory (see homeDir()), e.g.,
+	 * "~/maps/rtabmap.db". A "~" elsewhere in the path is kept as is (e.g., in
+	 * Windows short paths like "C:\Users\RUNNER~1\...").
+	 * @param path the path to expand
+	 * @return the expanded path.
+	 */
+	static std::string expandHomeDir(const std::string & path);
+
+	/**
 	 * Return \ (Win32) or / (Unix) depending of the platform.
 	 */
 	static std::string separator();

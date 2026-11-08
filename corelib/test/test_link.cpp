@@ -195,3 +195,18 @@ TEST(LinkTest, LandmarkLink)
 	EXPECT_EQ(link.to(), -10);
 	EXPECT_EQ(link.typeName(), "Landmark");
 }
+
+TEST(LinkTest, IsLoopClosure)
+{
+	for(int type = 0; type < Link::kEnd; ++type)
+	{
+		Link link(1, 2, (Link::Type)type, Transform::getIdentity());
+		const bool expected =
+				type == Link::kGlobalClosure ||
+				type == Link::kLocalSpaceClosure ||
+				type == Link::kLocalTimeClosure ||
+				type == Link::kUserClosure;
+		EXPECT_EQ(expected, link.isLoopClosure()) << link.typeName();
+	}
+	EXPECT_FALSE(Link().isLoopClosure()); // kUndef
+}

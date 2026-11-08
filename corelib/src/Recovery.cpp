@@ -44,7 +44,7 @@ bool databaseRecovery(
 {
 	UDEBUG("Recovering \"%s\"", corruptedDatabase.c_str());
 
-	std::string databasePath = uReplaceChar(corruptedDatabase, '~', UDirectory::homeDir());
+	std::string databasePath = UDirectory::expandHomeDir(corruptedDatabase);
 	if(!UFile::exists(databasePath))
 	{
 		if(errorMsg)
@@ -91,6 +91,10 @@ bool databaseRecovery(
 		delete dbDriver;
 		return false;
 	}
+	// The recovered database replaces the corrupted one: create it with the same
+	// version, not with the target version saved in its parameters.
+	uInsert(parameters, ParametersPair(Parameters::kDbTargetVersion(), dbDriver->getDatabaseVersion()));
+
 	std::set<int> ids;
 	dbDriver->getAllNodeIds(ids);
 	if(ids.empty())
