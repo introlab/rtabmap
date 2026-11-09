@@ -3893,7 +3893,8 @@ static LaserScan deskewImpl(
 	cv::Mat output(1, input.size(), CV_32FC(outputChannels));
 	int offsetIntensity = input.getIntensityOffset();
 	bool isLocalTransformIdentity = input.localTransform().isIdentity();
-	Transform localTransformInv = input.localTransform().inverse();
+	const Eigen::Affine3f localTransform = input.localTransform().toEigen3f();
+	const Eigen::Affine3f localTransformInv = input.localTransform().inverse().toEigen3f();
 
 	bool timeOnColumns = input.data().cols > input.data().rows;
 	int oi = 0;
@@ -3915,6 +3916,7 @@ static LaserScan deskewImpl(
 				return LaserScan();
 			}
 
+			const Eigen::Affine3f transformEigen = transform.toEigen3f();
 			for(int v=0; v<input.data().rows; ++v)
 			{
 				inputPtr = input.data().ptr<float>(v, u);
@@ -3923,12 +3925,12 @@ static LaserScan deskewImpl(
 				{
 					if(!isLocalTransformIdentity)
 					{
-						pt = rtabmap::util3d::transformPoint(pt, input.localTransform());
+						pt = pcl::transformPoint(pt, localTransform);
 					}
-					pt = rtabmap::util3d::transformPoint(pt, transform);
+					pt = pcl::transformPoint(pt, transformEigen);
 					if(!isLocalTransformIdentity)
 					{
-						pt = rtabmap::util3d::transformPoint(pt, localTransformInv);
+						pt = pcl::transformPoint(pt, localTransformInv);
 					}
 					float * dataPtr = output.ptr<float>(0, oi++);
 					dataPtr[0] = pt.x;
@@ -3962,6 +3964,7 @@ static LaserScan deskewImpl(
 				return LaserScan();
 			}
 
+			const Eigen::Affine3f transformEigen = transform.toEigen3f();
 			for(int u=0; u<input.data().cols; ++u)
 			{
 				inputPtr = input.data().ptr<float>(v, u);
@@ -3970,12 +3973,12 @@ static LaserScan deskewImpl(
 				{
 					if(!isLocalTransformIdentity)
 					{
-						pt = rtabmap::util3d::transformPoint(pt, input.localTransform());
+						pt = pcl::transformPoint(pt, localTransform);
 					}
-					pt = rtabmap::util3d::transformPoint(pt, transform);
+					pt = pcl::transformPoint(pt, transformEigen);
 					if(!isLocalTransformIdentity)
 					{
-						pt = rtabmap::util3d::transformPoint(pt, localTransformInv);
+						pt = pcl::transformPoint(pt, localTransformInv);
 					}
 					float * dataPtr = output.ptr<float>(0, oi++);
 					dataPtr[0] = pt.x;
