@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/gui/CalibrationDialog.h"
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 
 void showUsage()
 {
@@ -158,6 +159,7 @@ int main(int argc, char * argv[])
 		UINFO("Using right device %d", deviceRight);
 	}
 
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
 	QApplication app(argc, argv);
 	rtabmap::CalibrationDialog dialog(stereo, ".");
 

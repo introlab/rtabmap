@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/utilite/UEventsManager.h"
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <stdio.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
@@ -263,6 +264,7 @@ int main(int argc, char * argv[])
 
 	// GUI stuff, there the handler will receive RtabmapEvent and construct the map
 	// We give it the camera so the GUI can pause/resume the camera
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
 	QApplication app(argc, argv);
 	MapBuilder mapBuilder(&cameraThread);
 

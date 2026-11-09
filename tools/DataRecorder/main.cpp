@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/gui/DataRecorder.h>
 #include <rtabmap/gui/PreferencesDialog.h>
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <signal.h>
 
 using namespace rtabmap;
@@ -149,6 +150,7 @@ int main (int argc, char * argv[])
 	UINFO("RecordInRAM = %s", recordInRAM?"true":"false");
 	UINFO("Config = %s", configFile.c_str());
 
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
 	app = new QApplication(argc, argv);
 
 	PreferencesDialog dialog;
