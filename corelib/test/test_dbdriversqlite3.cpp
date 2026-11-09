@@ -2,6 +2,7 @@
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/DBDriverSqlite3.h>
 #include <rtabmap/core/Signature.h>
+#include <rtabmap/core/VisualWord.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/LaserScan.h>
@@ -12,6 +13,7 @@
 #include <memory>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UStl.h>
 #include "TestUtils.h"
 
 using namespace rtabmap;
@@ -428,4 +430,194 @@ TEST(DBDriverSqlite3Test, TargetVersionIsTheDatabaseVersion)
 			EXPECT_EQ(target, version);
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Db/DescriptorQuantization: float descriptors of words and features saved on
+// 8 or 16 bits, restored as floats on loading.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+cv::Mat makeSiftLikeDescriptors(int rows)
+{
+	cv::RNG rng(7);
+	cv::Mat descriptors(rows, 128, CV_32FC1);
+	rng.fill(descriptors, cv::RNG::UNIFORM, 0.0f, 1.0f);
+	for(int i=0; i<rows; ++i)
+	{
+		cv::normalize(descriptors.row(i), descriptors.row(i));
+	}
+	return descriptors;
+}
+
+// Saves words 1..N (one per descriptor row) and node 1 with the same descriptors as features
+void saveWordsAndFeatures(DBDriver * driver, const cv::Mat & descriptors)
+{
+	std::multimap<int, int> words;
+	std::vector<cv::KeyPoint> kpts;
+	std::vector<cv::Point3f> pts3;
+	for(int i=0; i<descriptors.rows; ++i)
+	{
+		driver->asyncSave(new VisualWord(i+1, descriptors.row(i).clone()));
+		words.insert(std::make_pair(i+1, i));
+		kpts.push_back(cv::KeyPoint(float(i), float(i), 3.0f));
+		pts3.push_back(cv::Point3f(float(i), 0.0f, 1.0f));
+	}
+	Signature * s = new Signature(1, 0, 1, 1.0, "", Transform::getIdentity());
+	s->setWords(words, kpts, pts3, descriptors);
+	driver->asyncSave(s);
+	driver->emptyTrashes(false);
+}
+
+// Returns the word descriptors (row i = word i+1) and the features descriptors of node 1
+void loadWordsAndFeatures(DBDriver * driver, int count, cv::Mat & wordsDescriptors, cv::Mat & featuresDescriptors)
+{
+	std::set<int> ids;
+	for(int i=0; i<count; ++i)
+	{
+		ids.insert(i+1);
+	}
+	std::list<VisualWord *> loaded;
+	driver->loadWords(ids, loaded);
+	ASSERT_EQ((int)loaded.size(), count);
+	std::map<int, cv::Mat> byId;
+	for(VisualWord * w : loaded)
+	{
+		byId[w->id()] = w->getDescriptor();
+		delete w;
+	}
+	wordsDescriptors = cv::Mat();
+	for(std::map<int, cv::Mat>::iterator iter=byId.begin(); iter!=byId.end(); ++iter)
+	{
+		wordsDescriptors.push_back(iter->second);
+	}
+
+	std::list<Signature *> signatures;
+	driver->loadSignatures(std::list<int>{1}, signatures);
+	ASSERT_EQ(signatures.size(), 1u);
+	featuresDescriptors = signatures.front()->getWordsDescriptors().clone();
+	delete signatures.front();
+}
+
+} // namespace
+
+class DBDescriptorQuantizationTest : public ::testing::TestWithParam<int>
+{
+};
+
+TEST_P(DBDescriptorQuantizationTest, FloatDescriptorsAreSavedQuantized)
+{
+	const int bits = GetParam();
+	const cv::Mat descriptors = makeSiftLikeDescriptors(10);
+	const cv::Mat expected = dequantizeDescriptors(quantizeDescriptors(descriptors, bits), descriptors.cols);
+	ASSERT_GT(cv::norm(descriptors, expected, cv::NORM_INF), 0.0) << "test descriptors should not be already quantized";
+
+	const std::string path = uniqueDbPath();
+	long rawFeaturesSize = 0;
+	long quantizedFeaturesSize = 0;
+	long rawWordsSize = 0;
+	long quantizedWordsSize = 0;
+	for(int quantization : {0, bits})
+	{
+		ParametersMap parameters;
+		parameters.insert(ParametersPair(Parameters::kDbDescriptorQuantization(), uNumber2Str(quantization)));
+		DBDriverSqlite3 driver(parameters);
+		ASSERT_EQ(driver.getDescriptorQuantization(), quantization);
+		ASSERT_TRUE(driver.openConnection(path, true));
+		saveWordsAndFeatures(&driver, descriptors);
+		(quantization?quantizedFeaturesSize:rawFeaturesSize) = driver.getFeaturesMemoryUsed();
+		(quantization?quantizedWordsSize:rawWordsSize) = driver.getWordsMemoryUsed();
+
+		cv::Mat words, features;
+		loadWordsAndFeatures(&driver, descriptors.rows, words, features);
+		ASSERT_EQ(words.type(), CV_32FC1);
+		ASSERT_EQ(features.type(), CV_32FC1);
+		ASSERT_EQ(words.size(), descriptors.size());
+		ASSERT_EQ(features.size(), descriptors.size());
+		const cv::Mat & ref = quantization?expected:descriptors;
+		EXPECT_EQ(cv::norm(ref, words, cv::NORM_INF), 0.0);
+		EXPECT_EQ(cv::norm(ref, features, cv::NORM_INF), 0.0);
+		driver.closeConnection(true);
+	}
+
+	// Descriptors are decoded from their size, a driver without quantization can read them
+	{
+		DBDriverSqlite3 driver;
+		ASSERT_TRUE(driver.openConnection(path));
+		cv::Mat words, features;
+		loadWordsAndFeatures(&driver, descriptors.rows, words, features);
+		EXPECT_EQ(cv::norm(expected, words, cv::NORM_INF), 0.0);
+		EXPECT_EQ(cv::norm(expected, features, cv::NORM_INF), 0.0);
+		driver.closeConnection(false);
+	}
+	UFile::erase(path.c_str());
+
+	// 512 bytes per raw descriptor vs 136 (8 bits) or 264 (16 bits)
+	const long descriptorsSaved = descriptors.rows * long(descriptors.cols*sizeof(float) - quantizedDescriptorSize(descriptors.cols, bits));
+	EXPECT_EQ(rawWordsSize - quantizedWordsSize, descriptorsSaved);
+	EXPECT_EQ(rawFeaturesSize - quantizedFeaturesSize, descriptorsSaved);
+}
+
+TEST_P(DBDescriptorQuantizationTest, OtherDescriptorsAreSavedUnchanged)
+{
+	// Binary descriptors and float descriptors too small to be quantized
+	// without ambiguity are saved as is.
+	ParametersMap parameters;
+	parameters.insert(ParametersPair(Parameters::kDbDescriptorQuantization(), uNumber2Str(GetParam())));
+	const std::string path = uniqueDbPath();
+	DBDriverSqlite3 driver(parameters);
+	ASSERT_TRUE(driver.openConnection(path, true));
+	DBDriver * db = &driver; // some methods are hidden in DBDriverSqlite3
+
+	cv::Mat binary(1, 32, CV_8UC1);
+	cv::randu(binary, 0, 256);
+	const cv::Mat small = cv::Mat_<float>({1, 4}, {0.1f, 0.2f, 0.3f, 0.4f});
+	db->asyncSave(new VisualWord(1, binary));
+	db->asyncSave(new VisualWord(2, small));
+	driver.emptyTrashes(false);
+
+	std::list<VisualWord *> loaded;
+	db->loadWords(std::set<int>{1, 2}, loaded);
+	ASSERT_EQ(loaded.size(), 2u);
+	for(VisualWord * w : loaded)
+	{
+		const cv::Mat & ref = w->id() == 1 ? binary : small;
+		EXPECT_EQ(w->getDescriptor().type(), ref.type());
+		EXPECT_EQ(cv::norm(ref, w->getDescriptor(), cv::NORM_INF), 0.0);
+		delete w;
+	}
+	driver.closeConnection(false);
+	UFile::erase(path.c_str());
+}
+
+TEST_P(DBDescriptorQuantizationTest, NotQuantizedForOlderTargetVersion)
+{
+	// Older versions cannot read quantized descriptors
+	ParametersMap parameters;
+	parameters.insert(ParametersPair(Parameters::kDbDescriptorQuantization(), uNumber2Str(GetParam())));
+	parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), "0.24"));
+	const std::string path = uniqueDbPath();
+	DBDriverSqlite3 driver(parameters);
+	ASSERT_TRUE(driver.openConnection(path, true));
+	ASSERT_LT(uStrNumCmp(driver.getDatabaseVersion(), "0.25.0"), 0);
+
+	const cv::Mat descriptors = makeSiftLikeDescriptors(5);
+	saveWordsAndFeatures(&driver, descriptors);
+	cv::Mat words, features;
+	loadWordsAndFeatures(&driver, descriptors.rows, words, features);
+	EXPECT_EQ(cv::norm(descriptors, words, cv::NORM_INF), 0.0);
+	EXPECT_EQ(cv::norm(descriptors, features, cv::NORM_INF), 0.0);
+	driver.closeConnection(false);
+	UFile::erase(path.c_str());
+}
+
+INSTANTIATE_TEST_SUITE_P(Bits, DBDescriptorQuantizationTest, ::testing::Values(8, 16));
+
+TEST(DBDriverSqlite3Test, InvalidDescriptorQuantizationIsDisabled)
+{
+	ParametersMap parameters;
+	parameters.insert(ParametersPair(Parameters::kDbDescriptorQuantization(), "12"));
+	DBDriverSqlite3 driver(parameters);
+	EXPECT_EQ(driver.getDescriptorQuantization(), 0);
 }

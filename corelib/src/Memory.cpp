@@ -103,6 +103,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
 	_legacyDecimatedOctave(false),
 	_inverseDepthCompressionAllowed(true),
+	_descriptorQuantizationAllowed(true),
 	_compressionParallelized(Parameters::defaultMemCompressionParallelized()),
 	_laserScanDownsampleStepSize(Parameters::defaultMemLaserScanDownsampleStepSize()),
 	_laserScanVoxelSize(Parameters::defaultMemLaserScanVoxelSize()),
@@ -236,6 +237,19 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 			// older version.
 			_inverseDepthCompressionAllowed =
 					uStrNumCmp(_dbDriver->getDatabaseVersion(), "0.24.0") >= 0;
+			// Same for quantized descriptors before 0.25. The database driver doesn't
+			// quantize them in that case, so don't quantize them in memory either.
+			_descriptorQuantizationAllowed =
+					uStrNumCmp(_dbDriver->getDatabaseVersion(), "0.25.0") >= 0;
+			if(!_descriptorQuantizationAllowed && _dbDriver->getDescriptorQuantization() > 0)
+			{
+				UWARN("%s=%d: database \"%s\" was created by version %s, which cannot read "
+						"quantized descriptors (requires >= 0.25, see %s). Descriptors are not quantized.",
+						Parameters::kDbDescriptorQuantization().c_str(),
+						_dbDriver->getDescriptorQuantization(),
+						dbUrl.c_str(), _dbDriver->getDatabaseVersion().c_str(),
+						Parameters::kDbTargetVersion().c_str());
+			}
 			// Only where the descriptors stored in the map end up different: keypoints
 			// from odometry, scaled into the pre-decimated image before being described.
 			if(_legacyDecimatedOctave && _useOdometryFeatures && _imagePreDecimation > 1)
@@ -6316,6 +6330,25 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	else
 	{
 		UDEBUG("time descriptor (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
+	}
+
+	if(!descriptors.empty() &&
+		descriptors.type() == CV_32FC1 &&
+		descriptors.cols > 4 &&
+		_dbDriver &&
+		_dbDriver->getDescriptorQuantization() > 0 &&
+		_descriptorQuantizationAllowed)
+	{
+		// Quantize the descriptors like the database will do when saving them, so that
+		// the dictionary and the signature use the same descriptors in this session
+		// than after reloading them from the database. As the quantization is idempotent,
+		// the database will save exactly these descriptors.
+		descriptors = dequantizeDescriptors(
+				quantizeDescriptors(descriptors, _dbDriver->getDescriptorQuantization()),
+				descriptors.cols);
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_quantization(), t*1000.0f);
+		UDEBUG("time descriptors quantization (%d bits) = %fs", _dbDriver->getDescriptorQuantization(), t);
 	}
 
 	std::list<int> wordIds;

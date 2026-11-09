@@ -13,6 +13,7 @@
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/StereoCameraModel.h>
 #include <rtabmap/core/Signature.h>
+#include <rtabmap/core/Statistics.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/VisualWord.h>
@@ -5303,4 +5304,97 @@ TEST(MemoryTest, StereoFromMotionWords3DAreIndexedByKeypoint)
 		EXPECT_NEAR(pt.z, depth, 0.1f * depth) << "word " << iter->first << " kpt " << iter->second;
 	}
 	EXPECT_GT(triangulated, 20);
+}
+
+// ---------------------------------------------------------------------------
+// Db/DescriptorQuantization
+// ---------------------------------------------------------------------------
+
+TEST(MemoryTest, DescriptorsQuantizedBeforeAddingToDictionary)
+{
+	// Descriptors are quantized right after extraction, so the dictionary
+	// and the signature use in this session the same descriptors as those
+	// reloaded from the database afterwards.
+	for(int bits : {8, 16})
+	{
+		SCOPED_TRACE(bits);
+		const std::string dbPath = uniqueDbPath();
+		ParametersMap params = dictionaryDbParams();
+		params[Parameters::kDbDescriptorQuantization()] = uNumber2Str(bits);
+
+		const int kKeypoints = 5;
+		cv::Mat descriptors(kKeypoints, 128, CV_32FC1);
+		cv::RNG rng(3);
+		rng.fill(descriptors, cv::RNG::UNIFORM, 0.0f, 1.0f);
+		for(int i=0; i<kKeypoints; ++i)
+		{
+			cv::normalize(descriptors.row(i), descriptors.row(i));
+		}
+		const cv::Mat expected = dequantizeDescriptors(quantizeDescriptors(descriptors, bits), descriptors.cols);
+		ASSERT_GT(cv::norm(descriptors, expected, cv::NORM_INF), 0.0);
+
+		std::map<int, cv::Mat> sessionWords;
+		int nodeId = 0;
+		{
+			Memory memory(params);
+			// The database driver is created with the parameters given to init()
+			ASSERT_TRUE(memory.init(dbPath, true, params));
+			cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+			SensorData data(image);
+			std::vector<cv::KeyPoint> kpts;
+			std::vector<cv::Point3f> pts3;
+			for(int i=0; i<kKeypoints; ++i)
+			{
+				kpts.push_back(cv::KeyPoint(float(i), float(i), 3.0f));
+				pts3.push_back(cv::Point3f(float(i), 0.0f, 1.0f));
+			}
+			data.setFeatures(kpts, pts3, descriptors);
+			Statistics stats;
+			ASSERT_TRUE(memory.update(data, Transform::getIdentity(), cv::Mat::eye(6, 6, CV_64FC1), std::vector<float>(), &stats));
+			EXPECT_TRUE(stats.data().count(Statistics::kTimingMemDescriptors_quantization()));
+			nodeId = memory.getLastSignatureId();
+			const Signature * s = memory.getSignature(nodeId);
+			ASSERT_NE(s, nullptr);
+			ASSERT_EQ(s->getWordsDescriptors().rows, kKeypoints);
+			EXPECT_EQ(cv::norm(expected, s->getWordsDescriptors(), cv::NORM_INF), 0.0);
+
+			const std::map<int, VisualWord *> & words = memory.getVWDictionary()->getVisualWords();
+			ASSERT_EQ((int)words.size(), kKeypoints);
+			for(std::map<int, VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+			{
+				sessionWords[iter->first] = iter->second->getDescriptor().clone();
+				bool found = false;
+				for(int i=0; i<kKeypoints && !found; ++i)
+				{
+					found = cv::norm(expected.row(i), iter->second->getDescriptor(), cv::NORM_INF) == 0.0;
+				}
+				EXPECT_TRUE(found) << "word " << iter->first << " doesn't have a quantized descriptor";
+			}
+			memory.close(true);
+		}
+
+		// Reloaded descriptors are exactly those used in the session
+		DBDriver * driver = DBDriver::create();
+		ASSERT_TRUE(driver->openConnection(dbPath));
+		std::set<int> ids;
+		for(std::map<int, cv::Mat>::iterator iter=sessionWords.begin(); iter!=sessionWords.end(); ++iter)
+		{
+			ids.insert(iter->first);
+		}
+		std::list<VisualWord *> loaded;
+		driver->loadWords(ids, loaded);
+		EXPECT_EQ(loaded.size(), sessionWords.size());
+		for(VisualWord * w : loaded)
+		{
+			EXPECT_EQ(cv::norm(sessionWords.at(w->id()), w->getDescriptor(), cv::NORM_INF), 0.0);
+			delete w;
+		}
+		Signature * s = driver->loadSignature(nodeId);
+		ASSERT_NE(s, nullptr);
+		EXPECT_EQ(cv::norm(expected, s->getWordsDescriptors(), cv::NORM_INF), 0.0);
+		delete s;
+		driver->closeConnection(false);
+		delete driver;
+		UFile::erase(dbPath.c_str());
+	}
 }

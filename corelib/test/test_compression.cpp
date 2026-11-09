@@ -2,6 +2,7 @@
 #include <rtabmap/core/Compression.h>
 #include <rtabmap/utilite/UException.h>
 #include <opencv2/core.hpp>
+#include <cmath>
 #include <cstring>
 #include <limits>
 
@@ -410,4 +411,114 @@ TEST(CompressionTest, CompressionThreadRejectsInvalidFormat)
 	EXPECT_THROW(CompressionThread(depth, std::string(".jpg:10")), UException);
 	EXPECT_THROW(CompressionThread(depth, std::string(".bmp")), UException);
 	EXPECT_NO_THROW(CompressionThread(depth, std::string(".rvl:10:100")));
+}
+
+// ---------------------------------------------------------------------------
+// Descriptor quantization (Db/DescriptorQuantization)
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// L2-normalized SIFT-like descriptors (positive values in [0, ~0.4]), plus a row
+// with negative values like SURF or SuperPoint descriptors.
+cv::Mat makeFloatDescriptors(int rows, int cols)
+{
+	cv::RNG rng(42);
+	cv::Mat descriptors(rows, cols, CV_32FC1);
+	rng.fill(descriptors, cv::RNG::UNIFORM, 0.0f, 1.0f);
+	for(int i=0; i<rows-1; ++i)
+	{
+		cv::normalize(descriptors.row(i), descriptors.row(i));
+	}
+	rng.fill(descriptors.row(rows-1), cv::RNG::UNIFORM, -0.5f, 0.5f);
+	return descriptors;
+}
+
+} // namespace
+
+TEST(CompressionTest, QuantizedDescriptorBitsDetection)
+{
+	EXPECT_EQ(quantizedDescriptorSize(128, 8), 8u + 128u);
+	EXPECT_EQ(quantizedDescriptorSize(128, 16), 8u + 256u);
+	EXPECT_EQ(quantizedDescriptorBits(8 + 128, 128), 8);
+	EXPECT_EQ(quantizedDescriptorBits(8 + 256, 128), 16);
+	// Raw descriptor sizes are never detected as quantized
+	EXPECT_EQ(quantizedDescriptorBits(128, 128), 0);     // CV_8U
+	EXPECT_EQ(quantizedDescriptorBits(128*4, 128), 0);   // CV_32F
+	EXPECT_EQ(quantizedDescriptorBits(32, 32), 0);       // binary (e.g., ORB)
+	EXPECT_EQ(quantizedDescriptorBits(16, 4), 0);        // 4 floats = 16-bits quantized size
+	EXPECT_EQ(quantizedDescriptorBits(100, 128), 0);
+	EXPECT_EQ(quantizedDescriptorBits(136, 0), 0);
+}
+
+TEST(CompressionTest, QuantizeDescriptorsRoundTrip)
+{
+	const cv::Mat descriptors = makeFloatDescriptors(20, 128);
+	for(int bits : {8, 16})
+	{
+		SCOPED_TRACE(bits);
+		const cv::Mat quantized = quantizeDescriptors(descriptors, bits);
+		ASSERT_EQ(quantized.type(), CV_8UC1);
+		ASSERT_EQ(quantized.rows, descriptors.rows);
+		ASSERT_EQ(quantized.cols, (int)quantizedDescriptorSize(descriptors.cols, bits));
+
+		const cv::Mat restored = dequantizeDescriptors(quantized, descriptors.cols);
+		ASSERT_EQ(restored.type(), CV_32FC1);
+		ASSERT_EQ(restored.rows, descriptors.rows);
+		ASSERT_EQ(restored.cols, descriptors.cols);
+		const double levels = bits == 8 ? 255.0 : 65535.0;
+		for(int i=0; i<descriptors.rows; ++i)
+		{
+			double minValue, maxValue;
+			cv::minMaxLoc(descriptors.row(i), &minValue, &maxValue);
+			// Linear quantization between min and max: error is at most half a step
+			// (plus float rounding when restoring the values)
+			const double tolerance = (maxValue - minValue) / levels / 2.0 +
+					4.0 * std::numeric_limits<float>::epsilon() * std::max(std::fabs(minValue), std::fabs(maxValue));
+			EXPECT_LE(cv::norm(descriptors.row(i), restored.row(i), cv::NORM_INF), tolerance) << "row " << i;
+			// min and max are restored exactly
+			double rMin, rMax;
+			cv::minMaxLoc(restored.row(i), &rMin, &rMax);
+			EXPECT_EQ(minValue, rMin);
+			EXPECT_EQ(maxValue, rMax);
+		}
+	}
+}
+
+TEST(CompressionTest, QuantizeDescriptorsIsIdempotent)
+{
+	// Memory quantizes descriptors right after extraction, then the database
+	// quantizes them again when saving: that second pass must not change them,
+	// so that descriptors reloaded from the database are the ones used in the session.
+	const cv::Mat descriptors = makeFloatDescriptors(50, 128);
+	for(int bits : {8, 16})
+	{
+		SCOPED_TRACE(bits);
+		const cv::Mat quantized = quantizeDescriptors(descriptors, bits);
+		const cv::Mat restored = dequantizeDescriptors(quantized, descriptors.cols);
+		const cv::Mat requantized = quantizeDescriptors(restored, bits);
+		EXPECT_EQ(cv::countNonZero(quantized != requantized), 0);
+		const cv::Mat restored2 = dequantizeDescriptors(requantized, descriptors.cols);
+		EXPECT_EQ(std::memcmp(restored.data, restored2.data, restored.total()*restored.elemSize()), 0);
+	}
+}
+
+TEST(CompressionTest, QuantizeConstantDescriptor)
+{
+	const cv::Mat descriptors(2, 16, CV_32FC1, cv::Scalar(0.25f));
+	for(int bits : {8, 16})
+	{
+		const cv::Mat restored = dequantizeDescriptors(quantizeDescriptors(descriptors, bits), descriptors.cols);
+		EXPECT_EQ(cv::norm(descriptors, restored, cv::NORM_INF), 0.0);
+	}
+}
+
+TEST(CompressionTest, QuantizeDescriptorsInvalidInputs)
+{
+	EXPECT_TRUE(quantizeDescriptors(cv::Mat(), 8).empty());
+	EXPECT_TRUE(dequantizeDescriptors(cv::Mat(), 128).empty());
+	EXPECT_THROW(quantizeDescriptors(cv::Mat::zeros(1, 128, CV_32FC1), 12), UException);
+	EXPECT_THROW(quantizeDescriptors(cv::Mat::zeros(1, 32, CV_8UC1), 8), UException);   // binary descriptors
+	EXPECT_THROW(quantizeDescriptors(cv::Mat::zeros(1, 4, CV_32FC1), 8), UException);   // ambiguous size
+	EXPECT_THROW(dequantizeDescriptors(cv::Mat::zeros(1, 100, CV_8UC1), 128), UException);
 }

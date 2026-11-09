@@ -180,6 +180,40 @@ cv::Mat RTABMAP_CORE_EXPORT compressString(const std::string & str);
 std::string RTABMAP_CORE_EXPORT uncompressString(const cv::Mat & bytes);
 
 /**
+ * @brief Quantizes float descriptors on 8 or 16 bits per element.
+ *
+ * Each row is quantized linearly between its own minimum and maximum values,
+ * which are kept in the output so that any descriptor range is supported
+ * (e.g., L2-normalized SIFT, SURF or SuperPoint descriptors).
+ * Quantizing descriptors restored by @ref dequantizeDescriptors() gives back
+ * exactly the same bytes, so a quantize/dequantize round trip can be applied
+ * once and repeated without further loss.
+ *
+ * @param descriptors @c CV_32FC1 matrix, one descriptor per row, with more than 4 columns.
+ * @param bits 8 or 16.
+ * @return @c CV_8UC1 matrix with the same number of rows and
+ *         @ref quantizedDescriptorSize() columns. Each row is laid out as
+ *         [min (float)][max (float)][values (uint8 or uint16)], in native byte order.
+ */
+cv::Mat RTABMAP_CORE_EXPORT quantizeDescriptors(const cv::Mat & descriptors, int bits);
+/**
+ * @brief Restores float descriptors quantized by @ref quantizeDescriptors().
+ * @param quantized @c CV_8UC1 matrix, one quantized descriptor per row, with
+ *        @ref quantizedDescriptorSize() columns (the number of bits is deduced from it).
+ * @param descriptorSize Number of elements of the original descriptors.
+ * @return @c CV_32FC1 matrix of @p descriptorSize columns.
+ */
+cv::Mat RTABMAP_CORE_EXPORT dequantizeDescriptors(const cv::Mat & quantized, int descriptorSize);
+/** @return Number of bytes of a descriptor of @p descriptorSize elements quantized on @p bits bits. */
+size_t RTABMAP_CORE_EXPORT quantizedDescriptorSize(int descriptorSize, int bits);
+/**
+ * @brief Detects the quantization of a descriptor buffer from its size.
+ * @return 8 or 16 if @p bytes matches the size of a descriptor of @p descriptorSize elements
+ *         quantized by @ref quantizeDescriptors(), otherwise 0 (e.g., raw @c CV_8U or @c CV_32F descriptor).
+ */
+int RTABMAP_CORE_EXPORT quantizedDescriptorBits(size_t bytes, int descriptorSize);
+
+/**
  * @brief Detects the compression format of depth image bytes.
  * @return @c ".rvl" if the buffer has an RVL signature, @c ".png:<maxDepth>:<quantization>"
  *         or @c ".rvl:<maxDepth>:<quantization>" for inverse depth images (see
