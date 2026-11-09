@@ -1,0 +1,39 @@
+<map id="rtabmap::Feature2D" name="rtabmap::Feature2D">
+<area shape="rect" id="Node000001" title="Abstract 2D feature detector and descriptor extractor for visual SLAM." alt="" coords="5,252,157,277"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1BRISK.html" title="BRISK detector and descriptor." alt="" coords="249,17,373,43"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="88,238,103,197,127,146,160,95,181,72,204,52,225,40,248,33,249,38,227,45,207,56,184,76,164,98,131,149,108,199,93,240"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1FAST.html" title="FAST corner detector only (no descriptor)." alt="" coords="253,67,369,92"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="95,239,138,176,169,143,204,113,228,99,254,90,256,94,230,104,207,118,173,146,142,180,99,242"/>
+<area shape="rect" id="Node000006" href="$classrtabmap_1_1GFTT.html" title="Good&#45;features&#45;to&#45;track detector (Shi–Tomasi / Harris)." alt="" coords="251,128,370,153"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="102,240,147,200,174,180,204,162,250,147,252,152,206,167,177,184,150,204,106,244"/>
+<area shape="rect" id="Node000011" href="$classrtabmap_1_1KAZE.html" title="KAZE detector and descriptor (OpenCV 3+)." alt="" coords="251,177,371,203"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="121,244,205,211,250,199,251,204,206,217,123,249"/>
+<area shape="rect" id="Node000012" href="$classrtabmap_1_1ORB.html" title="ORB detector and descriptor (optional GPU)." alt="" coords="254,227,367,252"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="171,252,254,243,254,248,171,257"/>
+<area shape="rect" id="Node000013" href="$classrtabmap_1_1ORBOctree.html" title="ORB with octree spatial distribution (RTAB&#45;Map must be built with OCTREE enabled)." alt="" coords="233,276,389,301"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="172,271,233,278,232,283,171,277"/>
+<area shape="rect" id="Node000014" href="$classrtabmap_1_1SIFT.html" title="SIFT detector and descriptor (optional GPU / CudaSift)." alt="" coords="255,325,367,351"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="125,280,206,310,255,324,254,329,205,315,123,285"/>
+<area shape="rect" id="Node000015" href="$classrtabmap_1_1SURF.html" title="SURF detector and descriptor (non&#45;free / xfeatures2d depending on OpenCV build)." alt="" coords="251,375,371,400"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="107,285,151,324,206,360,251,375,250,380,204,364,148,328,103,289"/>
+<area shape="rect" id="Node000018" href="$classrtabmap_1_1SuperPointRpautrat.html" title="SuperPoint (rpautrat) via Torch + Python (RTAB&#45;Map must be built with libtorch and Python support)." alt="" coords="205,424,416,449"/>
+<area shape="poly" id="edge17_Node000001_Node000018" title=" " alt="" coords="99,288,142,349,172,382,207,409,234,422,232,426,204,414,168,386,138,353,94,291"/>
+<area shape="rect" id="Node000019" href="$classrtabmap_1_1SuperPointTorch.html" title="SuperPoint via LibTorch (RTAB&#45;Map must be built with libtorch support)." alt="" coords="216,473,405,499"/>
+<area shape="poly" id="edge18_Node000001_Node000019" title=" " alt="" coords="94,289,109,328,133,374,166,421,207,460,227,471,225,476,204,464,162,424,129,377,105,330,89,291"/>
+<area shape="rect" id="Node000004" href="$classrtabmap_1_1FAST__BRIEF.html" title="FAST corners + BRIEF descriptors." alt="" coords="469,5,630,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="378,61,415,51,502,28,503,33,417,57,379,66"/>
+<area shape="rect" id="Node000005" href="$classrtabmap_1_1FAST__FREAK.html" title="FAST corners + FREAK descriptors." alt="" coords="466,55,633,80"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="382,73,466,69,466,74,383,78"/>
+<area shape="rect" id="Node000007" href="$classrtabmap_1_1GFTT__BRIEF.html" title="GFTT corners + BRIEF descriptors." alt="" coords="468,104,631,129"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="384,131,467,122,468,127,384,136"/>
+<area shape="rect" id="Node000008" href="$classrtabmap_1_1GFTT__DAISY.html" title="GFTT corners + DAISY descriptors (OpenCV 3+ xfeatures2d)." alt="" coords="467,153,631,179"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="384,146,467,155,467,160,383,151"/>
+<area shape="rect" id="Node000009" href="$classrtabmap_1_1GFTT__FREAK.html" title="GFTT corners + FREAK descriptors." alt="" coords="465,203,633,228"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="384,152,417,162,441,175,465,188,501,200,499,205,463,192,439,179,415,167,382,157"/>
+<area shape="rect" id="Node000010" href="$classrtabmap_1_1GFTT__ORB.html" title="GFTT corners + ORB descriptors (common default when SURF is unavailable)." alt="" coords="473,252,626,277"/>
+<area shape="poly" id="edge9_Node000006_Node000010" title=" " alt="" coords="385,147,418,163,435,181,443,201,450,219,466,237,488,250,485,254,462,241,445,222,438,203,430,184,414,167,382,152"/>
+<area shape="rect" id="Node000016" href="$classrtabmap_1_1SURF__DAISY.html" title="SURF detector + DAISY descriptors (OpenCV 3+ xfeatures2d)." alt="" coords="466,349,633,375"/>
+<area shape="poly" id="edge15_Node000015_Node000016" title=" " alt="" coords="384,377,466,368,466,373,385,382"/>
+<area shape="rect" id="Node000017" href="$classrtabmap_1_1SURF__FREAK.html" title="SURF detector + FREAK descriptors." alt="" coords="464,399,635,424"/>
+<area shape="poly" id="edge16_Node000015_Node000017" title=" " alt="" coords="385,392,464,400,463,405,384,397"/>
+</map>

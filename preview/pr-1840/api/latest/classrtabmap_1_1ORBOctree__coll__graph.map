@@ -1,0 +1,5 @@
+<map id="rtabmap::ORBOctree" name="rtabmap::ORBOctree">
+<area shape="rect" id="Node000001" title="ORB with octree spatial distribution (RTAB&#45;Map must be built with OCTREE enabled)." alt="" coords="5,79,161,104"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Feature2D.html" title="Abstract 2D feature detector and descriptor extractor for visual SLAM." alt="" coords="7,5,159,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="86,44,86,79,81,79,81,44"/>
+</map>
