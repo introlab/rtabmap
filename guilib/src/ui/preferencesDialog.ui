@@ -5444,6 +5444,188 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                           </property>
                                          </widget>
                                         </item>
+                                        <item row="6" column="1">
+                                         <widget class="QSpinBox" name="spinBox_einstar_projector">
+                                          <property name="maximum">
+                                           <number>4000</number>
+                                          </property>
+                                          <property name="singleStep">
+                                           <number>100</number>
+                                          </property>
+                                          <property name="value">
+                                           <number>1000</number>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="6" column="2">
+                                         <widget class="QLabel" name="label_einstar_projector">
+                                          <property name="text">
+                                           <string>IR speckle projector luminance (strobe route 0). EXStar drives it at about 3000 when scanning.</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="7" column="1">
+                                         <widget class="QSpinBox" name="spinBox_einstar_textureLeds">
+                                          <property name="maximum">
+                                           <number>4000</number>
+                                          </property>
+                                          <property name="singleStep">
+                                           <number>100</number>
+                                          </property>
+                                          <property name="value">
+                                           <number>300</number>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="7" column="2">
+                                         <widget class="QLabel" name="label_einstar_textureLeds">
+                                          <property name="text">
+                                           <string>White texture LED luminance (strobe route 1). Lights the colour image; EXStar turns it off (0) when scanning without texture, which also keeps glare off the IR speckle.</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="8" column="1">
+                                         <widget class="QSpinBox" name="spinBox_einstar_laser">
+                                          <property name="suffix">
+                                           <string> %</string>
+                                          </property>
+                                          <property name="maximum">
+                                           <number>100</number>
+                                          </property>
+                                          <property name="value">
+                                           <number>100</number>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="8" column="2">
+                                         <widget class="QLabel" name="label_einstar_laser">
+                                          <property name="text">
+                                           <string>Laser brightness. EXStar used 60% while scanning.</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="9" column="1">
+                                         <widget class="QSpinBox" name="spinBox_einstar_irGain">
+                                          <property name="maximum">
+                                           <number>255</number>
+                                          </property>
+                                          <property name="value">
+                                           <number>105</number>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="9" column="2">
+                                         <widget class="QLabel" name="label_einstar_irGain">
+                                          <property name="text">
+                                           <string>IR camera gain.</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="10" column="1">
+                                         <widget class="QSpinBox" name="spinBox_einstar_irExposure">
+                                          <property name="suffix">
+                                           <string> us</string>
+                                          </property>
+                                          <property name="minimum">
+                                           <number>100</number>
+                                          </property>
+                                          <property name="maximum">
+                                           <number>20000</number>
+                                          </property>
+                                          <property name="singleStep">
+                                           <number>100</number>
+                                          </property>
+                                          <property name="value">
+                                           <number>4000</number>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="10" column="2">
+                                         <widget class="QLabel" name="label_einstar_irExposure">
+                                          <property name="text">
+                                           <string>IR exposure. With auto exposure it is the starting value, otherwise it stays fixed.</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="11" column="1">
+                                         <widget class="QCheckBox" name="checkBox_einstar_autoExposure">
+                                          <property name="text">
+                                           <string/>
+                                          </property>
+                                          <property name="checked">
+                                           <bool>true</bool>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="11" column="2">
+                                         <widget class="QLabel" name="label_einstar_autoExposure">
+                                          <property name="text">
+                                           <string>Auto exposure: keep the bright end (99th percentile) of the IR images near the target below.</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="12" column="1">
+                                         <widget class="QDoubleSpinBox" name="doubleSpinBox_einstar_aeTarget">
+                                          <property name="decimals">
+                                           <number>0</number>
+                                          </property>
+                                          <property name="minimum">
+                                           <double>50.000000000000000</double>
+                                          </property>
+                                          <property name="maximum">
+                                           <double>254.000000000000000</double>
+                                          </property>
+                                          <property name="value">
+                                           <double>220.000000000000000</double>
+                                          </property>
+                                         </widget>
+                                        </item>
+                                        <item row="12" column="2">
+                                         <widget class="QLabel" name="label_einstar_aeTarget">
+                                          <property name="text">
+                                           <string>Auto exposure target (0-255) of the 99th percentile. Higher lets more of the speckle saturate, like EXStar ("slightly reddish"), which gave more depth on hardware.</string>
+                                          </property>
+                                          <property name="wordWrap">
+                                           <bool>true</bool>
+                                          </property>
+                                          <property name="textInteractionFlags">
+                                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                          </property>
+                                         </widget>
+                                        </item>
                                     </layout>
                                    </widget>
                                   </item>

@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UConversion.h>
 
 #ifdef RTABMAP_EINSTAR
 #include <einstar/calibration.hpp>
@@ -38,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <einstar/exposure.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
@@ -86,6 +88,7 @@ struct CameraEinstar::Impl
 	// as the vendor's CEinScan10::discardFrames suggests.
 	int setsToDiscard = 2;
 	einstar::AutoExposure autoExposure;
+	bool autoExposureEnabled = true;
 	uint32_t irExposureUs = einstar::ScanSettings().ir_exposure_us;
 
 	// Bring-up aid: with EINSTAR_RECORD_DIR set, live frame sets are saved
@@ -196,9 +199,17 @@ CameraEinstar::CameraEinstar(
 	replayDir_(replayDir),
 	minDepthMm_(0.0f),
 	maxDepthMm_(0.0f),
-	scale_(0.0)
+	scale_(0.0),
+	projectorLuminance_(0),
+	textureLuminance_(0),
+	laserPercent_(0),
+	irGain_(0),
+	autoExposure_(true),
+	irExposureUs_(0),
+	aeTarget_(0.0)
 {
 	getDefaultDepthParameters(minDepthMm_, maxDepthMm_, scale_, stretches_);
+	getDefaultLighting(projectorLuminance_, textureLuminance_, laserPercent_, irGain_, irExposureUs_, aeTarget_);
 }
 
 CameraEinstar::~CameraEinstar()
@@ -241,6 +252,43 @@ bool CameraEinstar::getDefaultDepthParameters(
 	maxDepthMm = params.max_depth_mm;
 	scale = params.scale;
 	stretches = params.stretches;
+	return true;
+#else
+	return false;
+#endif
+}
+
+void CameraEinstar::setLighting(int projectorLuminance, int textureLuminance, int laserPercent, int irGain)
+{
+	projectorLuminance_ = projectorLuminance;
+	textureLuminance_ = textureLuminance;
+	laserPercent_ = laserPercent;
+	irGain_ = irGain;
+}
+
+void CameraEinstar::setExposure(bool autoExposure, int irExposureUs, double aeTarget)
+{
+	autoExposure_ = autoExposure;
+	irExposureUs_ = irExposureUs;
+	aeTarget_ = aeTarget;
+}
+
+bool CameraEinstar::getDefaultLighting(
+		int & projectorLuminance,
+		int & textureLuminance,
+		int & laserPercent,
+		int & irGain,
+		int & irExposureUs,
+		double & aeTarget)
+{
+#ifdef RTABMAP_EINSTAR
+	einstar::ScanSettings s;
+	projectorLuminance = s.strobe_route0;
+	textureLuminance = s.strobe_route1;
+	laserPercent = s.laser_percent;
+	irGain = s.ir_gain;
+	irExposureUs = (int)s.ir_exposure_us;
+	aeTarget = einstar::AutoExposureParams().target;
 	return true;
 #else
 	return false;
@@ -351,7 +399,26 @@ bool CameraEinstar::init(const std::string &, const std::string &)
 		UERROR("Einstar: %s", s.error().message.c_str());
 		return false;
 	}
-	s = impl_->device->apply(einstar::ScanSettings());
+	einstar::ScanSettings lighting;
+	lighting.strobe_route0 = (uint16_t)std::max(0, projectorLuminance_);
+	lighting.strobe_route1 = (uint16_t)std::max(0, textureLuminance_);
+	lighting.laser_percent = (uint8_t)std::min(100, std::max(0, laserPercent_));
+	lighting.ir_gain = (uint16_t)std::max(0, irGain_);
+	lighting.ir_exposure_us = (uint32_t)std::max(1, irExposureUs_);
+	{
+		einstar::AutoExposureParams ae;
+		ae.target = aeTarget_;
+		ae.band_low = aeTarget_ - 25;
+		ae.band_high = std::min(254.0, aeTarget_ + 20);
+		impl_->autoExposure = einstar::AutoExposure(ae);
+		impl_->autoExposureEnabled = autoExposure_;
+		impl_->irExposureUs = lighting.ir_exposure_us;
+	}
+	UINFO("Einstar: lighting projector %d, texture LEDs %d, laser %d%%, IR gain %d, IR exposure %d us (%s)",
+			(int)lighting.strobe_route0, (int)lighting.strobe_route1, (int)lighting.laser_percent,
+			(int)lighting.ir_gain, (int)lighting.ir_exposure_us,
+			autoExposure_ ? uFormat("auto, target %.0f", aeTarget_).c_str() : "fixed");
+	s = impl_->device->apply(lighting);
 	if(!s)
 	{
 		UERROR("Einstar: cannot apply scan settings: %s", s.error().message.c_str());
@@ -423,9 +490,9 @@ SensorData CameraEinstar::captureImage(SensorCaptureInfo * info)
 				einstar::to_calibration_orientation(g.ir[stream], stream);
 	}
 	const uint32_t exposureUs = impl_->irExposureUs; // in effect when this set was captured (approximately)
-	if(impl_->device.get())
+	if(impl_->device.get() && impl_->autoExposureEnabled)
 	{
-		// Keep the speckle unsaturated; adjust from this thread, not the stream thread.
+		// Keep the speckle near the target brightness; adjust from this thread, not the stream thread.
 		std::optional<uint32_t> next = impl_->autoExposure.update(
 				einstar::ByteView(g.ir[0].data, g.ir[0].total()),
 				einstar::ByteView(g.ir[1].data, g.ir[1].total()),

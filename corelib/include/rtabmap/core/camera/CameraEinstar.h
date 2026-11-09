@@ -93,6 +93,26 @@ public:
 			double & scale,
 			std::vector<double> & stretches);
 
+	// Scanner lighting (see einstar::ScanSettings), live only: IR speckle
+	// projector and white texture LED luminance (strobe routes 0 and 1), laser
+	// brightness (%) and IR camera gain. EXStar turns the texture LEDs off when
+	// scanning without texture and drives the projector harder (observed:
+	// projector 3000, LEDs 0, laser 60, gain 100).
+	void setLighting(int projectorLuminance, int textureLuminance, int laserPercent, int irGain);
+	// IR exposure (us). With autoExposure, it is the starting value and
+	// einstar::AutoExposure keeps the bright end (99th percentile) of the IR
+	// images near aeTarget (0-255); without, it stays fixed. EXStar lets a few
+	// percent of the speckle saturate, which gave more depth on hardware.
+	void setExposure(bool autoExposure, int irExposureUs, double aeTarget);
+	// Returns false (parameters unchanged) if not built with libeinstar.
+	static bool getDefaultLighting(
+			int & projectorLuminance,
+			int & textureLuminance,
+			int & laserPercent,
+			int & irGain,
+			int & irExposureUs,
+			double & aeTarget);
+
 protected:
 	virtual SensorData captureImage(SensorCaptureInfo * info = 0);
 
@@ -104,6 +124,13 @@ private:
 	float maxDepthMm_;
 	double scale_;
 	std::vector<double> stretches_;
+	int projectorLuminance_;
+	int textureLuminance_;
+	int laserPercent_;
+	int irGain_;
+	bool autoExposure_;
+	int irExposureUs_;
+	double aeTarget_;
 #ifdef RTABMAP_EINSTAR
 	std::unique_ptr<Impl> impl_;
 #endif

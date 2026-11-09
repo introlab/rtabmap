@@ -996,6 +996,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_einstar_maxDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_einstar_scale, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_einstar_stretches, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_einstar_projector, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_einstar_textureLeds, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_einstar_laser, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_einstar_irGain, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_einstar_irExposure, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_einstar_autoExposure, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_einstar_aeTarget, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_source_distortionModel, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->groupBox_bilateral, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
@@ -2404,6 +2411,18 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 				}
 				_ui->lineEdit_einstar_stretches->setText(stretchesStr.join(" "));
 			}
+			int projector, textureLeds, laser, irGain, irExposure;
+			double aeTarget;
+			if(CameraEinstar::getDefaultLighting(projector, textureLeds, laser, irGain, irExposure, aeTarget))
+			{
+				_ui->spinBox_einstar_projector->setValue(projector);
+				_ui->spinBox_einstar_textureLeds->setValue(textureLeds);
+				_ui->spinBox_einstar_laser->setValue(laser);
+				_ui->spinBox_einstar_irGain->setValue(irGain);
+				_ui->spinBox_einstar_irExposure->setValue(irExposure);
+				_ui->doubleSpinBox_einstar_aeTarget->setValue(aeTarget);
+			}
+			_ui->checkBox_einstar_autoExposure->setChecked(true);
 		}
 		_ui->spinBox_orbbec_sdk_color_width->setValue(800);
 		_ui->spinBox_orbbec_sdk_color_height->setValue(600);
@@ -2963,6 +2982,13 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->doubleSpinBox_einstar_maxDepth->setValue(settings.value("maxDepth", _ui->doubleSpinBox_einstar_maxDepth->value()).toDouble());
 	_ui->doubleSpinBox_einstar_scale->setValue(settings.value("scale", _ui->doubleSpinBox_einstar_scale->value()).toDouble());
 	_ui->lineEdit_einstar_stretches->setText(settings.value("stretches", _ui->lineEdit_einstar_stretches->text()).toString());
+	_ui->spinBox_einstar_projector->setValue(settings.value("projector", _ui->spinBox_einstar_projector->value()).toInt());
+	_ui->spinBox_einstar_textureLeds->setValue(settings.value("textureLeds", _ui->spinBox_einstar_textureLeds->value()).toInt());
+	_ui->spinBox_einstar_laser->setValue(settings.value("laser", _ui->spinBox_einstar_laser->value()).toInt());
+	_ui->spinBox_einstar_irGain->setValue(settings.value("irGain", _ui->spinBox_einstar_irGain->value()).toInt());
+	_ui->spinBox_einstar_irExposure->setValue(settings.value("irExposure", _ui->spinBox_einstar_irExposure->value()).toInt());
+	_ui->checkBox_einstar_autoExposure->setChecked(settings.value("autoExposure", _ui->checkBox_einstar_autoExposure->isChecked()).toBool());
+	_ui->doubleSpinBox_einstar_aeTarget->setValue(settings.value("aeTarget", _ui->doubleSpinBox_einstar_aeTarget->value()).toDouble());
 	settings.endGroup(); // Einstar
 
 	settings.beginGroup("OrbbecSDK");
@@ -3599,6 +3625,13 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("maxDepth", _ui->doubleSpinBox_einstar_maxDepth->value());
 	settings.setValue("scale", _ui->doubleSpinBox_einstar_scale->value());
 	settings.setValue("stretches", _ui->lineEdit_einstar_stretches->text());
+	settings.setValue("projector", _ui->spinBox_einstar_projector->value());
+	settings.setValue("textureLeds", _ui->spinBox_einstar_textureLeds->value());
+	settings.setValue("laser", _ui->spinBox_einstar_laser->value());
+	settings.setValue("irGain", _ui->spinBox_einstar_irGain->value());
+	settings.setValue("irExposure", _ui->spinBox_einstar_irExposure->value());
+	settings.setValue("autoExposure", _ui->checkBox_einstar_autoExposure->isChecked());
+	settings.setValue("aeTarget", _ui->doubleSpinBox_einstar_aeTarget->value());
 	settings.endGroup(); // Einstar
 
 	settings.beginGroup("OrbbecSDK");
@@ -7216,6 +7249,15 @@ Camera * PreferencesDialog::createCamera(
 			_ui->doubleSpinBox_einstar_maxDepth->value());
 		((CameraEinstar*)camera)->setMatchingScale(_ui->doubleSpinBox_einstar_scale->value());
 		((CameraEinstar*)camera)->setStretches(stretches);
+		((CameraEinstar*)camera)->setLighting(
+			_ui->spinBox_einstar_projector->value(),
+			_ui->spinBox_einstar_textureLeds->value(),
+			_ui->spinBox_einstar_laser->value(),
+			_ui->spinBox_einstar_irGain->value());
+		((CameraEinstar*)camera)->setExposure(
+			_ui->checkBox_einstar_autoExposure->isChecked(),
+			_ui->spinBox_einstar_irExposure->value(),
+			_ui->doubleSpinBox_einstar_aeTarget->value());
 	}
 	else if (driver == kSrcRealSense)
 	{
