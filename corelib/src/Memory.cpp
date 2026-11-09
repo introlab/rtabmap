@@ -7603,9 +7603,12 @@ void Memory::getMetricConstraints(
 			std::multimap<int, Link> tmpLinks = getLinks(*iter, lookInDatabase, true);
 			for(std::multimap<int, Link>::iterator jter=tmpLinks.begin(); jter!=tmpLinks.end(); ++jter)
 			{
-				std::multimap<int, Link>::iterator addedLinksIterator = graph::findLink(links, *iter, jter->first);
+				// Skip links already added. A node can have several self links (from == to) of
+				// different types (e.g., pose prior and gravity), so check the type for them.
+				std::multimap<int, Link>::iterator addedLinksIterator = graph::findLink(links, *iter, jter->first, true,
+						*iter == jter->first ? jter->second.type() : Link::kUndef);
 				if(	jter->second.isValid() &&
-					(addedLinksIterator == links.end() || addedLinksIterator->second.from()==addedLinksIterator->second.to()) &&
+					addedLinksIterator == links.end() &&
 					(uContains(poses, jter->first) || (landmarksAdded && jter->second.type() == Link::kLandmark)))
 				{
 					if(!lookInDatabase &&
