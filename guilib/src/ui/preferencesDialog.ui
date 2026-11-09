@@ -12551,6 +12551,35 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </property>
                      </widget>
                     </item>
+                    <item row="11" column="0">
+                     <widget class="QSpinBox" name="spinBox_dbDescriptorQuantization">
+                      <property name="suffix">
+                       <string> bits</string>
+                      </property>
+                      <property name="minimum">
+                       <number>0</number>
+                      </property>
+                      <property name="maximum">
+                       <number>16</number>
+                      </property>
+                      <property name="singleStep">
+                       <number>8</number>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="11" column="1">
+                     <widget class="QLabel" name="label_dbDescriptorQuantization">
+                      <property name="text">
+                       <string>Quantize float descriptors (e.g., SIFT, SURF, SuperPoint) on 8 or 16 bits to reduce the database size (0=disabled). Descriptors are quantized right after extraction, so that loop closure detection gives the same results than after reloading the database. Ignored for databases with version &lt; 0.25.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
                    </layout>
                   </widget>
                  </item>

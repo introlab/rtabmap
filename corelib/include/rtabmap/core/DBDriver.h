@@ -92,6 +92,8 @@ public:
 	const std::string & getUrl() const {return _url;}
 	/** @return Target schema version for new databases (from parameters). */
 	const std::string & getTargetVersion() const {return _targetVersion;}
+	/** @return Number of bits (8 or 16) on which float descriptors are saved, 0 for raw floats (@ref Parameters::kDbDescriptorQuantization()). */
+	int getDescriptorQuantization() const {return _descriptorQuantization;}
 
 	/**
 	 * @brief Queue a signature for deferred save; ownership is transferred.
@@ -485,6 +487,7 @@ private:
 	double _emptyTrashesTime;
 	std::string _url;
 	std::string _targetVersion;
+	int _descriptorQuantization;
 	bool _timestampUpdate;
 };
 

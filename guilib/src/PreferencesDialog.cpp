@@ -1131,6 +1131,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_dbSynchronous->setObjectName(Parameters::kDbSqlite3Synchronous().c_str());
 	_ui->comboBox_dbTempStore->setObjectName(Parameters::kDbSqlite3TempStore().c_str());
 	_ui->lineEdit_targetDatabaseVersion->setObjectName(Parameters::kDbTargetVersion().c_str());
+	_ui->spinBox_dbDescriptorQuantization->setObjectName(Parameters::kDbDescriptorQuantization().c_str());
 
 
 	// Create hypotheses

@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UDirectory.h>
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UStl.h"
+#include "rtabmap/utilite/ULogger.h"
 
 using namespace rtabmap;
 
@@ -66,6 +67,9 @@ void showUsage()
 
 int main(int argc, char * argv[])
 {
+	ULogger::setType(ULogger::kTypeConsole);
+	ULogger::setLevel(ULogger::kError);
+
 	if(argc < 2)
 	{
 		showUsage();

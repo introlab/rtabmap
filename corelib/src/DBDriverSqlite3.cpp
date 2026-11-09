@@ -50,6 +50,56 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+namespace {
+
+// Descriptors are saved as raw CV_8U (binary descriptors, blob size = descriptor_size),
+// raw CV_32F (blob size = 4 * descriptor_size) or quantized CV_32F (see quantizeDescriptors(),
+// blob size = 8 + descriptor_size (8 bits) or 8 + 2 * descriptor_size (16 bits)).
+cv::Mat blobToDescriptor(const void * blob, int blobSize, int descriptorSize)
+{
+	cv::Mat d;
+	if(blobSize == descriptorSize)
+	{
+		// CV_8U binary descriptors
+		d = cv::Mat(1, descriptorSize, CV_8U);
+		memcpy(d.data, blob, blobSize);
+	}
+	else if(blobSize == descriptorSize*int(sizeof(float)))
+	{
+		// CV_32F
+		d = cv::Mat(1, descriptorSize, CV_32F);
+		memcpy(d.data, blob, blobSize);
+	}
+	else if(blobSize > 0 && quantizedDescriptorBits(blobSize, descriptorSize) != 0)
+	{
+		// CV_32F quantized on 8 or 16 bits
+		d = dequantizeDescriptors(cv::Mat(1, blobSize, CV_8UC1, (void*)blob), descriptorSize);
+	}
+	else
+	{
+		UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", blobSize, descriptorSize);
+	}
+	return d;
+}
+
+// Returns the descriptor as it should be saved: quantized if enabled and readable
+// by the database version (>= 0.25), otherwise the descriptor itself.
+cv::Mat descriptorToBlob(const cv::Mat & descriptor, int quantization, const std::string & dbVersion)
+{
+	UASSERT(descriptor.empty() || descriptor.type() == CV_32F || descriptor.type() == CV_8U);
+	UASSERT(descriptor.empty() || (descriptor.rows == 1 && descriptor.isContinuous()));
+	if(quantization > 0 &&
+	   descriptor.type() == CV_32F &&
+	   descriptor.cols > 4 &&
+	   uStrNumCmp(dbVersion, "0.25.0") >= 0)
+	{
+		return quantizeDescriptors(descriptor, quantization);
+	}
+	return descriptor;
+}
+
+}  // namespace
+
 DBDriverSqlite3::DBDriverSqlite3(const ParametersMap & parameters) :
 	DBDriver(parameters),
 	_ppDb(0),
@@ -3622,22 +3672,7 @@ void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly, b
 				descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
 				dRealSize = sqlite3_column_bytes(ppStmt, index++);
 
-				if(dRealSize == descriptorSize)
-				{
-					// CV_8U binary descriptors
-					d = cv::Mat(1, descriptorSize, CV_8U);
-				}
-				else if(dRealSize/int(sizeof(float)) == descriptorSize)
-				{
-					// CV_32F
-					d = cv::Mat(1, descriptorSize, CV_32F);
-				}
-				else
-				{
-					UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
-				}
-
-				memcpy(d.data, descriptor, dRealSize);
+				d = blobToDescriptor(descriptor, dRealSize, descriptorSize);
 			}
 			VisualWord * vw = new VisualWord(id, d);
 			vw->setSaved(true);
@@ -3751,23 +3786,7 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 				descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
 				dRealSize = sqlite3_column_bytes(ppStmt, index++);
 
-				cv::Mat d;
-				if(dRealSize == descriptorSize)
-				{
-					// CV_8U binary descriptors
-					d = cv::Mat(1, descriptorSize, CV_8U);
-				}
-				else if(dRealSize/int(sizeof(float)) == descriptorSize)
-				{
-					// CV_32F
-					d = cv::Mat(1, descriptorSize, CV_32F);
-				}
-				else
-				{
-					UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
-				}
-
-				memcpy(d.data, descriptor, dRealSize);
+				cv::Mat d = blobToDescriptor(descriptor, dRealSize, descriptorSize);
 				dRealSizeTotal+=dRealSize;
 				VisualWord * vw = new VisualWord(*iter, d);
 				if(vw)
@@ -4019,25 +4038,7 @@ void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 
 					if(descriptor && descriptorSize>0 && dRealSize>0)
 					{
-						cv::Mat d;
-						if(dRealSize == descriptorSize)
-						{
-							// CV_8U binary descriptors
-							d = cv::Mat(1, descriptorSize, CV_8U);
-						}
-						else if(dRealSize/int(sizeof(float)) == descriptorSize)
-						{
-							// CV_32F
-							d = cv::Mat(1, descriptorSize, CV_32F);
-						}
-						else
-						{
-							UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
-						}
-
-						memcpy(d.data, descriptor, dRealSize);
-
-						descriptors.push_back(d);
+						descriptors.push_back(blobToDescriptor(descriptor, dRealSize, descriptorSize));
 					}
 				}
 
@@ -4804,17 +4805,9 @@ void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 					rc = sqlite3_bind_int(ppStmt, 2, w->getDescriptor().cols);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-					UASSERT(w->getDescriptor().type() == CV_32F || w->getDescriptor().type() == CV_8U);
-					if(w->getDescriptor().type() == CV_32F)
-					{
-						// CV_32F
-						rc = sqlite3_bind_blob(ppStmt, 3, w->getDescriptor().data, w->getDescriptor().cols*sizeof(float), SQLITE_STATIC);
-					}
-					else
-					{
-						// CV_8U
-						rc = sqlite3_bind_blob(ppStmt, 3, w->getDescriptor().data, w->getDescriptor().cols*sizeof(char), SQLITE_STATIC);
-					}
+					// CV_8U, CV_32F or quantized CV_32F (CV_8U), kept until sqlite3_step() below (SQLITE_STATIC)
+					cv::Mat blob = descriptorToBlob(w->getDescriptor(), getDescriptorQuantization(), _version);
+					rc = sqlite3_bind_blob(ppStmt, 3, blob.data, blob.cols*blob.elemSize(), SQLITE_STATIC);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 					//execute query
@@ -7034,27 +7027,21 @@ void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt,
 	}
 
 	//descriptor
+	cv::Mat blob;
 	if(uStrNumCmp(_version, "0.11.2") >= 0)
 	{
 		rc = sqlite3_bind_int(ppStmt, index++, descriptor.cols);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-		UASSERT(descriptor.empty() || descriptor.type() == CV_32F || descriptor.type() == CV_8U);
-		if(descriptor.empty())
+		// kept until sqlite3_step() below (SQLITE_STATIC)
+		blob = descriptorToBlob(descriptor, getDescriptorQuantization(), _version);
+		if(blob.empty())
 		{
 			rc = sqlite3_bind_null(ppStmt, index++);
 		}
 		else
 		{
-			if(descriptor.type() == CV_32F)
-			{
-				// CV_32F
-				rc = sqlite3_bind_blob(ppStmt, index++, descriptor.data, descriptor.cols*sizeof(float), SQLITE_STATIC);
-			}
-			else
-			{
-				// CV_8U
-				rc = sqlite3_bind_blob(ppStmt, index++, descriptor.data, descriptor.cols*sizeof(char), SQLITE_STATIC);
-			}
+			// CV_8U, CV_32F or quantized CV_32F (CV_8U)
+			rc = sqlite3_bind_blob(ppStmt, index++, blob.data, blob.cols*blob.elemSize(), SQLITE_STATIC);
 		}
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	}
