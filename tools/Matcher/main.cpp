@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fstream>
 #include <string>
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <QDialog>
 #include <QHBoxLayout>
 #include <QMultiMap>
@@ -428,6 +429,7 @@ int main(int argc, char * argv[])
 				  "has been used instead.", reg.getNNTypeName().c_str(), Parameters::kVisCorNNType().c_str());
 		}
 
+		rtabmap::useXWaylandOnGnome(); // must be before QApplication
 		QApplication app(argc, argv);
 		QDialog dialog;
 		float reprojError = Parameters::defaultVisPnPReprojError();

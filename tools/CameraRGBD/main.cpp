@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <signal.h>
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QPixmap>
@@ -443,6 +444,7 @@ int main(int argc, char * argv[])
 		signal(SIGTERM, &sighandler);
 		signal(SIGINT, &sighandler);
 
+		rtabmap::useXWaylandOnGnome(); // must be before QApplication
 		QApplication app(argc, argv);
 		EscapeFilter escapeFilter;
 		app.installEventFilter(&escapeFilter);
@@ -535,6 +537,7 @@ int main(int argc, char * argv[])
 		// before QApplication is constructed.
 		QSurfaceFormat::setDefaultFormat(QVTKRenderWidget::defaultFormat());
 #endif
+		rtabmap::useXWaylandOnGnome(); // must be before QApplication
 		QApplication app(argc, argv);
 
 		rtabmap::CameraViewer cameraViewer;

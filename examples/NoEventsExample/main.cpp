@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/visualization/cloud_viewer.h>
 #include <rtabmap/core/Odometry.h>
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <stdio.h>
 
 using namespace rtabmap;
@@ -105,6 +106,7 @@ int main(int argc, char * argv[])
 		Rtabmap rtabmap;
 		rtabmap.init();
 
+		rtabmap::useXWaylandOnGnome(); // must be before QApplication
 		QApplication app(argc, argv);
 		MapBuilder mapBuilder;
 		mapBuilder.show();

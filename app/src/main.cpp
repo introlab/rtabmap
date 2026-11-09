@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <QtCore/QDir>
 #include <QtCore/QLoggingCategory>
 #include "rtabmap/utilite/UEventsManager.h"
@@ -77,6 +78,7 @@ int main(int argc, char* argv[])
 	QLoggingCategory::setFilterRules("qt.qpa.wayland.textinput=false");
 
 	/* Create tasks */
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
 	QApplication * app = new QApplication(argc, argv);
 	app->setStyleSheet("QMessageBox { messagebox-text-interaction-flags: 5; }"); // selectable message box
 

@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/DBReader.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <QPushButton>
 #include <pcl/console/print.h>
 #include <rtabmap/core/SensorCaptureThread.h>
@@ -229,6 +230,7 @@ int main (int argc, char * argv[])
 		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kIcpVoxelSize(), "0"));
 	}
 
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
 	QApplication app(argc, argv);
 
 	rtabmap::Odometry * odom;

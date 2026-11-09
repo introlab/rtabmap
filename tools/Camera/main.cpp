@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UThread.h"
 #include "rtabmap/utilite/UCv2Qt.h"
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QPixmap>
@@ -197,6 +198,7 @@ int main(int argc, char * argv[])
 		}
 	}
 
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
 	QApplication app(argc, argv);
 	EscapeFilter escapeFilter;
 	app.installEventFilter(&escapeFilter);
