@@ -44,6 +44,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
+#include <opencv2/core/hal/hal.hpp>
+#include <limits>
 #if CV_MAJOR_VERSION > 4
 #include <opencv2/geometry.hpp>
 #endif
@@ -68,6 +70,42 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 namespace rtabmap {
+
+// Returns the candidate nearest to the query descriptor, or -1 if it fails the
+// NNDR test against the second nearest one (not done with crossCheck).
+static int matchNearestDescriptor(
+		const cv::Mat & query,
+		int queryRow,
+		const cv::Mat & train,
+		const std::vector<size_t> & candidates,
+		const std::vector<int> * candidateToRow,
+		float nndr,
+		bool crossCheck)
+{
+	UASSERT(query.type() == train.type() && query.cols == train.cols);
+	UASSERT(query.type() == CV_8UC1 || query.type() == CV_32FC1);
+	int best = -1;
+	float bestDist = std::numeric_limits<float>::max();
+	float secondDist = std::numeric_limits<float>::max();
+	for(size_t j=0; j<candidates.size(); ++j)
+	{
+		const int row = candidateToRow ? candidateToRow->at(candidates[j]) : (int)candidates[j];
+		const float dist = query.type() == CV_8UC1 ?
+				(float)cv::hal::normHamming(query.ptr<uchar>(queryRow), train.ptr<uchar>(row), query.cols) :
+				cv::hal::normL2Sqr_(query.ptr<float>(queryRow), train.ptr<float>(row), query.cols);
+		if(dist < bestDist)
+		{
+			secondDist = bestDist;
+			bestDist = dist;
+			best = (int)candidates[j];
+		}
+		else if(dist < secondDist)
+		{
+			secondDist = dist;
+		}
+	}
+	return best >= 0 && (crossCheck || bestDist < nndr * secondDist) ? best : -1;
+}
 
 // The dictionary strategy a Vis/CorNNType value stands for. Vis/CorNNType
 // shares the values of Kp/NNStrategy for the strategies the dictionary
@@ -1184,6 +1222,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							added.size(), duplicates);
 					if(cornersProjected.size())
 					{
+						const bool crossCheck = _nnType == 5; // brute force cross check, otherwise brute force knn
 						if(_guessMatchToProjection)
 						{
 							UDEBUG("match frame to projected");
@@ -1220,7 +1259,6 @@ Transform RegistrationVis::computeTransformationImpl(
 							// can be near the same one, hence the set. OdometryF2M uses
 							// them to know which words of its map are still seen.
 							std::set<int> projectedIDs;
-							cv::Mat descriptors(10, descriptorsTo.cols, descriptorsTo.type());
 							for(int i = 0; i < pointsToMat.rows; ++i)
 							{
 								for(unsigned int j=0; j<indices[i].size(); ++j)
@@ -1233,41 +1271,7 @@ Transform RegistrationVis::computeTransformationImpl(
 								int matchedIndex = -1;
 								if(indices[i].size() >= 2)
 								{
-									std::vector<int> descriptorsIndices(indices[i].size());
-									int oi=0;
-									if((int)indices[i].size() > descriptors.rows)
-									{
-										descriptors.resize(indices[i].size());
-									}
-									for(unsigned int j=0; j<indices[i].size(); ++j)
-									{
-										descriptorsFrom.row(projectedIndexToDescIndex[indices[i].at(j)]).copyTo(descriptors.row(oi));
-										descriptorsIndices[oi++] = indices[i].at(j);
-									}
-									descriptorsIndices.resize(oi);
-									UASSERT(oi >=2);
-
-									cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, _nnType == 5);
-									if(_nnType == 5) // bruteforce cross check
-									{
-										std::vector<cv::DMatch> matches;
-										matcher.match(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches);
-										if(!matches.empty())
-										{
-											matchedIndex = descriptorsIndices.at(matches.at(0).trainIdx);
-										}
-									}
-									else // bruteforce knn
-									{
-										std::vector<std::vector<cv::DMatch> > matches;
-										matcher.knnMatch(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
-										UASSERT(matches.size() == 1);
-										UASSERT(matches[0].size() == 2);
-										if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
-										{
-											matchedIndex = descriptorsIndices.at(matches[0].at(0).trainIdx);
-										}
-									}
+									matchedIndex = matchNearestDescriptor(descriptorsTo, i, descriptorsFrom, indices[i], &projectedIndexToDescIndex, _nndr, crossCheck);
 								}
 								else if(indices[i].size() == 1)
 								{
@@ -1372,9 +1376,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							std::set<int> addedWordsTo;
 							std::set<int> addedWordsFrom;
 							double bruteForceTotalTime = 0.0;
-							double bruteForceDescCopy = 0.0;
 							UTimer bruteForceTimer;
-							cv::Mat descriptors(10, descriptorsTo.cols, descriptorsTo.type());
 							for(unsigned int i = 0; i < cornersProjected.size(); ++i)
 							{
 								int matchedIndexFrom = projectedIndexToDescIndex[i];
@@ -1390,42 +1392,8 @@ Transform RegistrationVis::computeTransformationImpl(
 									if(indices[i].size() >= 2)
 									{
 										bruteForceTimer.restart();
-										std::vector<int> descriptorsIndices(indices[i].size());
-										int oi=0;
-										if((int)indices[i].size() > descriptors.rows)
-										{
-											descriptors.resize(indices[i].size());
-										}
-										for(unsigned int j=0; j<indices[i].size(); ++j)
-										{
-											descriptorsTo.row(indices[i].at(j)).copyTo(descriptors.row(oi));
-											descriptorsIndices[oi++] = indices[i].at(j);
-										}
-										bruteForceDescCopy += bruteForceTimer.ticks();
-										UASSERT(oi >=2);
-
-										cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, _nnType==5);
-										if(_nnType==5) // bruteforce cross check
-										{
-											std::vector<cv::DMatch> matches;
-											matcher.match(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches);
-											if(!matches.empty())
-											{
-												matchedIndexTo = descriptorsIndices.at(matches.at(0).trainIdx);
-											}
-										}
-										else // bruteforce knn
-										{
-											std::vector<std::vector<cv::DMatch> > matches;
-											matcher.knnMatch(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
-											UASSERT(matches.size() == 1);
-											UASSERT(matches[0].size() == 2);
-											bruteForceTotalTime+=bruteForceTimer.elapsed();
-											if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
-											{
-												matchedIndexTo = descriptorsIndices.at(matches[0].at(0).trainIdx);
-											}
-										}
+										matchedIndexTo = matchNearestDescriptor(descriptorsFrom, matchedIndexFrom, descriptorsTo, indices[i], 0, _nndr, crossCheck);
+										bruteForceTotalTime+=bruteForceTimer.elapsed();
 									}
 									else if(indices[i].size() == 1)
 									{
@@ -1458,7 +1426,7 @@ Transform RegistrationVis::computeTransformationImpl(
 									}
 								}
 							}
-							UDEBUG("bruteForceDescCopy=%fs, bruteForceTotalTime=%fs", bruteForceDescCopy, bruteForceTotalTime);
+							UDEBUG("bruteForceTotalTime=%fs", bruteForceTotalTime);
 
 							// create fake ids for not matched words from "from"
 							for(unsigned int i=0; i<kptsFrom3D.size(); ++i)
