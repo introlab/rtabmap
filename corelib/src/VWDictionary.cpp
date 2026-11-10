@@ -1039,6 +1039,11 @@ std::list<int> VWDictionary::addNewWords(
 	{
 		descriptors = descriptorsIn;
 	}
+	// With one float per bit, the Hamming distance on the binary descriptors
+	// is the same as L1 on the floats, and a lot faster.
+	const cv::Mat & newWordsDescriptors =
+			(descriptorsIn.type() == CV_8U && !_byteToFloat)?descriptorsIn:descriptors;
+	const int newWordsNormType = newWordsDescriptors.type()==CV_8U?cv::NORM_HAMMING:useDistanceL1_?cv::NORM_L1:cv::NORM_L2SQR;
 	dim = 0;
 	type = -1;
 	if(_dataTree.rows || _flannIndex->isBuilt())
@@ -1200,9 +1205,9 @@ std::list<int> VWDictionary::addNewWords(
 		if(_newWordsComparedTogether && newWords.rows)
 		{
 			std::vector<std::vector<cv::DMatch> > matchesNewWords;
-			cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:useDistanceL1_?cv::NORM_L1:cv::NORM_L2SQR);
-			UASSERT(descriptors.cols == newWords.cols && descriptors.type() == newWords.type());
-			matcher.knnMatch(descriptors.row(i), newWords, matchesNewWords, newWords.rows>1?2:1);
+			cv::BFMatcher matcher(newWordsNormType);
+			UASSERT(newWordsDescriptors.cols == newWords.cols && newWordsDescriptors.type() == newWords.type());
+			matcher.knnMatch(newWordsDescriptors.row(i), newWords, matchesNewWords, newWords.rows>1?2:1);
 			UASSERT(matchesNewWords.size() == 1);
 			for(unsigned int j=0; j<matchesNewWords.at(0).size(); ++j)
 			{
@@ -1248,7 +1253,7 @@ std::list<int> VWDictionary::addNewWords(
 				VisualWord * vw = new VisualWord(getNextId(), descriptorsIn.row(i), signatureId);
 				_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord *>(vw->id(), vw));
 				_notIndexedWords.insert(_notIndexedWords.end(), vw->id());
-				newWords.push_back(descriptors.row(i));
+				newWords.push_back(newWordsDescriptors.row(i));
 				newWordsId.push_back(vw->id());
 				wordIds.push_back(vw->id());
 				UASSERT(vw->id()>0);
