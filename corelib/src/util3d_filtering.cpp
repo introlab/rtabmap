@@ -98,6 +98,7 @@ LaserScan commonFiltering(
 		if(downsamplingStep > 1 || rangeMin > 0.0f || rangeMax > 0.0f)
 		{
 			cv::Mat tmp = cv::Mat(1, scan.size()/downsamplingStep, scan.dataType());
+			const size_t pointSize = tmp.elemSize();
 			bool is2d = scan.is2d();
 			int oi = 0;
 			float rangeMinSqrd = rangeMin * rangeMin;
@@ -137,7 +138,8 @@ LaserScan commonFiltering(
 						}
 					}
 
-					cv::Mat(scan.data(), cv::Range(j,j+1), cv::Range(i,i+1)).copyTo(cv::Mat(tmp, cv::Range::all(), cv::Range(oi,oi+1)));
+					UASSERT(oi < tmp.cols);
+					memcpy(tmp.ptr(0, oi), ptr, pointSize);
 					++oi;
 				}
 			}
@@ -361,7 +363,9 @@ LaserScan rangeFiltering(
 	{
 		if(rangeMin > 0.0f || rangeMax > 0.0f)
 		{
+			UASSERT(scan.data().isContinuous()); // points are indexed as (0, i)
 			cv::Mat output = cv::Mat(1, scan.size(), scan.dataType());
+			const size_t pointSize = output.elemSize();
 			bool is2d = scan.is2d();
 			int oi = 0;
 			float rangeMinSqrd = rangeMin * rangeMin;
@@ -388,7 +392,7 @@ LaserScan rangeFiltering(
 					continue;
 				}
 
-				cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
+				memcpy(output.ptr(0, oi), ptr, pointSize);
 				++oi;
 			}
 			if(scan.angleIncrement() > 0.0f)
@@ -562,7 +566,9 @@ LaserScan downsample(
 		// no sampling
 		return scan;
 	}
-	else if(scan.isOrganized())
+
+	const size_t pointSize = scan.data().elemSize();
+	if(scan.isOrganized())
 	{
 		// Organized LaserScan
 		if(scan.data().rows <= scan.data().cols/4 ||
@@ -596,17 +602,14 @@ LaserScan downsample(
 				{
 					for(unsigned int i=0; i<outputPts; ++i)
 					{
-						cv::Mat(scan.data(), cv::Range(j,j+1), cv::Range(i*step,i*step+1)).copyTo(cv::Mat(output, cv::Range(j,j+1), cv::Range(i,i+1)));
+						memcpy(output.ptr(j, i), scan.data().ptr(j, i*step), pointSize);
 					}
 				}
 			}
 			else {
 				for(unsigned int j=0; j<outputPts; ++j)
 				{
-					for(unsigned int i=0; i<rings; ++i)
-					{
-						cv::Mat(scan.data(), cv::Range(j*step,j*step+1), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range(j,j+1), cv::Range(i,i+1)));
-					}
+					memcpy(output.ptr(j), scan.data().ptr(j*step), rings*pointSize);
 				}
 			}
 		 }
@@ -623,7 +626,7 @@ LaserScan downsample(
 			{
 				for(int i=0; i<output.cols; ++i)
 				{
-					cv::Mat(scan.data(), cv::Range(j*step,j*step+1), cv::Range(i*step,i*step+1)).copyTo(cv::Mat(output, cv::Range(j,j+1), cv::Range(i,i+1)));
+					memcpy(output.ptr(j, i), scan.data().ptr(j*step, i*step), pointSize);
 				}
 			}
 		 }
@@ -636,7 +639,7 @@ LaserScan downsample(
 		int oi = 0;
 		for(int i=0; i<scan.size()-step+1; i+=step)
 		{
-			cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
+			memcpy(output.ptr(0, oi), scan.data().ptr(0, i), pointSize);
 			++oi;
 		}
 	}
