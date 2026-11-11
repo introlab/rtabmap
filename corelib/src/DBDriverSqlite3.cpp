@@ -3936,6 +3936,8 @@ void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 		float nanFloat = std::numeric_limits<float>::quiet_NaN ();
+		const bool hasOctave = uStrNumCmp(_version, "0.12.0") >= 0;
+		const bool hasDescriptor = uStrNumCmp(_version, "0.11.2") >= 0;
 
 		for(std::list<Signature*>::const_iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
 		{
@@ -3967,7 +3969,7 @@ void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 				kpt.size = sqlite3_column_int(ppStmt, index++);
 				kpt.angle = sqlite3_column_double(ppStmt, index++);
 				kpt.response = sqlite3_column_double(ppStmt, index++);
-				if(uStrNumCmp(_version, "0.12.0") >= 0)
+				if(hasOctave)
 				{
 					kpt.octave = sqlite3_column_int(ppStmt, index++);
 				}
@@ -4011,7 +4013,7 @@ void DBDriverSqlite3::loadWordsQuery(std::list<Signature *> & signatures) const
 					allWords3NaN = false;
 				}
 
-				if(uStrNumCmp(_version, "0.11.2") >= 0)
+				if(hasDescriptor)
 				{
 					descriptorSize = sqlite3_column_int(ppStmt, index++); // VisualWord descriptor size
 					descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
