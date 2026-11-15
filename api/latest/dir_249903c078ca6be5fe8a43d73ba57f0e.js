@@ -1,6 +1,7 @@
 var dir_249903c078ca6be5fe8a43d73ba57f0e =
 [
     [ "CameraDepthAI.h", "CameraDepthAI_8h_source.html", null ],
+    [ "CameraEinstar.h", "CameraEinstar_8h_source.html", null ],
     [ "CameraFreenect.h", "CameraFreenect_8h_source.html", null ],
     [ "CameraFreenect2.h", "CameraFreenect2_8h_source.html", null ],
     [ "CameraImages.h", "CameraImages_8h_source.html", null ],

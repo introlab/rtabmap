@@ -109,6 +109,7 @@ var hierarchy =
     [ "rtabmap::SensorCapture", "classrtabmap_1_1SensorCapture.html", [
       [ "rtabmap::Camera", "classrtabmap_1_1Camera.html", [
         [ "rtabmap::CameraDepthAI", "classrtabmap_1_1CameraDepthAI.html", null ],
+        [ "rtabmap::CameraEinstar", "classrtabmap_1_1CameraEinstar.html", null ],
         [ "rtabmap::CameraFreenect", "classrtabmap_1_1CameraFreenect.html", null ],
         [ "rtabmap::CameraFreenect2", "classrtabmap_1_1CameraFreenect2.html", null ],
         [ "rtabmap::CameraImages", "classrtabmap_1_1CameraImages.html", [
