@@ -99,6 +99,7 @@ public:
 		kSrcK4A            = 10,
 		kSrcSeerSense      = 11,
 		kSrcOrbbecSDK      = 12,
+		kSrcEinstar        = 13,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,
@@ -426,6 +427,8 @@ private Q_SLOTS:
 	void selectSourceOni2Path();
 	void selectSourceMKVPath();
 	void selectSourceSvoPath();
+	void selectSourceEinstarCalibration();
+	void selectSourceEinstarReplay();
 	void selectSourceRealsense2JsonPath();
 	void selectSourceDepthaiBlobPath();
 	void selectVlp16PcapPath();
