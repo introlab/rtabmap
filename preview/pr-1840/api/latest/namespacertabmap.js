@@ -338,6 +338,7 @@ var namespacertabmap =
     [ "BRISK", "classrtabmap_1_1BRISK.html", null ],
     [ "Camera", "classrtabmap_1_1Camera.html", "classrtabmap_1_1Camera" ],
     [ "CameraDepthAI", "classrtabmap_1_1CameraDepthAI.html", "classrtabmap_1_1CameraDepthAI" ],
+    [ "CameraEinstar", "classrtabmap_1_1CameraEinstar.html", "classrtabmap_1_1CameraEinstar" ],
     [ "CameraFreenect", "classrtabmap_1_1CameraFreenect.html", "classrtabmap_1_1CameraFreenect" ],
     [ "CameraFreenect2", "classrtabmap_1_1CameraFreenect2.html", "classrtabmap_1_1CameraFreenect2" ],
     [ "CameraImages", "classrtabmap_1_1CameraImages.html", "classrtabmap_1_1CameraImages" ],
