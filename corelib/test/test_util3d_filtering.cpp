@@ -1195,6 +1195,48 @@ TEST(Util3dFilteringTest, RangeFilteringLaserScanCopiesAllChannels) {
     }
 }
 
+// rangeFiltering() on organized scans must keep the points in range of all
+// rows (row-major order, all channels) in a dense output, also when rows are
+// not contiguous in memory.
+TEST(Util3dFilteringTest, RangeFilteringOrganizedLaserScan) {
+    const int rows = 3;
+    const int cols = 4;
+    std::vector<float> ranges(rows*cols);
+    for(int i=0; i<rows*cols; ++i)
+    {
+        ranges[i] = float(i+1); // 1 to 12 meters, row-major
+    }
+    const float rangeMin = 3.5f;
+    const float rangeMax = 9.5f;
+    const int firstKept = 3; // 4 to 9 meters: end of row 0, row 1, start of row 2
+    const int keptCount = 6;
+
+    for(LaserScan::Format format : kScanFormatsAllSizes)
+    {
+        for(int continuous=0; continuous<2; ++continuous)
+        {
+            cv::Mat data = makeRangeScanData(ranges, format).reshape(0, rows);
+            if(!continuous)
+            {
+                data = makeNonContinuous(data);
+            }
+            SCOPED_TRACE(uFormat("format=%s continuous=%d", LaserScan::formatName(format).c_str(), continuous));
+            LaserScan scan(data, 0, 0, format);
+            ASSERT_TRUE(scan.isOrganized());
+
+            LaserScan result = util3d::rangeFiltering(scan, rangeMin, rangeMax);
+            ASSERT_EQ(result.format(), format);
+            ASSERT_EQ(result.data().rows, 1);
+            ASSERT_EQ(result.size(), keptCount);
+            for(int i=0; i<keptCount; ++i)
+            {
+                const int index = firstKept+i;
+                EXPECT_TRUE(samePoint(result.data(), 0, i, data, index/cols, index%cols));
+            }
+        }
+    }
+}
+
 TEST(Util3dFilteringTest, VoxelizeFullCloud) {
     auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
 

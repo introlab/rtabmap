@@ -389,37 +389,40 @@ LaserScan rangeFiltering(
 	{
 		if(rangeMin > 0.0f || rangeMax > 0.0f)
 		{
-			UASSERT(scan.data().isContinuous()); // points are indexed as (0, i)
 			cv::Mat output = cv::Mat(1, scan.size(), scan.dataType());
 			const size_t pointSize = output.elemSize();
 			bool is2d = scan.is2d();
 			int oi = 0;
 			float rangeMinSqrd = rangeMin * rangeMin;
 			float rangeMaxSqrd = rangeMax * rangeMax;
-			for(int i=0; i<scan.size(); ++i)
+			// organized scans: rows are read one by one, as they may not be contiguous in memory
+			for(int j=0; j<scan.data().rows; ++j)
 			{
-				const float * ptr = scan.data().ptr<float>(0, i);
-				float r;
-				if(is2d)
+				for(int i=0; i<scan.data().cols; ++i)
 				{
-					r = ptr[0]*ptr[0] + ptr[1]*ptr[1];
-				}
-				else
-				{
-					r = ptr[0]*ptr[0] + ptr[1]*ptr[1] + ptr[2]*ptr[2];
-				}
+					const float * ptr = scan.data().ptr<float>(j, i);
+					float r;
+					if(is2d)
+					{
+						r = ptr[0]*ptr[0] + ptr[1]*ptr[1];
+					}
+					else
+					{
+						r = ptr[0]*ptr[0] + ptr[1]*ptr[1] + ptr[2]*ptr[2];
+					}
 
-				if(rangeMin > 0.0f && r < rangeMinSqrd)
-				{
-					continue;
-				}
-				if(rangeMax > 0.0f && r > rangeMaxSqrd)
-				{
-					continue;
-				}
+					if(rangeMin > 0.0f && r < rangeMinSqrd)
+					{
+						continue;
+					}
+					if(rangeMax > 0.0f && r > rangeMaxSqrd)
+					{
+						continue;
+					}
 
-				memcpy(output.ptr(0, oi), ptr, pointSize);
-				++oi;
+					memcpy(output.ptr(0, oi), ptr, pointSize);
+					++oi;
+				}
 			}
 			if(scan.angleIncrement() > 0.0f)
 			{
