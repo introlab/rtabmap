@@ -1308,9 +1308,9 @@ void Odometry::predictKalmanFilter(float dt, float * vx, float * vy, float * vz,
 	const cv::Mat & prediction = kalmanFilter_.predict();
 
 	if(vx)
-		*vx = prediction.at<float>(3);                      // x'
+		*vx = prediction.at<float>(_force3DoF?2:3);         // x'
 	if(vy)
-		*vy = prediction.at<float>(4);                      // y'
+		*vy = prediction.at<float>(_force3DoF?3:4);         // y'
 	if(vz)
 		*vz = _force3DoF?0.0f:prediction.at<float>(5);      // z'
 	if(vroll)
@@ -1348,8 +1348,8 @@ void Odometry::updateKalmanFilter(float & vx, float & vy, float & vz, float & vr
 	const cv::Mat & estimated = kalmanFilter_.correct(measurements);
 
 
-	vx = estimated.at<float>(3);                      // x'
-	vy = estimated.at<float>(4);                      // y'
+	vx = estimated.at<float>(_force3DoF?2:3);         // x'
+	vy = estimated.at<float>(_force3DoF?3:4);         // y'
 	vz = _force3DoF?0.0f:estimated.at<float>(5);      // z'
 	vroll = _force3DoF?0.0f:estimated.at<float>(12);  // roll'
 	vpitch = _force3DoF?0.0f:estimated.at<float>(13); // pitch'

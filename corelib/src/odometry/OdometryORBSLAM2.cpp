@@ -556,7 +556,7 @@ public:
 		if(!vocabularyPath.empty())
 		{
 			//Load ORB Vocabulary
-			vocabularyPath = uReplaceChar(vocabularyPath, '~', UDirectory::homeDir());
+			vocabularyPath = UDirectory::expandHomeDir(vocabularyPath);
 			UWARN("Loading ORB Vocabulary: \"%s\". This could take a while...", vocabularyPath.c_str());
 			mpVocabulary = new ORBVocabulary();
 			bool bVocLoad = mpVocabulary->loadFromTextFile(vocabularyPath);

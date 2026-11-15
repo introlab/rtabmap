@@ -29,7 +29,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/rtabmap_core_export.h" // DLL export/import defines
 
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/videoio.hpp>
 #include <opencv2/core/core.hpp>
 #if CV_MAJOR_VERSION < 5
 #include <opencv2/features2d/features2d.hpp>
@@ -243,6 +244,12 @@ public:
 	 * @param id Last word ID
 	 */
 	void setLastWordId(int id) {_lastWordId = id;}
+
+	/**
+	 * @brief Get the last word ID: new words are created with the IDs following it.
+	 * @return Last word ID
+	 */
+	int getLastWordId() const {return _lastWordId;}
 	
 	/**
 	 * @brief Get all visual words

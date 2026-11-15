@@ -475,10 +475,10 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 			UASSERT(m.isValidForProjection());
 
 			const Transform t = (iter->second * m.localTransform()).inverse();
-			cv::Mat R = (cv::Mat_<double>(3,3) <<
+			cv::Mat R = cv::Mat_<double>({3,3}, {
 					(double)t.r11(), (double)t.r12(), (double)t.r13(),
 					(double)t.r21(), (double)t.r22(), (double)t.r23(),
-					(double)t.r31(), (double)t.r32(), (double)t.r33());
+					(double)t.r31(), (double)t.r32(), (double)t.r33()});
 
 			cv::Mat rvec(1,3, CV_64FC1);
 			cv::Rodrigues(R, rvec);
@@ -658,10 +658,10 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 		                          models.at(link.to())[0].localTransform();
 
 		// Decompose camLink (cam_b in cam_a's frame) into (angle-axis, translation).
-		const cv::Mat R = (cv::Mat_<double>(3, 3) <<
+		const cv::Mat R = cv::Mat_<double>({3, 3}, {
 				(double)camLink.r11(), (double)camLink.r12(), (double)camLink.r13(),
 				(double)camLink.r21(), (double)camLink.r22(), (double)camLink.r23(),
-				(double)camLink.r31(), (double)camLink.r32(), (double)camLink.r33());
+				(double)camLink.r31(), (double)camLink.r32(), (double)camLink.r33()});
 		cv::Mat rvec(1, 3, CV_64FC1);
 		cv::Rodrigues(R, rvec);
 		const Eigen::Vector3d aa_meas(rvec.at<double>(0,0), rvec.at<double>(0,1), rvec.at<double>(0,2));
@@ -734,10 +734,10 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 				continue;
 			}
 			const Transform camLink = lt0.inverse() * iter->second[c].localTransform();
-			const cv::Mat R = (cv::Mat_<double>(3, 3) <<
+			const cv::Mat R = cv::Mat_<double>({3, 3}, {
 					(double)camLink.r11(), (double)camLink.r12(), (double)camLink.r13(),
 					(double)camLink.r21(), (double)camLink.r22(), (double)camLink.r23(),
-					(double)camLink.r31(), (double)camLink.r32(), (double)camLink.r33());
+					(double)camLink.r31(), (double)camLink.r32(), (double)camLink.r33()});
 			cv::Mat rvec(1, 3, CV_64FC1);
 			cv::Rodrigues(R, rvec);
 			const Eigen::Vector3d aa(rvec.at<double>(0,0), rvec.at<double>(0,1), rvec.at<double>(0,2));
@@ -968,8 +968,8 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 			continue;
 		}
 		const int oi = camIt->second * 6;
-		cv::Mat rvec = (cv::Mat_<double>(1,3) <<
-				baProblem.cameras_[oi], baProblem.cameras_[oi+1], baProblem.cameras_[oi+2]);
+		cv::Mat rvec = cv::Mat_<double>({1,3}, {
+				baProblem.cameras_[oi], baProblem.cameras_[oi+1], baProblem.cameras_[oi+2]});
 
 		cv::Mat R;
 		cv::Rodrigues(rvec, R);

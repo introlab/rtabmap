@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/gui/DataRecorder.h>
 #include <rtabmap/gui/PreferencesDialog.h>
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <signal.h>
 
 using namespace rtabmap;
@@ -134,9 +135,9 @@ int main (int argc, char * argv[])
 		showUsage();
 	}
 	configFile = argv[argc-2];
-	configFile = uReplaceChar(configFile, '~', UDirectory::homeDir());
+	configFile = UDirectory::expandHomeDir(configFile);
 	fileName = argv[argc-1]; // the last is the output path
-	fileName = uReplaceChar(fileName, '~', UDirectory::homeDir());
+	fileName = UDirectory::expandHomeDir(fileName);
 
 	if(UFile::getExtension(fileName).compare("db") != 0)
 	{
@@ -149,6 +150,7 @@ int main (int argc, char * argv[])
 	UINFO("RecordInRAM = %s", recordInRAM?"true":"false");
 	UINFO("Config = %s", configFile.c_str());
 
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
 	app = new QApplication(argc, argv);
 
 	PreferencesDialog dialog;

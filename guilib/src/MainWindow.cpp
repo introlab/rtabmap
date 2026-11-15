@@ -658,6 +658,11 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", false);
 	_ui->statsToolBox->updateStat("Odometry/TimeDeskewing/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/TimeRegistration/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/TimeFeatures/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/TimeMatching/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/TimeMotionEstimation/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/TimeBundleAdjustment/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/GravityRollError/deg", false);
 	_ui->statsToolBox->updateStat("Odometry/GravityPitchError/deg", false);
@@ -1835,6 +1840,14 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)angVar, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/TimeDeskewing/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeDeskewing*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeEstimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/TimeRegistration/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.totalTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/TimeFeatures/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.featuresTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/TimeMatching/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.matchingTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/TimeMotionEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.motionEstimationTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		if(odom.info().localBundleTime <= 0.0f) // Vis/BundleAdjustment (F2F) and the local bundle adjustment (F2M) are mutually exclusive
+		{
+			_ui->statsToolBox->updateStat("Odometry/TimeBundleAdjustment/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.bundleAdjustmentTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		}
 		if(odom.info().timeParticleFiltering>0.0f)
 		{
 			_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeParticleFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
@@ -2228,7 +2241,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				else if(landmarkId!=0)
 				{
 					highestHypothesisId = landmarkNodeRef;
-					if(rejectedHyp)
+					if(rejectedHyp && uValue(stat.data(), Statistics::kLoopLocalization_delayed(), 0.0f) != 0.0f)
+					{
+						// Localization mode: accepted, but waiting for another localization to be applied (RGBD/MaxOdomCacheSize)
+						_ui->imageView_loopClosure->setBackgroundColor(QColor("darkorange"));
+						_ui->label_matchId->setText(QString("Landmark delayed = %1 with %2").arg(landmarkId).arg(landmarkNodeRef));
+						matchId = landmarkNodeRef;
+					}
+					else if(rejectedHyp)
 					{
 						show = _preferencesDialog->imageRejectedShown();
 						if(show)
@@ -8123,7 +8143,11 @@ void MainWindow::exportGridMap()
 				path += ".png";
 			}
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+			QImage img = image.flipped(Qt::Vertical).transformed(QTransform().rotate(-90));
+#else
 			QImage img = image.mirrored(false, true).transformed(QTransform().rotate(-90));
+#endif
 			QPixmap::fromImage(img).save(path);
 
 			QDesktopServices::openUrl(QUrl::fromLocalFile(path));
@@ -8673,7 +8697,7 @@ void MainWindow::changeState(MainWindow::State newState)
 	}
 	else
 	{
-		UWARN("Menu File actions size has changed (%d)", actions.size());
+		UWARN("Menu File actions size has changed (%d)", (int)actions.size());
 	}
 	actions = _ui->menuProcess->actions();
 	if(actions.size()>=2)

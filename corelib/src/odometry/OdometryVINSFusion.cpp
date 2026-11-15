@@ -336,7 +336,7 @@ OdometryVINSFusion::OdometryVINSFusion(const ParametersMap & parameters) :
 	else
 	{
 		UINFO("Using config file %s", configFilename.c_str());
-		readParameters(uReplaceChar(configFilename, '~', UDirectory::homeDir()));
+		readParameters(UDirectory::expandHomeDir(configFilename));
 	}
 #endif
 }

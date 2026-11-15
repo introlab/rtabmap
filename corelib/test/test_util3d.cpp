@@ -1153,27 +1153,27 @@ TEST(Util3dTest, LaserScan2dFromPointCloudXYZINormal) {
 TEST(Util3dTest, LaserScanToPointCloud)
 {
     // XYZ point
-    cv::Mat dataXYZ = (cv::Mat_<float>(1, 3) << 1.0f, 2.0f, 3.0f);
+    cv::Mat dataXYZ = cv::Mat_<float>({1, 3}, {1.0f, 2.0f, 3.0f});
     LaserScan scanXYZ = LaserScan(dataXYZ.reshape(3, 1), 1, 0.0f, LaserScan::kXYZ, Transform::getIdentity());
 
     // XYZ + Normals
-    cv::Mat dataNormal = (cv::Mat_<float>(1, 6) << 1.0f, 2.0f, 3.0f, 0.0f, 0.0f, 1.0f);
+    cv::Mat dataNormal = cv::Mat_<float>({1, 6}, {1.0f, 2.0f, 3.0f, 0.0f, 0.0f, 1.0f});
     LaserScan scanNormal = LaserScan(dataNormal.reshape(6, 1), 1, 0.0f, LaserScan::kXYZNormal, Transform::getIdentity());
 
     // XYZ + RGB
-    cv::Mat dataRGB = (cv::Mat_<float>(1, 4) << 1.0f, 2.0f, 3.0f, LaserScan::packRGB(255,128,64));
+    cv::Mat dataRGB = cv::Mat_<float>({1, 4}, {1.0f, 2.0f, 3.0f, LaserScan::packRGB(255,128,64)});
     LaserScan scanRGB = LaserScan(dataRGB.reshape(4, 1), 1, 0.0f, LaserScan::kXYZRGB, Transform::getIdentity());
 
     // XYZ + Intensity
-    cv::Mat dataI = (cv::Mat_<float>(1, 4) << 1.0f, 2.0f, 3.0f, 0.5f);
+    cv::Mat dataI = cv::Mat_<float>({1, 4}, {1.0f, 2.0f, 3.0f, 0.5f});
     LaserScan scanI = LaserScan(dataI.reshape(4, 1), 1, 0.0f, LaserScan::kXYZI, Transform::getIdentity());
 
     // XYZ + RGB + Normals
-    cv::Mat dataRGBNormal = (cv::Mat_<float>(1, 7) << 1.0f, 2.0f, 3.0f, LaserScan::packRGB(255,128,64), 0.0f, 1.0f, 0.0f);
+    cv::Mat dataRGBNormal = cv::Mat_<float>({1, 7}, {1.0f, 2.0f, 3.0f, LaserScan::packRGB(255,128,64), 0.0f, 1.0f, 0.0f});
     LaserScan scanRGBNormal = LaserScan(dataRGBNormal.reshape(7, 1), 1, 0.0f, LaserScan::kXYZRGBNormal, Transform::getIdentity());
 
     // XYZ + Intensity + Normals
-    cv::Mat dataINormal = (cv::Mat_<float>(1, 7) << 1.0f, 2.0f, 3.0f, 0.75f, 1.0f, 0.0f, 0.0f);
+    cv::Mat dataINormal = cv::Mat_<float>({1, 7}, {1.0f, 2.0f, 3.0f, 0.75f, 1.0f, 0.0f, 0.0f});
     LaserScan scanINormal = LaserScan(dataINormal.reshape(7, 1), 1, 0.0f, LaserScan::kXYZINormal, Transform::getIdentity());
 
     {
@@ -1466,7 +1466,7 @@ TEST(Util3dTest, ProjectCloudToCameraCvMatLaserScan) {
     cv::Size imageSize(640, 480);
 
     // Mock camera matrix (fx, fy, cx, cy)
-    cv::Mat cameraMatrixK = (cv::Mat_<double>(3, 3) << 500, 0, 320, 0, 500, 240, 0, 0, 1);
+    cv::Mat cameraMatrixK = cv::Mat_<double>({3, 3}, {500, 0, 320, 0, 500, 240, 0, 0, 1});
 
     // Create mock laser scan (CV_32FC2)
     cv::Mat laserScan = cv::Mat::zeros(1, 640, CV_32FC2);  // 2D points
@@ -1495,7 +1495,7 @@ TEST(Util3dTest, ProjectCloudToCameraPclPointCloud) {
     cv::Size imageSize(640, 480);
 
     // Mock camera matrix (fx, fy, cx, cy)
-    cv::Mat cameraMatrixK = (cv::Mat_<double>(3, 3) << 500, 0, 320, 0, 500, 240, 0, 0, 1);
+    cv::Mat cameraMatrixK = cv::Mat_<double>({3, 3}, {500, 0, 320, 0, 500, 240, 0, 0, 1});
 
     // Create mock pcl::PointCloud<pcl::PointXYZ> 
     pcl::PointCloud<pcl::PointXYZ>::Ptr laserScan(new pcl::PointCloud<pcl::PointXYZ>());
@@ -1530,7 +1530,7 @@ TEST(Util3dTest, ProjectCloudToCameraPCLPointCloud2) {
     cv::Size imageSize(640, 480);
 
     // Mock camera matrix (fx, fy, cx, cy)
-    cv::Mat cameraMatrixK = (cv::Mat_<double>(3, 3) << 500, 0, 320, 0, 500, 240, 0, 0, 1);
+    cv::Mat cameraMatrixK = cv::Mat_<double>({3, 3}, {500, 0, 320, 0, 500, 240, 0, 0, 1});
 
     // Create mock pcl::PCLPointCloud2 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());

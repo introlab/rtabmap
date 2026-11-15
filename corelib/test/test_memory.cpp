@@ -2251,6 +2251,171 @@ TEST(MemoryTest, ReadOnlyLocalizationSavesNothingBackAfterRepair)
 	UFile::erase(dbPath.c_str());
 }
 
+namespace {
+
+void executeSql(const std::string & dbPath, const std::string & sql)
+{
+	DBDriver * driver = DBDriver::create();
+	ASSERT_NE(driver, nullptr);
+	ASSERT_TRUE(driver->openConnection(dbPath, false));
+	driver->executeNoResult(sql);
+	driver->closeConnection(false);
+	delete driver;
+}
+
+int countWordsInDb(const std::string & dbPath)
+{
+	DBDriver * driver = DBDriver::create();
+	EXPECT_NE(driver, nullptr);
+	EXPECT_TRUE(driver->openConnection(dbPath, false));
+	std::set<int> ids;
+	for(int id = 1; id <= 1000; ++id)
+	{
+		ids.insert(id);
+	}
+	std::list<VisualWord *> words;
+	driver->loadWords(ids, words, true);
+	const int count = (int)words.size();
+	for(std::list<VisualWord *>::iterator iter=words.begin(); iter!=words.end(); ++iter)
+	{
+		delete *iter;
+	}
+	driver->closeConnection(false);
+	delete driver;
+	return count;
+}
+
+} // namespace
+
+TEST(MemoryTest, RepairReusesWordsAlreadySavedInDatabase)
+{
+	// Without Mem/InitWMWithAllNodes, only the words of the last dictionary state
+	// (time_enter newer than the last session's close) are loaded. When the last
+	// close was interrupted, words referenced by the working memory can still be in
+	// the Word table but with an older time_enter: the repair must load them back
+	// (as saved) instead of re-creating them, otherwise saving the repaired
+	// dictionary inserts them a second time ("UNIQUE constraint failed: Word.id").
+	const std::string dbPath = uniqueDbPath();
+	const int wordCount = buildDictionaryDb(dbPath);
+	ASSERT_GT(wordCount, 2);
+	executeSql(dbPath, "UPDATE Word SET time_enter = '2000-01-01 00:00:00' WHERE id IN (SELECT id FROM Word ORDER BY id ASC LIMIT 2);");
+
+	{
+		Memory memory(dictionaryDbParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		const std::map<int, VisualWord *> & words = memory.getVWDictionary()->getVisualWords();
+		ASSERT_EQ((int)words.size(), wordCount);
+		for(std::map<int, VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+		{
+			EXPECT_TRUE(iter->second->isSaved()) << "word " << iter->first << " is already in the database";
+		}
+		EXPECT_TRUE(memory.memoryChanged());
+		EXPECT_NO_THROW(memory.close(true));
+	}
+	EXPECT_EQ(countWordsInDb(dbPath), wordCount);
+
+	UFile::erase(dbPath.c_str());
+}
+
+TEST(MemoryTest, EmptyLastWorkingMemoryLoadsAllNodes)
+{
+	// A session killed while closing can leave the database with nodes but no
+	// "last working memory" (no node stamped after the last Info row) and no
+	// dictionary. Opening it must not start from an empty memory: new words would
+	// reuse the ids referenced by the nodes in LTM (e.g., when appending a new
+	// session). All nodes are loaded instead, and the dictionary repaired from them.
+	const std::string dbPath = uniqueDbPath();
+	const int wordCount = buildDictionaryDb(dbPath);
+	ASSERT_GT(wordCount, 0);
+	executeSql(dbPath, "DELETE FROM Word;");
+	executeSql(dbPath, "UPDATE Node SET time_enter = '2000-01-01 00:00:00';");
+
+	std::set<int> nodeIds;
+	{
+		DBDriver * driver = DBDriver::create();
+		ASSERT_NE(driver, nullptr);
+		ASSERT_TRUE(driver->openConnection(dbPath, false));
+		driver->getAllNodeIds(nodeIds);
+		std::set<int> lastIds;
+		driver->getLastNodeIds(lastIds);
+		EXPECT_TRUE(lastIds.empty()) << "the database should look like its last session was not closed correctly";
+		driver->closeConnection(false);
+		delete driver;
+	}
+	ASSERT_FALSE(nodeIds.empty());
+
+	{
+		Memory memory(dictionaryDbParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		for(std::set<int>::iterator iter=nodeIds.begin(); iter!=nodeIds.end(); ++iter)
+		{
+			EXPECT_TRUE(memory.isInWM(*iter)) << "node " << *iter;
+		}
+		EXPECT_EQ((int)memory.getVWDictionary()->getVisualWords().size(), wordCount);
+		EXPECT_GE(memory.getVWDictionary()->getLastWordId(), wordCount);
+		EXPECT_NO_THROW(memory.close(true));
+	}
+
+	// Saved back: the next session opens it normally, without repair.
+	{
+		Memory memory(dictionaryDbParams());
+		ASSERT_TRUE(memory.init(dbPath));
+		for(std::set<int>::iterator iter=nodeIds.begin(); iter!=nodeIds.end(); ++iter)
+		{
+			EXPECT_TRUE(memory.isInWM(*iter)) << "node " << *iter;
+		}
+		EXPECT_EQ((int)memory.getVWDictionary()->getVisualWords().size(), wordCount);
+		EXPECT_FALSE(memory.memoryChanged());
+		memory.close(false);
+	}
+
+	UFile::erase(dbPath.c_str());
+}
+
+TEST(MemoryTest, RepairDoesNotReuseWordIdsOfNodesInLtm)
+{
+	// The repair re-creates the missing words referenced by the nodes in working
+	// memory, but nodes left in LTM can reference larger ids that are missing from
+	// the dictionary too. The next word id must come after them, otherwise new
+	// words would share ids with unrelated features of those nodes.
+	const std::string dbPath = uniqueDbPath();
+	const int wordCount = buildDictionaryDb(dbPath); // word ids 1..wordCount, the last node has the largest
+	ASSERT_GT(wordCount, 0);
+	executeSql(dbPath, "DELETE FROM Word;");
+	executeSql(dbPath, "UPDATE Node SET time_enter = '2000-01-01 00:00:00' WHERE id = (SELECT MAX(id) FROM Node);");
+
+	std::set<int> nodeIds;
+	{
+		DBDriver * driver = DBDriver::create();
+		ASSERT_NE(driver, nullptr);
+		ASSERT_TRUE(driver->openConnection(dbPath, false));
+		driver->getAllNodeIds(nodeIds);
+		driver->closeConnection(false);
+		delete driver;
+	}
+	ASSERT_GT(nodeIds.size(), 1u);
+
+	Memory memory(dictionaryDbParams());
+	ASSERT_TRUE(memory.init(dbPath));
+	for(std::set<int>::iterator iter=nodeIds.begin(); iter!=nodeIds.end(); ++iter)
+	{
+		if(*iter == *nodeIds.rbegin())
+		{
+			ASSERT_TRUE(memory.isInLTM(*iter)) << "the last node should be in LTM";
+		}
+		else
+		{
+			ASSERT_TRUE(memory.isInWM(*iter)) << "node " << *iter << " should be in working memory";
+		}
+	}
+	// Only the words of the nodes in working memory were re-created.
+	ASSERT_LT((int)memory.getVWDictionary()->getVisualWords().size(), wordCount);
+	EXPECT_EQ(memory.getVWDictionary()->getLastWordId(), wordCount);
+	memory.close(false);
+
+	UFile::erase(dbPath.c_str());
+}
+
 TEST(MemoryTest, DiscardedSessionSavesNothingBackWhenMemoryChanged)
 {
 	// The other side of the same branch: a writable memory that did change, but
@@ -2723,6 +2888,51 @@ TEST_F(MemoryFixture, ComputeLikelihoodEmptyIdsReturnsEmpty)
 	EXPECT_EQ(likelihood.size(), 0u);
 }
 
+TEST_F(MemoryFixture, ComputeLikelihoodUsesGlobalDescriptors)
+{
+	// With Kp/TfIdfLikelihoodUsed=false, the likelihood is Signature::compareTo():
+	// the dot product of the (normalized) global descriptors rescaled to [0,1],
+	// whatever the extractor type (PyDescriptor=1, OnnxDescriptor=2, ...), while
+	// type 0 (external descriptors of unknown nature) is ignored.
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kKpTfIdfLikelihoodUsed()] = "false";
+	reinit(params);
+
+	auto addNode = [&](int type, float x, float y)
+	{
+		SensorData data(image_);
+		cv::Mat d = cv::Mat_<float>({1, 2}, {x, y});
+		data.addGlobalDescriptor(GlobalDescriptor(type, d / cv::norm(d)));
+		Transform pose(float(updateCount_), 0.0f, 0.0f, 0, 0, 0);
+		EXPECT_TRUE(memory_->update(data, pose, covariance_));
+		++updateCount_;
+		return memory_->getLastSignatureId();
+	};
+	for(int type : {2, 1})
+	{
+		SCOPED_TRACE(uFormat("type=%d", type));
+		const int a = addNode(type, 1.0f, 0.0f);   // (1,0)
+		const int b = addNode(type, 1.0f, 1.0f);   // 45 degrees from a
+		const int c = addNode(type, -1.0f, 0.0f);  // opposite of a
+		const int q = addNode(type, 1.0f, 0.0f);   // same as a
+		const Signature * s = memory_->getSignature(q);
+		ASSERT_NE(s, nullptr);
+		ASSERT_EQ(s->sensorData().globalDescriptors().size(), 1u);
+		std::map<int, float> likelihood = memory_->computeLikelihood(s, {a, b, c});
+		ASSERT_EQ(likelihood.size(), 3u);
+		EXPECT_NEAR(1.0f, likelihood.at(a), 1e-5f);
+		EXPECT_NEAR((std::sqrt(0.5f) + 1.0f) / 2.0f, likelihood.at(b), 1e-5f);
+		EXPECT_NEAR(0.0f, likelihood.at(c), 1e-5f);
+	}
+
+	// type 0: not compared, falls back to the word similarity (0 without features)
+	const int a = addNode(0, 1.0f, 0.0f);
+	const int q = addNode(0, 1.0f, 0.0f);
+	std::map<int, float> likelihood = memory_->computeLikelihood(memory_->getSignature(q), {a});
+	ASSERT_EQ(likelihood.size(), 1u);
+	EXPECT_EQ(0.0f, likelihood.at(a));
+}
+
 // ---------------------------------------------------------------------------
 // createSignature (exercised through Memory::update)
 // ---------------------------------------------------------------------------
@@ -3140,7 +3350,7 @@ TEST(MemoryTest, UpdateKeepsUserDataThatArrivesCompressed)
 	// stored as it is, like already-compressed images, rather than dropped for lack of
 	// raw data to compress. Checked with and without Mem/BinDataKept, which build the
 	// signature in two different branches, and with and without parallel compression.
-	const cv::Mat userData = (cv::Mat_<float>(1, 4) << 1.0f, 2.0f, 3.0f, 4.0f);
+	const cv::Mat userData = cv::Mat_<float>({1, 4}, {1.0f, 2.0f, 3.0f, 4.0f});
 	for(const char * binDataKept : {"true", "false"})
 	{
 		for(const char * parallel : {"true", "false"})
@@ -3222,6 +3432,59 @@ TEST(MemoryTest, UpdateReusesTheGivenCompressedData)
 				}
 			}
 		}
+	}
+}
+
+TEST(MemoryTest, LocalGridOfTheInputDataIsUsedAsIs)
+{
+	// With RGBD/CreateOccupancyGrid, the local grid is generated from the sensor
+	// (here the laser scan), unless the input data already has one (e.g., read
+	// from a database with DBReader's grids published): it is then kept as is.
+	const float kInputCellSize = 0.123f;
+	cv::Mat obstacles(1, 3, CV_32FC3);
+	for(int i = 0; i < 3; ++i)
+	{
+		obstacles.at<cv::Vec3f>(0, i) = cv::Vec3f(float(i) * 0.1f, 0.0f, 0.0f);
+	}
+	cv::Mat scanData(1, 4, CV_32FC2);
+	for(int i = 0; i < 4; ++i)
+	{
+		scanData.at<cv::Vec2f>(0, i) = cv::Vec2f(1.0f, float(i) * 0.1f);
+	}
+
+	for(int pass = 0; pass < 2; ++pass)
+	{
+		const bool withInputGrid = pass == 1;
+		SCOPED_TRACE(uFormat("input grid=%s", withInputGrid?"true":"false"));
+
+		ParametersMap params = defaultMemoryParams();
+		params[Parameters::kRGBDCreateOccupancyGrid()] = "true";
+		params[Parameters::kGridSensor()] = "0"; // from laser scan
+		params[Parameters::kGridCellSize()] = "0.05";
+		Memory memory(params);
+		ASSERT_TRUE(memory.init(""));
+
+		SensorData data(cv::Mat(8, 8, CV_8UC1, cv::Scalar(128)));
+		data.setLaserScan(LaserScan(scanData, 0, 10.0f, LaserScan::kXY));
+		if(withInputGrid)
+		{
+			data.setOccupancyGrid(cv::Mat(), obstacles, cv::Mat(), kInputCellSize, cv::Point3f(0, 0, 0));
+		}
+		ASSERT_TRUE(memory.update(data, Transform::getIdentity(), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+
+		const Signature * s = memory.getSignature(memory.getLastSignatureId());
+		ASSERT_NE(s, nullptr);
+		if(withInputGrid)
+		{
+			EXPECT_FLOAT_EQ(s->sensorData().gridCellSize(), kInputCellSize) << "the input grid should have been kept";
+			ASSERT_EQ(s->sensorData().gridObstacleCellsRaw().total(), obstacles.total());
+			EXPECT_EQ(cv::norm(s->sensorData().gridObstacleCellsRaw(), obstacles, cv::NORM_INF), 0.0);
+		}
+		else
+		{
+			EXPECT_FLOAT_EQ(s->sensorData().gridCellSize(), 0.05f) << "the grid should have been generated from the scan";
+		}
+		memory.close(false);
 	}
 }
 
@@ -3332,7 +3595,7 @@ TEST(MemoryTest, GetNodeDataLoadsEachPayloadTypeFromDatabase)
 	const LaserScan scan(scanData, /*maxPoints=*/4, /*maxRange=*/10.0f, LaserScan::kXYZ);
 	seeded.setLaserScan(scan);
 	// User data: 4 floats.
-	cv::Mat userData = (cv::Mat_<float>(1, 4) << 1.0f, 2.0f, 3.0f, 4.0f);
+	cv::Mat userData = cv::Mat_<float>({1, 4}, {1.0f, 2.0f, 3.0f, 4.0f});
 	seeded.setUserData(userData);
 	// Occupancy grid: a few obstacle cells.
 	cv::Mat obstacles(1, 3, CV_32FC3);
@@ -4513,6 +4776,14 @@ namespace {
 
 // A SensorData carrying both the raw image and the blob that encodes it, the
 // shape produced by SensorData::uncompressData() when reprocessing a database.
+// Deliberately uses the deprecated raw setters: their replacements clear the blob.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4996)
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 SensorData dataWithRawAndCompressed(const cv::Mat & raw, const cv::Mat & blob)
 {
 	SensorData data(blob);     // 1-row CV_8UC1 is detected as compressed
@@ -4526,6 +4797,11 @@ SensorData dataWithRawAndCompressed(const cv::Mat & raw, const cv::Mat & blob, c
 	data.setImageRaw(raw);
 	return data;
 }
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
+#endif
 
 cv::Mat texture(int rows, int cols)
 {
@@ -4626,10 +4902,10 @@ TEST(MemoryTest, CreateSignatureRecompressesAfterRectification)
 	// rectified pixels.
 	const int size = 32;
 	const double f = 16.0, c = 16.0;
-	const cv::Mat K = (cv::Mat_<double>(3, 3) << f, 0.0, c, 0.0, f, c, 0.0, 0.0, 1.0);
-	const cv::Mat D = (cv::Mat_<double>(1, 4) << -0.3, 0.1, 0.001, -0.001);
+	const cv::Mat K = cv::Mat_<double>({3, 3}, {f, 0.0, c, 0.0, f, c, 0.0, 0.0, 1.0});
+	const cv::Mat D = cv::Mat_<double>({1, 4}, {-0.3, 0.1, 0.001, -0.001});
 	const cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
-	const cv::Mat P = (cv::Mat_<double>(3, 4) << f, 0.0, c, 0.0, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0);
+	const cv::Mat P = cv::Mat_<double>({3, 4}, {f, 0.0, c, 0.0, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0});
 	const CameraModel model("rectifiable", cv::Size(size, size), K, D, R, P);
 	ASSERT_TRUE(model.isValidForRectification());
 
@@ -4696,14 +4972,14 @@ TEST(MemoryTest, CreateSignatureRecompressesStereoPairAfterRectification)
 	// carries the right image.
 	const int size = 32;
 	const double f = 16.0, c = 16.0, baseline = 0.1;
-	const cv::Mat K = (cv::Mat_<double>(3, 3) << f, 0.0, c, 0.0, f, c, 0.0, 0.0, 1.0);
-	const cv::Mat D = (cv::Mat_<double>(1, 4) << -0.3, 0.1, 0.001, -0.001);
+	const cv::Mat K = cv::Mat_<double>({3, 3}, {f, 0.0, c, 0.0, f, c, 0.0, 0.0, 1.0});
+	const cv::Mat D = cv::Mat_<double>({1, 4}, {-0.3, 0.1, 0.001, -0.001});
 	const cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
-	const cv::Mat Pleft = (cv::Mat_<double>(3, 4) <<
-			f, 0.0, c, baseline * f, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0);
-	const cv::Mat Pright = (cv::Mat_<double>(3, 4) <<
-			f, 0.0, c, 0.0, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0);
-	const cv::Mat T = (cv::Mat_<double>(3, 1) << -baseline, 0.0, 0.0);
+	const cv::Mat Pleft = cv::Mat_<double>({3, 4}, {
+			f, 0.0, c, baseline * f, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0});
+	const cv::Mat Pright = cv::Mat_<double>({3, 4}, {
+			f, 0.0, c, 0.0, 0.0, f, c, 0.0, 0.0, 0.0, 1.0, 0.0});
+	const cv::Mat T = cv::Mat_<double>({3, 1}, {-baseline, 0.0, 0.0});
 	const StereoCameraModel model("stereo",
 			CameraModel("left", cv::Size(size, size), K, D, R, Pleft),
 			CameraModel("right", cv::Size(size, size), K, D, R, Pright),
@@ -4723,8 +4999,21 @@ TEST(MemoryTest, CreateSignatureRecompressesStereoPairAfterRectification)
 
 	SensorData data;
 	data.setStereoImage(leftBlob, rightBlob, std::vector<StereoCameraModel>{model});
+	// Deliberately uses the deprecated raw setters: their replacements clear the blobs.
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4996)
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 	data.setImageRaw(left);          // neither setter clears the blobs
 	data.setDepthOrRightRaw(right);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
+#endif
 	ASSERT_FALSE(data.imageCompressed().empty());
 	ASSERT_FALSE(data.depthOrRightCompressed().empty());
 
@@ -4848,10 +5137,10 @@ TEST(MemoryTest, DecodesCompressedImagesToRectifyThem)
 
 		cv::Mat rgb(48, 64, CV_8UC3);
 		cv::randu(rgb, 0, 255);
-		const cv::Mat K = (cv::Mat_<double>(3, 3) << 50, 0, 32, 0, 50, 24, 0, 0, 1);
-		const cv::Mat D = (cv::Mat_<double>(1, 5) << -0.3, 0.1, 0, 0, 0);
+		const cv::Mat K = cv::Mat_<double>({3, 3}, {50, 0, 32, 0, 50, 24, 0, 0, 1});
+		const cv::Mat D = cv::Mat_<double>({1, 5}, {-0.3, 0.1, 0, 0, 0});
 		const cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
-		const cv::Mat P = (cv::Mat_<double>(3, 4) << 50, 0, 32, 0, 0, 50, 24, 0, 0, 0, 1, 0);
+		const cv::Mat P = cv::Mat_<double>({3, 4}, {50, 0, 32, 0, 0, 50, 24, 0, 0, 0, 1, 0});
 		const CameraModel model("cam", cv::Size(64, 48), K, D, R, P, CameraModel::opticalRotation());
 		ASSERT_TRUE(model.isValidForRectification());
 		const cv::Mat compressed = compressImage2(rgb, ".png");

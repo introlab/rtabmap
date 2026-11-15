@@ -1199,7 +1199,8 @@ TEST_P(LandmarkCovarianceTest, LandmarkCovarianceAffectsConvergence)
 	// kLandmark link's transform to simulate a noisy marker detector.
 	const cv::Mat lmInfo = buildMarkerCov(cov, backend, force3DoF).inv();
 	std::mt19937 linkRng(43);
-	std::normal_distribution<double> linkLinDist(0.0, cov.linkLinNoise);
+	// Only sampled when linkLinNoise > 0; the stddev must be > 0 (asserted by libstdc++ in debug).
+	std::normal_distribution<double> linkLinDist(0.0, cov.linkLinNoise > 0.0 ? cov.linkLinNoise : 1.0);
 	// Open-loop drift on neighbor links: 1 cm linear sigma, 0.1 deg angular
 	// sigma, plus a constant -1 deg yaw bias on every neighbor edge.
 	std::mt19937 neighRng(44);

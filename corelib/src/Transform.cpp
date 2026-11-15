@@ -48,10 +48,10 @@ Transform::Transform(
 		float r21, float r22, float r23, float o24,
 		float r31, float r32, float r33, float o34)
 {
-	data_ = (cv::Mat_<float>(3,4) <<
+	data_ = cv::Mat_<float>({3,4}, {
 			r11, r12, r13, o14,
 			r21, r22, r23, o24,
-			r31, r32, r33, o34);
+			r31, r32, r33, o34});
 
 	if( r11>0.0f || r12>0.0f || r13>0.0f ||
 		r21>0.0f || r22>0.0f || r23>0.0f ||

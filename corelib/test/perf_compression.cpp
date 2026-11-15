@@ -246,7 +246,7 @@ std::vector<Approach> approaches32F()
 std::vector<cv::Mat> loadSampleDepths()
 {
 	std::vector<cv::Mat> depths;
-	for(const std::string & name : {"17.png", "154.png"})
+	for(const char * name : {"17.png", "154.png"})
 	{
 		const std::string path = std::string(RTABMAP_TEST_DATA_ROOT) + "/rgbd/depth/" + name;
 		cv::Mat depth = cv::imread(path, cv::IMREAD_UNCHANGED);

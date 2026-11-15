@@ -23,6 +23,8 @@ namespace vertigo {
    */
   struct SwitchVariableSigmoid : public rtabmap::DerivedValue<SwitchVariableSigmoid> {
 
+    using rtabmap::DerivedValue<SwitchVariableSigmoid>::operator=;
+
     /** default constructor */
     SwitchVariableSigmoid() : d_(10.0) {};
 

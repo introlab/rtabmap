@@ -329,6 +329,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_globalDescriptorExtractor->setItemData(1, 0, Qt::UserRole - 1);
 #endif
 
+#ifndef RTABMAP_ONNXRUNTIME
+	_ui->comboBox_detector_strategy->setItemData(17, 0, Qt::UserRole - 1);
+	_ui->vis_feature_detector->setItemData(17, 0, Qt::UserRole - 1);
+	_ui->reextract_nn->setItemData(10, 0, Qt::UserRole - 1);
+	_ui->comboBox_globalDescriptorExtractor->setItemData(2, 0, Qt::UserRole - 1);
+#endif
+
 #if !defined(HAVE_OPENCV_XFEATURES2D) || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION<4 || CV_MINOR_VERSION==4 && CV_SUBMINOR_VERSION<1))
 	_ui->reextract_nn->setItemData(7, 0, Qt::UserRole - 1);
 #endif
@@ -804,6 +811,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_checkBox_ignoreFeatures, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignorePriors, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_ignoreIMU, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_checkBox_ignoreGrids, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_intermediateNodesAreNormalNodes, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStartId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStopId, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1298,6 +1306,31 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->toolButton_pydetector_path, SIGNAL(clicked()), this, SLOT(changePyDetectorPath()));
 	_ui->checkBox_pydetector_cuda->setObjectName(Parameters::kPyDetectorCuda().c_str());
 
+	// OnnxDetector
+	_ui->lineEdit_onnxdetector_model_path->setObjectName(Parameters::kOnnxDetectorModelPath().c_str());
+	connect(_ui->toolButton_onnxdetector_model_path, SIGNAL(clicked()), this, SLOT(changeOnnxDetectorModelPath()));
+	_ui->doubleSpinBox_onnxdetector_threshold->setObjectName(Parameters::kOnnxDetectorThreshold().c_str());
+	// ONNX Runtime options shared by OnnxDetector, OnnxMatcher and OnnxDescriptor
+	_ui->comboBox_onnx_provider->setObjectName(Parameters::kOnnxProvider().c_str());
+	connect(_ui->comboBox_onnx_provider, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_onnx_provider, SLOT(setCurrentIndex(int)));
+	connect(_ui->comboBox_onnx_provider, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOnnxProviderVisibility()));
+	_ui->comboBox_onnx_provider->setCurrentIndex(Parameters::defaultOnnxProvider());
+	_ui->checkBox_onnx_trt_fp16->setObjectName(Parameters::kOnnxTensorRTFp16().c_str());
+	_ui->lineEdit_onnx_trt_cache_path->setObjectName(Parameters::kOnnxTensorRTCachePath().c_str());
+	_ui->spinBox_onnx_trt_max_keypoints->setObjectName(Parameters::kOnnxTensorRTMaxKeypoints().c_str());
+	connect(_ui->toolButton_onnx_trt_cache_path, SIGNAL(clicked()), this, SLOT(changeOnnxTensorRTCachePath()));
+	_ui->lineEdit_onnx_openvino_device->setObjectName(Parameters::kOnnxOpenVINODevice().c_str());
+	_ui->comboBox_onnx_openvino_precision->setObjectName(Parameters::kOnnxOpenVINOPrecision().c_str());
+	_ui->lineEdit_onnx_openvino_cache_path->setObjectName(Parameters::kOnnxOpenVINOCachePath().c_str());
+	connect(_ui->toolButton_onnx_openvino_cache_path, SIGNAL(clicked()), this, SLOT(changeOnnxOpenVINOCachePath()));
+	_ui->lineEdit_onnx_openvino_library_path->setObjectName(Parameters::kOnnxOpenVINOLibraryPath().c_str());
+	connect(_ui->toolButton_onnx_openvino_library_path, SIGNAL(clicked()), this, SLOT(changeOnnxOpenVINOLibraryPath()));
+
+	// OnnxMatcher
+	_ui->lineEdit_onnxmatcher_model_path->setObjectName(Parameters::kOnnxMatcherModelPath().c_str());
+	connect(_ui->toolButton_onnxmatcher_model_path, SIGNAL(clicked()), this, SLOT(changeOnnxMatcherModelPath()));
+	_ui->doubleSpinBox_onnxmatcher_threshold->setObjectName(Parameters::kOnnxMatcherThreshold().c_str());
+
 	// GMS
 	_ui->checkBox_gms_withRotation->setObjectName(Parameters::kGMSWithRotation().c_str());
 	_ui->checkBox_gms_withScale->setObjectName(Parameters::kGMSWithScale().c_str());
@@ -1307,6 +1340,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->lineEdit_pydescriptor_path->setObjectName(Parameters::kPyDescriptorPath().c_str());
 	connect(_ui->toolButton_pydescriptor_path, SIGNAL(clicked()), this, SLOT(changePyDescriptorPath()));
 	_ui->pydescriptor_dim->setObjectName(Parameters::kPyDescriptorDim().c_str());
+
+	// OnnxDescriptor
+	_ui->lineEdit_onnxdescriptor_model_path->setObjectName(Parameters::kOnnxDescriptorModelPath().c_str());
+	connect(_ui->toolButton_onnxdescriptor_model_path, SIGNAL(clicked()), this, SLOT(changeOnnxDescriptorModelPath()));
+	_ui->spinBox_onnxdescriptor_dim->setObjectName(Parameters::kOnnxDescriptorDim().c_str());
 
 	// verifyHypotheses
 	_ui->groupBox_vh_epipolar2->setObjectName(Parameters::kVhEpEnabled().c_str());
@@ -1832,6 +1870,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->MarkerVarianceOrientationIgnored->setObjectName(Parameters::kMarkerVarianceOrientationIgnored().c_str());
 	_ui->MarkerRangeMin->setObjectName(Parameters::kMarkerMinRange().c_str());
 	_ui->MarkerRangeMax->setObjectName(Parameters::kMarkerMaxRange().c_str());
+	_ui->RGBDLandmarkMaxNormalError->setObjectName(Parameters::kRGBDLandmarkMaxNormalError().c_str());
 	_ui->MarkerPriors->setObjectName(Parameters::kMarkerPriors().c_str());
 	_ui->MarkerPriorsVarianceLinear->setObjectName(Parameters::kMarkerPriorsVarianceLinear().c_str());
 	_ui->MarkerPriorsVarianceAngular->setObjectName(Parameters::kMarkerPriorsVarianceAngular().c_str());
@@ -1842,6 +1881,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->apriltag_refine_edges->setObjectName(Parameters::kMarkerAprilTagRefineEdges().c_str());
 	_ui->apriltag_decode_sharpening->setObjectName(Parameters::kMarkerAprilTagDecodeSharpening().c_str());
 	_ui->apriltag_debug->setObjectName(Parameters::kMarkerAprilTagDebug().c_str());
+	_ui->apriltag_opencv_pnp->setObjectName(Parameters::kMarkerAprilTagOpenCVPnP().c_str());
 
 	// IMU filter
 	_ui->doubleSpinBox_imuFilterMadgwickGain->setObjectName(Parameters::kImuFilterMadgwickGain().c_str());
@@ -1876,6 +1916,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	updateFeatureMatchingVisibility();
 	updateGlobalDescriptorVisibility();
+	updateOnnxProviderVisibility();
 }
 
 PreferencesDialog::~PreferencesDialog() {
@@ -2309,6 +2350,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_checkBox_ignoreFeatures->setChecked(true);
 		_ui->source_checkBox_ignorePriors->setChecked(false);
 		_ui->source_checkBox_ignoreIMU->setChecked(false);
+		_ui->source_checkBox_ignoreGrids->setChecked(true);
 		_ui->source_checkBox_intermediateNodesAreNormalNodes->setChecked(false);
 		_ui->source_spinBox_databaseStartId->setValue(0);
 		_ui->source_spinBox_databaseStopId->setValue(0);
@@ -3177,6 +3219,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_checkBox_ignoreFeatures->setChecked(settings.value("ignoreFeatures", _ui->source_checkBox_ignoreFeatures->isChecked()).toBool());
 	_ui->source_checkBox_ignorePriors->setChecked(settings.value("ignorePriors", _ui->source_checkBox_ignorePriors->isChecked()).toBool());
 	_ui->source_checkBox_ignoreIMU->setChecked(settings.value("ignoreImu", _ui->source_checkBox_ignoreIMU->isChecked()).toBool());
+	_ui->source_checkBox_ignoreGrids->setChecked(settings.value("ignoreGrids", _ui->source_checkBox_ignoreGrids->isChecked()).toBool());
 	_ui->source_checkBox_intermediateNodesAreNormalNodes->setChecked(settings.value("intermediateNodesAreNormalNodes", _ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked()).toBool());
 	
 	_ui->source_spinBox_databaseStartId->setValue(settings.value("startId", _ui->source_spinBox_databaseStartId->value()).toInt());
@@ -3818,6 +3861,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("ignoreFeatures",  _ui->source_checkBox_ignoreFeatures->isChecked());
 	settings.setValue("ignorePriors",  _ui->source_checkBox_ignorePriors->isChecked());
 	settings.setValue("ignoreImu",  _ui->source_checkBox_ignoreIMU->isChecked());
+	settings.setValue("ignoreGrids",  _ui->source_checkBox_ignoreGrids->isChecked());
 	settings.setValue("intermediateNodesAreNormalNodes", _ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked());
 	settings.setValue("startId",          _ui->source_spinBox_databaseStartId->value());
 	settings.setValue("stopId",          _ui->source_spinBox_databaseStopId->value());
@@ -5832,11 +5876,19 @@ void PreferencesDialog::updateFeatureMatchingVisibility()
 {
 	_ui->groupBox_pymatcher->setVisible(_ui->reextract_nn->currentIndex() == 6);
 	_ui->groupBox_gms->setVisible(_ui->reextract_nn->currentIndex() == 7);
+	_ui->groupBox_onnxmatcher->setVisible(_ui->reextract_nn->currentIndex() == 10);
+}
+
+void PreferencesDialog::updateOnnxProviderVisibility()
+{
+	// CPU and CUDA have no specific options
+	_ui->stackedWidget_onnx_provider->setVisible(_ui->comboBox_onnx_provider->currentIndex() >= 2);
 }
 
 void PreferencesDialog::updateGlobalDescriptorVisibility()
 {
 	_ui->groupBox_pydescriptor->setVisible(_ui->comboBox_globalDescriptorExtractor->currentIndex() == 1);
+	_ui->groupBox_onnxdescriptor->setVisible(_ui->comboBox_globalDescriptorExtractor->currentIndex() == 2);
 }
 
 void PreferencesDialog::updateAvailableMarkerDictionaries()
@@ -5873,17 +5925,6 @@ void PreferencesDialog::updateAvailableMarkerDictionaries()
 		if(_ui->MarkerDictionary->currentIndex() >=17 && _ui->MarkerDictionary->currentIndex() <= 20)
 		{
 			_ui->MarkerDictionary->setCurrentIndex(Parameters::defaultMarkerDictionary());
-		}
-#else
-		if(_ui->MarkerDictionary->currentIndex() >=17 && _ui->MarkerDictionary->currentIndex() <= 20)
-		{
-			// If apriltag is selected, select apriltag refinement by default
-			_ui->OpenCVCornerRefinementMethod->setCurrentIndex(3);
-		}
-		else if(_ui->OpenCVCornerRefinementMethod->currentIndex() == 3)
-		{
-			// If not apriltag dictionary selected, reset refinement to default.
-			_ui->OpenCVCornerRefinementMethod->setCurrentIndex(Parameters::defaultMarkerOpenCVCornerRefinementMethod());
 		}
 #endif
 #if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
@@ -6228,6 +6269,64 @@ void PreferencesDialog::changePyDetectorPath()
 	{
 		_ui->lineEdit_pydetector_path->setText(path);
 	}
+}
+
+void PreferencesDialog::changeOnnxModelPath(QLineEdit * lineEdit)
+{
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"),
+			lineEdit->text().isEmpty()?this->getWorkingDirectory():lineEdit->text(), tr("ONNX model (*.onnx)"));
+	if(!path.isEmpty())
+	{
+		lineEdit->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOnnxTensorRTCachePath()
+{
+	QLineEdit * lineEdit = _ui->lineEdit_onnx_trt_cache_path;
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select TensorRT cache directory"),
+			lineEdit->text().isEmpty()?this->getWorkingDirectory():lineEdit->text());
+	if(!path.isEmpty())
+	{
+		lineEdit->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOnnxOpenVINOCachePath()
+{
+	QLineEdit * lineEdit = _ui->lineEdit_onnx_openvino_cache_path;
+	QString path = QFileDialog::getExistingDirectory(this, tr("Select OpenVINO cache directory"),
+			lineEdit->text().isEmpty()?this->getWorkingDirectory():lineEdit->text());
+	if(!path.isEmpty())
+	{
+		lineEdit->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOnnxOpenVINOLibraryPath()
+{
+	QLineEdit * lineEdit = _ui->lineEdit_onnx_openvino_library_path;
+	QString path = QFileDialog::getOpenFileName(this, tr("Select OpenVINO plugin library"),
+			lineEdit->text().isEmpty()?this->getWorkingDirectory():lineEdit->text(), tr("Shared library (*.so *.dll *.dylib)"));
+	if(!path.isEmpty())
+	{
+		lineEdit->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOnnxDetectorModelPath()
+{
+	changeOnnxModelPath(_ui->lineEdit_onnxdetector_model_path);
+}
+
+void PreferencesDialog::changeOnnxMatcherModelPath()
+{
+	changeOnnxModelPath(_ui->lineEdit_onnxmatcher_model_path);
+}
+
+void PreferencesDialog::changeOnnxDescriptorModelPath()
+{
+	changeOnnxModelPath(_ui->lineEdit_onnxdescriptor_model_path);
 }
 
 void PreferencesDialog::updateSourceGrpVisibility()
@@ -7732,7 +7831,8 @@ Camera * PreferencesDialog::createCamera(
 				_ui->source_checkBox_ignorePriors->isChecked(),
 				_ui->source_checkBox_ignoreIMU->isChecked(),
 				_ui->source_checkBox_intermediateNodesAreNormalNodes->isChecked(),
-				localTransformOverrides);
+				localTransformOverrides,
+				_ui->source_checkBox_ignoreGrids->isChecked());
 	}
 	else
 	{

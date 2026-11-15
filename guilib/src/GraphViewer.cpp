@@ -268,6 +268,7 @@ public:
 	}
 
 	Link::Type linkType() const {return _link.type();}
+	bool isLoopClosure() const {return _link.isLoopClosure();}
 	bool isInterSession() const {return _interSession;}
 	int from() const {return _from;}
 	int to() const {return _to;}
@@ -612,7 +613,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 	{
 		iter.value()->hide();
 	}
-	UDEBUG("hidden %d links", _linkItems.size());
+	UDEBUG("hidden %d links", (int)_linkItems.size());
 
 	int created = 0;
 	int reused = 0;
@@ -896,7 +897,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 		this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
 	}
 
-	UDEBUG("_nodeItems=%d, _linkItems=%d, timer=%fs", _nodeItems.size(), _linkItems.size(), timer.ticks());
+	UDEBUG("_nodeItems=%d, _linkItems=%d, timer=%fs", (int)_nodeItems.size(), (int)_linkItems.size(), timer.ticks());
 }
 
 void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
@@ -1030,7 +1031,7 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 			++iter;
 		}
 	}
-	UDEBUG("_gtNodeItems=%d, _gtLinkItems=%d timer=%fs", _gtNodeItems.size(), _gtLinkItems.size(), timer.ticks());
+	UDEBUG("_gtNodeItems=%d, _gtLinkItems=%d timer=%fs", (int)_gtNodeItems.size(), (int)_gtLinkItems.size(), timer.ticks());
 }
 
 void GraphViewer::updateGPSGraph(
@@ -1151,7 +1152,7 @@ void GraphViewer::updateGPSGraph(
 			++iter;
 		}
 	}
-	UDEBUG("_gpsNodeItems=%d, _gpsLinkItems=%d timer=%fs", _gpsNodeItems.size(), _gpsLinkItems.size(), timer.ticks());
+	UDEBUG("_gpsNodeItems=%d, _gpsLinkItems=%d timer=%fs", (int)_gpsNodeItems.size(), (int)_gpsLinkItems.size(), timer.ticks());
 }
 
 void GraphViewer::updateReferentialPosition(const Transform & t)
@@ -1954,10 +1955,7 @@ void GraphViewer::setIntraSessionLoopColor(const QColor & color)
 	{
 		for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
 		{
-			if((iter.value()->linkType() == Link::kGlobalClosure ||
-				iter.value()->linkType() == Link::kLocalSpaceClosure ||
-				iter.value()->linkType() == Link::kLocalTimeClosure ||
-				iter.value()->linkType() == Link::kUserClosure) &&
+			if(iter.value()->isLoopClosure() &&
 				!iter.value()->isInterSession())
 			{
 				iter.value()->setColor(_loopIntraSessionColor);
@@ -1973,10 +1971,7 @@ void GraphViewer::setInterSessionLoopColor(const QColor & color)
 	{
 		for(QMultiMap<int, LinkItem*>::iterator iter=_linkItems.begin(); iter!=_linkItems.end(); ++iter)
 		{
-			if((iter.value()->linkType() == Link::kGlobalClosure ||
-				iter.value()->linkType() == Link::kLocalSpaceClosure ||
-				iter.value()->linkType() == Link::kLocalTimeClosure ||
-				iter.value()->linkType() == Link::kUserClosure) &&
+			if(iter.value()->isLoopClosure() &&
 				iter.value()->isInterSession())
 			{
 				iter.value()->setColor(_loopInterSessionColor);

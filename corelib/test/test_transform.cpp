@@ -53,10 +53,10 @@ TEST(TransformTest, TranslationConstructor)
 
 TEST(TransformTest, MatrixConstructor)
 {
-    cv::Mat mat = (cv::Mat_<float>(3, 4) <<
+    cv::Mat mat = cv::Mat_<float>({3, 4}, {
         1, 0, 0, 1,
         0, 1, 0, 2,
-        0, 0, 1, 3);
+        0, 0, 1, 3});
     Transform t(mat);
     EXPECT_TRUE(approxEqual(t.x(), 1.0f));
     EXPECT_TRUE(approxEqual(t.y(), 2.0f));

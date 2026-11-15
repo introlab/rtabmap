@@ -119,10 +119,10 @@ TEST_F(VWDictionaryTest, AddNewWordsIncremental)
         // Word 2: (15, 0)
         // Word 3: (0, 255)
         // Using dimension 8 to support LSH
-        cv::Mat initialDescriptors = (cv::Mat_<float>(3, 8) << 
+        cv::Mat initialDescriptors = cv::Mat_<float>({3, 8}, {
             0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
             15.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 255.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+            0.0f, 255.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f});
 
         // Convert to binary if using LSH strategy
         if(strategy == VWDictionary::kNNFlannLSH)
@@ -157,9 +157,9 @@ TEST_F(VWDictionaryTest, AddNewWordsIncremental)
         //   Distance to Word 2: 6.0 (LSH 2)
         //   Ratio: 36 / 81 = 0.44 > NNDR threshold - should FAIL NNDR (new word created)
         //   LSH Ratio: 1/2 = 0.5 > NNDR
-        cv::Mat queryDescriptors = (cv::Mat_<float>(2, 8) << 
+        cv::Mat queryDescriptors = cv::Mat_<float>({2, 8}, {
             1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,  // Should match Word 1 (passes NNDR)
-            9.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f); // Should create new word (fails NNDR)
+            9.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}); // Should create new word (fails NNDR)
        
         // Convert to binary if using LSH strategy
         if(strategy == VWDictionary::kNNFlannLSH)
@@ -226,9 +226,9 @@ TEST_F(VWDictionaryTest, AddNewWordsFixed)
     // Create query descriptors with known distances
     // Query 1: (0.5, 0.5) - closest to Word 1 (0,0), distance ≈ 0.707
     // Query 2: (5.1, 0) - slighlty closer to Word 2 (10,5) than Word 1 (0,0), with distances 4.9 and 5.0 respectively
-    cv::Mat queryDescriptors = (cv::Mat_<float>(2, 2) << 
+    cv::Mat queryDescriptors = cv::Mat_<float>({2, 2}, {
         0.5f, 0.5f,  // Closest to Word 1
-        5.1f, 0.0f); // Closest to Word2 but would not pass NNDR (4.9/5 = 0.98 > 0.8 default NNDR)
+        5.1f, 0.0f}); // Closest to Word2 but would not pass NNDR (4.9/5 = 0.98 > 0.8 default NNDR)
     
     int signatureId = 2;
     std::list<int> wordIds = dict->addNewWords(queryDescriptors, signatureId);
@@ -256,7 +256,7 @@ TEST_F(VWDictionaryTest, AddNewWordsFixed)
 
 TEST_F(VWDictionaryTest, AddWord)
 {
-    cv::Mat descriptor = (cv::Mat_<float>(1, 64) << 
+    cv::Mat descriptor = cv::Mat_<float>({1, 64}, {
         1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
         1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
         1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
@@ -264,7 +264,7 @@ TEST_F(VWDictionaryTest, AddWord)
         1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
         1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
         1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
-        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0});
     
     VisualWord* word = new VisualWord(100, descriptor, 10);
     dict->addWord(word);
@@ -284,10 +284,10 @@ TEST_F(VWDictionaryTest, FindNNIncremental)
     // Word 1: (0, 0)
     // Word 2: (10, 0)
     // Word 3: (0, 100)
-    cv::Mat initialDescriptors = (cv::Mat_<float>(3, 2) << 
+    cv::Mat initialDescriptors = cv::Mat_<float>({3, 2}, {
         0.0f, 0.0f,
         10.0f, 0.0f,
-        0.0f, 100.0f);
+        0.0f, 100.0f});
     dict->addNewWords(initialDescriptors, 1);
     dict->update();
     
@@ -301,9 +301,9 @@ TEST_F(VWDictionaryTest, FindNNIncremental)
     //   Distance to Word 1: 5.0
     //   Distance to Word 2: 5.0
     //   Ratio: 5.0 / 5.0 = 1.0 > NNDR threshold - should FAIL NNDR (return ID_INVALID)
-    cv::Mat queryDescriptors = (cv::Mat_<float>(2, 2) << 
+    cv::Mat queryDescriptors = cv::Mat_<float>({2, 2}, {
         0.5f, 0.5f,  // Should match Word 1 (passes NNDR)
-        5.0f, 0.0f); // Should fail NNDR (returns ID_INVALID)
+        5.0f, 0.0f}); // Should fail NNDR (returns ID_INVALID)
     
     std::vector<int> matches = dict->findNN(queryDescriptors);
     EXPECT_EQ(matches.size(), 2u);
@@ -353,9 +353,9 @@ TEST_F(VWDictionaryTest, FindNNFixed)
     // Create query descriptors with known distances
     // Query 1: (0.5, 0.5) - closest to Word 1 (0,0), distance ≈ 0.707
     // Query 2: (5.1, 0) - slightly closer to Word 2 (10,0) than Word 1 (0,0), with distances 4.9 and 5.0 respectively
-    cv::Mat queryDescriptors = (cv::Mat_<float>(2, 2) << 
+    cv::Mat queryDescriptors = cv::Mat_<float>({2, 2}, {
         0.5f, 0.5f,  // Closest to Word 1
-        5.1f, 0.0f); // Closest to Word 2 but would not pass NNDR (4.9/5 = 0.98 > 0.8 default NNDR)
+        5.1f, 0.0f}); // Closest to Word 2 but would not pass NNDR (4.9/5 = 0.98 > 0.8 default NNDR)
     
     std::vector<int> matches = dict->findNN(queryDescriptors);
     EXPECT_EQ(matches.size(), 2u);
@@ -872,17 +872,17 @@ TEST_F(VWDictionaryTest, RebuildIndexKeepsWordsAndSearchResults)
 {
     dict->setNNStrategy(VWDictionary::kNNFlannKdTree);
 
-    cv::Mat descriptors = (cv::Mat_<float>(3, 2) <<
+    cv::Mat descriptors = cv::Mat_<float>({3, 2}, {
         0.0f, 0.0f,
         10.0f, 0.0f,
-        0.0f, 100.0f);
+        0.0f, 100.0f});
     std::list<int> wordIds = dict->addNewWords(descriptors, 1);
     dict->update();
     ASSERT_EQ(wordIds.size(), 3u);
 
-    cv::Mat query = (cv::Mat_<float>(2, 2) <<
+    cv::Mat query = cv::Mat_<float>({2, 2}, {
         0.5f, 0.5f,   // matches the first word
-        0.0f, 99.0f); // matches the third word
+        0.0f, 99.0f}); // matches the third word
     const std::vector<int> before = dict->findNN(query);
     ASSERT_EQ(before.size(), 2u);
     ASSERT_EQ(before[0], wordIds.front());

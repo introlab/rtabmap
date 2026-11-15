@@ -623,7 +623,7 @@ void DBDriver::loadSignatures(const std::list<int> & signIds,
 	}
 }
 
-void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws)
+void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws, bool missingWordsExpected)
 {
 	// look up in the trash before the database
 	std::set<int> ids = wordIds;
@@ -655,7 +655,7 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 	if(ids.size())
 	{
 		_dbSafeAccessMutex.lock();
-		this->loadWordsQuery(ids, vws);
+		this->loadWordsQuery(ids, vws, missingWordsExpected);
 		_dbSafeAccessMutex.unlock();
 		uAppend(vws, puttedBack);
 	}
@@ -1091,7 +1091,7 @@ void DBDriver::getLastMapId(int & mapId) const
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::getLastWordId(int & id) const
+void DBDriver::getLastWordId(int & id, bool lookInFeatures) const
 {
 	// look in the trash
 	_trashesMutex.lock();
@@ -1103,6 +1103,20 @@ void DBDriver::getLastWordId(int & id) const
 
 	_dbSafeAccessMutex.lock();
 	this->getLastIdQuery("Word", id);
+	if(lookInFeatures)
+	{
+		// Queried separately: getLastIdQuery() returns the table's max even if it is
+		// smaller than the input id.
+		int featureWordId = 0;
+		this->getLastIdQuery(
+				uStrNumCmp(this->getDatabaseVersion(), "0.13.0") >= 0?"Feature":"Map_Node_Word",
+				featureWordId,
+				"word_id");
+		if(featureWordId > id)
+		{
+			id = featureWordId;
+		}
+	}
 	_dbSafeAccessMutex.unlock();
 }
 

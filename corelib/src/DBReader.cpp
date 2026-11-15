@@ -58,7 +58,8 @@ DBReader::DBReader(const std::string & databasePath,
 				   bool priorsIgnored,
 				   bool imuIgnored,
 				   bool intermediateNodesAreNormalNodes,
-				   const std::vector<Transform> & cameraLocalTransformOverrides) :
+				   const std::vector<Transform> & cameraLocalTransformOverrides,
+				   bool occupancyGridsIgnored) :
 	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
 	_odometryIgnored(odometryIgnored),
@@ -76,6 +77,7 @@ DBReader::DBReader(const std::string & databasePath,
 	_startMapId(startMapId),
 	_stopMapId(stopMapId),
 	_cameraLocalTransformOverrides(cameraLocalTransformOverrides),
+	_occupancyGridsIgnored(occupancyGridsIgnored),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
@@ -102,7 +104,8 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   bool priorsIgnored,
 				   bool imuIgnored,
 				   bool intermediateNodesAreNormalNodes,
-				   const std::vector<Transform> & cameraLocalTransformOverrides) :
+				   const std::vector<Transform> & cameraLocalTransformOverrides,
+				   bool occupancyGridsIgnored) :
 	Camera(frameRate),
    _paths(databasePaths),
 	_odometryIgnored(odometryIgnored),
@@ -120,6 +123,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_startMapId(startMapId),
 	_stopMapId(stopMapId),
 	_cameraLocalTransformOverrides(cameraLocalTransformOverrides),
+	_occupancyGridsIgnored(occupancyGridsIgnored),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousMapId(-1),
@@ -609,6 +613,14 @@ SensorData DBReader::getNextData(SensorCaptureInfo * info)
 			}
 
 			data.uncompressData();
+			if(_occupancyGridsIgnored)
+			{
+				// Without local occupancy grids, they are regenerated from the
+				// depth images or laser scans (e.g., with new grid parameters).
+				// Memory uses the ones in the input data as is.
+				data.clearCompressedData(false, false, false, true);
+				data.clearRawData(false, false, false, true);
+			}
 			std::map<int, int> cameraOldNewIndices;
 			std::vector<CameraModel> dbModels = data.cameraModels();
 			if(dbModels.empty() && !data.stereoCameraModels().empty())

@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
 #include <rtabmap/utilite/ULogger.h>
@@ -49,6 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/KeypointItem.h"
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <QGraphicsLineItem>
 #include <QGraphicsPixmapItem>
 #include <QVBoxLayout>
@@ -352,6 +353,7 @@ int main(int argc, char** argv)
 		std::cout<< "t=" << t << std::endl;
 
 		//GUI
+		rtabmap::useXWaylandOnGnome(); // must be before QApplication
 		QApplication app(argc, argv);
 		MainWidget mainWidget(image1, image2, words1, words2, status);
 		mainWidget.show();

@@ -100,18 +100,18 @@ static IMU zedIMUtoIMU(const sl::IMUData & imuData, const Transform & imuLocalTr
 	Eigen::Vector4d accT = Eigen::Vector4d(imuData.linear_acceleration.v[0], imuData.linear_acceleration.v[1], imuData.linear_acceleration.v[2], 1);
 	Eigen::Vector4d gyrT = Eigen::Vector4d(imuData.angular_velocity.v[0]*deg2rad, imuData.angular_velocity.v[1]*deg2rad, imuData.angular_velocity.v[2]*deg2rad, 1);
 
-	cv::Mat orientationCov = (cv::Mat_<double>(3,3)<<
+	cv::Mat orientationCov = cv::Mat_<double>({3,3}, {
 			imuData.pose_covariance[21], imuData.pose_covariance[22], imuData.pose_covariance[23],
 			imuData.pose_covariance[27], imuData.pose_covariance[28], imuData.pose_covariance[29],
-			imuData.pose_covariance[33], imuData.pose_covariance[34], imuData.pose_covariance[35]);
-	cv::Mat angCov = (cv::Mat_<double>(3,3)<<
+			imuData.pose_covariance[33], imuData.pose_covariance[34], imuData.pose_covariance[35]});
+	cv::Mat angCov = cv::Mat_<double>({3,3}, {
 			imuData.angular_velocity_convariance.r[0], imuData.angular_velocity_convariance.r[1], imuData.angular_velocity_convariance.r[2],
 			imuData.angular_velocity_convariance.r[3], imuData.angular_velocity_convariance.r[4], imuData.angular_velocity_convariance.r[5],
-			imuData.angular_velocity_convariance.r[6], imuData.angular_velocity_convariance.r[7], imuData.angular_velocity_convariance.r[8]);
-	cv::Mat accCov = (cv::Mat_<double>(3,3)<<
+			imuData.angular_velocity_convariance.r[6], imuData.angular_velocity_convariance.r[7], imuData.angular_velocity_convariance.r[8]});
+	cv::Mat accCov = cv::Mat_<double>({3,3}, {
 			imuData.linear_acceleration_convariance.r[0], imuData.linear_acceleration_convariance.r[1], imuData.linear_acceleration_convariance.r[2],
 			imuData.linear_acceleration_convariance.r[3], imuData.linear_acceleration_convariance.r[4], imuData.linear_acceleration_convariance.r[5],
-			imuData.linear_acceleration_convariance.r[6], imuData.linear_acceleration_convariance.r[7], imuData.linear_acceleration_convariance.r[8]);
+			imuData.linear_acceleration_convariance.r[6], imuData.linear_acceleration_convariance.r[7], imuData.linear_acceleration_convariance.r[8]});
 
 	Eigen::Quaternionf quat = orientationT.getQuaternionf();
 
@@ -138,18 +138,18 @@ static IMU zedIMUtoIMU(const sl::SensorsData & sensorData, const Transform & imu
     Eigen::Vector4d accT = Eigen::Vector4d(sensorData.imu.linear_acceleration.v[0], sensorData.imu.linear_acceleration.v[1], sensorData.imu.linear_acceleration.v[2], 1);
     Eigen::Vector4d gyrT = Eigen::Vector4d(sensorData.imu.angular_velocity.v[0]*deg2rad, sensorData.imu.angular_velocity.v[1]*deg2rad, sensorData.imu.angular_velocity.v[2]*deg2rad, 1);
 
-    cv::Mat orientationCov = (cv::Mat_<double>(3,3)<<
+    cv::Mat orientationCov = cv::Mat_<double>({3,3}, {
             sensorData.imu.pose_covariance.r[0], sensorData.imu.pose_covariance.r[1], sensorData.imu.pose_covariance.r[2],
             sensorData.imu.pose_covariance.r[3], sensorData.imu.pose_covariance.r[4], sensorData.imu.pose_covariance.r[5],
-            sensorData.imu.pose_covariance.r[6], sensorData.imu.pose_covariance.r[7], sensorData.imu.pose_covariance.r[8]);
-    cv::Mat angCov = (cv::Mat_<double>(3,3)<<
+            sensorData.imu.pose_covariance.r[6], sensorData.imu.pose_covariance.r[7], sensorData.imu.pose_covariance.r[8]});
+    cv::Mat angCov = cv::Mat_<double>({3,3}, {
             sensorData.imu.angular_velocity_covariance.r[0], sensorData.imu.angular_velocity_covariance.r[1], sensorData.imu.angular_velocity_covariance.r[2],
             sensorData.imu.angular_velocity_covariance.r[3], sensorData.imu.angular_velocity_covariance.r[4], sensorData.imu.angular_velocity_covariance.r[5],
-            sensorData.imu.angular_velocity_covariance.r[6], sensorData.imu.angular_velocity_covariance.r[7], sensorData.imu.angular_velocity_covariance.r[8]);
-    cv::Mat accCov = (cv::Mat_<double>(3,3)<<
+            sensorData.imu.angular_velocity_covariance.r[6], sensorData.imu.angular_velocity_covariance.r[7], sensorData.imu.angular_velocity_covariance.r[8]});
+    cv::Mat accCov = cv::Mat_<double>({3,3}, {
             sensorData.imu.linear_acceleration_covariance.r[0], sensorData.imu.linear_acceleration_covariance.r[1], sensorData.imu.linear_acceleration_covariance.r[2],
             sensorData.imu.linear_acceleration_covariance.r[3], sensorData.imu.linear_acceleration_covariance.r[4], sensorData.imu.linear_acceleration_covariance.r[5],
-            sensorData.imu.linear_acceleration_covariance.r[6], sensorData.imu.linear_acceleration_covariance.r[7], sensorData.imu.linear_acceleration_covariance.r[8]);
+            sensorData.imu.linear_acceleration_covariance.r[6], sensorData.imu.linear_acceleration_covariance.r[7], sensorData.imu.linear_acceleration_covariance.r[8]});
 
     Eigen::Quaternionf quat = orientationT.getQuaternionf();
 

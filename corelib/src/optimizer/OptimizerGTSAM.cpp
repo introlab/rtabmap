@@ -617,7 +617,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						}
 						else
 						{
-							Eigen::Matrix<double, 1, 1> information = Eigen::Matrix<double, 1, 1>::Identity();
+							Eigen::MatrixXd information = Eigen::MatrixXd::Identity(1, 1);
 							if(!isCovarianceIgnored())
 							{
 								cv::Mat linearCov = cv::Mat(iter->second.infMatrix(), cv::Range(0,1), cv::Range(0,1)).clone();;

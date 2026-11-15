@@ -10,7 +10,7 @@ using namespace rtabmap;
 
 TEST(Util2dTest, SsdIdenticalImages)
 {
-    cv::Mat img1 = (cv::Mat_<uint8_t>(3,3) << 10, 20, 30, 40, 50, 60, 70, 80, 90);
+    cv::Mat img1 = cv::Mat_<uint8_t>({3,3}, {10, 20, 30, 40, 50, 60, 70, 80, 90});
     cv::Mat img2 = img1.clone();
     float score = util2d::ssd(img1, img2);
     EXPECT_FLOAT_EQ(score, 0.0f);
@@ -18,8 +18,8 @@ TEST(Util2dTest, SsdIdenticalImages)
 
 TEST(Util2dTest, SsdDifferentImages)
 {
-    cv::Mat img1 = (cv::Mat_<uint8_t>(2,2) << 10, 20, 30, 40);
-    cv::Mat img2 = (cv::Mat_<uint8_t>(2,2) << 11, 19, 31, 39);
+    cv::Mat img1 = cv::Mat_<uint8_t>({2,2}, {10, 20, 30, 40});
+    cv::Mat img2 = cv::Mat_<uint8_t>({2,2}, {11, 19, 31, 39});
     float score = util2d::ssd(img1, img2);
     float expected = pow(10 - 11, 2) + pow(20 - 19, 2) + pow(30 - 31, 2) + pow(40 - 39, 2);
     EXPECT_FLOAT_EQ(score, expected);
@@ -27,8 +27,8 @@ TEST(Util2dTest, SsdDifferentImages)
 
 TEST(Util2dTest, SsdStereoLikeInput)
 {
-    cv::Mat left = (cv::Mat_<cv::Vec2s>(1,1) << cv::Vec2s(10, 20));
-    cv::Mat right = (cv::Mat_<cv::Vec2s>(1,1) << cv::Vec2s(11, 19));
+    cv::Mat left = cv::Mat_<cv::Vec2s>({1,1}, {cv::Vec2s(10, 20)});
+    cv::Mat right = cv::Mat_<cv::Vec2s>({1,1}, {cv::Vec2s(11, 19)});
     float avgL = (10 + 20) / 2.0f;
     float avgR = (11 + 19) / 2.0f;
     float expected = (avgL - avgR) * (avgL - avgR);
@@ -37,7 +37,7 @@ TEST(Util2dTest, SsdStereoLikeInput)
 
 TEST(Util2dTest, SadIdenticalImages)
 {
-    cv::Mat img1 = (cv::Mat_<float>(2,2) << 1.0, 2.0, 3.0, 4.0);
+    cv::Mat img1 = cv::Mat_<float>({2,2}, {1.0, 2.0, 3.0, 4.0});
     cv::Mat img2 = img1.clone();
     float score = util2d::sad(img1, img2);
     EXPECT_FLOAT_EQ(score, 0.0f);
@@ -45,16 +45,16 @@ TEST(Util2dTest, SadIdenticalImages)
 
 TEST(Util2dTest, SadDifferentImages)
 {
-    cv::Mat img1 = (cv::Mat_<float>(2,2) << 1.0, 2.0, 3.0, 4.0);
-    cv::Mat img2 = (cv::Mat_<float>(2,2) << 0.5, 2.5, 2.5, 5.0);
+    cv::Mat img1 = cv::Mat_<float>({2,2}, {1.0, 2.0, 3.0, 4.0});
+    cv::Mat img2 = cv::Mat_<float>({2,2}, {0.5, 2.5, 2.5, 5.0});
     float score = fabs(1.0 - 0.5) + fabs(2.0 - 2.5) + fabs(3.0 - 2.5) + fabs(4.0 - 5.0);
     EXPECT_FLOAT_EQ(util2d::sad(img1, img2), score);
 }
 
 TEST(Util2dTest, SadStereoLikeInput)
 {
-    cv::Mat left = (cv::Mat_<cv::Vec2s>(1,1) << cv::Vec2s(5, 15));
-    cv::Mat right = (cv::Mat_<cv::Vec2s>(1,1) << cv::Vec2s(10, 10));
+    cv::Mat left = cv::Mat_<cv::Vec2s>({1,1}, {cv::Vec2s(5, 15)});
+    cv::Mat right = cv::Mat_<cv::Vec2s>({1,1}, {cv::Vec2s(10, 10)});
     float avgL = (5 + 15) / 2.0f;
     float avgR = (10 + 10) / 2.0f;
     float expected = fabs(avgL - avgR);
@@ -420,10 +420,10 @@ TEST(Util2dTest, DepthFromStereoCorrespondences)
 
 TEST(Util2dTest, CvtDepthFromFloat) {
     // Create a simple 3x3 depth image in meters
-    cv::Mat depth32F = (cv::Mat_<float>(3, 3) <<
+    cv::Mat depth32F = cv::Mat_<float>({3, 3}, {
         0.5f, 1.0f, 1.5f,
         2.0f, 3.0f, 4.0f,
-        5.0f, 6.0f, 7.0f); // in meters
+        5.0f, 6.0f, 7.0f}); // in meters
 
     // Convert to 16-bit unsigned short (mm)
     cv::Mat depth16U = util2d::cvtDepthFromFloat(depth32F);
@@ -439,10 +439,10 @@ TEST(Util2dTest, CvtDepthFromFloat) {
 
 TEST(Util2dTest, CvtDepthToFloat) {
     // Create a simple 3x3 depth image in millimeters
-    cv::Mat depth16U = (cv::Mat_<unsigned short>(3, 3) <<
+    cv::Mat depth16U = cv::Mat_<unsigned short>({3, 3}, {
         500, 1000, 1500,
         2000, 3000, 4000,
-        5000, 6000, 7000); // in mm
+        5000, 6000, 7000}); // in mm
 
     // Convert to 32-bit float (meters)
     cv::Mat depth32F = util2d::cvtDepthToFloat(depth16U);
@@ -458,7 +458,7 @@ TEST(Util2dTest, CvtDepthToFloat) {
 
 TEST(Util2dTest, CvtDepthRoundTripConversion) {
     // Test round-trip conversion
-    cv::Mat original = (cv::Mat_<float>(2, 2) << 0.25f, 1.0f, 2.5f, 3.3f);
+    cv::Mat original = cv::Mat_<float>({2, 2}, {0.25f, 1.0f, 2.5f, 3.3f});
 
     cv::Mat depth16U = util2d::cvtDepthFromFloat(original);
     cv::Mat depth32F = util2d::cvtDepthToFloat(depth16U);
@@ -602,11 +602,11 @@ TEST(Util2dTest, ComputeRoiZeroImageSize)
 TEST(Util2dTest, DecimateFloatDepthImage)
 {
     // Create a 4x4 depth image with increasing values
-    cv::Mat depth = (cv::Mat_<float>(4, 4) <<
+    cv::Mat depth = cv::Mat_<float>({4, 4}, {
         1, 2, 3, 4,
         5, 6, 7, 8,
         9,10,11,12,
-       13,14,15,16);
+       13,14,15,16});
 
     // Decimate by 2
     cv::Mat decimated = util2d::decimate(depth, 2);
@@ -621,11 +621,11 @@ TEST(Util2dTest, DecimateFloatDepthImage)
 
 TEST(Util2dTest, Decimate16UDepthImage)
 {
-    cv::Mat depth = (cv::Mat_<uint16_t>(4, 4) <<
+    cv::Mat depth = cv::Mat_<uint16_t>({4, 4}, {
         100, 200, 300, 400,
         500, 600, 700, 800,
         900,1000,1100,1200,
-       1300,1400,1500,1600);
+       1300,1400,1500,1600});
 
     cv::Mat decimated = util2d::decimate(depth, 2);
 
@@ -640,9 +640,9 @@ TEST(Util2dTest, Decimate16UDepthImage)
 TEST(Util2dTest, InterpolateFloatDepthImage)
 {
     // Create a simple 2x2 image to interpolate into 4x4
-    cv::Mat input = (cv::Mat_<float>(2,2) <<
+    cv::Mat input = cv::Mat_<float>({2,2}, {
         1.0f, 1.0f,
-        1.0f, 1.0f);
+        1.0f, 1.0f});
 
     int factor = 2;
     float depthErrorRatio = 0.1f;
@@ -664,9 +664,9 @@ TEST(Util2dTest, InterpolateFloatDepthImage)
 
 TEST(Util2dTest, Interpolate16UDepthImage)
 {
-    cv::Mat input = (cv::Mat_<uint16_t>(2,2) <<
+    cv::Mat input = cv::Mat_<uint16_t>({2,2}, {
         1000, 1000,
-        1000, 1000);
+        1000, 1000});
 
     int factor = 2;
     float depthErrorRatio = 0.1f;
@@ -688,12 +688,12 @@ TEST(Util2dTest, Interpolate16UDepthImage)
 TEST(Util2dTest, RegisterDepth)
 {
     // Create a 2x2 synthetic depth image in meters
-    cv::Mat depth = (cv::Mat_<float>(2,2) << 1.0f, 1.0f,
-                                             1.0f, 1.0f);
-    cv::Mat depthK = (cv::Mat_<double>(3,3) <<
+    cv::Mat depth = cv::Mat_<float>({2,2}, {1.0f, 1.0f,
+                                             1.0f, 1.0f});
+    cv::Mat depthK = cv::Mat_<double>({3,3}, {
                       1.0, 0, 0.5,
                       0, 1.0, 0.5,
-                      0, 0, 1.0);
+                      0, 0, 1.0});
 
     // RGB image size (same size for simplicity)
     cv::Size colorSize = depth.size();
@@ -721,10 +721,10 @@ TEST(Util2dTest, RegisterDepth)
 TEST(Util2dTest, RegisterDepthWithOverlap)
 {
     cv::Mat depth = cv::Mat::ones(11,11,CV_32FC1);
-    cv::Mat depthK = (cv::Mat_<double>(3,3) <<
+    cv::Mat depthK = cv::Mat_<double>({3,3}, {
                       10.0, 0, 5,
                       0, 10.0, 5,
-                      0, 0, 1.0);
+                      0, 0, 1.0});
 
     cv::Size colorSize = depth.size();
     cv::Mat colorK = depthK;
@@ -750,10 +750,10 @@ TEST(Util2dTest, RegisterDepthWithOverlap)
 }
 
 TEST(Util2dTest, FillDepthHoles) {
-    cv::Mat depth = (cv::Mat_<float>(3,3) <<
+    cv::Mat depth = cv::Mat_<float>({3,3}, {
                       1, 0, 2,
                       0, 3, 0,
-                      2, 0, 4);
+                      2, 0, 4});
 
     int maximumHoleSize = 2;
     float errorRatio = 1.0f;
@@ -763,10 +763,10 @@ TEST(Util2dTest, FillDepthHoles) {
     EXPECT_EQ(filledDepth.size(), depth.size());
     EXPECT_EQ(filledDepth.type(), depth.type());
 
-    cv::Mat expected = (cv::Mat_<float>(3,3) <<
+    cv::Mat expected = cv::Mat_<float>({3,3}, {
             1, 1.5, 2,
             1.5, 3, 0,
-            2, 0, 4);
+            2, 0, 4});
 
     for (int i = 0; i < filledDepth.rows; i++) {
         for (int j = 0; j < filledDepth.cols; j++) {
@@ -777,18 +777,18 @@ TEST(Util2dTest, FillDepthHoles) {
 
 TEST(Util2dTest, FillDepthHolesLargeHoleTest) {
 
-    cv::Mat depth = (cv::Mat_<float>(5,5) <<
+    cv::Mat depth = cv::Mat_<float>({5,5}, {
                         1, 0, 2, 3, 5,
                         0, 3, 0, 0, 4,
                         2, 0, 4, 2, 3,
                         1, 0, 0, 0, 2,
-                        0, 3, 0, 9, 7);
-    cv::Mat expected = (cv::Mat_<float>(5,5) <<
+                        0, 3, 0, 9, 7});
+    cv::Mat expected = cv::Mat_<float>({5,5}, {
                         1, 1.5, 2, 3, 5,
                         1.5, 3, 3.16, 3.08, 4,
                         2, 3, 4, 2, 3,
                         1, 3, 0, 0, 2,
-                        0, 3, 0, 9, 7);
+                        0, 3, 0, 9, 7});
 
     int maximumHoleSize = 2;
     float errorRatio = 1.0f;
@@ -816,12 +816,12 @@ TEST(Util2dTest, FillDepthHolesInvalidInputTest) {
 
 cv::Mat createTestDepthImage()
 {
-    cv::Mat img = (cv::Mat_<unsigned short>(5, 5) <<
+    cv::Mat img = cv::Mat_<unsigned short>({5, 5}, {
         1000,    0, 1010,    0, 1020,
            0,    0,    0,    0,    0,
         1005,    0, 1015,    0, 1025,
            0,    0,    0,    0,    0,
-        1010,    0, 1020,    0, 1030);
+        1010,    0, 1020,    0, 1030});
     return img;
 }
 
@@ -867,19 +867,19 @@ TEST(Util2dTest, FillRegisteredDepthHolesHorizontalFilling)
 
 TEST(Util2dTest, FillRegisteredDepthHolesDoubleHoleFilling)
 {
-    cv::Mat input = (cv::Mat_<unsigned short>(5, 5) <<
+    cv::Mat input = cv::Mat_<unsigned short>({5, 5}, {
         1000, 1005,    0, 1020, 1030,
            0, 1010,    0,    0, 1015,
         1010,    0,    0,    0, 1020,
         1015,    0,    0, 1015, 1025,
-        1010, 1015, 1020, 1025, 1030);
+        1010, 1015, 1020, 1025, 1030});
     
-    cv::Mat expected = (cv::Mat_<unsigned short>(5, 5) <<
+    cv::Mat expected = cv::Mat_<unsigned short>({5, 5}, {
         1000, 1005,    0, 1020, 1030,
            0, 1010, 1011, 1013, 1015,
         1010, 1011, 1013,    0, 1020, // <- Note that when double filling is on, there is a double contour
         1015, 1013, 1017, 1015, 1025,
-        1010, 1015, 1020, 1025, 1030);
+        1010, 1015, 1020, 1025, 1030});
 
     util2d::fillRegisteredDepthHoles(input, true, true, true); // Fill double holes too
 

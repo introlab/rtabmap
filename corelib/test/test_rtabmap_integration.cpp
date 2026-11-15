@@ -39,15 +39,20 @@
 #include <rtabmap/core/Statistics.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/util3d_filtering.h>
+#include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
 
 #include "TestUtils.h"
+#ifdef RTABMAP_TEST_ONNXRUNTIME
+#include "onnx/OnnxSession.h"
+#endif
 #include <opencv2/imgcodecs.hpp>
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -115,6 +120,9 @@ struct ReplayResult
 	// Wall-clock seconds spent inside Odometry::process across all
 	// frames; divide by framesRead to get per-frame average.
 	double odomTotalSeconds = 0.0;
+	// Longest Odometry::process of a frame, the first one excluded (it
+	// initializes, e.g. builds the TensorRT engine of the detector).
+	double odomMaxSecondsAfterFirst = 0.0;
 	// The highest loop closure hypothesis of each node added, id and probability: the curve
 	// the Bayes filter draws over a session.
 	std::map<int, std::pair<int, float> > highestHypothesis;
@@ -340,7 +348,12 @@ ReplayResult replayDatabase(
 		OdometryInfo odomInfo;
 		UTimer odomTimer;
 		const Transform odomPose = odometry->process(odomData, guess, &odomInfo);
-		result.odomTotalSeconds += odomTimer.getElapsedTime();
+		const double odomSeconds = odomTimer.getElapsedTime();
+		result.odomTotalSeconds += odomSeconds;
+		if(result.framesRead > 1)
+		{
+			result.odomMaxSecondsAfterFirst = std::max(result.odomMaxSecondsAfterFirst, odomSeconds);
+		}
 
 		if(odomPose.isNull())
 		{
@@ -1380,6 +1393,125 @@ TEST_F(RtabmapIntegrationFixture, Stereo20Hz)
 		++variantsTested;
 	}
 	ASSERT_GT(variantsTested, 0) << "no BA-capable optimizer was available";
+}
+
+// ---------------------------------------------------------------------------
+// Stereo 20 Hz with SuperPoint (OnnxDetector) and LightGlue (OnnxMatcher) for
+// every feature and match: odometry, the visual words of the loop closure
+// detection and the loop closure registrations. Frame-to-frame odometry, as
+// LightGlue matches two images (F2M's local map mixes the keypoints of many
+// frames), and Vis/CorGuessWinSize=0: with a motion guess, RegistrationVis
+// matches the projected features in a window instead of with LightGlue. The provider is
+// RTABMAP_TEST_ONNX_PROVIDER (0=CPU, 1=CUDA, 2=TensorRT, 3=OpenVINO); skipped
+// when it is not set, as it takes minutes (many on the CPU). With
+// TensorRT, it also checks that no engine is built again while mapping (the
+// matcher's is built at load for 1 to Onnx/TensorRTMaxKeypoints keypoints:
+// LightGlue gets a different keypoint count at every frame).
+// ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, Stereo20HzSuperPointLightGlue)
+{
+#ifndef RTABMAP_TEST_ONNXRUNTIME
+	GTEST_SKIP() << "RTAB-Map is not built with ONNX Runtime";
+#else
+	const std::string dbPath = testDataPath("stereo_20Hz.db");
+	SKIP_IF_MISSING(dbPath);
+	const std::string detectorModel = testDataPath("superpoint_magicleap.onnx");
+	const std::string matcherModel = testDataPath("superpoint_magicleap_lightglue.onnx");
+	SKIP_IF_MISSING(detectorModel);
+	SKIP_IF_MISSING(matcherModel);
+
+	const char * providerEnv = std::getenv("RTABMAP_TEST_ONNX_PROVIDER");
+	if(!providerEnv)
+	{
+		GTEST_SKIP() << "set RTABMAP_TEST_ONNX_PROVIDER to run (0=CPU (slow), 1=CUDA, 2=TensorRT, 3=OpenVINO)";
+	}
+	const int provider = uStr2Int(providerEnv);
+	if(!OnnxSession::isProviderAvailable((OnnxSession::Provider)provider, std::getenv("RTABMAP_TEST_OPENVINO_PLUGIN")?std::getenv("RTABMAP_TEST_OPENVINO_PLUGIN"):""))
+	{
+		GTEST_SKIP() << OnnxSession::providerName((OnnxSession::Provider)provider) << " execution provider not available";
+	}
+	const std::string label = OnnxSession::providerName((OnnxSession::Provider)provider);
+	SCOPED_TRACE("provider=" + label);
+
+	const std::string goldenPath = testDataPath("stereo_20Hz_gt.g2o");
+	std::map<int, Transform> goldenPoses;
+	std::multimap<int, Link> goldenLinks;
+	ASSERT_TRUE(graph::importPoses(
+			goldenPath, /*format=*/4, goldenPoses, &goldenLinks))
+			<< "Failed to load golden poses from " << goldenPath;
+
+	// The same features and matcher for odometry and rtabmap.
+	ParametersMap onnxParams;
+	onnxParams[Parameters::kVisFeatureType()] = uNumber2Str((int)Feature2D::kFeatureOnnxDetector);
+	onnxParams[Parameters::kKpDetectorStrategy()] = uNumber2Str((int)Feature2D::kFeatureOnnxDetector);
+	onnxParams[Parameters::kOnnxDetectorModelPath()] = detectorModel;
+	onnxParams[Parameters::kVisCorNNType()] = "10";
+	onnxParams[Parameters::kVisCorGuessWinSize()] = "0";
+	onnxParams[Parameters::kOnnxMatcherModelPath()] = matcherModel;
+	onnxParams[Parameters::kOnnxProvider()] = uNumber2Str(provider);
+	onnxParams[Parameters::kOnnxTensorRTCachePath()] = testDataPath("trt_cache");
+	onnxParams[Parameters::kOnnxOpenVINOCachePath()] = testDataPath("openvino_cache");
+	if(const char * plugin = std::getenv("RTABMAP_TEST_OPENVINO_PLUGIN"))
+	{
+		onnxParams[Parameters::kOnnxOpenVINOLibraryPath()] = plugin;
+	}
+	UDirectory::makeDir(testDataPath("trt_cache"));
+	UDirectory::makeDir(testDataPath("openvino_cache"));
+
+	ParametersMap rtabmapParams = baseRtabmapParams();
+	rtabmapParams[Parameters::kMemUseOdomFeatures()] = "true";
+	rtabmapParams[Parameters::kRtabmapDetectionRate()] = "2";
+	ParametersMap odomParams = baseOdometryParams();
+	odomParams[Parameters::kOdomStrategy()] = "1"; // F2F
+	// A new keyframe when the inliers drop under 60% of the keyframe's features
+	// (default 30%): F2F only has the keyframe to match, keep it overlapping.
+	odomParams[Parameters::kOdomKeyFrameThr()] = "0.6";
+	for(const auto & kv : onnxParams)
+	{
+		rtabmapParams[kv.first] = kv.second;
+		odomParams[kv.first] = kv.second;
+	}
+
+	const ReplayResult result = replayDatabase(dbPath, rtabmapParams, odomParams,
+			/*useStoredOdomAsGuess=*/false,
+			/*passOdomDataToRtabmap=*/true,
+			/*goldenStampedGroundTruth=*/nullptr,
+			/*frameStride=*/1,
+			/*runLabel=*/label);
+
+	EXPECT_GT(result.framesRead, 1000)
+			<< label << ": expected ~1035 frames from stereo_20Hz.db";
+	EXPECT_EQ(0, result.odomLost)
+			<< label << ": stereo odometry should not lose tracking";
+	EXPECT_GE(result.loopClosuresAccepted, 1)
+			<< label << ": expected at least one loop closure";
+	EXPECT_GT(result.finalGlobalGraphSize, 0);
+
+	float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
+	float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
+	graph::calcRMSE(goldenPoses, result.finalGlobalPoses,
+			tRmse, tMean, tMed, tStd, tMin, tMax,
+			rRmse, rMean, rMed, rStd, rMin, rMax,
+			/*align2D=*/false);
+	std::cerr << "[" << label << "] trans rmse=" << tRmse << "m max="
+			  << tMax << "m, rot rmse=" << rRmse << "deg max="
+			  << rMax << "deg, loop closures=" << result.loopClosuresAccepted
+			  << ", replay=" << result.replayWallSeconds
+			  << "s odom=" << result.odomTotalSeconds << "s (max/frame "
+			  << result.odomMaxSecondsAfterFirst << "s)\n";
+
+	// Same bounds as Stereo20Hz.
+	EXPECT_LT(tRmse, 0.15f) << label << " translational RMSE drifted vs golden";
+	EXPECT_LT(rRmse, 3.0f) << label << " rotational RMSE drifted vs golden";
+
+	// A TensorRT engine build takes seconds, a frame tens of milliseconds.
+	if(provider == OnnxSession::kProviderTensorRT)
+	{
+		EXPECT_LT(result.odomMaxSecondsAfterFirst, 2.0)
+				<< "an odometry update took " << result.odomMaxSecondsAfterFirst
+				<< "s: a TensorRT engine was built again while mapping";
+	}
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -2726,6 +2858,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 	const std::string superpointTorchModel      = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_v1.pt";
 	const std::string superpointRpautratWeights = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_v6_from_tf.pth";
 	const std::string superpointRpautratModel   = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_pytorch.py";
+	const std::string onnxDetectorModel         = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/disk.onnx";
 
 	// One pass per detector: prefer GPU if available, otherwise CPU. To
 	// keep wall-clock low, the two BoW likelihood variants (default raw
@@ -2780,6 +2913,13 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 					<< " (run scripts/fetch_test_data.sh)\n";
 			continue;
 		}
+		if(detectorType == Feature2D::kFeatureOnnxDetector && !UFile::exists(onnxDetectorModel))
+		{
+			std::cerr << "[skip] detector " << typeName
+					<< " missing model: " << onnxDetectorModel
+					<< " (run scripts/fetch_test_data.sh)\n";
+			continue;
+		}
 
 		// Probe GPU availability once per detector. Build the temp instance
 		// with the same asset paths the actual run uses; otherwise SuperPoint
@@ -2795,6 +2935,10 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			{
 				probeParams[Parameters::kSuperPointRpautratWeightsPath()] = superpointRpautratWeights;
 				probeParams[Parameters::kSuperPointRpautratModelPath()]   = superpointRpautratModel;
+			}
+			else if(detectorType == Feature2D::kFeatureOnnxDetector)
+			{
+				probeParams[Parameters::kOnnxDetectorModelPath()] = onnxDetectorModel;
 			}
 			std::unique_ptr<Feature2D> probe(Feature2D::create(detectorType, probeParams));
 			if(probe) gpuAvailable = probe->isGpuAvailable();
@@ -2860,6 +3004,11 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			params[Parameters::kSuperPointRpautratWeightsPath()] = superpointRpautratWeights;
 			params[Parameters::kSuperPointRpautratModelPath()]   = superpointRpautratModel;
 			params[Parameters::kSuperPointRpautratCuda()]        = gpuFlag;
+		}
+		else if(detectorType == Feature2D::kFeatureOnnxDetector)
+		{
+			params[Parameters::kOnnxDetectorModelPath()] = onnxDetectorModel;
+			params[Parameters::kOnnxProvider()]          = useGpu ? "1" : "0";
 		}
 		else if(useGpu)
 		{

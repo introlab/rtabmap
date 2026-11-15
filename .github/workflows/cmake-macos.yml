@@ -140,7 +140,17 @@ jobs:
 
     - name: Build MacOS Package
       run: |
-        cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
+        # hdiutil randomly fails with "Resource busy" on GitHub runners, as
+        # XProtect is still scanning the staged bundle
+        # (actions/runner-images#7522): stop it and retry cpack.
+        sudo pkill -9 XProtect >/dev/null 2>&1 || true
+        cd ${{ github.workspace }}/build
+        for i in 1 2 3 4 5; do
+          cpack -C ${{ env.BUILD_TYPE }} && exit 0
+          echo "cpack attempt $i failed, retrying in 15s..."
+          sleep 15
+        done
+        exit 1
 
     - name: Upload RTABMap Artifacts (DMG)
       uses: actions/upload-artifact@v4

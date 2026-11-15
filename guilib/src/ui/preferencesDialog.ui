@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>980</width>
-    <height>1246</height>
+    <width>994</width>
+    <height>782</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>684</width>
-            <height>5315</height>
+            <width>698</width>
+            <height>5311</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -7606,7 +7606,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="10" column="1">
+                              <item row="11" column="1">
                                <widget class="QLabel" name="label_58">
                                 <property name="text">
                                  <string>Start position (node ID).</string>
@@ -7652,7 +7652,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               <item row="0" column="1">
                                <widget class="QLineEdit" name="source_database_lineEdit_path"/>
                               </item>
-                              <item row="15" column="0">
+                              <item row="16" column="0">
                                <widget class="QCheckBox" name="source_checkBox_stereoToDepthDB">
                                 <property name="text">
                                  <string/>
@@ -7679,7 +7679,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="12" column="1">
+                              <item row="13" column="1">
                                <widget class="QLabel" name="label_315">
                                 <property name="text">
                                  <string>Camera index. If the database contains multi-camera data, you can choose which camera to use. Leave empty to use all cameras. Can also be multiple indices split by spaces in a string like &quot;0 2&quot; to stream cameras 0 and 2 only.</string>
@@ -7726,7 +7726,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="9" column="1">
+                              <item row="10" column="1">
                                <widget class="QLabel" name="label_797">
                                 <property name="text">
                                  <string>Publish intermediate nodes as normal nodes.</string>
@@ -7739,7 +7739,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="15" column="1">
+                              <item row="16" column="1">
                                <widget class="QLabel" name="label_557">
                                 <property name="text">
                                  <string>If the database contains stereo data, generate disparity image and convert it to depth. The resulting output is a RGB-D image instead of stereo images. Dense disparity parameters can be found under StereoBM tab.</string>
@@ -7752,7 +7752,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="11" column="0">
+                              <item row="12" column="0">
                                <widget class="QSpinBox" name="source_spinBox_databaseStopId">
                                 <property name="minimum">
                                  <number>0</number>
@@ -7762,7 +7762,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="11" column="1">
+                              <item row="12" column="1">
                                <widget class="QLabel" name="label_529">
                                 <property name="text">
                                  <string>Stop position (node ID) is the last node to process. If 0, all nodes after start position are published.</string>
@@ -7795,10 +7795,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="14" column="0">
+                              <item row="15" column="0">
                                <widget class="QLineEdit" name="source_lineEdit_databaseLocalTransformOffset"/>
                               </item>
-                              <item row="10" column="0">
+                              <item row="11" column="0">
                                <widget class="QSpinBox" name="source_spinBox_databaseStartId">
                                 <property name="minimum">
                                  <number>0</number>
@@ -7821,7 +7821,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="14" column="1">
+                              <item row="15" column="1">
                                <widget class="QLabel" name="label_785">
                                 <property name="text">
                                  <string>Add an y-axis offset before optical rotation on the overriden local transform(s). For multi-cameras,explicitly enumerate offsets if they are different (e.g., &quot;0.05 0.075&quot; for two cameras setup), or set single number to apply to all camera transforms.</string>
@@ -7834,7 +7834,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="13" column="1">
+                              <item row="14" column="1">
                                <widget class="QLabel" name="label_784">
                                 <property name="text">
                                  <string>Override camera local transform(s) with local transform(s) set above. For multi-cameras, use a &quot;;&quot; between each transform.</string>
@@ -7847,14 +7847,14 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="13" column="0">
+                              <item row="14" column="0">
                                <widget class="QCheckBox" name="source_checkBox_overrideLocalTransforms">
                                 <property name="text">
                                  <string/>
                                 </property>
                                </widget>
                               </item>
-                              <item row="9" column="0">
+                              <item row="10" column="0">
                                <widget class="QCheckBox" name="source_checkBox_intermediateNodesAreNormalNodes">
                                 <property name="text">
                                  <string/>
@@ -7868,7 +7868,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                 </property>
                                </widget>
                               </item>
-                              <item row="12" column="0">
+                              <item row="13" column="0">
                                <widget class="QLineEdit" name="source_lineEdit_databaseCameraIndex"/>
                               </item>
                               <item row="1" column="1">
@@ -7895,6 +7895,29 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                <widget class="QCheckBox" name="source_checkBox_useDbStamps">
                                 <property name="text">
                                  <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="0">
+                               <widget class="QCheckBox" name="source_checkBox_ignoreGrids">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="checked">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="1">
+                               <widget class="QLabel" name="label_databaseIgnoreGrids">
+                                <property name="text">
+                                 <string>Ignore local occupancy grids saved in the database, so that they are regenerated from the depth images or laser scans with the current grid parameters. If not ignored, they are reused as is.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                 </property>
                                </widget>
                               </item>
@@ -11752,6 +11775,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <string>Superpoint Rpautrat</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>OnnxDetector</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="15" column="1">
@@ -12917,7 +12945,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                    <property name="title">
                     <string>Loop Closure Detection</string>
                    </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_22" stretch="0,0,0,1,0,0,0">
+                   <layout class="QVBoxLayout" name="verticalLayout_22" stretch="0,0,0,1,0,0,0,0">
                     <item>
                      <widget class="QLabel" name="label">
                       <property name="text">
@@ -13009,6 +13037,11 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         <item>
                          <property name="text">
                           <string>PyDescriptor</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>OnnxDescriptor</string>
                          </property>
                         </item>
                        </widget>
@@ -13339,6 +13372,97 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                        </item>
                        <item>
                         <spacer name="verticalSpacer_881">
+                         <property name="orientation">
+                          <enum>Qt::Vertical</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>0</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_onnxdescriptor">
+                      <property name="title">
+                       <string>OnnxDescriptor</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_onnxdescriptor">
+                       <item>
+                        <widget class="QLabel" name="label_onnxdescriptor_info">
+                         <property name="text">
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Global descriptor from an ONNX model (e.g., NetVLAD). Execution provider options (Onnx/*) are in the ONNX panel. See this &lt;a href=&quot;https://github.com/introlab/rtabmap/wiki/Learned-Features-with-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;tutorial&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="openExternalLinks">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_onnxdescriptor" columnstretch="0,0,1">
+                         <item row="0" column="0">
+                          <widget class="QToolButton" name="toolButton_onnxdescriptor_model_path">
+                           <property name="text">
+                            <string>...</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLineEdit" name="lineEdit_onnxdescriptor_model_path"/>
+                         </item>
+                         <item row="0" column="2">
+                          <widget class="QLabel" name="label_onnxdescriptor_model_path">
+                           <property name="text">
+                            <string>[Required] Path to the ONNX model (*.onnx).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QSpinBox" name="spinBox_onnxdescriptor_dim">
+                           <property name="minimum">
+                            <number>0</number>
+                           </property>
+                           <property name="maximum">
+                            <number>999999</number>
+                           </property>
+                           <property name="value">
+                            <number>0</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="2">
+                          <widget class="QLabel" name="label_onnxdescriptor_dim">
+                           <property name="text">
+                            <string>Keep only the first values of the descriptor (re-normalized), 0 keeps the whole descriptor.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <spacer name="verticalSpacer_onnxdescriptor">
                          <property name="orientation">
                           <enum>Qt::Vertical</enum>
                          </property>
@@ -14527,8 +14651,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     </item>
                     <item row="3" column="1">
                      <widget class="QLabel" name="label_795">
+                      <property name="toolTip">
+                       <string>When optimization is accepted, the removed links are also removed from the graph. If the highest error is on a neighbor link (e.g., a bad loop closure with a very small variance pushed its error on adjacent odometry links), the loop closure with the highest error around it (under that radius) is considered instead. Neighbor links are never removed, so a bad odometry link cannot be repaired. If the highest error is on the new landmark link, the old link of the same landmark seen from farther away with the highest error is considered instead. In localization mode, only links still in the odometry cache (RGBD/MaxOdomCacheSize) can be removed.</string>
+                      </property>
                       <property name="text">
-                       <string>Repairing graph radius. If two consecutive loop closures are rejected by the optimization error ratio on the same old loop closure link, we will remove that old link, and other old links under that radius if necessary, until optimization is accepted. When optimization is accepted, the old loop closure links are removed from the graph. This feature is useful to reject bad loop closures that were accepted previously. Set to 0 to disable this feature.</string>
+                       <string>Repairing graph radius. If two consecutive loop closures or landmark detections are rejected by the optimization error ratio on the same old loop closure or landmark link, that old link (and other old links under that radius if necessary) is removed until optimization is accepted. Useful to reject bad loop closures or landmark detections accepted previously. Set to 0 to disable this feature. Mouse over for more details.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -16528,6 +16655,41 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                         </property>
                        </widget>
                       </item>
+                      <item row="15" column="0">
+                       <widget class="QDoubleSpinBox" name="RGBDLandmarkMaxNormalError">
+                        <property name="decimals">
+                         <number>3</number>
+                        </property>
+                        <property name="maximum">
+                         <double>1.571000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.050000000000000</double>
+                        </property>
+                        <property name="suffix">
+                         <string> rad</string>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="15" column="1">
+                       <widget class="QLabel" name="label_landmarkMaxNormalError">
+                        <property name="toolTip">
+                         <string>Small or nearly frontal markers can have a wrong orientation (e.g., &quot;flipped&quot; pose). When localized (with localization links in the odometry cache), the detected normal is compared to the landmark's one in the map using the current localization. Otherwise, only their inclination (angle with the vertical) is compared, which doesn't depend on the yaw of the robot (its roll and pitch are taken from the gravity links if available). Applies also to landmarks given in the input data.</string>
+                        </property>
+                        <property name="text">
+                         <string>In localization mode, reject detections of landmarks of the map if their normal differs from the one in the map by more than this angle (0=disabled). Mouse over for more details.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
                      </layout>
                     </item>
                     <item>
@@ -16558,6 +16720,9 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                            </item>
                            <item row="1" column="0">
                             <widget class="QComboBox" name="OpenCVCornerRefinementMethod">
+                             <property name="currentIndex">
+                              <number>1</number>
+                             </property>
                              <item>
                               <property name="text">
                                <string>None</string>
@@ -16759,6 +16924,29 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                              </property>
                              <property name="value">
                               <double>2.000000000000000</double>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="6" column="0">
+                            <widget class="QCheckBox" name="apriltag_opencv_pnp">
+                             <property name="text">
+                              <string/>
+                             </property>
+                             <property name="checked">
+                              <bool>true</bool>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="6" column="1">
+                            <widget class="QLabel" name="label_apriltag_opencv_pnp">
+                             <property name="text">
+                              <string>Estimate the pose of the tags with OpenCV's solvePnP() instead of the AprilTag library's pose estimation. Unlike the AprilTag library, it uses the distortion coefficients of the camera model (useful if the images are not rectified), and it gives fewer wrong orientations on small or noisy tags.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
                             </widget>
                            </item>
@@ -17278,7 +17466,7 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                          <double>0.010000000000000</double>
                         </property>
                         <property name="value">
-                         <double>9.806650000000000</double>
+                         <double>9.806649999999999</double>
                         </property>
                        </widget>
                       </item>
@@ -24041,6 +24229,11 @@ With &lt;0, the length is estimated once for each unique marker, then re-used fo
                              <string>NanoFLANN KdTree</string>
                             </property>
                            </item>
+                           <item>
+                            <property name="text">
+                             <string>OnnxMatcher</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                          <item row="0" column="1">
@@ -24309,6 +24502,103 @@ Lower the ratio -&gt; higher the precision.</string>
                           </item>
                           <item>
                            <spacer name="verticalSpacer_86">
+                            <property name="orientation">
+                             <enum>Qt::Vertical</enum>
+                            </property>
+                            <property name="sizeHint" stdset="0">
+                             <size>
+                              <width>0</width>
+                              <height>0</height>
+                             </size>
+                            </property>
+                           </spacer>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QGroupBox" name="groupBox_onnxmatcher">
+                         <property name="title">
+                          <string>OnnxMatcher</string>
+                         </property>
+                         <layout class="QVBoxLayout" name="verticalLayout_onnxmatcher">
+                          <item>
+                           <widget class="QLabel" name="label_onnxmatcher_info">
+                            <property name="text">
+                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Feature matcher from an ONNX model (e.g., LightGlue), for float descriptors of the feature type it was trained with. Execution provider options (Onnx/*) are in the ONNX panel. See this &lt;a href=&quot;https://github.com/introlab/rtabmap/wiki/Learned-Features-with-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;tutorial&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                            <property name="openExternalLinks">
+                             <bool>true</bool>
+                            </property>
+                            <property name="textInteractionFlags">
+                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <layout class="QGridLayout" name="gridLayout_onnxmatcher" columnstretch="0,0,1">
+                            <item row="0" column="0">
+                             <widget class="QToolButton" name="toolButton_onnxmatcher_model_path">
+                              <property name="text">
+                               <string>...</string>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="0" column="1">
+                             <widget class="QLineEdit" name="lineEdit_onnxmatcher_model_path"/>
+                            </item>
+                            <item row="0" column="2">
+                             <widget class="QLabel" name="label_onnxmatcher_model_path">
+                              <property name="text">
+                               <string>[Required] Path to the ONNX model (*.onnx).</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="1" column="1">
+                             <widget class="QDoubleSpinBox" name="doubleSpinBox_onnxmatcher_threshold">
+                              <property name="decimals">
+                               <number>3</number>
+                              </property>
+                              <property name="minimum">
+                               <double>0.000000000000000</double>
+                              </property>
+                              <property name="maximum">
+                               <double>1.000000000000000</double>
+                              </property>
+                              <property name="singleStep">
+                               <double>0.010000000000000</double>
+                              </property>
+                              <property name="value">
+                               <double>0.100000000000000</double>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="1" column="2">
+                             <widget class="QLabel" name="label_onnxmatcher_threshold">
+                              <property name="text">
+                               <string>Minimum score of a match (when the model outputs match scores).</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                           </layout>
+                          </item>
+                          <item>
+                           <spacer name="verticalSpacer_onnxmatcher">
                             <property name="orientation">
                              <enum>Qt::Vertical</enum>
                             </property>
@@ -25139,6 +25429,11 @@ Lower the ratio -&gt; higher the precision.</string>
                            <item>
                             <property name="text">
                              <string>SuperPoint Rpautrat</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>OnnxDetector</string>
                             </property>
                            </item>
                           </widget>
@@ -26786,6 +27081,297 @@ Lower the ratio -&gt; higher the precision.</string>
                     <size>
                      <width>20</width>
                      <height>2185</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="page_onnx">
+                <layout class="QVBoxLayout" name="verticalLayout_onnx" stretch="0,1">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_onnx1">
+                   <property name="title">
+                    <string>ONNX</string>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_onnx1" stretch="0,0,1">
+                    <item>
+                     <widget class="QLabel" name="label_onnx_info">
+                      <property name="text">
+                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ONNX Runtime options shared by OnnxDetector, OnnxMatcher and OnnxDescriptor. See this &lt;a href=&quot;https://github.com/introlab/rtabmap/wiki/Learned-Features-with-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;tutorial&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="openExternalLinks">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QGridLayout" name="gridLayout_onnx" columnstretch="0,0,1">
+                      <item row="0" column="1">
+                       <widget class="QComboBox" name="comboBox_onnx_provider">
+                        <item>
+                         <property name="text">
+                          <string>CPU</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>CUDA</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>TensorRT</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>OpenVINO</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="0" column="2">
+                       <widget class="QLabel" name="label_onnx_provider">
+                        <property name="text">
+                         <string>ONNX Runtime execution provider. A provider not available in the ONNX Runtime library falls back to CPU.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="QStackedWidget" name="stackedWidget_onnx_provider">
+                      <property name="currentIndex">
+                       <number>2</number>
+                      </property>
+                      <widget class="QWidget" name="page_onnx_cpu"/>
+                      <widget class="QWidget" name="page_onnx_cuda"/>
+                      <widget class="QWidget" name="page_onnx_tensorrt">
+                       <layout class="QVBoxLayout" name="verticalLayout_onnx_tensorrt">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_onnx_tensorrt">
+                          <property name="title">
+                           <string>TensorRT</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_onnx_tensorrt2">
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_onnx_tensorrt" columnstretch="0,0,1">
+                             <item row="0" column="1">
+                              <widget class="QCheckBox" name="checkBox_onnx_trt_fp16">
+                               <property name="text">
+                                <string/>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="2">
+                              <widget class="QLabel" name="label_onnx_trt_fp16">
+                               <property name="text">
+                                <string>Build the TensorRT engine in FP16.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="0">
+                              <widget class="QToolButton" name="toolButton_onnx_trt_cache_path">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="1">
+                              <widget class="QLineEdit" name="lineEdit_onnx_trt_cache_path"/>
+                             </item>
+                             <item row="1" column="2">
+                              <widget class="QLabel" name="label_onnx_trt_cache_path">
+                               <property name="text">
+                                <string>Directory where the TensorRT engines are cached (building an engine takes minutes, empty means no cache).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QSpinBox" name="spinBox_onnx_trt_max_keypoints">
+                               <property name="maximum">
+                                <number>100000</number>
+                               </property>
+                               <property name="value">
+                                <number>4096</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="2">
+                              <widget class="QLabel" name="label_onnx_trt_max_keypoints">
+                               <property name="text">
+                                <string>Largest number of keypoints per image the TensorRT engine of OnnxMatcher is built for, so that it is built once. Above, only the keypoints with the highest responses are matched. 0 means no limit: the engine is built again (seconds) each time an image has more (or fewer) keypoints than all the previous ones.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_onnx_openvino">
+                       <layout class="QVBoxLayout" name="verticalLayout_onnx_openvino">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_onnx_openvino">
+                          <property name="title">
+                           <string>OpenVINO</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_onnx_openvino2">
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_onnx_openvino" columnstretch="0,0,1">
+                             <item row="0" column="1">
+                              <widget class="QLineEdit" name="lineEdit_onnx_openvino_device"/>
+                             </item>
+                             <item row="0" column="2">
+                              <widget class="QLabel" name="label_onnx_openvino_device">
+                               <property name="text">
+                                <string>Device: CPU, GPU (GPU.0, GPU.1... with many), NPU, or AUTO / AUTO:GPU,CPU to let OpenVINO choose.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="1">
+                              <widget class="QComboBox" name="comboBox_onnx_openvino_precision">
+                               <item>
+                                <property name="text">
+                                 <string>Device default</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>FP32</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>FP16</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>ACCURACY</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                             <item row="1" column="2">
+                              <widget class="QLabel" name="label_onnx_openvino_precision">
+                               <property name="text">
+                                <string>Inference precision. The device default is FP32 on CPU, FP16 on GPU and NPU. ACCURACY keeps the precision of the model.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="0">
+                              <widget class="QToolButton" name="toolButton_onnx_openvino_cache_path">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QLineEdit" name="lineEdit_onnx_openvino_cache_path"/>
+                             </item>
+                             <item row="2" column="2">
+                              <widget class="QLabel" name="label_onnx_openvino_cache_path">
+                               <property name="text">
+                                <string>Directory where OpenVINO caches the compiled models (compiling for GPU or NPU takes seconds). Empty means the openvino_cache folder of the working directory.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="0">
+                              <widget class="QToolButton" name="toolButton_onnx_openvino_library_path">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="1">
+                              <widget class="QLineEdit" name="lineEdit_onnx_openvino_library_path"/>
+                             </item>
+                             <item row="3" column="2">
+                              <widget class="QLabel" name="label_onnx_openvino_library_path">
+                               <property name="text">
+                                <string>Path to the OpenVINO plugin of onnxruntime-ep-openvino (libonnxruntime_providers_openvino_plugin.so), used when OpenVINO is not built in the ONNX Runtime library. Empty means its default file name, searched like any shared library.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_onnx">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>40</height>
                     </size>
                    </property>
                   </spacer>
@@ -29845,6 +30431,107 @@ p, li { white-space: pre-wrap; }
                  </item>
                  <item>
                   <spacer name="verticalSpacer_91">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>4561</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="page_onnxdetector">
+                <layout class="QVBoxLayout" name="verticalLayout_onnxdetector">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_onnxdetector2">
+                   <property name="title">
+                    <string>OnnxDetector</string>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_onnxdetector2">
+                    <item>
+                     <widget class="QLabel" name="label_onnxdetector_info">
+                      <property name="text">
+                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Feature detector and descriptor from an ONNX model (e.g., SuperPoint, ALIKED, DISK). Execution provider options (Onnx/*) are in the ONNX panel. See this &lt;a href=&quot;https://github.com/introlab/rtabmap/wiki/Learned-Features-with-ONNX&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;tutorial&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="openExternalLinks">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QGridLayout" name="gridLayout_onnxdetector" columnstretch="0,0,1">
+                      <item row="0" column="0">
+                       <widget class="QToolButton" name="toolButton_onnxdetector_model_path">
+                        <property name="text">
+                         <string>...</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLineEdit" name="lineEdit_onnxdetector_model_path"/>
+                      </item>
+                      <item row="0" column="2">
+                       <widget class="QLabel" name="label_onnxdetector_model_path">
+                        <property name="text">
+                         <string>[Required] Path to the ONNX model (*.onnx).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QDoubleSpinBox" name="doubleSpinBox_onnxdetector_threshold">
+                        <property name="decimals">
+                         <number>4</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.001000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="2">
+                       <widget class="QLabel" name="label_onnxdetector_threshold">
+                        <property name="text">
+                         <string>Keep only keypoints with a score above this threshold (0 means that only the threshold inside the model is used).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_onnxdetector">
                    <property name="orientation">
                     <enum>Qt::Vertical</enum>
                    </property>

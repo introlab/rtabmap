@@ -6,6 +6,7 @@
 #include "rtabmap/utilite/UException.h"
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UFile.h"
+#include "TestUtils.h"
 #include <cmath>
 #include <limits>
 
@@ -25,35 +26,35 @@ protected:
         imageSize_ = cv::Size(imageWidth_, imageHeight_);
         
         // Create intrinsic matrix K
-        K_ = (cv::Mat_<double>(3, 3) <<
+        K_ = cv::Mat_<double>({3, 3}, {
             fx_, 0.0, cx_,
             0.0, fy_, cy_,
-            0.0, 0.0, 1.0);
+            0.0, 0.0, 1.0});
         
         // Create distortion coefficients
-        D_ = (cv::Mat_<double>(1, 4) << -0.1, 0.05, 0.001, -0.001);
+        D_ = cv::Mat_<double>({1, 4}, {-0.1, 0.05, 0.001, -0.001});
         
         // Create rectification matrix
         R_ = cv::Mat::eye(3, 3, CV_64FC1);
         
         // Create projection matrix P (with Tx = baseline * fx for left camera)
         double Tx = baseline_ * fx_;
-        P_left_ = (cv::Mat_<double>(3, 4) <<
+        P_left_ = cv::Mat_<double>({3, 4}, {
             fx_, 0.0, cx_, Tx,
             0.0, fy_, cy_, 0.0,
-            0.0, 0.0, 1.0, 0.0);
+            0.0, 0.0, 1.0, 0.0});
         
         // Right camera projection matrix (Tx = 0 typically)
-        P_right_ = (cv::Mat_<double>(3, 4) <<
+        P_right_ = cv::Mat_<double>({3, 4}, {
             fx_, 0.0, cx_, 0.0,
             0.0, fy_, cy_, 0.0,
-            0.0, 0.0, 1.0, 0.0);
+            0.0, 0.0, 1.0, 0.0});
         
         // Create stereo extrinsic parameters
         // R and T represent the left camera relative to the right camera coordinate system
         // For parallel cameras with baseline along x-axis, T is negative baseline
         // Translation of left camera relative to right camera coordinate system
-        T_ = (cv::Mat_<double>(3, 1) << -baseline_, 0.0, 0.0);
+        T_ = cv::Mat_<double>({3, 1}, {-baseline_, 0.0, 0.0});
         
         // Rotation matrix of left camera relative to right camera coordinate system
         // (identity for parallel cameras)
@@ -430,7 +431,7 @@ TEST_F(StereoCameraModelTest, StereoTransformBaselineExample)
     CameraModel right("right", imageSize_, K_, D_, R_, P_right_);
     
     // Create T with negative baseline (left camera relative to right camera coordinate system)
-    cv::Mat T_test = (cv::Mat_<double>(3, 1) << -testBaseline, 0.0, 0.0);
+    cv::Mat T_test = cv::Mat_<double>({3, 1}, {-testBaseline, 0.0, 0.0});
     cv::Mat R_test = cv::Mat::eye(3, 3, CV_64FC1);
     
     StereoCameraModel model("stereo", left, right, R_test, T_test);
@@ -562,8 +563,8 @@ TEST_F(StereoCameraModelTest, NegativeBaseline)
 TEST_F(StereoCameraModelTest, SaveLoadRoundTrip)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_stereo_calibration";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_stereo_calibration");
+    const std::string & testDir = tempDir.path();
     
     // Create original stereo camera model with full parameters
     std::string cameraName = "test_stereo";
@@ -680,8 +681,8 @@ TEST_F(StereoCameraModelTest, SaveLoadRoundTrip)
 TEST_F(StereoCameraModelTest, SaveLoadRoundTripIgnoreTransform)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_stereo_calibration2";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_stereo_calibration2");
+    const std::string & testDir = tempDir.path();
     
     // Create original stereo camera model
     std::string cameraName = "test_stereo2";
@@ -713,8 +714,8 @@ TEST_F(StereoCameraModelTest, SaveLoadRoundTripIgnoreTransform)
 TEST_F(StereoCameraModelTest, LoadInitRectificationMaps)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_stereo_calibration5";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_stereo_calibration5");
+    const std::string & testDir = tempDir.path();
 
     // A stereo pair valid for rectification, so both left and right maps
     // would be built on load.
@@ -755,8 +756,8 @@ TEST_F(StereoCameraModelTest, LoadInitRectificationMaps)
 TEST_F(StereoCameraModelTest, SaveLoadRoundTripMinimal)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_stereo_calibration3";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_stereo_calibration3");
+    const std::string & testDir = tempDir.path();
     
     // Create minimal stereo camera model
     std::string cameraName = "minimal_stereo";
@@ -784,8 +785,8 @@ TEST_F(StereoCameraModelTest, SaveLoadRoundTripMinimal)
 TEST_F(StereoCameraModelTest, SaveStereoTransform)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_stereo_calibration4";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_stereo_calibration4");
+    const std::string & testDir = tempDir.path();
     
     // Create stereo camera model with extrinsics
     std::string cameraName = "stereo_with_extrinsics";

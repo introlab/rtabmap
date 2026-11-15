@@ -394,6 +394,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 		// Create the database
 		std::string schema = DATABASESCHEMA_SQL;
 		std::string targetVersion = this->getTargetVersion();
+		bool targetSchemaFound = false;
 		if(!targetVersion.empty())
 		{
 			// search for schema with version <= target version
@@ -406,7 +407,9 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 			schemas.push_back(std::make_pair("0.18.3", DATABASESCHEMA_0_18_3_SQL));
 			schemas.push_back(std::make_pair("0.20.0", DATABASESCHEMA_0_20_0_SQL));
 			schemas.push_back(std::make_pair("0.22.0", DATABASESCHEMA_0_22_0_SQL));
-			schemas.push_back(std::make_pair(uNumber2Str(RTABMAP_VERSION_MAJOR)+"."+uNumber2Str(RTABMAP_VERSION_MINOR), DATABASESCHEMA_SQL));
+			// Version from which the current schema (DatabaseSchema.sql.in) is used: update it
+			// when the schema changes (with the previous one saved in backward_compatibility).
+			schemas.push_back(std::make_pair("0.23.0", DATABASESCHEMA_SQL));
 			for(size_t i=0; i<schemas.size(); ++i)
 			{
 				if(uStrNumCmp(targetVersion, schemas[i].first) < 0)
@@ -420,11 +423,38 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 				else
 				{
 					schema = schemas[i].second;
+					targetSchemaFound = true;
 				}
 			}
 		}
 		schema = uHex2Str(schema);
 		this->executeNoResultQuery(schema.c_str());
+
+		if(targetSchemaFound && uStrNumCmp(targetVersion, RTABMAP_VERSION) < 0)
+		{
+			// The schema is the one of the target version, but it saves the version of its
+			// backward compatibility file, or the current version for the current schema:
+			// save the target version instead (e.g., 0.21.2 instead of 0.20.0, or 0.23.10
+			// instead of 0.24.5), so that the database is read like one created by that version.
+			std::list<std::string> numbers = uSplit(targetVersion, '.');
+			bool valid = !numbers.empty() && numbers.size() <= 3;
+			for(std::list<std::string>::iterator iter=numbers.begin(); valid && iter!=numbers.end(); ++iter)
+			{
+				valid = uIsInteger(*iter, false);
+			}
+			if(valid)
+			{
+				while(numbers.size() < 3)
+				{
+					numbers.push_back("0");
+				}
+				this->executeNoResultQuery(uFormat("UPDATE Admin SET version='%s';", uJoin(numbers, ".").c_str()));
+			}
+			else
+			{
+				UWARN("Target version \"%s\" is not a valid version (major.minor.patch), the database version is the one of its schema.", targetVersion.c_str());
+			}
+		}
 	}
 	UASSERT(this->getDatabaseVersionQuery(_version)); // must be true!
 	UINFO("Database version = %s", _version.c_str());
@@ -3681,7 +3711,7 @@ void DBDriverSqlite3::loadQuery(VWDictionary & dictionary, bool lastStateOnly, b
 }
 
 //may be slower than the previous version but don't have a limit of words that can be loaded at the same time
-void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const
+void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws, bool missingWordsExpected) const
 {
 	ULOGGER_DEBUG("size=%d", (int)wordIds.size());
 	if(_ppDb && wordIds.size())
@@ -3771,7 +3801,15 @@ void DBDriverSqlite3::loadWordsQuery(const std::set<int> & wordIds, std::list<Vi
 					UDEBUG("Not found word %d", *iter);
 				}
 			}
-			UERROR("Query (%d) doesn't match loaded words (%d)", (int)wordIds.size(), (int)loaded.size());
+			if(missingWordsExpected)
+			{
+				UDEBUG("%d/%d words not found in the database (expected by the caller)",
+					(int)(wordIds.size() - loaded.size()), (int)wordIds.size());
+			}
+			else
+			{
+				UERROR("Query (%d) doesn't match loaded words (%d)", (int)wordIds.size(), (int)loaded.size());
+			}
 		}
 	}
 }

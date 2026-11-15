@@ -150,7 +150,7 @@ TEST(LinkTest, MergeGlobalClosureKeepsLinkWithLowerInformationOnX)
 
 TEST(LinkTest, UserDataCompressesAndRoundTrips)
 {
-	const cv::Mat userData = (cv::Mat_<float>(2, 2) << 1.f, 2.f, 3.f, 4.f);
+	const cv::Mat userData = cv::Mat_<float>({2, 2}, {1.f, 2.f, 3.f, 4.f});
 	Link link(1, 2, Link::kNeighbor, Transform::getIdentity(), cv::Mat::eye(6, 6, CV_64FC1), userData);
 
 	EXPECT_FALSE(link.userDataCompressed().empty());
@@ -194,4 +194,19 @@ TEST(LinkTest, LandmarkLink)
 	EXPECT_TRUE(link.isValid());
 	EXPECT_EQ(link.to(), -10);
 	EXPECT_EQ(link.typeName(), "Landmark");
+}
+
+TEST(LinkTest, IsLoopClosure)
+{
+	for(int type = 0; type < Link::kEnd; ++type)
+	{
+		Link link(1, 2, (Link::Type)type, Transform::getIdentity());
+		const bool expected =
+				type == Link::kGlobalClosure ||
+				type == Link::kLocalSpaceClosure ||
+				type == Link::kLocalTimeClosure ||
+				type == Link::kUserClosure;
+		EXPECT_EQ(expected, link.isLoopClosure()) << link.typeName();
+	}
+	EXPECT_FALSE(Link().isLoopClosure()); // kUndef
 }

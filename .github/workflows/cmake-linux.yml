@@ -62,7 +62,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        build_name: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-with-opengv, ubuntu-26.04]
+        build_name: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
         include:
         # GTSAM is in no Ubuntu release, and libg2o-dev only appears in the
         # archive from noble on (jammy has no g2o at all).
@@ -85,13 +85,9 @@ jobs:
           extra_deps: "libg2o-dev libceres-dev"
           ros_deps: "ros-jazzy-gtsam"
           ros_prefix: "/opt/ros/jazzy"
-          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DWITH_G2O=ON -DWITH_GTSAM=ON"
-        - build_name: ubuntu-24.04-with-opengv
-          os: ubuntu-24.04
-          extra_deps: "libg2o-dev libceres-dev"
-          ros_deps: "ros-jazzy-gtsam"
-          ros_prefix: "/opt/ros/jazzy"
-          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DWITH_G2O=ON -DWITH_GTSAM=ON -DBUILD_OPENGV=ON"
+          # ONNX Runtime (OnnxDetector / OnnxMatcher) from its release archive.
+          onnxruntime: "1.23.2"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DWITH_G2O=ON -DWITH_GTSAM=ON -DBUILD_OPENGV=ON -DWITH_ONNXRUNTIME=ON"
         - build_name: ubuntu-26.04
           os: ubuntu-26.04
           # libboost-all-dev for the GTSAM build
@@ -100,7 +96,8 @@ jobs:
           ros_prefix: ""
           # The tag ros-lyrical-gtsam 4.3.0 is built from
           gtsam_ref: "4.3a0-ros"
-          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DWITH_G2O=ON -DWITH_GTSAM=ON -DBUILD_OPENGV=ON"
+          onnxruntime: "1.23.2"
+          extra_cmake_def: "-DWITH_CERES=ON -DWITH_PYTHON=ON -DWITH_G2O=ON -DWITH_GTSAM=ON -DBUILD_OPENGV=ON -DWITH_ONNXRUNTIME=ON"
 
     steps:
     - uses: actions/checkout@v4
@@ -180,15 +177,56 @@ jobs:
           -DBUILD_SHARED_LIBS=ON
         cmake --build ${{runner.temp}}/gtsam-build --target install -j $(nproc)
 
+    # The CPU release archive: FindONNXRuntime.cmake reads ONNXRUNTIME_ROOT from
+    # the environment. The library is loaded from there at runtime too.
+    - name: Install ONNX Runtime
+      if: matrix.onnxruntime != ''
+      run: |
+        curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v${{ matrix.onnxruntime }}/onnxruntime-linux-x64-${{ matrix.onnxruntime }}.tgz | tar -xz -C ${{ runner.temp }}
+        echo "ONNXRUNTIME_ROOT=${{ runner.temp }}/onnxruntime-linux-x64-${{ matrix.onnxruntime }}" >> "$GITHUB_ENV"
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.x'
+        # Not '3.x': onnxruntime has no wheels of the latest Python (3.15) yet
+        python-version: '3.14'
 
     - name: Install Python Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install numpy pybind11
+
+    # The ONNX models that scripts/fetch_test_data.sh exports with the scripts of
+    # corelib/src/onnx (SuperPoint, XFeat, DISK, SIFT-LightGlue, SuperGlue): CPU
+    # PyTorch and what the scripts import. With the OpenVINO execution provider
+    # plugin, test_onnx also runs OnnxSession on OpenVINO (CPU device).
+    - name: Install ONNX Export Dependencies
+      if: matrix.onnxruntime != ''
+      run: |
+        pip install torch --index-url https://download.pytorch.org/whl/cpu
+        pip install onnx onnxruntime opencv-python-headless kornia scipy onnxruntime-ep-openvino
+        echo "RTABMAP_TEST_OPENVINO_PLUGIN=$(python3 -c 'import onnxruntime_ep_openvino as m; print(m.get_library_path())')" >> "$GITHUB_ENV"
+
+    # Everything else of data/tests: the downloaded models, their sources and
+    # weights, and the exported models. Exporting takes minutes, so they are
+    # cached until the manifest, the fetch script or an export script changes.
+    - name: Restore ONNX test models
+      if: matrix.onnxruntime != ''
+      uses: actions/cache@v4
+      with:
+        path: |
+          data/tests
+          !data/tests/*.db
+        key: onnx-testdata-${{ matrix.os }}-${{ hashFiles('data/tests/manifest.txt', 'scripts/fetch_test_data.sh', 'corelib/src/onnx/*.py') }}
+
+    # After the Python dependencies, so that the exports run. Files already there
+    # (cache) are checked and skipped. NetVLAD (555 MB of weights) is left out.
+    - name: Fetch ONNX test models
+      if: matrix.onnxruntime != ''
+      shell: bash
+      env:
+        RTABMAP_FETCH_NETVLAD: 0
+      run: bash scripts/fetch_test_data.sh
 
     - name: Configure CMake
       run: |

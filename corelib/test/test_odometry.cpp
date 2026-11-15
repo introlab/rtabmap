@@ -192,6 +192,38 @@ TEST(OdometryTest, DefaultCapabilityFlags)
 	EXPECT_FALSE(odometry.canProcessAsyncIMU());
 }
 
+TEST(OdometryTest, ThreeDoFKalmanUsesPlanarVelocityStates)
+{
+	ParametersMap parameters = baseTestParameters();
+	parameters[Parameters::kRegForce3DoF()] = "true";
+	parameters[Parameters::kOdomFilteringStrategy()] = "1";
+	parameters[Parameters::kOdomGuessMotion()] = "true";
+
+	MockOdometry odometry(parameters);
+	odometry.reset(Transform::getIdentity());
+
+	odometry.setNextTransform(Transform::getIdentity());
+	SensorData initial = makeImageData(0, 0.0);
+	ASSERT_FALSE(odometry.process(initial).isNull());
+
+	// Frame 1 initializes the filter; frames 2 and 3 go through predict
+	// (motion guess) and correct (filtered transform).
+	const Transform step(1.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	odometry.setNextTransform(step);
+	for(int i=1; i<=3; ++i)
+	{
+		SCOPED_TRACE("frame " + uNumber2Str(i));
+		SensorData data = makeImageData(i, double(i));
+		OdometryInfo info;
+		ASSERT_FALSE(odometry.process(data, &info).isNull());
+		expectTransformNear(info.transformFiltered, step, 1e-2f);
+		if(i > 1)
+		{
+			expectTransformNear(odometry.lastGuess(), step, 1e-2f);
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Strategies driven through the public API on real frames committed under
 // data/. The tests above use MockOdometry, which overrides computeTransform(),
@@ -778,7 +810,7 @@ double deskewedWallDistance(const Trajectory & trajectory, int frames, const Par
 	parameters.insert(ParametersPair(Parameters::kIcpPointToPlaneK(), "10"));
 	parameters.insert(ParametersPair(Parameters::kIcpMaxTranslation(), "0"));
 	parameters.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), "0.5"));
-	for(const ParametersPair & p : extra) uInsert(parameters, p);
+	uInsert(parameters, extra);
 	std::unique_ptr<Odometry> odometry(Odometry::create(parameters));
 
 	double imuStamp = 0.0;

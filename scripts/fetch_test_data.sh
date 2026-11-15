@@ -201,3 +201,108 @@ trace_superpoint_pt \
 # *.pth -> *.pt on first detect() inside the C++ class, so the fetch script
 # doesn't pre-trace it. The *.pth and superpoint_pytorch.py downloaded above
 # are what that runtime tracer consumes.
+
+# --- Optional: ONNX models for test_onnx (OnnxDetector / OnnxMatcher) ---
+# disk.onnx and disk_lightglue.onnx come from the manifest. The others are
+# exported here with the scripts of corelib/src/onnx from the sources and
+# weights of the manifest, when python3 has torch >= 2.9, onnx and onnxscript
+# (onnxruntime too for the scripts to verify what they export). A failure is logged and
+# skipped: test_onnx skips the tests of a model that isn't there.
+export_onnx() {
+	local label="$1" output="$2"
+	shift 2
+	if [[ -f "$output" ]]; then
+		echo "  $label: already exported ($output)"
+		return 0
+	fi
+	if ! command -v python3 >/dev/null 2>&1 || ! python3 -c "import torch, onnx, onnxscript; assert tuple(int(v) for v in torch.__version__.split('.')[:2]) >= (2, 9)" >/dev/null 2>&1; then
+		echo "  $label: python3 with torch >= 2.9, onnx and onnxscript not found — skipping export"
+		return 0
+	fi
+	echo "Exporting $label -> $output"
+	if [[ -n "${EXPORT_NOTE:-}" ]]; then
+		echo "  $EXPORT_NOTE"
+	fi
+	if python3 "$@" --output "$output" >/tmp/onnx_export.log 2>&1; then
+		echo "  $label: exported ($(du -h "$output" | cut -f1))"
+	else
+		echo "  $label: export failed (see /tmp/onnx_export.log) — test will skip"
+		rm -f "$output"
+	fi
+}
+
+ONNX_SCRIPTS="$REPO_ROOT/corelib/src/onnx"
+if [[ -f "$DEST_DIR/superpoint_pytorch.py" && -f "$DEST_DIR/superpoint_v6_from_tf.pth" ]]; then
+	export_onnx "superpoint_rpautrat.onnx" "$DEST_DIR/superpoint_rpautrat.onnx" \
+		"$ONNX_SCRIPTS/export_superpoint_onnx.py" --model-dir "$DEST_DIR" --weights "$DEST_DIR/superpoint_v6_from_tf.pth"
+fi
+if [[ -f "$DEST_DIR/modules/model.py" && -f "$DEST_DIR/xfeat.pt" ]]; then
+	export_onnx "xfeat.onnx" "$DEST_DIR/xfeat.onnx" \
+		"$ONNX_SCRIPTS/export_xfeat_onnx.py" --model-dir "$DEST_DIR" --weights "$DEST_DIR/xfeat.pt"
+fi
+if [[ -f "$DEST_DIR/lightglue/lightglue.py" ]]; then
+	# LightGlue downloads its SIFT checkpoint itself (torch hub cache)
+	export_onnx "sift_lightglue.onnx" "$DEST_DIR/sift_lightglue.onnx" \
+		"$ONNX_SCRIPTS/export_lightglue_onnx.py" --features sift --lightglue-dir "$DEST_DIR"
+fi
+# NetVLAD: 555 MB of weights to download (kept to export again) and a 134 MB
+# model. RTABMAP_FETCH_NETVLAD=0 skips it.
+if [[ "${RTABMAP_FETCH_NETVLAD:-1}" == "0" ]]; then
+	echo "  netvlad.onnx: RTABMAP_FETCH_NETVLAD=0 — skipping export"
+elif [[ ! -f "$DEST_DIR/netvlad.onnx" ]] && ! python3 -c "import scipy" >/dev/null 2>&1; then
+	# checked before the download: the script reads the weights (*.mat) with scipy
+	echo "  netvlad.onnx: python3 doesn't have scipy (pip install scipy) — skipping export"
+else
+	netvlad_note=""
+	if [[ ! -f "$DEST_DIR/Pitts30K_struct.mat" ]]; then
+		netvlad_note="netvlad downloads 555 MB of weights, this can take a while. To skip it: RTABMAP_FETCH_NETVLAD=0 scripts/fetch_test_data.sh"
+	fi
+	EXPORT_NOTE="$netvlad_note" \
+	export_onnx "netvlad.onnx" "$DEST_DIR/netvlad.onnx" \
+		"$ONNX_SCRIPTS/export_netvlad_onnx.py" --download --weights "$DEST_DIR/Pitts30K_struct.mat" --dim 1024
+fi
+if [[ -f "$DEST_DIR/models/superglue.py" && -f "$DEST_DIR/models/weights/superglue_indoor.pth" ]]; then
+	export_onnx "superglue_indoor.onnx" "$DEST_DIR/superglue_indoor.onnx" \
+		"$ONNX_SCRIPTS/export_superglue_onnx.py" --superglue-dir "$DEST_DIR" --weights indoor
+	# the PyMatcher wrapper imports models.matching from its own directory
+	cp -f "$REPO_ROOT/corelib/src/python/rtabmap_superglue.py" "$DEST_DIR/"
+fi
+# DISK from kornia's implementation and weights (kornia downloads them), next
+# to the release disk.onnx of the manifest: same features, but a plain MaxPool
+# NMS that TensorRT runs as a whole (the release one has an indices output).
+if python3 -c "import kornia" >/dev/null 2>&1; then
+	export_onnx "disk_rtabmap.onnx" "$DEST_DIR/disk_rtabmap.onnx" \
+		"$ONNX_SCRIPTS/export_disk_onnx.py"
+else
+	echo "  disk_rtabmap.onnx: python3 doesn't have kornia (pip install kornia) — skipping export"
+fi
+# ALIKED from LightGlue's implementation (which downloads the weights), and
+# the LightGlue trained on its descriptors. A lower threshold than ALIKED's
+# 0.2, which keeps only about a hundred keypoints on the test image.
+if [[ -f "$DEST_DIR/lightglue/aliked.py" && -f "$DEST_DIR/lightglue/utils.py" ]]; then
+	if python3 -c "import torchvision, kornia, cv2" >/dev/null 2>&1; then
+		export_onnx "aliked.onnx" "$DEST_DIR/aliked.onnx" \
+			"$ONNX_SCRIPTS/export_aliked_onnx.py" --lightglue-dir "$DEST_DIR" --threshold 0.01
+	else
+		echo "  aliked.onnx: python3 doesn't have torchvision, kornia and opencv (pip install torchvision kornia opencv-python) — skipping export"
+	fi
+fi
+if [[ -f "$DEST_DIR/lightglue/lightglue.py" ]]; then
+	export_onnx "aliked_lightglue.onnx" "$DEST_DIR/aliked_lightglue.onnx" \
+		"$ONNX_SCRIPTS/export_lightglue_onnx.py" --features aliked --lightglue-dir "$DEST_DIR"
+fi
+
+# --- PyDetector variant of test_superpoint_perf ---
+# The python wrapper of rpautrat's SuperPoint imports superpoint_pytorch.py from
+# its own directory and loads weights/superpoint_v6_from_tf.pth next to it: the
+# wrapper is copied here and the weights linked where it looks for them.
+if [[ -f "$DEST_DIR/superpoint_pytorch.py" && -f "$DEST_DIR/superpoint_v6_from_tf.pth" ]]; then
+	cp -f "$REPO_ROOT/corelib/src/python/rtabmap_superpoint_rpautrat.py" "$DEST_DIR/"
+	mkdir -p "$DEST_DIR/weights"
+	ln -sf ../superpoint_v6_from_tf.pth "$DEST_DIR/weights/superpoint_v6_from_tf.pth"
+fi
+# The magicleap wrapper imports demo_superpoint.py and loads superpoint_v1.pth
+# from its own directory, both downloaded above.
+if [[ -f "$DEST_DIR/demo_superpoint.py" && -f "$DEST_DIR/superpoint_v1.pth" ]]; then
+	cp -f "$REPO_ROOT/corelib/src/python/rtabmap_superpoint.py" "$DEST_DIR/"
+fi

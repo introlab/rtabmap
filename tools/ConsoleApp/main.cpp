@@ -242,7 +242,7 @@ int main(int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				gtPath = uReplaceChar(argv[i], '~', UDirectory::homeDir());
+				gtPath = UDirectory::expandHomeDir(argv[i]);
 			}
 			else
 			{

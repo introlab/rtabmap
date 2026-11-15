@@ -26,7 +26,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <QtCore/QDir>
+#include <QtCore/QLoggingCategory>
 #include "rtabmap/utilite/UEventsManager.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/Rtabmap.h"
@@ -70,7 +72,13 @@ int main(int argc, char* argv[])
 	// before QApplication is constructed.
 	QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
+	// Qt's Wayland plugin warns "Try to disable surface ... with focusing surface ..."
+	// each time a popup menu takes the focus, harmless. QT_LOGGING_RULES can still
+	// enable it again.
+	QLoggingCategory::setFilterRules("qt.qpa.wayland.textinput=false");
+
 	/* Create tasks */
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
 	QApplication * app = new QApplication(argc, argv);
 	app->setStyleSheet("QMessageBox { messagebox-text-interaction-flags: 5; }"); // selectable message box
 
@@ -81,7 +89,7 @@ int main(int argc, char* argv[])
     std::string database;
     for(int i=1; i<argc; ++i)
     {
-        std::string value = uReplaceChar(argv[i], '~', UDirectory::homeDir());
+        std::string value = UDirectory::expandHomeDir(argv[i]);
         if(UFile::exists(value) &&
            UFile::getExtension(value).compare("db") == 0)
         {

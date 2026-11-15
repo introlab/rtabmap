@@ -41,13 +41,16 @@ class RTABMAP_CORE_EXPORT GlobalDescriptorExtractor {
 public:
 	enum Type {
 		kUndef=0,
-		kPyDescriptor=1};
+		kPyDescriptor=1,
+		kOnnxDescriptor=2};
 
 	static std::string typeName(Type type)
 	{
 		switch(type){
 		case kPyDescriptor:
 			return "PyDescriptor";
+		case kOnnxDescriptor:
+			return "OnnxDescriptor";
 		default:
 			return "Unknown";
 		}

@@ -3,13 +3,11 @@
 #include <rtabmap/core/DBDriverSqlite3.h>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Parameters.h>
-#include <rtabmap/core/DBReader.h>
-#include <rtabmap/core/SensorCaptureInfo.h>
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/core/Compression.h>
 #include <rtabmap/core/Link.h>
-#include <rtabmap/core/Link.h>
+#include <rtabmap/core/Version.h>
 #include <opencv2/core.hpp>
 #include <memory>
 #include <rtabmap/utilite/UFile.h>
@@ -189,12 +187,10 @@ TEST_F(DBDriverSqlite3Fixture, ExecuteNoResultPragma)
 
 // ---------------------------------------------------------------------------
 // Full write/read round trip: build a small database with rich sensor data,
-// then replay it with DBReader.
+// then load it back (DBReader is tested in test_dbreader.cpp).
 //
 // The tests above save bare Signatures, which exercises the schema but not the
-// payload paths (compressed image/depth/scan blobs, calibration, links) nor
-// DBReader at all -- until now those only ran during the end-to-end replay
-// tests, which need the fetched sample databases.
+// payload paths (compressed image/depth/scan blobs, calibration, links).
 // ---------------------------------------------------------------------------
 
 namespace {
@@ -258,54 +254,6 @@ TEST_F(DBDriverSqlite3Fixture, SavesAndLoadsRichSensorData)
 	{
 		delete *iter;
 	}
-}
-
-TEST_F(DBDriverSqlite3Fixture, DBReaderReplaysWrittenDatabase)
-{
-	// Three consecutive nodes with odometry poses and neighbour links, i.e.
-	// the minimum a recorded session needs to be replayable.
-	const int kNodes = 3;
-	for(int i = 1; i <= kNodes; ++i)
-	{
-		const Transform pose(0.5f * i, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-		Signature * s = new Signature(i, 0, 1, static_cast<double>(i), "", pose, Transform(),
-				makeRichData(i, static_cast<double>(i)));
-		if(i > 1)
-		{
-			const Transform motion(0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-			s->addLink(Link(i, i - 1, Link::kNeighbor, motion.inverse()));
-		}
-		saveSignature(s);
-	}
-	// Close so the file is complete before DBReader opens it.
-	driver_->closeConnection(true);
-	delete driver_;
-	driver_ = nullptr;
-
-	std::unique_ptr<DBReader> reader(new DBReader(dbPath_, /*frameRate=*/0.0f,
-			/*odometryIgnored=*/false));
-	ASSERT_TRUE(reader->init()) << "DBReader could not open " << dbPath_;
-
-	int frames = 0;
-	Transform previousPose;
-	while(frames < kNodes + 1)
-	{
-		SensorCaptureInfo info;
-		SensorData data = reader->takeData(&info);
-		if(data.id() == 0 && data.imageRaw().empty() && data.imageCompressed().empty())
-		{
-			break;  // end of database
-		}
-		++frames;
-		EXPECT_FALSE(info.odomPose.isNull()) << "frame " << data.id() << " has no odometry pose";
-		if(!previousPose.isNull() && !info.odomPose.isNull())
-		{
-			// Poses were written 50 cm apart along x.
-			EXPECT_NEAR(previousPose.getDistance(info.odomPose), 0.5f, 1e-3f);
-		}
-		previousPose = info.odomPose;
-	}
-	EXPECT_EQ(kNodes, frames) << "DBReader returned " << frames << " of " << kNodes << " nodes";
 }
 
 // Only compressed buffers are persisted, so raw-only sensor data is stored with
@@ -447,3 +395,37 @@ INSTANTIATE_TEST_SUITE_P(
 			}
 			return "v" + name;
 		});
+
+TEST(DBDriverSqlite3Test, TargetVersionIsTheDatabaseVersion)
+{
+	// A database created with Db/TargetVersion has the version of the target, whatever
+	// the schema it is created from (e.g., 0.23.x versions use the schema introduced in
+	// 0.23.0 and still used by later versions, not the one of 0.22.0). From the oldest
+	// supported version (0.16) to the current one.
+	ASSERT_EQ(0, RTABMAP_VERSION_MAJOR) << "update the versions tested";
+	for(int minor = 16; minor <= RTABMAP_VERSION_MINOR; ++minor)
+	{
+		const std::string majorMinor = uFormat("0.%d", minor);
+		const std::string target = majorMinor + ".1";
+		SCOPED_TRACE("target version " + target);
+		const std::string dbPath = uniqueDbPath();
+		ParametersMap parameters;
+		parameters.insert(ParametersPair(Parameters::kDbTargetVersion(), target));
+		{
+			DBDriverSqlite3 driver(parameters);
+			ASSERT_TRUE(driver.openConnection(dbPath, true));
+			driver.closeConnection(false);
+		}
+		DBDriverSqlite3 driver;
+		ASSERT_TRUE(driver.openConnection(dbPath, false));
+		const std::string version = driver.getDatabaseVersion();
+		driver.closeConnection(false);
+		UFile::erase(dbPath);
+
+		EXPECT_EQ(majorMinor, version.substr(0, version.find('.', version.find('.')+1)));
+		if(uStrNumCmp(target, RTABMAP_VERSION) < 0)
+		{
+			EXPECT_EQ(target, version);
+		}
+	}
+}

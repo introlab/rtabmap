@@ -48,10 +48,7 @@ void PyDescriptor::parseParameters(const ParametersMap & parameters)
 	std::string previousPath = path_;
 	Parameters::parse(parameters, Parameters::kPyDescriptorPath(), path_);
 	Parameters::parse(parameters, Parameters::kPyDescriptorDim(), dim_);
-	if(!path_.empty() && path_[0] == '~' && (path_.size() == 1 || path_[1] == '/' || path_[1] == '\\'))
-	{
-		path_ = UDirectory::homeDir() + path_.substr(1);
-	}
+	path_ = UDirectory::expandHomeDir(path_);
 	UINFO("path = %s", path_.c_str());
 	UINFO("dim = %d", dim_);
 	UTimer timer;

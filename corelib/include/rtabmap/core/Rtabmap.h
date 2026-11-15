@@ -910,6 +910,12 @@ public:
 	void adjustLikelihood(std::map<int, float> & likelihood) const;
 
 private:
+	void setInitialGuessFromPreviousMaps(
+			int fromId,
+			const std::map<int, Transform> & guessPoses,
+			const std::multimap<int, Link> & links,
+			std::map<int, Transform> & poses) const;
+	void updatePreviousMapsOptimizedPoses(const std::multimap<int, Link> * newLinks = 0);
 	void optimizeCurrentMap(int id,
 			bool lookInDatabase,
 			std::map<int, Transform> & optimizedPoses,
@@ -940,6 +946,8 @@ private:
 		int & optimizationIterations,
 		cv::Mat & optimizationCovariance,
 		const std::set<std::pair<int, int> > & newLinks);
+	bool hasLocalizationLinksInOdomCache() const;
+	bool isLandmarkNormalValid(const Signature * signature, int landmarkId, const Link & landmarkLink, bool localized, float * error = 0) const;
 	void updateGoalIndex();
 	bool computePath(int targetNode, std::map<int, Transform> nodes, const std::multimap<int, rtabmap::Link> & constraints);
 
@@ -1009,6 +1017,7 @@ private:
 	bool _loopCovLimited;
 	bool _loopGPS;
 	int _maxOdomCacheSize;
+	float _landmarkMaxNormalError;
 	bool _localizationSmoothing;
 	double _localizationPriorInf;
 	bool _localizationSecondTryWithoutProximityLinks;
@@ -1044,10 +1053,12 @@ private:
 
 	std::map<int, Transform> _optimizedPoses;
 	std::multimap<int, Link> _constraints;
+	std::list<std::map<int, Transform> > _previousMapsOptimizedPoses; ///< Optimized poses (nodes and landmarks) of the previous maps not connected to the current one (kept by triggerNewMap()), used as initial guess when links connect them, until they are merged.
 	Transform _mapCorrection;
 	Transform _mapCorrectionBackup;     ///< Used in localization mode when odometry is lost.
 	Transform _lastLocalizationPose;    ///< Corrected odometry pose; in mapping mode, last pose of getLocalOptimizedPoses().
 	int _lastLocalizationNodeId;        ///< Last localization node id (localization mode).
+	bool _localizationApplied;          ///< A localization from the odometry cache has been applied to the map correction, and its link(s) are still in the cache (localization mode). False while it is delayed.
 	cv::Mat _localizationCovariance;
 	std::map<int, std::pair<cv::Point3d, Transform> > _gpsGeocentricCache;
 	bool _currentSessionHasGPS;

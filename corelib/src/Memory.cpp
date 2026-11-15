@@ -285,6 +285,35 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			// load previous session working memory
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
 			_dbDriver->loadLastNodes(dbSignatures, !_loadVisualLocalFeaturesOnInit);
+
+			if(dbSignatures.empty())
+			{
+				// The last working memory is the nodes stamped when the previous
+				// session closed. None while the database has nodes means that
+				// session didn't close correctly (e.g., rtabmap was killed while
+				// saving), so its dictionary is likely not saved either. Starting
+				// with an empty memory would then create words with ids already
+				// referenced by the nodes in LTM. Load all nodes instead, so that
+				// the dictionary is checked (and repaired if needed) against all
+				// of them.
+				std::set<int> ids;
+				_dbDriver->getAllNodeIds(ids, true);
+				if(!ids.empty())
+				{
+					std::string msg = uFormat(
+						"The last working memory is empty while the database has %d nodes: the database "
+						"may have not been closed correctly the last time. Loading all nodes in working "
+						"memory (like %s=true) so that the dictionary can be checked and repaired against "
+						"all of them. This may use a lot of RAM on a large map; memory management "
+						"(if enabled) will transfer nodes back to long-term memory afterwards.",
+						(int)ids.size(),
+						Parameters::kMemInitWMWithAllNodes().c_str());
+					UWARN("%s", msg.c_str());
+					if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
+					_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures, 0, !_loadVisualLocalFeaturesOnInit);
+					loadAllNodesInWM = true; // load the dictionary accordingly
+				}
+			}
 		}
 		for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
 		{
@@ -580,9 +609,50 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				const std::map<int, VisualWord *> & addedWords = _vwd->getVisualWords();
 				int nodesRepaired = 0;
 				size_t oldSize = addedWords.size();
-				std::string assertMsg = 
+				std::string assertMsg =
 					"If we assert here, the problem is maybe deeper. Try "
 					"to use rtabmap-recovery tool instead to fix the database.";
+
+				// Words missing from the dictionary are not necessarily missing
+				// from the database: an incremental dictionary is loaded with
+				// only the words of the last session (see DBDriver::load()), so
+				// with Mem/InitWMWithAllNodes the nodes of older sessions
+				// reference words that are still in the Word table. Load those
+				// back from the database: they come marked as saved, so on
+				// close they are updated instead of inserted a second time
+				// ("UNIQUE constraint failed: Word.id"). Only the words that
+				// are really missing from the database are re-created below
+				// from the nodes' descriptors.
+				std::set<int> missingWordIds;
+				for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
+				{
+					Signature * s = this->_getSignature(i->first);
+					UASSERT_MSG(s != 0, assertMsg.c_str());
+					if(!s->isEnabled())
+					{
+						for(std::multimap<int, int>::const_iterator iter = s->getWords().begin(); iter!=s->getWords().end(); ++iter)
+						{
+							if(iter->first > 0 && addedWords.find(iter->first) == addedWords.end())
+							{
+								missingWordIds.insert(missingWordIds.end(), iter->first);
+							}
+						}
+					}
+				}
+				size_t wordsFromDatabase = 0;
+				if(!missingWordIds.empty())
+				{
+					std::list<VisualWord *> savedWords;
+					// Some ids are expected to be missing: those are re-created below.
+					_dbDriver->loadWords(missingWordIds, savedWords, true);
+					for(std::list<VisualWord *>::iterator iter=savedWords.begin(); iter!=savedWords.end(); ++iter)
+					{
+						UASSERT((*iter)->isSaved());
+						_vwd->addWord(*iter);
+					}
+					wordsFromDatabase = savedWords.size();
+				}
+
 				for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 				{
 					Signature * s = this->_getSignature(i->first);
@@ -631,11 +701,29 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 					}
 				}
 
+				// The words re-created above raised the last word id up to the
+				// largest one referenced by the loaded nodes, but nodes in LTM may
+				// reference larger ones that were not saved either. New words must
+				// not reuse those ids, so look at all the features (slow on large
+				// databases, but only done when the dictionary is incomplete).
+				int lastWordId = 0;
+				_dbDriver->getLastWordId(lastWordId, true);
+				if(lastWordId > _vwd->getLastWordId())
+				{
+					UWARN("Words up to id %d are referenced by nodes not loaded in working memory but "
+						"are missing from the dictionary, new words will start from id %d.",
+						lastWordId, lastWordId+1);
+					_vwd->setLastWordId(lastWordId);
+				}
+
 				msg = uFormat(
-					"Regenerated the dictionary with %ld missing words (%ld -> %ld) from %d nodes.",
+					"Regenerated the dictionary with %ld missing words (%ld -> %ld): %ld loaded back "
+					"from the database, %ld re-created from %d nodes.",
 					addedWords.size() - oldSize,
 					oldSize,
 					addedWords.size(),
+					wordsFromDatabase,
+					addedWords.size() - oldSize - wordsFromDatabase,
 					nodesRepaired);
 				UWARN("%s", msg.c_str());
 				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(msg));
@@ -5327,7 +5415,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			 _detectMarkers ||
 			 _rotateImagesUpsideUp ||
 			 _imagePostDecimation > 1 ||
-			 (_createOccupancyGrid && _localMapMaker->isGridFromDepth()))) ||
+			 (_createOccupancyGrid && _localMapMaker->isGridFromDepth() &&
+			  data.gridCellSize() == 0.0f))) ||
 			// Images rectified below: stereo always, RGB-D unless only its features are
 			(!_imagesAlreadyRectified && !(_rectifyOnlyFeatures && data.stereoCameraModels().empty()));
 
@@ -7060,8 +7149,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	// Occupancy grid map stuff
 	if(_createOccupancyGrid && !isIntermediateNode)
 	{
-		if( (_localMapMaker->isGridFromDepth() && !data.depthOrRightRaw().empty()) ||
-			(!_localMapMaker->isGridFromDepth() && !data.laserScanRaw().empty()))
+		// A local grid already in the input data (e.g., read from a database
+		// by DBReader) is used as is.
+		if(data.gridCellSize() == 0.0f &&
+		   ((_localMapMaker->isGridFromDepth() && !data.depthOrRightRaw().empty()) ||
+			(!_localMapMaker->isGridFromDepth() && !data.laserScanRaw().empty())))
 		{
 			cv::Mat ground, obstacles, empty;
 			float cellSize = 0.0f;
@@ -7511,9 +7603,12 @@ void Memory::getMetricConstraints(
 			std::multimap<int, Link> tmpLinks = getLinks(*iter, lookInDatabase, true);
 			for(std::multimap<int, Link>::iterator jter=tmpLinks.begin(); jter!=tmpLinks.end(); ++jter)
 			{
-				std::multimap<int, Link>::iterator addedLinksIterator = graph::findLink(links, *iter, jter->first);
+				// Skip links already added. A node can have several self links (from == to) of
+				// different types (e.g., pose prior and gravity), so check the type for them.
+				std::multimap<int, Link>::iterator addedLinksIterator = graph::findLink(links, *iter, jter->first, true,
+						*iter == jter->first ? jter->second.type() : Link::kUndef);
 				if(	jter->second.isValid() &&
-					(addedLinksIterator == links.end() || addedLinksIterator->second.from()==addedLinksIterator->second.to()) &&
+					addedLinksIterator == links.end() &&
 					(uContains(poses, jter->first) || (landmarksAdded && jter->second.type() == Link::kLandmark)))
 				{
 					if(!lookInDatabase &&

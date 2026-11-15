@@ -90,10 +90,7 @@ void PyDetector::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kPyDetectorPath(), path_);
 	Parameters::parse(parameters, Parameters::kPyDetectorCuda(), cuda_);
 
-	if(!path_.empty() && path_[0] == '~' && (path_.size() == 1 || path_[1] == '/' || path_[1] == '\\'))
-	{
-		path_ = UDirectory::homeDir() + path_.substr(1);
-	}
+	path_ = UDirectory::expandHomeDir(path_);
 }
 
 std::vector<cv::KeyPoint> PyDetector::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask)

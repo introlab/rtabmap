@@ -49,6 +49,10 @@ class RegistrationInfo
 public:
 	RegistrationInfo() :
 		totalTime(0.0),
+		featuresTime(0.0),
+		matchingTime(0.0),
+		motionEstimationTime(0.0),
+		bundleAdjustmentTime(0.0),
 		inliers(0),
 		inliersRatio(0),
 		inliersMeanDistance(0.0f),
@@ -72,6 +76,10 @@ public:
 	{
 		RegistrationInfo output;
 		output.totalTime = totalTime;
+		output.featuresTime = featuresTime;
+		output.matchingTime = matchingTime;
+		output.motionEstimationTime = motionEstimationTime;
+		output.bundleAdjustmentTime = bundleAdjustmentTime;
 		output.covariance = covariance.clone();
 		output.rejectedMsg = rejectedMsg;
 		output.inliers = inliers;
@@ -95,6 +103,10 @@ public:
 	cv::Mat covariance;           /**< 6×6 registration uncertainty (CV_64FC1). */
 	std::string rejectedMsg;      /**< Reason the registration was rejected, if any. */
 	double totalTime;             /**< Total registration time (seconds). */
+	double featuresTime;          /**< Visual feature extraction time (seconds), 0 when the signatures already had features. */
+	double matchingTime;          /**< Visual correspondence search time (seconds). */
+	double motionEstimationTime;  /**< Visual motion estimation time (seconds), bundle adjustment excluded. */
+	double bundleAdjustmentTime;  /**< Visual bundle adjustment time (seconds), 0 when Vis/BundleAdjustment=0. */
 
 	// RegistrationVis
 	int inliers;                  /**< Number of visual inliers. */

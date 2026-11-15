@@ -37,7 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #else
 #include <opencv2/calib3d/calib3d.hpp>
 #endif
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <rtabmap/core/stereo/stereoRectifyFisheye.h>
 
 #include <QFileDialog>
@@ -1135,11 +1135,20 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 	ui_->label_left->setText(tr("%1x%2").arg(images[0].cols).arg(images[0].rows));
 
 	//show frame
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+	Qt::Orientations mirror = ui_->checkBox_mirror->isChecked() ? Qt::Horizontal : Qt::Orientations();
+	ui_->image_view->setImage(uCvMat2QImage(images[0]).flipped(mirror));
+#else
 	ui_->image_view->setImage(uCvMat2QImage(images[0]).mirrored(ui_->checkBox_mirror->isChecked(), false));
+#endif
 	if(stereo_)
 	{
 		ui_->label_right->setText(tr("%1x%2").arg(images[1].cols).arg(images[1].rows));
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+		ui_->image_view_2->setImage(uCvMat2QImage(images[1]).flipped(mirror));
+#else
 		ui_->image_view_2->setImage(uCvMat2QImage(images[1]).mirrored(ui_->checkBox_mirror->isChecked(), false));
+#endif
 	}
 	processingData_ = false;
 	++currentId_;
