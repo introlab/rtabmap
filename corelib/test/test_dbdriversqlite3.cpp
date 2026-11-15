@@ -572,9 +572,9 @@ TEST_P(DBDescriptorQuantizationTest, OtherDescriptorsAreSavedUnchanged)
 
 	cv::Mat binary(1, 32, CV_8UC1);
 	cv::randu(binary, 0, 256);
-	const cv::Mat small = cv::Mat_<float>({1, 4}, {0.1f, 0.2f, 0.3f, 0.4f});
+	const cv::Mat smallFloat = cv::Mat_<float>({1, 4}, {0.1f, 0.2f, 0.3f, 0.4f});
 	db->asyncSave(new VisualWord(1, binary));
-	db->asyncSave(new VisualWord(2, small));
+	db->asyncSave(new VisualWord(2, smallFloat));
 	driver.emptyTrashes(false);
 
 	std::list<VisualWord *> loaded;
@@ -582,7 +582,7 @@ TEST_P(DBDescriptorQuantizationTest, OtherDescriptorsAreSavedUnchanged)
 	ASSERT_EQ(loaded.size(), 2u);
 	for(VisualWord * w : loaded)
 	{
-		const cv::Mat & ref = w->id() == 1 ? binary : small;
+		const cv::Mat & ref = w->id() == 1 ? binary : smallFloat;
 		EXPECT_EQ(w->getDescriptor().type(), ref.type());
 		EXPECT_EQ(cv::norm(ref, w->getDescriptor(), cv::NORM_INF), 0.0);
 		delete w;
