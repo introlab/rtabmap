@@ -1,0 +1,7 @@
+<map id="rtabmap::GFTT_FREAK" name="rtabmap::GFTT_FREAK">
+<area shape="rect" id="Node000001" title="GFTT corners + FREAK descriptors." alt="" coords="5,152,173,177"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1GFTT.html" title="Good&#45;features&#45;to&#45;track detector (Shi–Tomasi / Harris)." alt="" coords="30,79,149,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,118,92,152,87,152,87,118"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1Feature2D.html" title="Abstract 2D feature detector and descriptor extractor for visual SLAM." alt="" coords="13,5,165,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="92,44,92,79,87,79,87,44"/>
+</map>

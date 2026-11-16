@@ -1,0 +1,55 @@
+/* RTAB-Map's own tweaks, loaded after the Doxygen Awesome theme.
+ *
+ * 1. Navigation tree
+ * ------------------
+ * The theme reveals the expand/collapse arrows only while the pointer is over
+ * a row, so nothing shows that a page has children until you happen to hover
+ * it -- stock Doxygen shows them at all times. Both opacities are theme
+ * variables, made for exactly this override.
+ */
+
+html {
+    --side-nav-arrow-opacity: 0.75;
+    --side-nav-arrow-hover-opacity: 1;
+}
+
+/* 2. Version dropdown
+ * -------------------
+ * Injected by version-switcher.js into Doxygen's #projectnumber element.
+ *
+ * Everything is expressed with Doxygen Awesome's custom properties, with the
+ * plain-Doxygen value as fallback, so the control follows whichever theme is
+ * in use. The native widget is kept (no `appearance: none`): the theme sets
+ * `color-scheme: dark` in dark mode, which is what makes the browser render
+ * the popup list dark as well -- something a re-styled <select> cannot do.
+ */
+
+.rtabmap-version-switcher {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.4;
+    margin-left: var(--spacing-small, 5px);
+    padding: 1px var(--spacing-small, 5px);
+    color: var(--page-foreground-color, inherit);
+    background-color: var(--page-background-color, transparent);
+    border: 1px solid var(--separator-color, #a0a0a0);
+    border-radius: var(--border-radius-small, 4px);
+    cursor: pointer;
+    vertical-align: baseline;
+    max-width: 12em;
+}
+
+.rtabmap-version-switcher:hover {
+    border-color: var(--primary-color, #1779c4);
+}
+
+.rtabmap-version-switcher:focus-visible {
+    outline: 2px solid var(--primary-color, #1779c4);
+    outline-offset: 1px;
+}
+
+/* #projectnumber is rendered at 60% in the theme; the dropdown would end up
+ * unreadably small if it inherited that on top of its own font-size. */
+#projectnumber .rtabmap-version-switcher {
+    font-size: 1.1em;
+}

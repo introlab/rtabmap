@@ -1,0 +1,25 @@
+<map id="utilite/include/rtabmap/utilite/UThreadNode.h" name="utilite/include/rtabmap/utilite/UThreadNode.h">
+<area shape="rect" id="Node000001" title="Backward&#45;compatible alias header for UThread." alt="" coords="102,5,273,45"/>
+<area shape="rect" id="Node000002" href="$UThread_8h_source.html" title=" " alt="" coords="92,93,283,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="190,46,190,79,185,79,185,46"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,167,167,207"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="174,121,123,160,120,156,171,117"/>
+<area shape="rect" id="Node000004" href="$UThreadC_8h_source.html" title=" " alt="" coords="191,174,389,199"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="204,117,265,163,262,167,201,121"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="381,416,449,441"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="283,201,262,233,241,276,234,300,231,323,234,346,244,366,259,375,291,387,369,412,367,417,289,392,257,380,240,370,229,347,226,323,229,298,236,274,257,230,279,198"/>
+<area shape="rect" id="Node000006" href="$Posix_2UThreadC_8h_source.html" title=" " alt="" coords="397,255,556,295"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="316,197,424,246,422,251,314,202"/>
+<area shape="rect" id="Node000007" href="$USemaphore_8h_source.html" title=" " alt="" coords="254,343,473,368"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="451,297,393,337,390,332,448,293"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="548,416,632,441"/>
+<area shape="poly" id="edge13_Node000006_Node000008" title=" " alt="" coords="557,275,595,282,633,294,669,313,697,341,703,353,703,364,691,384,667,400,640,413,637,409,665,396,687,380,698,363,698,354,693,344,665,317,631,299,593,287,556,280"/>
+<area shape="rect" id="Node000010" href="$UMutex_8h_source.html" title=" " alt="" coords="497,343,683,368"/>
+<area shape="poly" id="edge10_Node000006_Node000010" title=" " alt="" coords="506,293,563,332,560,337,503,297"/>
+<area shape="poly" id="edge7_Node000007_Node000005" title=" " alt="" coords="374,367,401,403,397,406,370,370"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="401,365,541,409,539,414,399,371"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="266,416,357,441"/>
+<area shape="poly" id="edge9_Node000007_Node000009" title=" " alt="" coords="357,370,330,406,326,403,353,367"/>
+<area shape="poly" id="edge11_Node000010_Node000005" title=" " alt="" coords="563,370,458,413,456,408,561,366"/>
+<area shape="poly" id="edge12_Node000010_Node000008" title=" " alt="" coords="593,368,593,402,587,402,587,368"/>
+</map>
