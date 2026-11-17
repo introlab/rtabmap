@@ -141,8 +141,8 @@ Public Member Functions</h2></td></tr>
 <div class="line">   }</div>
 <div class="line">   <span class="keywordflow">return</span> 0; <span class="comment">// automatically unlock the mutex m</span></div>
 <div class="line">}</div>
-<div class="ttc" id="aclassUMutex_html"><div class="ttname"><a href="classUMutex.html">UMutex</a></div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00054">UMutex.h:55</a></div></div>
-<div class="ttc" id="aclassUScopeMutex_html"><div class="ttname"><a href="classUScopeMutex.html">UScopeMutex</a></div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00193">UMutex.h:194</a></div></div>
+<div class="ttc" id="aclassUMutex_html"><div class="ttname"><a href="classUMutex.html">UMutex</a></div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00062">UMutex.h:63</a></div></div>
+<div class="ttc" id="aclassUScopeMutex_html"><div class="ttname"><a href="classUScopeMutex.html">UScopeMutex</a></div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00201">UMutex.h:202</a></div></div>
 </div><!-- fragment --><p>The lock can also be deferred, for example to only try locking it. The destructor then unlocks the mutex only if this object locked it: </p><div class="fragment"><div class="line"><span class="keywordtype">void</span> callback()</div>
 <div class="line">{</div>
 <div class="line">   <a class="code hl_class" href="classUScopeMutex.html">UScopeMutex</a> sm(m, <span class="keyword">false</span>); <span class="comment">// not locked yet</span></div>
@@ -160,10 +160,10 @@ Public Member Functions</h2></td></tr>
 <div class="line">{</div>
 <div class="line">   <span class="comment">// locked here</span></div>
 <div class="line">} <span class="comment">// unlocked here, only if lockTry() succeeded</span></div>
-<div class="ttc" id="aclassUScopeMutex_html_ab5520a99fb161894c6354d3772b819af"><div class="ttname"><a href="classUScopeMutex.html#ab5520a99fb161894c6354d3772b819af">UScopeMutex::lockTry</a></div><div class="ttdeci">int lockTry() &amp;</div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00246">UMutex.h:246</a></div></div>
+<div class="ttc" id="aclassUScopeMutex_html_ab5520a99fb161894c6354d3772b819af"><div class="ttname"><a href="classUScopeMutex.html#ab5520a99fb161894c6354d3772b819af">UScopeMutex::lockTry</a></div><div class="ttdeci">int lockTry() &amp;</div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00254">UMutex.h:254</a></div></div>
 </div><!-- fragment --><dl class="section see"><dt>See also</dt><dd><a class="el" href="classUMutex.html">UMutex</a> </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00193">193</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00201">201</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a0edb03132a8182e53bb0c5e960fd2a4b" name="a0edb03132a8182e53bb0c5e960fd2a4b"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0edb03132a8182e53bb0c5e960fd2a4b">&#9670;&#160;</a></span>UScopeMutex() <span class="overload">[1/2]</span></h2>
@@ -206,7 +206,7 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00201">201</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00209">209</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>
@@ -234,7 +234,7 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00211">211</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00219">219</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>
@@ -262,7 +262,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Unlock the mutex, only if this object locked it. </p>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00220">220</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00228">228</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>
@@ -291,7 +291,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Lock the mutex, if this object doesn't hold it already. </p><dl class="section return"><dt>Returns</dt><dd>0 on success, an error code otherwise. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00229">229</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00237">237</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>
@@ -319,7 +319,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Try locking the mutex, if this object doesn't hold it already. </p><dl class="section return"><dt>Returns</dt><dd>0 if the mutex is held by this object, EBUSY (or another error code) otherwise. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00246">246</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00254">254</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>
@@ -347,7 +347,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Unlock the mutex before this object goes out of scope, only if this object locked it. </p><dl class="section return"><dt>Returns</dt><dd>0 on success (or if this object didn't hold the mutex), an error code otherwise. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00262">262</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00270">270</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>
@@ -375,7 +375,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>true if this object currently holds the mutex. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00275">275</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00283">283</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>

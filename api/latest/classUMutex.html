@@ -128,12 +128,12 @@ Public Member Functions</h2></td></tr>
 <div class="line"><span class="comment">// Data is protected here from the second thread</span></div>
 <div class="line"><span class="comment">//(assuming the second one protects also with the same mutex the same data).</span></div>
 <div class="line">m.<a class="code hl_function" href="classUMutex.html#a4c5b4e04ad4e2f0eda2e8d4325d45d38">unlock</a>();</div>
-<div class="ttc" id="aclassUMutex_html"><div class="ttname"><a href="classUMutex.html">UMutex</a></div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00054">UMutex.h:55</a></div></div>
-<div class="ttc" id="aclassUMutex_html_a4c5b4e04ad4e2f0eda2e8d4325d45d38"><div class="ttname"><a href="classUMutex.html#a4c5b4e04ad4e2f0eda2e8d4325d45d38">UMutex::unlock</a></div><div class="ttdeci">int unlock() const</div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00120">UMutex.h:120</a></div></div>
-<div class="ttc" id="aclassUMutex_html_af42d27a9379e6872e8cf2e5e171e820c"><div class="ttname"><a href="classUMutex.html#af42d27a9379e6872e8cf2e5e171e820c">UMutex::lock</a></div><div class="ttdeci">int lock() const</div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00088">UMutex.h:88</a></div></div>
+<div class="ttc" id="aclassUMutex_html"><div class="ttname"><a href="classUMutex.html">UMutex</a></div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00062">UMutex.h:63</a></div></div>
+<div class="ttc" id="aclassUMutex_html_a4c5b4e04ad4e2f0eda2e8d4325d45d38"><div class="ttname"><a href="classUMutex.html#a4c5b4e04ad4e2f0eda2e8d4325d45d38">UMutex::unlock</a></div><div class="ttdeci">int unlock() const</div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00128">UMutex.h:128</a></div></div>
+<div class="ttc" id="aclassUMutex_html_af42d27a9379e6872e8cf2e5e171e820c"><div class="ttname"><a href="classUMutex.html#af42d27a9379e6872e8cf2e5e171e820c">UMutex::lock</a></div><div class="ttdeci">int lock() const</div><div class="ttdef"><b>Definition</b> <a href="UMutex_8h_source.html#l00096">UMutex.h:96</a></div></div>
 </div><!-- fragment --><dl class="section see"><dt>See also</dt><dd><a class="el" href="classUSemaphore.html">USemaphore</a> </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00054">54</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00062">62</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a292198fffdbd7d0d5a550946f156f70e" name="a292198fffdbd7d0d5a550946f156f70e"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a292198fffdbd7d0d5a550946f156f70e">&#9670;&#160;</a></span>UMutex()</h2>
@@ -159,7 +159,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>The constructor. </p>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00062">62</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00070">70</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>
@@ -186,7 +186,7 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00075">75</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00083">83</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>
@@ -215,7 +215,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Lock the mutex. </p><dl class="section return"><dt>Returns</dt><dd>0 on success, an error code otherwise. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00088">88</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00096">96</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>
@@ -243,7 +243,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Try locking the mutex. </p><dl class="section return"><dt>Returns</dt><dd>0 if the mutex has been locked by this call, EBUSY (or another error code) otherwise. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00110">110</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00118">118</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>
@@ -271,7 +271,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Unlock the mutex. </p><dl class="section return"><dt>Returns</dt><dd>0 on success, an error code otherwise. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00120">120</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="UMutex_8h_source.html#l00128">128</a> of file <a class="el" href="UMutex_8h_source.html">UMutex.h</a>.</p>
 
 </div>
 </div>
