@@ -5675,7 +5675,7 @@ With <code>fillToBorder</code> enabled, the current implementation only fills up
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">scanIn</td><td>Input <a class="el" href="classrtabmap_1_1LaserScan.html" title="Represents 2D or 3D laser scan data with support for multiple point data formats.">LaserScan</a> to be filtered. </td></tr>
-    <tr><td class="paramname">downsamplingStep</td><td>Step size for downsampling. A value &gt;1 will reduce the scan resolution. For organized scans, only the largest dimension is downsampled and the result is dense. For example, if the input organized scan is 16x1024, the resulting scan will be 1x8192 (if all values are valid). </td></tr>
+    <tr><td class="paramname">downsamplingStep</td><td>Step size for downsampling. A value &gt;1 will reduce the scan resolution. Organized scans are sampled like <a class="el" href="group__PointCloudDownSampling.html#ga83a15e5eaeee8707bfa5563c71154579" title="Downsamples a LaserScan.">downsample(const LaserScan&amp;, int)</a>, and the result is dense: for LiDAR-like scans (one dimension at most 1/4 of the other, e.g. 16x1024), each ring is downsampled, so a 16x1024 scan with step 2 gives 1x8192 (if all values are valid); for depth-image-like scans (e.g. 480x640, or square), both dimensions are downsampled, so step 2 gives 1x76800 (remaining rows/cols when not divisible by step are dropped, and a dimension smaller than step is not downsampled). </td></tr>
     <tr><td class="paramname">rangeMin</td><td>Minimum range to keep points from the scan viewpoint. Points closer than this value will be discarded. Output point cloud will be dense. Set to 0 to disable. </td></tr>
     <tr><td class="paramname">rangeMax</td><td>Maximum range to keep points from the scan viewpoint. Points farther than this value will be discarded. Output point cloud will be dense. Set to 0 to disable. </td></tr>
     <tr><td class="paramname">voxelSize</td><td>Size of the voxel grid in meters. A value &gt;0 enables voxel filtering. Output point cloud will be dense. </td></tr>
@@ -5856,7 +5856,7 @@ With <code>fillToBorder</code> enabled, the current implementation only fills up
 <dl class="section return"><dt>Returns</dt><dd>A downsampled point cloud using voxel grid filtering.</dd></dl>
 <dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000022">Deprecated:</a></b></dt><dd>This function is deprecated. Use <a class="el" href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89" title="Performs voxel grid downsampling on a point cloud of type pcl::PointXYZ on provided indices.">voxelize()</a> for equivalent behavior. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00359">359</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00363">363</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
 
 </div>
 </div>
@@ -5906,7 +5906,7 @@ With <code>fillToBorder</code> enabled, the current implementation only fills up
 <dl class="section return"><dt>Returns</dt><dd>A downsampled point cloud using voxel grid filtering.</dd></dl>
 <dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000023">Deprecated:</a></b></dt><dd>This function is deprecated. Use <a class="el" href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89" title="Performs voxel grid downsampling on a point cloud of type pcl::PointXYZ on provided indices.">voxelize()</a> for equivalent behavior. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00377">377</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00381">381</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
 
 </div>
 </div>
@@ -5956,7 +5956,7 @@ With <code>fillToBorder</code> enabled, the current implementation only fills up
 <dl class="section return"><dt>Returns</dt><dd>A downsampled point cloud using voxel grid filtering.</dd></dl>
 <dl class="deprecated"><dt><b><a class="el" href="deprecated.html#_deprecated000024">Deprecated:</a></b></dt><dd>This function is deprecated. Use <a class="el" href="group__VoxelFiltering.html#gad8d88a06174857cf53b1dc2cf2310d89" title="Performs voxel grid downsampling on a point cloud of type pcl::PointXYZ on provided indices.">voxelize()</a> for equivalent behavior. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00395">395</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="util3d__filtering_8h_source.html#l00399">399</a> of file <a class="el" href="util3d__filtering_8h_source.html">util3d_filtering.h</a>.</p>
 
 </div>
 </div>
