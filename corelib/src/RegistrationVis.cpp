@@ -72,15 +72,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 // Returns the candidate nearest to the query descriptor, or -1 if it fails the
-// NNDR test against the second nearest one (not done with crossCheck).
+// NNDR test against the second nearest one. No NNDR test if nndr <= 0.
 static int matchNearestDescriptor(
 		const cv::Mat & query,
 		int queryRow,
 		const cv::Mat & train,
 		const std::vector<size_t> & candidates,
 		const std::vector<int> * candidateToRow,
-		float nndr,
-		bool crossCheck)
+		float nndr)
 {
 	UASSERT(query.type() == train.type() && query.cols == train.cols);
 	UASSERT(query.type() == CV_8UC1 || query.type() == CV_32FC1);
@@ -104,7 +103,7 @@ static int matchNearestDescriptor(
 			secondDist = dist;
 		}
 	}
-	return best >= 0 && (crossCheck || bestDist < nndr * secondDist) ? best : -1;
+	return best >= 0 && (nndr <= 0.0f || bestDist < nndr * secondDist) ? best : -1;
 }
 
 // The dictionary strategy a Vis/CorNNType value stands for. Vis/CorNNType
@@ -1222,7 +1221,9 @@ Transform RegistrationVis::computeTransformationImpl(
 							added.size(), duplicates);
 					if(cornersProjected.size())
 					{
-						const bool crossCheck = _nnType == 5; // brute force cross check, otherwise brute force knn
+						// Brute force cross check (5) of a single query is just its nearest
+						// neighbor: no NNDR test. Otherwise brute force knn with NNDR test.
+						const float nndr = _nnType == 5 ? 0.0f : _nndr;
 						if(_guessMatchToProjection)
 						{
 							UDEBUG("match frame to projected");
@@ -1271,7 +1272,7 @@ Transform RegistrationVis::computeTransformationImpl(
 								int matchedIndex = -1;
 								if(indices[i].size() >= 2)
 								{
-									matchedIndex = matchNearestDescriptor(descriptorsTo, i, descriptorsFrom, indices[i], &projectedIndexToDescIndex, _nndr, crossCheck);
+									matchedIndex = matchNearestDescriptor(descriptorsTo, i, descriptorsFrom, indices[i], &projectedIndexToDescIndex, nndr);
 								}
 								else if(indices[i].size() == 1)
 								{
@@ -1392,7 +1393,7 @@ Transform RegistrationVis::computeTransformationImpl(
 									if(indices[i].size() >= 2)
 									{
 										bruteForceTimer.restart();
-										matchedIndexTo = matchNearestDescriptor(descriptorsFrom, matchedIndexFrom, descriptorsTo, indices[i], 0, _nndr, crossCheck);
+										matchedIndexTo = matchNearestDescriptor(descriptorsFrom, matchedIndexFrom, descriptorsTo, indices[i], 0, nndr);
 										bruteForceTotalTime+=bruteForceTimer.elapsed();
 									}
 									else if(indices[i].size() == 1)
