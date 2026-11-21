@@ -12,6 +12,7 @@
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/utilite/UFile.h"
 #include <vector>
+#include <algorithm>
 #include <list>
 #include <set>
 #include <iterator>
@@ -1137,4 +1138,152 @@ TEST_F(VWDictionaryTest, ByteToFloatMatchingQuality)
     // The distortion is what the parameter trades for its smaller descriptors:
     // it shows once the true match is not much closer than the others.
     EXPECT_LT(totalByteToFloat, totalBitExpansion);
+}
+
+// With Kp/NewWordsComparedTogether, a descriptor is matched against the words
+// already in the index and against the new words of the same image, and NNDR
+// is applied on the two closest of both. Whatever distance is used for the new
+// words, it must be the one the index uses for its words, so that the two
+// kinds of results can be compared. The expected assignment is computed here by
+// an exhaustive search with that distance: Hamming when each bit is expanded to
+// a float (L1 on bits), L1 on the byte values when each byte is converted.
+TEST_F(VWDictionaryTest, AddNewWordsComparedTogetherBinaryKdTree)
+{
+    const int bytes = 32; // ORB
+    const float nndrRatio = 0.8f;
+
+    cv::RNG rng(7);
+    // Copy of a descriptor with distinct bits flipped, the way the same feature
+    // looks when seen again.
+    auto noisyCopy = [&](const cv::Mat & descriptor, int flippedBits)
+    {
+        cv::Mat copy = descriptor.clone();
+        std::set<int> bits;
+        while((int)bits.size() < flippedBits)
+        {
+            bits.insert(rng.uniform(0, bytes*8));
+        }
+        for(int bit: bits)
+        {
+            copy.at<unsigned char>(0, bit/8) ^= (1 << (bit%8));
+        }
+        return copy;
+    };
+    auto randomDescriptors = [&](int rows)
+    {
+        cv::Mat descriptors(rows, bytes, CV_8U);
+        rng.fill(descriptors, cv::RNG::UNIFORM, 0, 256);
+        return descriptors;
+    };
+    // Some copies are close enough to pass NNDR, others not.
+    const int flips[] = {2, 4, 8, 16, 32, 48, 64};
+    const int flipsCount = sizeof(flips)/sizeof(int);
+
+    // Image 1: new features, then features seen again in the same image.
+    cv::Mat image1 = randomDescriptors(60);
+    for(int i=0; i<60; ++i)
+    {
+        image1.push_back(noisyCopy(image1.row(rng.uniform(0, 60)), flips[i%flipsCount]));
+    }
+    // Image 2: features of image 1 seen again, new features, then those new
+    // features seen again in the same image.
+    cv::Mat image2;
+    for(int i=0; i<60; ++i)
+    {
+        image2.push_back(noisyCopy(image1.row(rng.uniform(0, image1.rows)), flips[i%flipsCount]));
+    }
+    cv::Mat newFeatures = randomDescriptors(40);
+    image2.push_back(newFeatures);
+    for(int i=0; i<40; ++i)
+    {
+        image2.push_back(noisyCopy(newFeatures.row(rng.uniform(0, 40)), flips[i%flipsCount]));
+    }
+    const std::vector<cv::Mat> images = {image1, image2};
+
+    for(int byteToFloat=0; byteToFloat<2; ++byteToFloat)
+    {
+        SCOPED_TRACE(std::string(Parameters::kKpByteToFloat()) + "=" + (byteToFloat?"true":"false"));
+        const int normType = byteToFloat?cv::NORM_L1:cv::NORM_HAMMING;
+
+        VWDictionary dictionary;
+        ParametersMap params;
+        // An exact index, so that the expected assignment doesn't depend on
+        // what an approximate search happens to find.
+        params.insert(ParametersPair(Parameters::kKpNNStrategy(),
+                uNumber2Str((int)VWDictionary::kNNFlannKdTreeSingle)));
+        params.insert(ParametersPair(Parameters::kKpIncrementalFlann(), "false"));
+        params.insert(ParametersPair(Parameters::kKpByteToFloat(), byteToFloat?"true":"false"));
+        params.insert(ParametersPair(Parameters::kKpNndrRatio(), "0.8"));
+        params.insert(ParametersPair(Parameters::kKpNewWordsComparedTogether(), "true"));
+        dictionary.parseParameters(params);
+
+        // Expected words, as indexes in expectedWords, mapped to the ids the
+        // dictionary gave them.
+        std::vector<cv::Mat> expectedWords;
+        std::vector<int> expectedWordIds;
+        int matchedInIndex = 0;
+        int matchedInSameImage = 0;
+        for(size_t n=0; n<images.size(); ++n)
+        {
+            SCOPED_TRACE("image " + uNumber2Str((int)n+1));
+            const cv::Mat & image = images[n];
+            const size_t wordsInIndex = expectedWords.size();
+            const std::list<int> ids = dictionary.addNewWords(image, (int)n+1);
+            ASSERT_EQ(ids.size(), (size_t)image.rows);
+            std::list<int>::const_iterator iter = ids.begin();
+            for(int i=0; i<image.rows; ++i, ++iter)
+            {
+                // The two closest words: in the index or new in this image.
+                int best = -1;
+                int second = -1;
+                float d1 = 0.0f, d2 = 0.0f;
+                for(size_t w=0; w<expectedWords.size(); ++w)
+                {
+                    const float d = (float)cv::norm(image.row(i), expectedWords[w], normType);
+                    if(best < 0 || d < d1)
+                    {
+                        second = best;
+                        d2 = d1;
+                        best = (int)w;
+                        d1 = d;
+                    }
+                    else if(second < 0 || d < d2)
+                    {
+                        second = (int)w;
+                        d2 = d;
+                    }
+                }
+                if(second < 0 || d1 > nndrRatio * d2)
+                {
+                    // New word
+                    EXPECT_TRUE(std::find(expectedWordIds.begin(), expectedWordIds.end(), *iter) == expectedWordIds.end())
+                        << "descriptor " << i << " should be a new word but was assigned to word " << *iter;
+                    expectedWords.push_back(image.row(i));
+                    expectedWordIds.push_back(*iter);
+                }
+                else
+                {
+                    EXPECT_EQ(*iter, expectedWordIds[best]) << "descriptor " << i << " d1=" << d1 << " d2=" << d2;
+                    if((size_t)best < wordsInIndex)
+                    {
+                        ++matchedInIndex;
+                    }
+                    else
+                    {
+                        ++matchedInSameImage;
+                    }
+                }
+            }
+            // Index the new words, as Memory does after each signature.
+            dictionary.update();
+        }
+        EXPECT_EQ(dictionary.getVisualWords().size(), expectedWords.size());
+
+        // Both kinds of matches are covered.
+        EXPECT_GT(matchedInIndex, 0);
+        EXPECT_GT(matchedInSameImage, 0);
+        std::cerr << "[          ] " << Parameters::kKpByteToFloat() << "=" << (byteToFloat?"true":"false")
+                  << ": " << expectedWords.size() << " words, " << matchedInIndex << " matched in the index, "
+                  << matchedInSameImage << " matched with new words of the same image\n";
+    }
 }
