@@ -23,7 +23,7 @@ RTAB-Map library and standalone application.
  * For installation instructions and examples, visit [RTAB-Map's wiki](https://github.com/introlab/rtabmap/wiki).
  * For the C++ API of the library, see the [API documentation](https://introlab.github.io/rtabmap/api/latest/), which also lists all [parameters](https://introlab.github.io/rtabmap/api/latest/parameters.html) and [command-line tools](https://introlab.github.io/rtabmap/api/latest/tools.html).
 
-To use RTAB-Map under ROS, visit the [rtabmap](http://wiki.ros.org/rtabmap) page on the ROS wiki.
+To use RTAB-Map under ROS, visit [rtabmap_ros](https://github.com/introlab/rtabmap_ros): ROS 2 documentation and demos are on the [`ros2`](https://github.com/introlab/rtabmap_ros/tree/ros2) branch, ROS 1 (Noetic) on the [`master`](https://github.com/introlab/rtabmap_ros/tree/master) branch, and ROS 1 tutorials on its [wiki](https://github.com/introlab/rtabmap_ros/wiki).
 
 ### Acknowledgements
 This project is supported by [IntRoLab - Intelligent / Interactive / Integrated / Interdisciplinary Robot Lab](https://introlab.3it.usherbrooke.ca/), Sherbrooke, Québec, Canada.
