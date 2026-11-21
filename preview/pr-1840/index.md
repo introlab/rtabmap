@@ -35,7 +35,7 @@
 * [Tutorials](https://github.com/introlab/rtabmap/wiki/Tutorials).
 * [Tools](https://github.com/introlab/rtabmap/wiki/Tools).
 * [C++ API documentation]({{ site.baseurl }}/api/) of the rtabmap library.
-* For **ROS** users, take a look to [rtabmap](http://wiki.ros.org/rtabmap) page on the ROS wiki for a package overview. See also [SetupOnYourRobot](http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot) to know how to integrate RTAB-Map on your robot.
+* For **ROS** users, take a look to [rtabmap_ros](https://github.com/introlab/rtabmap_ros) for a package overview (ROS 2 on the [`ros2`](https://github.com/introlab/rtabmap_ros/tree/ros2) branch, ROS 1 on the [`master`](https://github.com/introlab/rtabmap_ros/tree/master) branch). See also [Setup RTAB-Map on Your Robot (ROS1)](https://github.com/introlab/rtabmap_ros/wiki/Setup-RTAB%E2%80%90Map-on-Your-Robot-(ROS1)) to know how to integrate RTAB-Map on your robot.
 
 
 ### Troubleshooting
@@ -49,7 +49,7 @@
 
 **ROS**
 
-* Visit [rtabmap_ros](http://wiki.ros.org/rtabmap_ros) wiki page for nodes documentation, demos and tutorials on ROS. 
+* Visit [rtabmap_ros](https://github.com/introlab/rtabmap_ros) for nodes documentation and demos, and its [wiki](https://github.com/introlab/rtabmap_ros/wiki) for ROS 1 tutorials. 
 * Ask a question on ~~[answers.ros.org](http://answers.ros.org/questions/scope:all/sort:activity-desc/tags:rtabmap_ros/page:1/)~~ [robotics.stackexchange.com](https://robotics.stackexchange.com/questions/tagged/rtabmap) with **rtabmap** or **rtabmap-ros** tag.
 
 ## License
@@ -199,19 +199,19 @@ New release [v0.20.2](https://github.com/introlab/rtabmap/releases/tag/0.20.2)!
 
 ### August 2014
 
-* Here a comparison between reality and what can be shown in RVIZ (you can [reproduce this demo here](http://wiki.ros.org/rtabmap_ros#Robot_mapping_with_Find-Object)):
+* Here a comparison between reality and what can be shown in RVIZ (you can [reproduce this demo here](https://github.com/introlab/rtabmap_ros/tree/master/rtabmap_demos#robot-mapping-with-find-object)):
 
     <a href="http://www.youtube.com/watch?v=o1GSQanY-Do"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/findobject.jpeg" alt="video" title="video"></a>
 
 ### July 2014
 
-* Added [Setup on your robot](http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot) wiki page to know how to integrate RTAB-Map on your ROS robot. Multiple sensor configurations are shown but the optimal configuration is to have a 2D laser, a Kinect-like sensor and odometry.
+* Added [Setup on your robot](https://github.com/introlab/rtabmap_ros/wiki/Setup-RTAB%E2%80%90Map-on-Your-Robot-(ROS1)) wiki page to know how to integrate RTAB-Map on your ROS robot. Multiple sensor configurations are shown but the optimal configuration is to have a 2D laser, a Kinect-like sensor and odometry.
 
     <img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSession/4.png" alt="AZIMUT3" align="left" width="300">
 
    Onboard mapping | Remote mapping
    ------------ | -------------
-   <a href="http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot#Bring-up_your_robot"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/rgbd/setupA.png" alt="" width="300"></a> | <a href="http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot#Remote_mapping"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/rgbd/remoteMapping.png" alt="" width="300"></a>
+   <a href="https://github.com/introlab/rtabmap_ros/wiki/Setup-RTAB%E2%80%90Map-on-Your-Robot-(ROS1)#bring-up-your-robot"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/rgbd/setupA.png" alt="" width="300"></a> | <a href="https://github.com/introlab/rtabmap_ros/wiki/Setup-RTAB%E2%80%90Map-on-Your-Robot-(ROS1)#remote-mapping"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/rgbd/remoteMapping.png" alt="" width="300"></a>
 
 ### June 2014
 

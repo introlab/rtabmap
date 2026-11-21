@@ -125,11 +125,11 @@ Public Member Functions</h2></td></tr>
 <p>On an <a class="el" href="classUSemaphore.html#a1128f81a47324e6de3946a7719c24223">acquire()</a> call, the calling thread is blocked if the <a class="el" href="classUSemaphore.html">USemaphore</a>'s value is &lt;= 0. It is unblocked when <a class="el" href="classUSemaphore.html#a693b35a08fd5363b14f3a220081814b5">release()</a> is called. The function <a class="el" href="classUSemaphore.html#a1128f81a47324e6de3946a7719c24223">acquire()</a> decreases by 1 (default) the semaphore's value and <a class="el" href="classUSemaphore.html#a693b35a08fd5363b14f3a220081814b5">release()</a> increases it by 1 (default).</p>
 <p>Example: </p><div class="fragment"><div class="line"><a class="code hl_class" href="classUSemaphore.html">USemaphore</a> s;</div>
 <div class="line">s.<a class="code hl_function" href="classUSemaphore.html#a1128f81a47324e6de3946a7719c24223">acquire</a>(); <span class="comment">// Will wait until s.release() is called by another thread.</span></div>
-<div class="ttc" id="aclassUSemaphore_html"><div class="ttname"><a href="classUSemaphore.html">USemaphore</a></div><div class="ttdef"><b>Definition</b> <a href="USemaphore_8h_source.html#l00055">USemaphore.h:56</a></div></div>
-<div class="ttc" id="aclassUSemaphore_html_a1128f81a47324e6de3946a7719c24223"><div class="ttname"><a href="classUSemaphore.html#a1128f81a47324e6de3946a7719c24223">USemaphore::acquire</a></div><div class="ttdeci">bool acquire(int n=1, int ms=0)</div><div class="ttdef"><b>Definition</b> <a href="USemaphore_8h_source.html#l00108">USemaphore.h:108</a></div></div>
+<div class="ttc" id="aclassUSemaphore_html"><div class="ttname"><a href="classUSemaphore.html">USemaphore</a></div><div class="ttdef"><b>Definition</b> <a href="USemaphore_8h_source.html#l00063">USemaphore.h:64</a></div></div>
+<div class="ttc" id="aclassUSemaphore_html_a1128f81a47324e6de3946a7719c24223"><div class="ttname"><a href="classUSemaphore.html#a1128f81a47324e6de3946a7719c24223">USemaphore::acquire</a></div><div class="ttdeci">bool acquire(int n=1, int ms=0)</div><div class="ttdef"><b>Definition</b> <a href="USemaphore_8h_source.html#l00116">USemaphore.h:116</a></div></div>
 </div><!-- fragment --><dl class="section see"><dt>See also</dt><dd><a class="el" href="classUMutex.html">UMutex</a> </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00055">55</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00063">63</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="ad991738e68e0a2baaec46ab27296cbe6" name="ad991738e68e0a2baaec46ab27296cbe6"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad991738e68e0a2baaec46ab27296cbe6">&#9670;&#160;</a></span>USemaphore()</h2>
@@ -161,7 +161,7 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00062">62</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00070">70</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
 
 </div>
 </div>
@@ -188,7 +188,7 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00076">76</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00084">84</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
 
 </div>
 </div>
@@ -236,7 +236,7 @@ Public Member Functions</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>true on success, false on error/timeout </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00108">108</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00116">116</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
 
 </div>
 </div>
@@ -270,7 +270,7 @@ Public Member Functions</h2></td></tr>
   </dd>
 </dl>
 
-<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00164">164</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00172">172</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
 
 </div>
 </div>
@@ -305,7 +305,7 @@ Public Member Functions</h2></td></tr>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>0 on success, ERANGE if the release would push the semaphore over SEM_VALUE_MAX (the count is then left unchanged). The Unix implementation cannot fail and always returns 0. </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00197">197</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00205">205</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
 
 </div>
 </div>
@@ -333,7 +333,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Get the USempahore's value. </p><dl class="section return"><dt>Returns</dt><dd>the semaphore's value </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00221">221</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="USemaphore_8h_source.html#l00229">229</a> of file <a class="el" href="USemaphore_8h_source.html">USemaphore.h</a>.</p>
 
 </div>
 </div>
