@@ -476,6 +476,61 @@ TEST_F(RtabmapFixture, MapCorrectionAfterLoopClosureWithOptimizeFromGraphEndTrue
 	EXPECT_TRUE(rtabmap_->getMapCorrection().isIdentity());
 }
 
+TEST_F(RtabmapFixture, AddLinkDoesNotDuplicateSelfLinks)
+{
+	// Each node has two self links (from == to) of different types: a pose prior
+	// (global pose) and a gravity link (odometry gravity). addLink() must refresh
+	// the local graph without adding the self links already in it again (they were
+	// duplicated on every call, making the graph copies in process() grow
+	// quadratically with the number of added links).
+	ParametersMap params = defaultRtabmapParams();
+	params[Parameters::kMemUseOdomGravity()] = "true";
+	params[Parameters::kRGBDOptimizeMaxError()] = "0";
+	reinit(params);
+
+	std::vector<int> ids;
+	for(int i=0; i<4; ++i)
+	{
+		SensorData data(image_);
+		data.setId(++processCount_);
+		const Transform pose(float(processCount_), 0.0f, 0.0f, 0, 0, 0);
+		data.setGlobalPose(pose, cv::Mat::eye(6, 6, CV_64FC1) * 0.01);
+		ASSERT_TRUE(rtabmap_->process(data, pose, covariance_));
+		ids.push_back(rtabmap_->getLastLocationId());
+	}
+
+	auto countSelfLinks = [&](Link::Type type) {
+		std::map<int, int> counts;
+		const std::multimap<int, Link> & links = rtabmap_->getLocalConstraints();
+		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+		{
+			if(iter->second.type() == type && iter->second.from() == iter->second.to())
+			{
+				++counts[iter->second.from()];
+			}
+		}
+		return counts;
+	};
+	// The first link rebuilds the local graph, adding the self links of the nodes.
+	ASSERT_TRUE(rtabmap_->addLink(Link(ids[3], ids[0], Link::kUserClosure, Transform(-3.0f, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 100.0)));
+	const size_t linksAfterFirst = rtabmap_->getLocalConstraints().size();
+	for(int id : ids)
+	{
+		ASSERT_EQ(countSelfLinks(Link::kPosePrior)[id], 1) << "node " << id;
+		ASSERT_EQ(countSelfLinks(Link::kGravity)[id], 1) << "node " << id;
+	}
+
+	// The next ones must only add the new link, still one self link of each type per node.
+	ASSERT_TRUE(rtabmap_->addLink(Link(ids[2], ids[0], Link::kUserClosure, Transform(-2.0f, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 100.0)));
+	ASSERT_TRUE(rtabmap_->addLink(Link(ids[3], ids[1], Link::kUserClosure, Transform(-2.0f, 0, 0, 0, 0, 0), cv::Mat::eye(6, 6, CV_64FC1) * 100.0)));
+	EXPECT_EQ(rtabmap_->getLocalConstraints().size(), linksAfterFirst + 2);
+	for(int id : ids)
+	{
+		EXPECT_EQ(countSelfLinks(Link::kPosePrior)[id], 1) << "node " << id;
+		EXPECT_EQ(countSelfLinks(Link::kGravity)[id], 1) << "node " << id;
+	}
+}
+
 TEST_F(RtabmapFixture, GraphDeformsAfterLoopClosureWithOptimizeFromGraphEndFalse)
 {
 	// More realistic scenario: 3-node chain with odom N1=(1,0)->N2=(2,0)->N3=(3,0)
