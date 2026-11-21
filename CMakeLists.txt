@@ -21,8 +21,8 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules")
 # VERSION
 #######################
 SET(RTABMAP_MAJOR_VERSION 0)
-SET(RTABMAP_MINOR_VERSION 24)
-SET(RTABMAP_PATCH_VERSION 5)
+SET(RTABMAP_MINOR_VERSION 25)
+SET(RTABMAP_PATCH_VERSION 0)
 SET(RTABMAP_VERSION
   ${RTABMAP_MAJOR_VERSION}.${RTABMAP_MINOR_VERSION}.${RTABMAP_PATCH_VERSION})
 
@@ -614,7 +614,11 @@ IF(WITH_K4A)
 ENDIF(WITH_K4A)
 
 IF(WITH_EINSTAR)
+    # einstarConfig.cmake calls find_dependency(OpenCV ...), which can reset
+    # OpenCV_FOUND (e.g., it asks for calib3d, which OpenCV 5 doesn't have)
+    SET(_RTABMAP_OpenCV_FOUND ${OpenCV_FOUND})
     FIND_PACKAGE(einstar QUIET)
+    SET(OpenCV_FOUND ${_RTABMAP_OpenCV_FOUND})
     IF(einstar_FOUND AND NOT einstar_HAS_DEPTH)
         MESSAGE(STATUS "Found libeinstar without einstar::depth (OpenCV), Einstar support disabled")
         SET(einstar_FOUND FALSE)

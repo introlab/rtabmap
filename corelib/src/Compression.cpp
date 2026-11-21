@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <zlib.h>
 #include <cmath>
 #include <cstring>
+#include <limits>
 
 namespace rtabmap {
 
@@ -498,6 +499,139 @@ std::string uncompressString(const cv::Mat & bytes)
 		return (const char*)strMat.data;
 	}
 	return "";
+}
+
+namespace {
+
+// Size of the [min (float)][max (float)] header of a quantized descriptor
+const size_t kQuantizedDescriptorHeaderSize = 2*sizeof(float);
+
+template<typename T>
+void quantizeDescriptor(const float * in, int size, unsigned char * out)
+{
+	const double levels = std::numeric_limits<T>::max();
+	float minValue = in[0];
+	float maxValue = in[0];
+	for(int i=1; i<size; ++i)
+	{
+		minValue = std::min(minValue, in[i]);
+		maxValue = std::max(maxValue, in[i]);
+	}
+	memcpy(out, &minValue, sizeof(float));
+	memcpy(out+sizeof(float), &maxValue, sizeof(float));
+	T * values = (T*)(out + kQuantizedDescriptorHeaderSize);
+	const double range = double(maxValue) - double(minValue);
+	for(int i=0; i<size; ++i)
+	{
+		double q = range > 0.0 ? std::floor((double(in[i]) - double(minValue)) / range * levels + 0.5) : 0.0;
+		T v = 0;
+		if(q >= levels)
+		{
+			v = std::numeric_limits<T>::max();
+		}
+		else if(q > 0.0) // also false for NaN
+		{
+			v = (T)q;
+		}
+		memcpy(values+i, &v, sizeof(T));
+	}
+}
+
+template<typename T>
+void dequantizeDescriptor(const unsigned char * in, int size, float * out)
+{
+	float minValue, maxValue;
+	memcpy(&minValue, in, sizeof(float));
+	memcpy(&maxValue, in+sizeof(float), sizeof(float));
+	const T * values = (const T*)(in + kQuantizedDescriptorHeaderSize);
+	const float step = (maxValue - minValue) / float(std::numeric_limits<T>::max());
+	for(int i=0; i<size; ++i)
+	{
+		T v;
+		memcpy(&v, values+i, sizeof(T));
+		// The maximum is restored exactly, so that quantizing the restored
+		// descriptor gives back the same min/max, thus the same values.
+		out[i] = v == std::numeric_limits<T>::max() ? maxValue : minValue + float(v) * step;
+	}
+}
+
+}  // namespace
+
+size_t quantizedDescriptorSize(int descriptorSize, int bits)
+{
+	UASSERT_MSG(bits == 8 || bits == 16, uFormat("bits=%d", bits).c_str());
+	UASSERT(descriptorSize > 0);
+	return kQuantizedDescriptorHeaderSize + size_t(descriptorSize) * (bits/8);
+}
+
+int quantizedDescriptorBits(size_t bytes, int descriptorSize)
+{
+	if(descriptorSize <= 0 ||
+	   bytes == size_t(descriptorSize) ||               // raw CV_8U
+	   bytes == size_t(descriptorSize) * sizeof(float)) // raw CV_32F
+	{
+		return 0;
+	}
+	if(bytes == quantizedDescriptorSize(descriptorSize, 8))
+	{
+		return 8;
+	}
+	if(bytes == quantizedDescriptorSize(descriptorSize, 16))
+	{
+		return 16;
+	}
+	return 0;
+}
+
+cv::Mat quantizeDescriptors(const cv::Mat & descriptors, int bits)
+{
+	UASSERT_MSG(bits == 8 || bits == 16, uFormat("bits=%d", bits).c_str());
+	if(descriptors.empty())
+	{
+		return cv::Mat();
+	}
+	UASSERT_MSG(descriptors.type() == CV_32FC1, uFormat("type=%d", descriptors.type()).c_str());
+	// With 4 elements or less, the quantized size could be the same than the
+	// raw float descriptor size, see quantizedDescriptorBits().
+	UASSERT_MSG(descriptors.cols > 4, uFormat("cols=%d", descriptors.cols).c_str());
+	cv::Mat quantized(descriptors.rows, (int)quantizedDescriptorSize(descriptors.cols, bits), CV_8UC1);
+	for(int i=0; i<descriptors.rows; ++i)
+	{
+		if(bits == 8)
+		{
+			quantizeDescriptor<unsigned char>(descriptors.ptr<float>(i), descriptors.cols, quantized.ptr<unsigned char>(i));
+		}
+		else
+		{
+			quantizeDescriptor<unsigned short>(descriptors.ptr<float>(i), descriptors.cols, quantized.ptr<unsigned char>(i));
+		}
+	}
+	return quantized;
+}
+
+cv::Mat dequantizeDescriptors(const cv::Mat & quantized, int descriptorSize)
+{
+	if(quantized.empty())
+	{
+		return cv::Mat();
+	}
+	UASSERT_MSG(quantized.type() == CV_8UC1, uFormat("type=%d", quantized.type()).c_str());
+	int bits = quantizedDescriptorBits(quantized.cols, descriptorSize);
+	UASSERT_MSG(bits != 0, uFormat("Quantized descriptor size (%d bytes) doesn't match "
+			"descriptors of %d elements.", quantized.cols, descriptorSize).c_str());
+	cv::Mat descriptors(quantized.rows, descriptorSize, CV_32FC1);
+	for(int i=0; i<quantized.rows; ++i)
+	{
+		if(bits == 8)
+		{
+			dequantizeDescriptor<unsigned char>(quantized.ptr<unsigned char>(i), descriptorSize, descriptors.ptr<float>(i));
+		}
+		else
+		{
+			dequantizeDescriptor<unsigned short>(quantized.ptr<unsigned char>(i), descriptorSize, descriptors.ptr<float>(i));
+		}
+	}
+	return descriptors;
 }
 
 std::string compressedDepthFormat(const cv::Mat & bytes)

@@ -45,6 +45,7 @@ DBDriver * DBDriver::create(const ParametersMap & parameters)
 
 DBDriver::DBDriver(const ParametersMap & parameters) :
 	_emptyTrashesTime(0),
+	_descriptorQuantization(Parameters::defaultDbDescriptorQuantization()),
 	_timestampUpdate(false)
 {
 	this->parseParameters(parameters);
@@ -59,6 +60,13 @@ DBDriver::~DBDriver()
 void DBDriver::parseParameters(const ParametersMap & parameters)
 {
 	Parameters::parse(parameters, Parameters::kDbTargetVersion(), _targetVersion);
+	Parameters::parse(parameters, Parameters::kDbDescriptorQuantization(), _descriptorQuantization);
+	if(_descriptorQuantization != 0 && _descriptorQuantization != 8 && _descriptorQuantization != 16)
+	{
+		UERROR("%s=%d is not valid, only 0, 8 or 16 are supported. Descriptors won't be quantized.",
+				Parameters::kDbDescriptorQuantization().c_str(), _descriptorQuantization);
+		_descriptorQuantization = 0;
+	}
 }
 
 void DBDriver::closeConnection(bool save, const std::string & outputUrl)

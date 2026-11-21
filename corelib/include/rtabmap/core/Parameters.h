@@ -306,6 +306,7 @@ class RTABMAP_CORE_EXPORT Parameters
             "1=FILE: temporary files in the system temp directory. "
             "2=MEMORY: temporary data in RAM when possible.");
     RTABMAP_PARAM_STR(Db, TargetVersion,   "",               "Target database version for backward compatibility purpose. Only Major and minor versions are used and should be set (e.g., 0.19 vs 0.20 or 1.0 vs 2.0). Patch version is ignored (e.g., 0.20.1 and 0.20.3 will generate a 0.20 database).");
+    RTABMAP_PARAM(Db, DescriptorQuantization, int, 0,     "Quantize float descriptors (e.g., SIFT, SURF, SuperPoint) on 8 or 16 bits per element to reduce the database size, 0 means disabled (raw 32 bits floats). Each descriptor is quantized linearly between its own minimum and maximum values (saved with it), making 128 elements descriptors 3.8x (8 bits) or 1.9x (16 bits) smaller. Descriptors are quantized right after extraction, so that loop closure detection and visual registration use the same descriptors in the current session than after reloading the database. Binary descriptors (e.g., ORB) are not affected. Databases created by rtabmap >= 0.25 cannot be opened by older versions. Ignored for databases with version < 0.25.");
 
     // Keypoints descriptors/detectors
     RTABMAP_PARAM(SURF, Extended,          bool, false,  "Extended descriptor flag (true - use extended 128-element descriptors; false - use 64-element descriptors).");
