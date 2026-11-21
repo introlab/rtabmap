@@ -1,6 +1,6 @@
 
 ADD_EXECUTABLE(camera main.cpp)
-TARGET_LINK_LIBRARIES(camera rtabmap_core)
+TARGET_LINK_LIBRARIES(camera rtabmap_gui)
 
 SET_TARGET_PROPERTIES( camera 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-camera)

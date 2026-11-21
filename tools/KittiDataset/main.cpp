@@ -206,7 +206,7 @@ int main(int argc, char * argv[])
 		}
 		parameters = Parameters::parseArguments(argc, argv);
 		path = argv[argc-1];
-		path = uReplaceChar(path, '~', UDirectory::homeDir());
+		path = UDirectory::expandHomeDir(path);
 		path = uReplaceChar(path, '\\', '/');
 		if(output.empty())
 		{
@@ -214,7 +214,7 @@ int main(int argc, char * argv[])
 		}
 		else
 		{
-			output = uReplaceChar(output, '~', UDirectory::homeDir());
+			output = UDirectory::expandHomeDir(output);
 			UDirectory::makeDir(output);
 		}
 		parameters.insert(ParametersPair(Parameters::kRtabmapWorkingDirectory(), output));
@@ -252,7 +252,7 @@ int main(int argc, char * argv[])
 			pathTimes.c_str());
 	if(!gtPath.empty())
 	{
-		gtPath = uReplaceChar(gtPath, '~', UDirectory::homeDir());
+		gtPath = UDirectory::expandHomeDir(gtPath);
 		gtPath = uReplaceChar(gtPath, '\\', '/');
 		if(!UFile::exists(gtPath))
 		{

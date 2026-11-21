@@ -46,7 +46,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UFile.h>
 #include "rtabmap/utilite/UPlot.h"
@@ -1243,12 +1243,19 @@ bool DatabaseViewer::closeDatabase()
 		ui_->pushButton_reset->setEnabled(false);
 		ui_->pushButton_reject->setEnabled(false);
 
+		// Reset sliders without emitting signals (data is already cleared)
+		ui_->horizontalSlider_loops->blockSignals(true);
+		ui_->horizontalSlider_iterations->blockSignals(true);
+		ui_->horizontalSlider_neighbors->blockSignals(true);
 		ui_->horizontalSlider_loops->setEnabled(false);
 		ui_->horizontalSlider_loops->setMaximum(0);
 		ui_->horizontalSlider_iterations->setEnabled(false);
 		ui_->horizontalSlider_iterations->setMaximum(0);
 		ui_->horizontalSlider_neighbors->setEnabled(false);
 		ui_->horizontalSlider_neighbors->setMaximum(0);
+		ui_->horizontalSlider_loops->blockSignals(false);
+		ui_->horizontalSlider_iterations->blockSignals(false);
+		ui_->horizontalSlider_neighbors->blockSignals(false);
 		components_.clear(); // should be called before ui_->graphViewer->clearAll() to ignore selection events
 		activeComponentIndex_ = 0;
 		ui_->radioButton_graphSelection->setText(tr("Selection")); // clear count
@@ -1260,6 +1267,10 @@ bool DatabaseViewer::closeDatabase()
 		ui_->label_type_name->clear();
 		ui_->checkBox_showOptimized->setEnabled(false);
 
+		ui_->horizontalSlider_A->blockSignals(true);
+		ui_->horizontalSlider_B->blockSignals(true);
+		ui_->spinBox_indexA->blockSignals(true);
+		ui_->spinBox_indexB->blockSignals(true);
 		ui_->horizontalSlider_A->setEnabled(false);
 		ui_->horizontalSlider_A->setMaximum(0);
 		ui_->horizontalSlider_B->setEnabled(false);
@@ -1273,6 +1284,10 @@ bool DatabaseViewer::closeDatabase()
 		ui_->spinBox_indexA->setMaximum(0);
 		ui_->spinBox_indexB->setEnabled(false);
 		ui_->spinBox_indexB->setMaximum(0);
+		ui_->horizontalSlider_A->blockSignals(false);
+		ui_->horizontalSlider_B->blockSignals(false);
+		ui_->spinBox_indexA->blockSignals(false);
+		ui_->spinBox_indexB->blockSignals(false);
 
 		constraintsViewer_->clear();
 		constraintsViewer_->refreshView();
@@ -6174,6 +6189,13 @@ void DatabaseViewer::update(int value,
 	}
 
 	updateConstraintButtons();
+
+	if(ids_.empty())
+	{
+		// Database closed (sliders reset to 0)
+		return;
+	}
+
 	updateWordsMatching();
 
 	if(updateConstraintView && ui_->dockWidget_constraints->isVisible())
@@ -7462,6 +7484,12 @@ void DatabaseViewer::updateConstraintButtons()
 	ui_->pushButton_add->setEnabled(false);
 	ui_->pushButton_reject->setEnabled(false);
 	ui_->toolButton_constraint->setEnabled(false);
+
+	if(ids_.empty())
+	{
+		// Database closed (sliders reset to 0)
+		return;
+	}
 
 	Link currentLink;
 	int from;

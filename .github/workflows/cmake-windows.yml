@@ -1,19 +1,16 @@
 name: CMake-Windows
 
+# No paths filters on the triggers: the `changes` job below filters pushes and
+# pull requests, so the required check still reports (one that never does
+# blocks the PR) and the path list lives in one place.
 on:
   push:
     branches: 
       - master
-    paths-ignore: &platform_only
-      - '.github/workflows/android.yml'
-      - '.github/workflows/ios.yml'
-      - 'app/android/**'
-      - 'app/ios/**'
-      - 'docker/noble/android/**'
   pull_request:
     branches:
       - '**'
-    paths-ignore: *platform_only
+  merge_group:
   workflow_dispatch:
 
 env:
@@ -24,8 +21,40 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Required checks must always report, so pushes and pull requests are
+  # filtered here instead of on the trigger: jobs not affected by the
+  # change are skipped, which counts as passing, and only windows-ci below
+  # is required by the ruleset. The merge queue and dispatches always build.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant == 'true' || (github.event_name != 'pull_request' && github.event_name != 'push') }}
+    steps:
+      # Pull requests are diffed through the API; a push needs the git history.
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        with:
+          # Every changed file must match all patterns, i.e. anything but these.
+          predicate-quantifier: every
+          filters: |
+            relevant:
+              - '**'
+              - '!.github/workflows/android.yml'
+              - '!.github/workflows/ios.yml'
+              - '!app/android/**'
+              - '!app/ios/**'
+              - '!docker/noble/android/**'
+
   build:
     name: ${{ matrix.build_name }}
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -90,8 +119,31 @@ jobs:
         }
 
         Write-Host "Missing before install: $((Get-Missing) -join ', ')"
-        choco install -y vcredist2012 --no-progress
-        Write-Host "choco exit code: $LASTEXITCODE"
+
+        # Fetch the redist from Microsoft directly (the same installer the
+        # vcredist2012 choco package wraps): the Chocolatey community feed
+        # rate-limits the shared runner IPs and intermittently answers 499.
+        $url = 'https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x64.exe'
+        $exe = Join-Path $env:RUNNER_TEMP 'vcredist2012_x64.exe'
+        for ($i = 1; $i -le 3; $i++) {
+          try {
+            Invoke-WebRequest -Uri $url -OutFile $exe -UseBasicParsing
+            break
+          } catch {
+            Write-Host "Download attempt $i failed: $($_.Exception.Message)"
+            Remove-Item $exe -ErrorAction SilentlyContinue
+            if ($i -lt 3) { Start-Sleep -Seconds (10 * $i) }
+          }
+        }
+        if (Test-Path $exe) {
+          $p = Start-Process -FilePath $exe -ArgumentList '/install', '/quiet', '/norestart' -Wait -PassThru
+          # 3010: success, reboot required; 1638: a newer version is already installed
+          Write-Host "vcredist_x64 exit code: $($p.ExitCode)"
+        } else {
+          Write-Host "Microsoft download failed, falling back to Chocolatey"
+          choco install -y vcredist2012 --no-progress
+          Write-Host "choco exit code: $LASTEXITCODE"
+        }
 
         $still = Get-Missing
         if ($still) {
@@ -286,7 +338,7 @@ jobs:
     - name: Build Windows Package
       shell: pwsh
       run: |
-        if ("${{ github.event_name }}" -eq "pull_request") {
+        if ("${{ github.event_name }}" -eq "pull_request" -or "${{ github.event_name }}" -eq "merge_group") {
           cpack --config build/CPackConfig.cmake -G ZIP -B build
         } else {
           cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} --target package
@@ -305,10 +357,10 @@ jobs:
           build/RTABMap-*.zip
         compression-level: 0
         if-no-files-found: warn
-        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+        retention-days: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 1 || 90 }}
 
     - name: Upload RTABMap Artifacts (Installer)
-      if: github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
       uses: actions/upload-artifact@v4
       with:
         name: RTABMap-Binaries-${{ matrix.build_name }}-exe
@@ -316,4 +368,15 @@ jobs:
           build/RTABMap-*.exe
         compression-level: 0
         if-no-files-found: warn
-        retention-days: ${{ github.event_name == 'pull_request' && 1 || 90 }}
+        retention-days: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 1 || 90 }}
+
+  # The only check of this workflow the ruleset requires: a matrix job skipped
+  # by `if` does not report its per-entry names, so those cannot be required.
+  windows-ci:
+    needs: [changes, build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

@@ -43,6 +43,8 @@ set(corelib_test_sources
 	test_optimizer.cpp                  #Optimizer.h
 	test_gps.cpp                        #GPS.h
 	test_parameters.cpp                 #Parameters.h
+	test_recovery.cpp                   #Recovery.h
+	test_dbreader.cpp                   #DBReader.h
 	test_imu.cpp                        #IMU.h
 	test_imufilter.cpp                  #IMUFilter.h
 	test_imumotionpredictor.cpp         #ImuMotionPredictor.h
@@ -78,7 +80,7 @@ IF(GTSAM_FOUND)
 ENDIF(GTSAM_FOUND)
 
 add_executable(test_corelib ${corelib_test_sources})
-target_link_libraries(test_corelib gtest_main rtabmap_core)
+target_link_libraries(test_corelib GTest::gtest_main rtabmap_core)
 
 IF(GTSAM_FOUND)
 	target_link_libraries(test_corelib gtsam)
@@ -123,7 +125,7 @@ endforeach()
 # and so that its seconds of benchmarking stay out of the unit test shards.
 IF(BUILD_PERF_TESTS)
 	add_executable(test_flann_index_perf perf_flann_index.cpp)
-	target_link_libraries(test_flann_index_perf gtest_main rtabmap_core)
+	target_link_libraries(test_flann_index_perf GTest::gtest_main rtabmap_core)
 
 	# Labelled "performance" so CI jobs can opt out via `ctest -LE performance`,
 	# and run them alone with `ctest -L performance`.
@@ -144,7 +146,7 @@ IF(BUILD_PERF_TESTS)
 	# largest maps it builds allocate a gigabyte for the dense prediction matrix,
 	# which in a unit test shard would look like a leak.
 	add_executable(test_bayesfilter_perf perf_bayesfilter.cpp)
-	target_link_libraries(test_bayesfilter_perf gtest_main rtabmap_core)
+	target_link_libraries(test_bayesfilter_perf GTest::gtest_main rtabmap_core)
 
 	add_test(NAME test_bayesfilter_perf COMMAND test_bayesfilter_perf)
 	set_tests_properties(test_bayesfilter_perf PROPERTIES
@@ -158,7 +160,7 @@ IF(BUILD_PERF_TESTS)
 	#   bin/test_graph_perf
 	#   bin/test_graph_perf --gtest_filter=*ProximityLinks*
 	add_executable(test_graph_perf perf_graph.cpp)
-	target_link_libraries(test_graph_perf gtest_main rtabmap_core)
+	target_link_libraries(test_graph_perf GTest::gtest_main rtabmap_core)
 
 	add_test(NAME test_graph_perf COMMAND test_graph_perf)
 	set_tests_properties(test_graph_perf PROPERTIES
@@ -172,10 +174,57 @@ IF(BUILD_PERF_TESTS)
 	#   bin/test_compression_perf
 	#   bin/test_compression_perf --gtest_filter=*Synthetic*
 	add_executable(test_compression_perf perf_compression.cpp)
-	target_link_libraries(test_compression_perf gtest_main rtabmap_core)
+	target_link_libraries(test_compression_perf GTest::gtest_main rtabmap_core)
 
 	add_test(NAME test_compression_perf COMMAND test_compression_perf)
 	set_tests_properties(test_compression_perf PROPERTIES
+			TIMEOUT ${_perf_timeout}
+			LABELS  "performance")
+
+	# Bad marker orientations (small or nearly frontal markers) per distance and tilt over
+	# rendered markers, for OpenCV, AprilTag and AprilTag with OpenCV's PnP:
+	#   bin/test_markerdetector_perf
+	#   RTABMAP_PERF_MARKER_SIZE=0.1 bin/test_markerdetector_perf   for 10 cm markers (15 cm by default)
+	add_executable(test_markerdetector_perf perf_markerdetector.cpp)
+	target_link_libraries(test_markerdetector_perf GTest::gtest_main rtabmap_core)
+
+	add_test(NAME test_markerdetector_perf COMMAND test_markerdetector_perf)
+	set_tests_properties(test_markerdetector_perf PROPERTIES
+			TIMEOUT ${_perf_timeout}
+			LABELS  "performance")
+
+	# Comparison of the implementations of SuperPoint (rpautrat weights): the python
+	# script (PyDetector), libtorch (SuperPointRpautrat) and ONNX Runtime (OnnxDetector),
+	# on CPU, CUDA and TensorRT, over the images of data/samples: load and per frame
+	# times, keypoint counts, and whether they find the same keypoints and descriptors.
+	# The variants the build or the machine can't run are skipped (backends compiled
+	# in, assets of scripts/fetch_test_data.sh, GPU):
+	#   bin/test_superpoint_perf
+	#   RTABMAP_PERF_FRAMES=10 bin/test_superpoint_perf
+	add_executable(test_superpoint_perf perf_superpoint.cpp)
+	target_link_libraries(test_superpoint_perf GTest::gtest_main rtabmap_core)
+	target_include_directories(test_superpoint_perf PRIVATE ${CMAKE_SOURCE_DIR}/corelib/src)
+
+	add_test(NAME test_superpoint_perf COMMAND test_superpoint_perf)
+	set_tests_properties(test_superpoint_perf PROPERTIES
+			TIMEOUT ${_perf_timeout}
+			LABELS  "performance")
+
+	# Comparison of the feature matchers on SuperPoint features: brute force with cross
+	# check, LightGlue and SuperGlue exported to ONNX (OnnxMatcher, CPU/CUDA/TensorRT) and
+	# SuperGlue in python (PyMatcher), over consecutive frames of data/samples: times,
+	# matches and RANSAC inliers. The variants the build or the machine can't run are
+	# skipped:
+	#   bin/test_matcher_perf
+	add_executable(test_matcher_perf perf_matcher.cpp)
+	target_link_libraries(test_matcher_perf GTest::gtest_main rtabmap_core)
+	target_include_directories(test_matcher_perf PRIVATE ${CMAKE_SOURCE_DIR}/corelib/src)
+	IF(WITH_PYTHON AND Python3_FOUND)
+		target_include_directories(test_matcher_perf PRIVATE ${Python3_INCLUDE_DIRS})
+	ENDIF()
+
+	add_test(NAME test_matcher_perf COMMAND test_matcher_perf)
+	set_tests_properties(test_matcher_perf PROPERTIES
 			TIMEOUT ${_perf_timeout}
 			LABELS  "performance")
 ENDIF(BUILD_PERF_TESTS)
@@ -188,7 +237,7 @@ ENDIF(BUILD_PERF_TESTS)
 # one long test (>20 min), it needs its own timeout and "long" label, and a
 # crash in it stays contained instead of taking a shard of unit tests with it.
 add_executable(test_rtabmap_integration test_rtabmap_integration.cpp)
-target_link_libraries(test_rtabmap_integration gtest_main rtabmap_core)
+target_link_libraries(test_rtabmap_integration GTest::gtest_main rtabmap_core)
 
 # Labelled "long" so CI PR jobs can opt out via:
 #  `ctest -LE long`
@@ -219,31 +268,48 @@ IF(WITH_PYTHON AND Python3_FOUND)
 	# Direct tests for PythonInterface / getPythonTraceback. Links pybind11
 	# and Python headers so the test can drive the Python C API directly.
 	add_executable(test_python_interface test_python_interface.cpp)
-	target_link_libraries(test_python_interface gtest_main rtabmap_core pybind11::embed)
+	target_link_libraries(test_python_interface GTest::gtest_main rtabmap_core pybind11::embed)
 	target_include_directories(test_python_interface PRIVATE ${Python3_INCLUDE_DIRS})
 	add_test(NAME test_python_interface COMMAND test_python_interface)
 
 	add_executable(test_pydetector test_pydetector.cpp)
-	target_link_libraries(test_pydetector gtest_main rtabmap_core)
+	target_link_libraries(test_pydetector GTest::gtest_main rtabmap_core)
 	add_test(NAME test_pydetector COMMAND test_pydetector)
 
 	add_executable(test_pydescriptor test_pydescriptor.cpp)
-	target_link_libraries(test_pydescriptor gtest_main rtabmap_core)
+	target_link_libraries(test_pydescriptor GTest::gtest_main rtabmap_core)
 	add_test(NAME test_pydescriptor COMMAND test_pydescriptor)
 
 	# PyMatcher's header is internal (not in the public include tree);
 	# expose corelib/src so the test can `#include "python/PyMatcher.h"`.
 	add_executable(test_pymatcher test_pymatcher.cpp)
-	target_link_libraries(test_pymatcher gtest_main rtabmap_core)
+	target_link_libraries(test_pymatcher GTest::gtest_main rtabmap_core)
 	target_include_directories(test_pymatcher PRIVATE
 			${CMAKE_SOURCE_DIR}/corelib/src)
 	add_test(NAME test_pymatcher COMMAND test_pymatcher)
 ENDIF(WITH_PYTHON AND Python3_FOUND)
 
+#OnnxSession / OnnxDetector / OnnxMatcher (optional ONNX Runtime support;
+# learned local features and matchers from ONNX models). The tests run the
+# SuperPoint and LightGlue models that scripts/fetch_test_data.sh fetches
+# into data/tests/ and skip when they are absent. The headers are internal
+# (not in the public include tree); expose corelib/src for them.
+IF(ONNXRuntime_FOUND)
+	add_executable(test_onnx test_onnx.cpp)
+	target_link_libraries(test_onnx GTest::gtest_main rtabmap_core)
+	target_include_directories(test_onnx PRIVATE
+			${CMAKE_SOURCE_DIR}/corelib/src)
+	add_test(NAME test_onnx COMMAND test_onnx)
+	# Stereo20HzSuperPointLightGlue (OnnxSession::isProviderAvailable())
+	target_compile_definitions(test_rtabmap_integration PRIVATE RTABMAP_TEST_ONNXRUNTIME)
+	target_include_directories(test_rtabmap_integration PRIVATE
+			${CMAKE_SOURCE_DIR}/corelib/src)
+ENDIF(ONNXRuntime_FOUND)
+
 #LASWriter.h (optional libLAS -- own target for the extra link/include set)
 IF(libLAS_FOUND)
 	add_executable(test_laswriter test_laswriter.cpp)
-	target_link_libraries(test_laswriter gtest_main rtabmap_core ${libLAS_LIBRARIES})
+	target_link_libraries(test_laswriter GTest::gtest_main rtabmap_core ${libLAS_LIBRARIES})
 	target_include_directories(test_laswriter PRIVATE ${libLAS_INCLUDE_DIRS})
 	add_test(NAME test_laswriter COMMAND test_laswriter)
 ENDIF(libLAS_FOUND)

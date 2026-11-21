@@ -1101,7 +1101,10 @@ Transform OdometryF2M::computeTransform(
 									Eigen::Vector4f(-scanMapMaxRange_ / 2, -scanMapMaxRange_ / 2,-scanMapMaxRange_ / 2, 0),
 									Eigen::Vector4f(scanMapMaxRange_ / 2,scanMapMaxRange_ / 2,scanMapMaxRange_ / 2, 0)
 									);
-							frameCloudNormals = util3d::transformPointCloud(frameCloudNormals, viewpoint);
+							if(!frameCloudNormals->empty()) // no points may be in range
+							{
+								frameCloudNormals = util3d::transformPointCloud(frameCloudNormals, viewpoint);
+							}
 						} else
 						{
 							frameCloudNormals = util3d::laserScanToPointCloudINormal(lastFrame_->sensorData().laserScanRaw(), viewpoint);
@@ -1131,8 +1134,16 @@ Transform OdometryF2M::computeTransform(
 							if (scanMapMaxRange_ > 0) {
 								// Copying new points to tmp cloud
 								// These are the points that have no overlap between mapScan and lastFrame
+								// (all frame points are new if no subtraction was done)
 								pcl::PointCloud<pcl::PointXYZINormal> tmp;
-								pcl::copyPointCloud(*frameCloudNormals, *frameCloudNormalsIndices, tmp);
+								if(frameCloudNormalsIndices->size())
+								{
+									pcl::copyPointCloud(*frameCloudNormals, *frameCloudNormalsIndices, tmp);
+								}
+								else
+								{
+									tmp = *frameCloudNormals;
+								}
 
 								if (int(mapCloudNormals->size() + newPoints) > scanMaximumMapSize_) // 20 000 points
 								{
@@ -1155,7 +1166,10 @@ Transform OdometryF2M::computeTransform(
 									*mapCloudNormals += tmp;
 								}
 
-								mapCloudNormals = util3d::voxelize(mapCloudNormals, scanSubtractRadius_);
+								if(scanSubtractRadius_ > 0.0f)
+								{
+									mapCloudNormals = util3d::voxelize(mapCloudNormals, scanSubtractRadius_);
+								}
 								pcl::PointCloud<pcl::PointXYZI>::Ptr mapCloud (new pcl::PointCloud<pcl::PointXYZI> ());
 								copyPointCloud(*mapCloudNormals, *mapCloud);
 								pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(mapCloud, pointToPlaneK_, pointToPlaneRadius_, Eigen::Vector3f(viewpoint.x(), viewpoint.y(), viewpoint.z()));

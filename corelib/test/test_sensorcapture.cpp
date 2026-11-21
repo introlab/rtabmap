@@ -427,7 +427,9 @@ TEST(SensorCaptureTest, HighFrameRate)
 
 	EXPECT_TRUE(data.isValid());
 	EXPECT_GE(elapsed, 0.001);
-	EXPECT_LT(elapsed, 0.01);
+	// Loose upper bound: sleep wake-up can be late on shared CI runners
+	// (14 ms seen on macOS for a 1 ms wait)
+	EXPECT_LT(elapsed, 0.1);
 }
 
 TEST(SensorCaptureTest, VeryLowFrameRate)

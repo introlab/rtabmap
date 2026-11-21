@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UConversion.h"
+#include "rtabmap/utilite/UThread.h"
 #include <pcl/visualization/cloud_viewer.h>
 #include <stdio.h>
 #include <signal.h>
@@ -132,9 +133,7 @@ int main(int argc, char * argv[])
 		viewer->showCloud(cloud, "cloud");
 		printf("Scan size: %ld points\n", cloud->size());
 
-		int c = cv::waitKey(10); // wait 10 ms or for key stroke
-		if(c == 27)
-			break; // if ESC, break and quit
+		uSleep(10);
 
 		data = lidar->takeScan();
 	}

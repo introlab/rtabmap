@@ -41,6 +41,7 @@ SET(SRC_FILES
     camera/CameraMyntEye.cpp
     camera/CameraDepthAI.cpp
 	camera/CameraSeerSense.cpp
+	camera/CameraEinstar.cpp
 	camera/CameraOrbbecSDK.cpp
     
     EpipolarGeometry.cpp
@@ -119,6 +120,7 @@ SET(SRC_FILES
     StereoCameraModel.cpp
     stereo/StereoBM.cpp
     stereo/StereoSGBM.cpp
+    stereo/stereoRectifyFisheye.cpp
     
     GlobalMap.cpp
     LocalGridMaker.cpp
@@ -135,7 +137,6 @@ SET(SRC_FILES
     rtflann/ext/lz4.c
     rtflann/ext/lz4hc.c
     FlannIndex.cpp
-    nanoflann/NanoFlannIndex.cpp
 
     #clams stuff
     clams/discrete_depth_distortion_model_helpers.cpp
@@ -192,25 +193,14 @@ SET(PUBLIC_LIBRARIES
 	${PCL_LIBRARIES}
 )
 
-IF(SQLite3_FOUND)
-    SET(INCLUDE_DIRS
-		${INCLUDE_DIRS}
-		${SQLite3_INCLUDE_DIRS}
-	)
-	SET(LIBRARIES
-		${LIBRARIES}
-		${SQLite3_LIBRARIES}
-	)
-ELSE()
-	SET(SRC_FILES
-		${SRC_FILES}
-		sqlite3/sqlite3.c
-	)
-	 SET(INCLUDE_DIRS
-	    ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3
-		${INCLUDE_DIRS}
-	)
-ENDIF()
+SET(INCLUDE_DIRS
+	${INCLUDE_DIRS}
+	${SQLite3_INCLUDE_DIRS}
+)
+SET(LIBRARIES
+	${LIBRARIES}
+	${SQLite3_LIBRARIES}
+)
 
 IF(TORCH_FOUND)
 	SET(LIBRARIES
@@ -262,6 +252,23 @@ IF(WITH_PYTHON AND Python3_FOUND)
 	)
 ENDIF(WITH_PYTHON AND Python3_FOUND)
 
+IF(ONNXRuntime_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${ONNXRuntime_LIBRARIES}
+	)
+	SET(SRC_FILES
+		${SRC_FILES}
+		onnx/OnnxSession.cpp
+		onnx/OnnxDetector.cpp
+		onnx/OnnxMatcher.cpp
+		onnx/OnnxDescriptor.cpp
+	)
+	SET(INCLUDE_DIRS
+		${ONNXRuntime_INCLUDE_DIRS}
+		${INCLUDE_DIRS}
+	)
+ENDIF(ONNXRuntime_FOUND)
 
 
 IF(Freenect_FOUND)
@@ -310,6 +317,14 @@ IF(KinectSDK2_FOUND)
 		${KinectSDK2_LIBRARIES}
 	)
 ENDIF(KinectSDK2_FOUND)
+
+IF(einstar_FOUND)
+	SET(LIBRARIES
+		${LIBRARIES}
+		einstar::einstar
+		einstar::depth
+	)
+ENDIF(einstar_FOUND)
 
 IF(k4a_FOUND)
 	SET(PUBLIC_INCLUDE_DIRS
@@ -550,6 +565,24 @@ IF(opengv_FOUND)
         opengv
     )
 ENDIF(opengv_FOUND)
+
+IF(RTABMAP_NANOFLANN_FOUND)
+    SET(SRC_FILES
+        ${SRC_FILES}
+        nanoflann/NanoFlannIndex.cpp
+    )
+    IF(RTABMAP_NANOFLANN_VERSION STREQUAL "internal")
+        set_source_files_properties(
+            nanoflann/NanoFlannIndex.cpp
+            PROPERTIES COMPILE_DEFINITIONS RTABMAP_NANOFLANN_INTERNAL)
+    ELSE()
+        # Header-only, used privately: don't require it from the exported targets
+        SET(LIBRARIES
+            ${LIBRARIES}
+            $<BUILD_INTERFACE:nanoflann::nanoflann>
+        )
+    ENDIF()
+ENDIF(RTABMAP_NANOFLANN_FOUND)
 
 IF(PDAL_FOUND)
 	SET(INCLUDE_DIRS
@@ -924,6 +957,17 @@ target_include_directories(rtabmap_core PUBLIC
 target_include_directories(rtabmap_core SYSTEM PUBLIC
   "$<BUILD_INTERFACE:${PUBLIC_INCLUDE_DIRS};${INCLUDE_DIRS}>"
   "$<INSTALL_INTERFACE:${PUBLIC_INCLUDE_DIRS}>")
+
+IF(WITH_PYTHON AND Python3_FOUND)
+  # NumPy's headers ahead of Python's: the python3-numpy system package puts
+  # its (older) headers under the Python include directory, which the
+  # -isystem of Python3::Python makes the compiler search before the NumPy
+  # FindPython3 found (e.g. the one of a virtual environment). The code is
+  # then built against another NumPy than the one imported at runtime, which
+  # aborts on the ABI check. A plain include directory is searched before the
+  # system ones.
+  target_include_directories(rtabmap_core PRIVATE ${Python3_NumPy_INCLUDE_DIRS})
+ENDIF(WITH_PYTHON AND Python3_FOUND)
 
 # Definitions that change how a dependency's headers compile, so consumers of
 # rtabmap_core's headers have to see them too (see grid_map_core above).

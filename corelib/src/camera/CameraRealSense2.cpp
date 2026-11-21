@@ -505,7 +505,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 	{
 		// playback (bag recorded by realsense-viewer)
 		dev_.resize(1);
-		dev_[0] = ctx_.load_device(uReplaceChar(deviceId_, '~', UDirectory::homeDir()));
+		dev_[0] = ctx_.load_device(UDirectory::expandHomeDir(deviceId_));
 		playback_ = true;
 		UINFO("Device ID is a bag (\"%s\"), using playback mode", deviceId_.c_str());
 	}
@@ -1316,8 +1316,14 @@ SensorData CameraRealSense2::captureImage(SensorCaptureInfo * info)
 		int desiredFramesetSize = 2;
 		while ((int)frameset.size() != desiredFramesetSize && timer.elapsed() < 2.0)
 		{
-			// maybe there is a latency with the USB, try again in 100 ms (for the next 2 seconds)
-			frameset = syncer_.wait_for_frames(100);
+			// maybe there is a latency with the USB, try again in 100 ms (for the next 2 seconds).
+			// try_wait_for_frames(): wait_for_frames() throws on timeout, which ended the
+			// 2 seconds at the first 100 ms without frames.
+			rs2::frameset next;
+			if(syncer_.try_wait_for_frames(&next, 100))
+			{
+				frameset = next;
+			}
 		}
 		if ((int)frameset.size() == desiredFramesetSize)
 		{
@@ -1597,7 +1603,9 @@ SensorData CameraRealSense2::captureImage(SensorCaptureInfo * info)
 	{
 		if(!playback_)
 		{
-			UERROR("An error has occurred during frame callback: %s", ex.what());
+			// e.g. "Frame did not arrive in time!" when the system is busy: the
+			// capture is retried (SensorCaptureThread), not an error yet.
+			UWARN("An error has occurred during frame callback: %s", ex.what());
 		}
 	}
 #else

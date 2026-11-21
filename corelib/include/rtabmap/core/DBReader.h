@@ -61,7 +61,8 @@ public:
 			 bool priorsIgnored = false,
 			 bool imuIgnored = false,
 			 bool intermediateNodesAreNormalNodes = false,
-			 const std::vector<Transform> & cameraLocalTransformOverrides = std::vector<Transform>());
+			 const std::vector<Transform> & cameraLocalTransformOverrides = std::vector<Transform>(),
+			 bool occupancyGridsIgnored = false);
 	DBReader(const std::list<std::string> & databasePaths,
 			 float frameRate = 0.0f, // -1 = use Database stamps, 0 = inf
 			 bool odometryIgnored = false,
@@ -78,7 +79,8 @@ public:
 			 bool priorsIgnored = false,
 			 bool imuIgnored = false,
 			 bool intermediateNodesAreNormalNodes = false,
-			 const std::vector<Transform> & cameraLocalTransformOverrides = std::vector<Transform>());
+			 const std::vector<Transform> & cameraLocalTransformOverrides = std::vector<Transform>(),
+			 bool occupancyGridsIgnored = false);
 	virtual ~DBReader();
 
 	virtual bool init(
@@ -116,6 +118,7 @@ private:
 	int _startMapId;
 	int _stopMapId;
 	std::vector<Transform> _cameraLocalTransformOverrides;
+	bool _occupancyGridsIgnored;
 
 	DBDriver * _dbDriver;
 	UTimer _timer;

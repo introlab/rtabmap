@@ -38,7 +38,7 @@ void IMU::convertToBaseFrame()
 		localTransform_.rotationMatrix().convertTo(rotationMatrix, CV_64FC1);
 		cv::transpose(rotationMatrix, rotationMatrixT);
 
-		cv::Mat_<double> linearIn = (cv::Mat_<double>(3,1) << linearAcceleration_[0], linearAcceleration_[1], linearAcceleration_[2]);
+		cv::Mat_<double> linearIn = cv::Mat_<double>({3,1}, {linearAcceleration_[0], linearAcceleration_[1], linearAcceleration_[2]});
 		cv::Mat_<double> linearOut = rotationMatrix * linearIn;
 		linearAcceleration_ = cv::Vec3d(linearOut(0,0), linearOut(1,0), linearOut(2,0));
 		if(!linearAccelerationCovariance_.empty())
@@ -46,7 +46,7 @@ void IMU::convertToBaseFrame()
 			linearAccelerationCovariance_ = rotationMatrix * linearAccelerationCovariance_ * rotationMatrixT;
 		}
 
-		cv::Mat_<double> angularIn = (cv::Mat_<double>(3,1) << angularVelocity_[0], angularVelocity_[1], angularVelocity_[2]);
+		cv::Mat_<double> angularIn = cv::Mat_<double>({3,1}, {angularVelocity_[0], angularVelocity_[1], angularVelocity_[2]});
 		cv::Mat_<double> angularOut = rotationMatrix * angularIn;
 		angularVelocity_ = cv::Vec3d(angularOut(0,0), angularOut(1,0), angularOut(2,0));
 		if(!angularVelocityCovariance_.empty())

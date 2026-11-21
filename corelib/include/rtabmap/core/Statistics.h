@@ -108,6 +108,7 @@ class RTABMAP_CORE_EXPORT Statistics
 {
 	RTABMAP_STATS(Loop, Id,); // Combined loop or proximity detection
 	RTABMAP_STATS(Loop, RejectedHypothesis,);
+	RTABMAP_STATS(Loop, Localization_delayed,); // Localization mode: localization accepted but not applied yet, waiting for another one (RGBD/MaxOdomCacheSize>0). RejectedHypothesis is also 1.
 	RTABMAP_STATS(Loop, Accepted_hypothesis_id,);
 	RTABMAP_STATS(Loop, Suppressed_hypothesis_id,);
 	RTABMAP_STATS(Loop, Highest_hypothesis_id,);
@@ -141,6 +142,8 @@ class RTABMAP_CORE_EXPORT Statistics
 	RTABMAP_STATS(Loop, Angular_variance,);
 	RTABMAP_STATS(Loop, Landmark_detected,);
 	RTABMAP_STATS(Loop, Landmark_detected_node_ref,);
+	RTABMAP_STATS(Loop, Landmark_normal_rejected,);
+	RTABMAP_STATS(Loop, Landmark_normal_error, deg);
 	RTABMAP_STATS(Loop, Visual_inliers_mean_dist,m);
 	RTABMAP_STATS(Loop, Visual_inliers_distribution,);
 	RTABMAP_STATS(Loop, Proximity_links_cleared,);
@@ -469,8 +472,15 @@ public:
 	/**
 	 * @brief Sets the loop closure transform
 	 * 
-	 * The transform between the current pose and the loop closure pose.
-	 * 
+	 * The loop closure as observed from the current node: the pose of the loop
+	 * closure node in the current node's frame (current -> loop closure).
+	 *
+	 * Without accepted global loop closure or proximity detection, it is the
+	 * one of the localization attempted, even if rejected: the landmark
+	 * observation (current -> landmark) when a landmark is detected, else
+	 * the rejected global loop closure (on the highest hypothesis), if a
+	 * transform could be computed for it.
+	 *
 	 * @param loopClosureTransform The loop closure transform
 	 */
 	void setLoopClosureTransform(const Transform & loopClosureTransform) {_loopClosureTransform = loopClosureTransform;}

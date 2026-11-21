@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef WITH_QT
 #include <rtabmap/utilite/UPlot.h>
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <QFile>
 #endif
 
@@ -135,6 +136,7 @@ int main(int argc, char * argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kWarning);
 #ifdef WITH_QT
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
 	QApplication app(argc, argv);
 #endif
 
@@ -354,7 +356,7 @@ int main(int argc, char * argv[])
 	}
 
 	std::string path = argv[argc-1];
-	path = uReplaceChar(path, '~', UDirectory::homeDir());
+	path = UDirectory::expandHomeDir(path);
 
 	if(!UDirectory::exists(path) && UFile::getExtension(path).compare("db") == 0)
 	{

@@ -6,6 +6,7 @@
 #include "rtabmap/utilite/UException.h"
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UFile.h"
+#include "TestUtils.h"
 #include <cmath>
 
 using namespace rtabmap;
@@ -23,22 +24,22 @@ protected:
         imageSize_ = cv::Size(imageWidth_, imageHeight_);
         
         // Create intrinsic matrix K
-        K_ = (cv::Mat_<double>(3, 3) <<
+        K_ = cv::Mat_<double>({3, 3}, {
             fx_, 0.0, cx_,
             0.0, fy_, cy_,
-            0.0, 0.0, 1.0);
+            0.0, 0.0, 1.0});
         
         // Create distortion coefficients (4 parameters: k1, k2, p1, p2)
-        D_ = (cv::Mat_<double>(1, 4) << -0.1, 0.05, 0.001, -0.001);
+        D_ = cv::Mat_<double>({1, 4}, {-0.1, 0.05, 0.001, -0.001});
         
         // Create rectification matrix (identity for simplicity)
         R_ = cv::Mat::eye(3, 3, CV_64FC1);
         
         // Create projection matrix P
-        P_ = (cv::Mat_<double>(3, 4) <<
+        P_ = cv::Mat_<double>({3, 4}, {
             fx_, 0.0, cx_, 0.0,
             0.0, fy_, cy_, 0.0,
-            0.0, 0.0, 1.0, 0.0);
+            0.0, 0.0, 1.0, 0.0});
     }
 
     void TearDown() override {
@@ -455,7 +456,7 @@ TEST_F(CameraModelTest, IsFisheye)
     EXPECT_FALSE(standard.isFisheye());
     
     // Fisheye distortion (6 parameters: k1, k2, 0, 0, k3, k4)
-    cv::Mat D_fisheye = (cv::Mat_<double>(1, 6) << 0.1, 0.05, 0.0, 0.0, 0.01, 0.005);
+    cv::Mat D_fisheye = cv::Mat_<double>({1, 6}, {0.1, 0.05, 0.0, 0.0, 0.01, 0.005});
     CameraModel fisheye("test", imageSize_, K_, D_fisheye, R_, P_);
     EXPECT_TRUE(fisheye.isFisheye());
 }
@@ -490,8 +491,8 @@ TEST_F(CameraModelTest, Tx)
 TEST_F(CameraModelTest, SaveLoadRoundTrip)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_camera_calibration";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_camera_calibration");
+    const std::string & testDir = tempDir.path();
     
     // Create original camera model with all parameters
     std::string cameraName = "test_camera";
@@ -649,8 +650,8 @@ TEST_F(CameraModelTest, SaveLoadRoundTrip)
 TEST_F(CameraModelTest, SaveLoadRoundTripFullPath)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_camera_calibration2";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_camera_calibration2");
+    const std::string & testDir = tempDir.path();
     
     // Create original camera model
     std::string cameraName = "test_camera2";
@@ -711,8 +712,8 @@ TEST_F(CameraModelTest, SaveLoadRoundTripFullPath)
 TEST_F(CameraModelTest, LoadInitRectificationMaps)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_camera_calibration5";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_camera_calibration5");
+    const std::string & testDir = tempDir.path();
 
     // A model valid for rectification, so the maps would be built on load.
     std::string cameraName = "rect_camera";
@@ -760,8 +761,8 @@ TEST_F(CameraModelTest, LoadInitRectificationMaps)
 TEST_F(CameraModelTest, SaveLoadRoundTripMinimal)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_camera_calibration3";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_camera_calibration3");
+    const std::string & testDir = tempDir.path();
     
     // Create minimal camera model (no distortion, no rectification)
     std::string cameraName = "minimal_camera";
@@ -811,8 +812,8 @@ TEST_F(CameraModelTest, SaveLoadRoundTripMinimal)
 TEST_F(CameraModelTest, SaveLoadRoundTripFisheye)
 {
     // Create a temporary directory for testing
-    std::string testDir = "test_camera_calibration4";
-    UDirectory::makeDir(testDir);
+    const rtabmap::test::TempDir tempDir("rtabmap_test_camera_calibration4");
+    const std::string & testDir = tempDir.path();
     
     // Create fisheye camera model (6 distortion parameters: k1, k2, 0, 0, k3, k4)
     // Format: [k1, k2, p1, p2, k3, k4] where p1=p2=0 for fisheye
@@ -820,7 +821,7 @@ TEST_F(CameraModelTest, SaveLoadRoundTripFisheye)
     double k2 = 0.05;
     double k3 = 0.01;
     double k4 = 0.005;
-    cv::Mat D_fisheye = (cv::Mat_<double>(1, 6) << k1, k2, 0.0, 0.0, k3, k4);
+    cv::Mat D_fisheye = cv::Mat_<double>({1, 6}, {k1, k2, 0.0, 0.0, k3, k4});
     std::string cameraName = "fisheye_camera";
     CameraModel original(cameraName, imageSize_, K_, D_fisheye, R_, P_);
     

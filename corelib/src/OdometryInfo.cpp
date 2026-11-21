@@ -95,6 +95,10 @@ std::map<std::string, float> OdometryInfo::statistics(const Transform & pose)
 	std::map<std::string, float> stats;
 
 	stats.insert(std::make_pair("Odometry/TimeRegistration/ms", reg.totalTime*1000.0f));
+	stats.insert(std::make_pair("Odometry/TimeFeatures/ms", reg.featuresTime*1000.0f));
+	stats.insert(std::make_pair("Odometry/TimeMatching/ms", reg.matchingTime*1000.0f));
+	stats.insert(std::make_pair("Odometry/TimeMotionEstimation/ms", reg.motionEstimationTime*1000.0f));
+	stats.insert(std::make_pair("Odometry/TimeBundleAdjustment/ms", reg.bundleAdjustmentTime*1000.0f));
 	stats.insert(std::make_pair("Odometry/RAM_usage/MB", memoryUsage));
 
 	// Based on rtabmap/MainWindow.cpp
@@ -186,6 +190,12 @@ std::map<std::string, float> OdometryInfo::statistics(const Transform & pose)
 			stats.insert(std::make_pair("Odometry/Vpitch/degps", (pitch*180.0/CV_PI)/interval));
 			stats.insert(std::make_pair("Odometry/Vyaw/degps", (yaw*180.0/CV_PI)/interval));
 		}
+	}
+	if(!guess.isNull() && !transform.isNull())
+	{
+		// How far the motion estimated is from the guess it started from
+		stats.insert(std::make_pair("Odometry/Guess_error_lin/m", guess.getDistance(transform)));
+		stats.insert(std::make_pair("Odometry/Guess_error_ang/deg", guess.getAngle(transform)*180.0/CV_PI));
 	}
 	if(!transformGroundTruth.isNull())
 	{

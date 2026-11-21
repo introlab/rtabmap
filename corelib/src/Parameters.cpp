@@ -172,7 +172,9 @@ bool Parameters::isFeatureParameter(const std::string & parameter)
 			group.compare("KAZE") == 0 ||
 			group.compare("SuperPoint") == 0 ||
 			group.compare("SuperPointRpautrat") == 0 ||
-			group.compare("PyDetector") == 0;
+			group.compare("PyDetector") == 0 ||
+			group.compare("OnnxDetector") == 0 ||
+			group.compare("Onnx") == 0;
 }
 
 rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, bool vis, bool icp)
@@ -191,7 +193,7 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			group.compare("Optimizer") == 0 ||
 			group.compare("g2o") == 0 ||
 			group.compare("GTSAM") == 0 ||
-			(vis && (group.compare("Vis") == 0 || group.compare("PyMatcher") == 0 || group.compare("GMS") == 0)) ||
+			(vis && (group.compare("Vis") == 0 || group.compare("PyMatcher") == 0 || group.compare("GMS") == 0 || group.compare("OnnxMatcher") == 0)) ||
 			iter->first.compare(kRtabmapPublishRAMUsage())==0 ||
 			iter->first.compare(kRtabmapImagesAlreadyRectified())==0 ||
 			iter->first.compare(kKpByteToFloat())==0)
@@ -665,6 +667,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "rtflann (FLANN fork):";
+				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_RTFLANN_VERSION << std::endl;
+				str = "LZ4:";
+				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_LZ4_VERSION << std::endl;
+				str = "SQLite3:";
+				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_SQLITE3_VERSION << std::endl;
 				str = "With ORB OcTree:";
 #ifdef RTABMAP_ORB_OCTREE
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -689,6 +697,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With ONNX Runtime:";
+#ifdef RTABMAP_ONNXRUNTIME
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
 				str = "With FastCV:";
 #ifdef RTABMAP_FASTCV
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -707,6 +721,14 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 #else
 				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
 #endif
+				str = "With nanoflann:";
+#ifdef RTABMAP_NANOFLANN
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With Complementary:";
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
 				str = "With Madgwick:";
 #ifdef RTABMAP_MADGWICK
 				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
@@ -1157,7 +1179,7 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 						ignore = true;
 					}
 #endif
-#if not defined(RTABMAP_LOAM) and not defined(RTABMAP_FLOAM)
+#if !defined(RTABMAP_LOAM) && !defined(RTABMAP_FLOAM)
 					if(group.compare("OdomLOAM") == 0)
 					{
 						ignore = true;

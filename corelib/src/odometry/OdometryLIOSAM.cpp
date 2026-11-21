@@ -100,7 +100,7 @@ bool OdometryLIOSAM::init(const Transform & imuLocalTransform, const Transform &
 	Parameters::parse(parameters_, Parameters::kOdomLIOSAMConfigPath(), configPath);
 	if(!configPath.empty())
 	{
-		configPath = uReplaceChar(configPath, '~', UDirectory::homeDir());
+		configPath = UDirectory::expandHomeDir(configPath);
 		if(!UFile::exists(configPath))
 		{
 			UERROR("LIO-SAM config file not found: %s", configPath.c_str());

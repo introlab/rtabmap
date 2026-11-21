@@ -297,10 +297,10 @@ TEST(Util3dMappingTest, Create2DMapFromOccupancyLocalMapsBasic)
 TEST(Util3dMappingTest, ConvertMap2Image8UBasicConversionNormalFormat)
 {
     // Create a simple 3x3 CV_8S occupancy grid
-    cv::Mat map8S = (cv::Mat_<signed char>(3, 3) <<
+    cv::Mat map8S = cv::Mat_<signed char>({3, 3}, {
         -1,  0, 100,
         -2, 50, 75,
-        25, -1, 0);
+        25, -1, 0});
 
     // Call the function in normal format
     cv::Mat result = util3d::convertMap2Image8U(map8S, false);
@@ -323,9 +323,9 @@ TEST(Util3dMappingTest, ConvertMap2Image8UBasicConversionNormalFormat)
 
 TEST(Util3dMappingTest, ConvertMap2Image8UBasicConversionPGMFormat)
 {
-    cv::Mat map8S = (cv::Mat_<signed char>(2, 2) <<
+    cv::Mat map8S = cv::Mat_<signed char>({2, 2}, {
         -1, 0,
-        -2, 100);
+        -2, 100});
 
     // Call with pgmFormat = true
     cv::Mat result = util3d::convertMap2Image8U(map8S, true);
@@ -344,7 +344,7 @@ TEST(Util3dMappingTest, ConvertMap2Image8UBasicConversionPGMFormat)
 TEST(Util3dMappingTest, ConvertImage8U2MapNonPGMFormat)
 {
     // Create a 2x2 grayscale image using non-PGM expected values
-    cv::Mat input = (cv::Mat_<uchar>(2, 2) << 178, 0, 200, 89);
+    cv::Mat input = cv::Mat_<uchar>({2, 2}, {178, 0, 200, 89});
 
     // Call conversion
     cv::Mat map = util3d::convertImage8U2Map(input, false);
@@ -363,7 +363,7 @@ TEST(Util3dMappingTest, ConvertImage8U2MapNonPGMFormat)
 TEST(Util3dMappingTest, ConvertImage8U2MapPGMFormat)
 {
     // Create a 2x2 grayscale image using PGM expected values
-    cv::Mat input = (cv::Mat_<uchar>(2, 2) << 254, 0, 205, 205);
+    cv::Mat input = cv::Mat_<uchar>({2, 2}, {254, 0, 205, 205});
 
     // Call conversion
     cv::Mat map = util3d::convertImage8U2Map(input, true);
@@ -384,21 +384,21 @@ TEST(Util3dMappingTest, ErodeMapBasicErosion)
 {
     // Create a 5x5 map with CV_8SC1 type
     // -1 = unknown, 0 = free, 100 = obstacle
-    cv::Mat map = (cv::Mat_<signed char>(5,5) <<
+    cv::Mat map = cv::Mat_<signed char>({5,5}, {
         0,   0,   0,   0,  0,
         0, 100, 100, 100,  0,
         0,   0, 100, 100,  100,
         0, 100, 100, 100,  100,
-        0,   0, 100, 100,  100);
+        0,   0, 100, 100,  100});
 
     cv::Mat erodedMap = util3d::erodeMap(map);
 
-    cv::Mat expected = (cv::Mat_<signed char>(5,5) <<
+    cv::Mat expected = cv::Mat_<signed char>({5,5}, {
         0,   0,   0,   0,  0,
         0,   0, 100, 100,  0,
         0,   0, 100, 100,  100,
         0,   0, 100, 100,  100,
-        0,   0, 100, 100,  100);
+        0,   0, 100, 100,  100});
 
     cv::Mat diff;
     cv::compare(erodedMap, expected, diff, cv::CMP_NE);
@@ -410,10 +410,10 @@ TEST(Util3dMappingTest, ErodeMapBasicErosion)
 TEST(Util3dMappingTest, ErodeMapNoErosionWithUnknown)
 {
     // Create a 3x3 map with obstacle touching unknown cell
-    cv::Mat map = (cv::Mat_<signed char>(3,3) <<
+    cv::Mat map = cv::Mat_<signed char>({3,3}, {
         0,  0,  0,
         0, 100, -1,
-        0,  0,  0);
+        0,  0,  0});
 
     cv::Mat erodedMap = util3d::erodeMap(map);
 

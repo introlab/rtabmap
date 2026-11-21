@@ -474,6 +474,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	connect(_ui->actionDepthAI_oakdpro, SIGNAL(triggered()), this, SLOT(selectDepthAIOAKDPro()));
 	connect(_ui->actionXvisio_SeerSense, SIGNAL(triggered()), this, SLOT(selectXvisioSeerSense()));
 	connect(_ui->actionOrbbecSDK_astra2, SIGNAL(triggered()), this, SLOT(selectOrbbecSDK()));
+	connect(_ui->actionEinstar, SIGNAL(triggered()), this, SLOT(selectEinstar()));
 	connect(_ui->actionVelodyne_VLP_16, SIGNAL(triggered()), this, SLOT(selectVLP16()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	_ui->actionOpenNI_PCL->setEnabled(CameraOpenni::available());
@@ -504,6 +505,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
     _ui->actionDepthAI_oakdpro->setEnabled(CameraDepthAI::available());
 	_ui->actionXvisio_SeerSense->setEnabled(CameraSeerSense::available());
 	_ui->actionOrbbecSDK_astra2->setEnabled(CameraOrbbecSDK::available());
+	_ui->actionEinstar->setEnabled(CameraEinstar::available());
 	this->updateSelectSourceMenu();
 
 	connect(_ui->actionPreferences, SIGNAL(triggered()), this, SLOT(openPreferences()));
@@ -656,6 +658,11 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", false);
 	_ui->statsToolBox->updateStat("Odometry/TimeDeskewing/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/TimeRegistration/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/TimeFeatures/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/TimeMatching/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/TimeMotionEstimation/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/TimeBundleAdjustment/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/GravityRollError/deg", false);
 	_ui->statsToolBox->updateStat("Odometry/GravityPitchError/deg", false);
@@ -1833,6 +1840,14 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)angVar, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/TimeDeskewing/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeDeskewing*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeEstimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/TimeRegistration/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.totalTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/TimeFeatures/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.featuresTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/TimeMatching/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.matchingTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		_ui->statsToolBox->updateStat("Odometry/TimeMotionEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.motionEstimationTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		if(odom.info().localBundleTime <= 0.0f) // Vis/BundleAdjustment (F2F) and the local bundle adjustment (F2M) are mutually exclusive
+		{
+			_ui->statsToolBox->updateStat("Odometry/TimeBundleAdjustment/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().reg.bundleAdjustmentTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+		}
 		if(odom.info().timeParticleFiltering>0.0f)
 		{
 			_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", _preferencesDialog->isTimeUsedInFigures()?data->stamp()-_firstStamp:(float)data->id(), (float)odom.info().timeParticleFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
@@ -2226,7 +2241,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				else if(landmarkId!=0)
 				{
 					highestHypothesisId = landmarkNodeRef;
-					if(rejectedHyp)
+					if(rejectedHyp && uValue(stat.data(), Statistics::kLoopLocalization_delayed(), 0.0f) != 0.0f)
+					{
+						// Localization mode: accepted, but waiting for another localization to be applied (RGBD/MaxOdomCacheSize)
+						_ui->imageView_loopClosure->setBackgroundColor(QColor("darkorange"));
+						_ui->label_matchId->setText(QString("Landmark delayed = %1 with %2").arg(landmarkId).arg(landmarkNodeRef));
+						matchId = landmarkNodeRef;
+					}
+					else if(rejectedHyp)
 					{
 						show = _preferencesDialog->imageRejectedShown();
 						if(show)
@@ -2440,9 +2462,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			   !stat.loopClosureTransform().isNull() &&
 			   !loopSignature.sensorData().imageRaw().empty())
 			{
-				// the last loop closure data
+				// the last loop closure data: the loop closure node at the origin,
+				// the current node where it observed it from (current -> loop).
 				Transform loopClosureTransform = stat.loopClosureTransform();
-				signature.setPose(loopClosureTransform);
+				signature.setPose(loopClosureTransform.inverse());
 				_loopClosureViewer->setData(loopSignature, signature);
 				if(_ui->dockWidget_loopClosureViewer->isVisible())
 				{
@@ -5409,6 +5432,7 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionDepthAI_oakdpro->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoDepthAI);
 	_ui->actionXvisio_SeerSense->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcSeerSense);
 	_ui->actionOrbbecSDK_astra2->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcOrbbecSDK);
+	_ui->actionEinstar->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcEinstar);
 	_ui->actionVelodyne_VLP_16->setChecked(_preferencesDialog->getLidarSourceDriver() == PreferencesDialog::kSrcLidarVLP16);
 }
 
@@ -7427,6 +7451,11 @@ void MainWindow::selectXvisioSeerSense()
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcSeerSense);
 }
 
+void MainWindow::selectEinstar()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcEinstar);
+}
+
 void MainWindow::selectVLP16()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcLidarVLP16);
@@ -8114,7 +8143,11 @@ void MainWindow::exportGridMap()
 				path += ".png";
 			}
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+			QImage img = image.flipped(Qt::Vertical).transformed(QTransform().rotate(-90));
+#else
 			QImage img = image.mirrored(false, true).transformed(QTransform().rotate(-90));
+#endif
 			QPixmap::fromImage(img).save(path);
 
 			QDesktopServices::openUrl(QUrl::fromLocalFile(path));
@@ -8664,7 +8697,7 @@ void MainWindow::changeState(MainWindow::State newState)
 	}
 	else
 	{
-		UWARN("Menu File actions size has changed (%d)", actions.size());
+		UWARN("Menu File actions size has changed (%d)", (int)actions.size());
 	}
 	actions = _ui->menuProcess->actions();
 	if(actions.size()>=2)

@@ -9,7 +9,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Update Stats
-              uses: introlab/github-stats-action@v1
+              uses: introlab/github-stats-action@v2
               with:
                   github-stats-token: ${{ secrets.STATS_TOKEN }}
                   google-application-credentials: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}

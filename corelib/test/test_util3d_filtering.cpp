@@ -20,32 +20,44 @@ TEST(Util3dFilteringTest, CommonFilteringDownsample) {
         ASSERT_EQ(util3d::commonFiltering(scan, 1).size(), i+1);
         ASSERT_EQ(util3d::commonFiltering(scan, 2).size(), (i+1) <= 2 ? (i+1) : (i+1)/2);
         ASSERT_EQ(util3d::commonFiltering(scan, 3).size(), (i+1) <= 3 ? (i+1) : (i+1)/3);
+    }
 
-        // Organized (cols>rows)
-        data = cv::Mat::zeros(i+1, (i+1)*2+i, CV_32FC3); 
-        SCOPED_TRACE(uFormat("Testing Organized dim %dx%d (i=%d)", i+1, (i+1)*2+i, i));
-        scan = LaserScan(data, data.total(), 0, LaserScan::kXYZ);
-        ASSERT_EQ(util3d::commonFiltering(scan, 0).size(), (i+1)*((i+1)*2+i));
-        ASSERT_EQ(util3d::commonFiltering(scan, 1).size(), (i+1)*((i+1)*2+i));
-        ASSERT_EQ(util3d::commonFiltering(scan, 2).size(), (i+1)*2+i <= 2 ? (i+1)*((i+1)*2+i) : (i+1)*(((i+1)*2+i)/2));
-        ASSERT_EQ(util3d::commonFiltering(scan, 3).size(), (i+1)*2+i <= 3 ? (i+1)*((i+1)*2+i) : (i+1)*(((i+1)*2+i)/3));
-        ASSERT_EQ(util3d::commonFiltering(scan, 2).data().rows, 1);
-        ASSERT_EQ(util3d::commonFiltering(scan, 3).data().rows, 1);
-        ASSERT_EQ(util3d::commonFiltering(scan, 2).data().cols, (i+1)*2+i <= 2 ? (i+1)*((i+1)*2+i) : (i+1)*(((i+1)*2+i)/2));
-        ASSERT_EQ(util3d::commonFiltering(scan, 3).data().cols, (i+1)*2+i <= 3 ? (i+1)*((i+1)*2+i) : (i+1)*(((i+1)*2+i)/3));
-
-        // Organized (cols<rows)
-        data = cv::Mat::zeros((i+1)*2+i, (i+1), CV_32FC3); 
-        SCOPED_TRACE(uFormat("Testing Organized dim %dx%d (i=%d)", (i+1)*2+i, (i+1), i));
-        scan = LaserScan(data, data.total(), 0, LaserScan::kXYZ);
-        ASSERT_EQ(util3d::commonFiltering(scan, 0).size(), (i+1)*((i+1)*2+i));
-        ASSERT_EQ(util3d::commonFiltering(scan, 1).size(), (i+1)*((i+1)*2+i));
-        ASSERT_EQ(util3d::commonFiltering(scan, 2).size(), (i+1)*2+i <= 2 ? (i+1)*((i+1)*2+i) : (i+1)*(((i+1)*2+i)/2));
-        ASSERT_EQ(util3d::commonFiltering(scan, 3).size(), (i+1)*2+i <= 3 ? (i+1)*((i+1)*2+i) : (i+1)*(((i+1)*2+i)/3));
-        ASSERT_EQ(util3d::commonFiltering(scan, 2).data().rows, (i+1)*2+i <= 2 ? (i+1)*2+i : 1);
-        ASSERT_EQ(util3d::commonFiltering(scan, 3).data().rows, (i+1)*2+i <= 3 ? (i+1)*2+i : 1);
-        ASSERT_EQ(util3d::commonFiltering(scan, 2).data().cols, (i+1)*2+i <= 2 ? (i+1) : (i+1)*(((i+1)*2+i)/2));
-        ASSERT_EQ(util3d::commonFiltering(scan, 3).data().cols, (i+1)*2+i <= 3 ? (i+1) : (i+1)*(((i+1)*2+i)/3));
+    // Organized scans are sampled like downsample(LaserScan): LiDAR-like scans
+    // (one dimension <= 1/4 of the other) by ring, others like an image in both
+    // dimensions (a dimension smaller than step is kept as is). Sampled output is dense.
+    struct Case { int rows; int cols; int step; int expectedSize; };
+    const Case cases[] = {
+        {2, 2, 2, 4},    // larger dimension <= step: not sampled, kept organized
+        {4, 4, 2, 4},    // square: 2x2
+        {6, 6, 4, 1},    // square: 1x1
+        {4, 16, 2, 32},  // LiDAR-like rings on rows: 4x8
+        {16, 4, 2, 32},  // LiDAR-like rings on columns: 8x4
+        {4, 15, 2, 14},  // 4 > 15/4: image-like 2x7
+        {15, 4, 2, 14},  // 4 > 15/4: image-like 7x2
+        {5, 7, 2, 6},    // image-like, not divisible: 2x3
+        {2, 5, 2, 2},    // image-like: 1x2
+        {2, 5, 3, 2},    // image-like, rows < step: 2x1
+        {5, 2, 3, 2},    // image-like, cols < step: 1x2
+        {6, 17, 3, 10}}; // image-like: 2x5
+    for(const Case & c : cases)
+    {
+        SCOPED_TRACE(uFormat("Testing Organized dim %dx%d step=%d", c.rows, c.cols, c.step));
+        cv::Mat data = cv::Mat::zeros(c.rows, c.cols, CV_32FC3);
+        LaserScan scan(data, data.total(), 0, LaserScan::kXYZ);
+        ASSERT_EQ(util3d::commonFiltering(scan, 0).size(), c.rows*c.cols);
+        ASSERT_EQ(util3d::commonFiltering(scan, 1).size(), c.rows*c.cols);
+        LaserScan result = util3d::commonFiltering(scan, c.step);
+        ASSERT_EQ(result.size(), c.expectedSize);
+        if(c.expectedSize == c.rows*c.cols)
+        {
+            ASSERT_EQ(result.data().rows, c.rows);
+            ASSERT_EQ(result.data().cols, c.cols);
+        }
+        else
+        {
+            ASSERT_EQ(result.data().rows, 1);
+            ASSERT_EQ(result.data().cols, c.expectedSize);
+        }
     }
 }
 
@@ -478,7 +490,7 @@ TEST(Util3dFilteringTest, RangeFilteringNoFilteringAppliedWhenEmpty)
 TEST(Util3dFilteringTest, RangeFilteringNoFilteringWhenMinMaxZero)
 {
     // Simulate a simple 2D scan with 3 points: (1,0), (3,0), (6,0)
-    cv::Mat data = (cv::Mat_<float>(1, 3*2) << 1.0f, 0.0f, 3.0f, 0.0f, 6.0f, 0.0f);
+    cv::Mat data = cv::Mat_<float>({1, 3*2}, {1.0f, 0.0f, 3.0f, 0.0f, 6.0f, 0.0f});
     data = data.reshape(2, 1); // Reshape to 1 row, 3 columns with 2 floats per point
 
     LaserScan scan(data, 0, 0, LaserScan::kXY); // assuming kXY means 2D points
@@ -493,7 +505,7 @@ TEST(Util3dFilteringTest, RangeFilteringNoFilteringWhenMinMaxZero)
 TEST(Util3dFilteringTest, RangeFilteringFilteringRemovesOutOfRangePoints)
 {
     // 2D points: (1,0) [1m], (3,0) [3m], (6,0) [6m]
-    cv::Mat data = (cv::Mat_<float>(1, 3*2) << 1.0f, 0.0f, 3.0f, 0.0f, 6.0f, 0.0f);
+    cv::Mat data = cv::Mat_<float>({1, 3*2}, {1.0f, 0.0f, 3.0f, 0.0f, 6.0f, 0.0f});
     data = data.reshape(2, 1);
 
     LaserScan scan(data, 0, 0, LaserScan::kXY);
@@ -504,7 +516,7 @@ TEST(Util3dFilteringTest, RangeFilteringFilteringRemovesOutOfRangePoints)
     EXPECT_FLOAT_EQ(result.data().at<cv::Vec2f>(0)[1], 0.0f); // y
 
     // 3D points: (1,0) [1m], (3,0) [3m], (6,0) [6m]
-    data = (cv::Mat_<float>(1, 3*3) << 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 6.0f);
+    data = cv::Mat_<float>({1, 3*3}, {0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 6.0f});
     data = data.reshape(3, 1);
 
     scan = LaserScan(data, 0, 0, LaserScan::kXYZ);
@@ -519,7 +531,7 @@ TEST(Util3dFilteringTest, RangeFilteringFilteringRemovesOutOfRangePoints)
 TEST(Util3dFilteringTest, RangeFilteringFilteringWithOnlyMinOrMax)
 {
     // 2D points: (1,0) [1m], (4,0) [4m]
-    cv::Mat data = (cv::Mat_<float>(1, 2*2) << 1.0f, 0.0f, 4.0f, 0.0f);
+    cv::Mat data = cv::Mat_<float>({1, 2*2}, {1.0f, 0.0f, 4.0f, 0.0f});
     data = data.reshape(2, 1);
 
     LaserScan scan(data, 0, 0, LaserScan::kXY);
@@ -769,7 +781,7 @@ TEST(Util3dFilteringTest, DownsampleImplStepOne) {
 
     //LaserScan version
     {
-        cv::Mat data = (cv::Mat_<float>(1, 3) << 1.0f, 2.0f, 3.0f);
+        cv::Mat data = cv::Mat_<float>({1, 3}, {1.0f, 2.0f, 3.0f});
         data = data.reshape(3, 1);
         auto scan = LaserScan(data, 0, 0, LaserScan::kXYZ);
         auto result = util3d::downsample(scan, 1);
@@ -974,6 +986,254 @@ TEST(Util3dFilteringTest, DownsampleImplLiDARStyleRingsInColumns) {
         EXPECT_FLOAT_EQ(result.field(5,0), 9);  // row 4, col 1
         EXPECT_FLOAT_EQ(result.field(6,0), 12); // row 6, col 0
         EXPECT_FLOAT_EQ(result.field(7,0), 13); // row 6, col 1
+    }
+}
+
+namespace {
+
+// One format per point size (2 to 7 floats)
+const LaserScan::Format kScanFormatsAllSizes[] = {
+    LaserScan::kXY,           // 2
+    LaserScan::kXYZ,          // 3
+    LaserScan::kXYZI,         // 4
+    LaserScan::kXYZIT,        // 5
+    LaserScan::kXYZIRT,       // 6
+    LaserScan::kXYZRGBNormal  // 7
+};
+
+// Every float is distinct: point (r,c), channel k = (r*cols+c)*10+k
+cv::Mat makeUniqueScanData(int rows, int cols, LaserScan::Format format)
+{
+    const int channels = LaserScan::channels(format);
+    cv::Mat data(rows, cols, CV_32FC(channels));
+    for(int r=0; r<rows; ++r)
+    {
+        for(int c=0; c<cols; ++c)
+        {
+            float * ptr = data.ptr<float>(r, c);
+            for(int k=0; k<channels; ++k)
+            {
+                ptr[k] = float((r*cols+c)*10+k);
+            }
+        }
+    }
+    return data;
+}
+
+// 1xN scan with point i at distance ranges[i] along x, other channels distinct
+cv::Mat makeRangeScanData(const std::vector<float> & ranges, LaserScan::Format format)
+{
+    cv::Mat data = makeUniqueScanData(1, (int)ranges.size(), format);
+    const int geometryChannels = LaserScan::isScan2d(format)?2:3;
+    for(int i=0; i<data.cols; ++i)
+    {
+        float * ptr = data.ptr<float>(0, i);
+        ptr[0] = ranges[i];
+        for(int k=1; k<geometryChannels; ++k)
+        {
+            ptr[k] = 0.0f;
+        }
+    }
+    return data;
+}
+
+// Same values, but as a ROI of a wider matrix (rows not contiguous in memory)
+cv::Mat makeNonContinuous(const cv::Mat & data)
+{
+    cv::Mat wider(data.rows, data.cols+3, data.type());
+    wider.reshape(1).setTo(-1.0f); // padding, Scalar can't init more than 4 channels
+    cv::Mat roi = wider.colRange(0, data.cols);
+    data.copyTo(roi);
+    return roi;
+}
+
+// Compares all channels of output(outRow,outCol) with input(inRow,inCol)
+::testing::AssertionResult samePoint(
+        const cv::Mat & output, int outRow, int outCol,
+        const cv::Mat & input, int inRow, int inCol)
+{
+    if(output.type() != input.type())
+    {
+        return ::testing::AssertionFailure() << "type " << output.type() << " != " << input.type();
+    }
+    if(memcmp(output.ptr(outRow, outCol), input.ptr(inRow, inCol), output.elemSize()) == 0)
+    {
+        return ::testing::AssertionSuccess();
+    }
+    ::testing::AssertionResult failure = ::testing::AssertionFailure();
+    failure << "output(" << outRow << "," << outCol << ") != input(" << inRow << "," << inCol << "), output/input channels:";
+    for(int k=0; k<output.channels(); ++k)
+    {
+        failure << " " << output.ptr<float>(outRow, outCol)[k] << "/" << input.ptr<float>(inRow, inCol)[k];
+    }
+    return failure;
+}
+
+struct ScanLayout {
+    const char * name;
+    int rows;
+    int cols;
+    int step;
+    int rowStep; // input rows kept: 0, rowStep, 2*rowStep...
+    int colStep; // input cols kept: 0, colStep, 2*colStep...
+};
+
+} // namespace
+
+// downsample() must copy whole points (all channels) from the right input
+// row/column, for every point size, layout, and non-continuous input data.
+TEST(Util3dFilteringTest, DownsampleLaserScanCopiesAllChannels) {
+    const ScanLayout layouts[] = {
+        {"dense", 1, 12, 3, 1, 3},
+        {"rings on rows", 2, 12, 3, 1, 3},
+        {"rings on columns", 12, 2, 3, 3, 1},
+        {"image-like", 6, 6, 2, 2, 2}};
+
+    for(const ScanLayout & l : layouts)
+    {
+        for(LaserScan::Format format : kScanFormatsAllSizes)
+        {
+            for(int continuous=0; continuous<2; ++continuous)
+            {
+                cv::Mat data = makeUniqueScanData(l.rows, l.cols, format);
+                if(!continuous)
+                {
+                    data = makeNonContinuous(data);
+                }
+                SCOPED_TRACE(uFormat("%s %dx%d step=%d format=%s continuous=%d",
+                        l.name, l.rows, l.cols, l.step, LaserScan::formatName(format).c_str(), continuous));
+                LaserScan scan(data, 0, 0, format);
+                LaserScan result = util3d::downsample(scan, l.step);
+
+                ASSERT_EQ(result.format(), format);
+                ASSERT_EQ(result.data().rows, l.rows/l.rowStep);
+                ASSERT_EQ(result.data().cols, l.cols/l.colStep);
+                for(int r=0; r<result.data().rows; ++r)
+                {
+                    for(int c=0; c<result.data().cols; ++c)
+                    {
+                        EXPECT_TRUE(samePoint(result.data(), r, c, data, r*l.rowStep, c*l.colStep));
+                    }
+                }
+            }
+        }
+    }
+}
+
+// commonFiltering() downsampling must copy whole points (all channels) from
+// the right input row/column into its dense output, row-major.
+TEST(Util3dFilteringTest, CommonFilteringDownsampleCopiesAllChannels) {
+    const ScanLayout layouts[] = {
+        {"dense", 1, 12, 3, 1, 3},
+        {"rings on rows", 2, 12, 3, 1, 3},
+        {"rings on columns", 12, 2, 3, 3, 1},
+        {"image-like", 6, 6, 2, 2, 2},
+        {"image-like not divisible", 5, 7, 2, 2, 2}};
+
+    for(const ScanLayout & l : layouts)
+    {
+        for(LaserScan::Format format : kScanFormatsAllSizes)
+        {
+            for(int continuous=0; continuous<2; ++continuous)
+            {
+                cv::Mat data = makeUniqueScanData(l.rows, l.cols, format);
+                if(!continuous)
+                {
+                    data = makeNonContinuous(data);
+                }
+                SCOPED_TRACE(uFormat("%s %dx%d step=%d format=%s continuous=%d",
+                        l.name, l.rows, l.cols, l.step, LaserScan::formatName(format).c_str(), continuous));
+                LaserScan scan(data, 0, 0, format);
+                LaserScan result = util3d::commonFiltering(scan, l.step);
+
+                ASSERT_EQ(result.format(), format);
+                ASSERT_EQ(result.data().rows, 1);
+                ASSERT_EQ(result.size(), (l.rows/l.rowStep)*(l.cols/l.colStep));
+                int oi = 0;
+                for(int r=0; r<(l.rows/l.rowStep)*l.rowStep; r+=l.rowStep)
+                {
+                    for(int c=0; c<(l.cols/l.colStep)*l.colStep; c+=l.colStep)
+                    {
+                        EXPECT_TRUE(samePoint(result.data(), 0, oi++, data, r, c));
+                    }
+                }
+            }
+        }
+    }
+}
+
+// commonFiltering() and rangeFiltering() range filtering must copy whole
+// points (all channels) of the kept points, for every point size.
+TEST(Util3dFilteringTest, RangeFilteringLaserScanCopiesAllChannels) {
+    const std::vector<float> ranges = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f};
+    const float rangeMin = 2.5f;
+    const float rangeMax = 5.5f;
+    const int firstKept = 2; // 3, 4 and 5 meters are kept
+    const int keptCount = 3;
+
+    for(LaserScan::Format format : kScanFormatsAllSizes)
+    {
+        SCOPED_TRACE(uFormat("format=%s", LaserScan::formatName(format).c_str()));
+        cv::Mat data = makeRangeScanData(ranges, format);
+        LaserScan scan(data, 0, 0, format);
+
+        LaserScan common = util3d::commonFiltering(scan, 1, rangeMin, rangeMax);
+        ASSERT_EQ(common.format(), format);
+        ASSERT_EQ(common.size(), keptCount);
+        for(int i=0; i<keptCount; ++i)
+        {
+            EXPECT_TRUE(samePoint(common.data(), 0, i, data, 0, firstKept+i));
+        }
+
+        LaserScan range = util3d::rangeFiltering(scan, rangeMin, rangeMax);
+        ASSERT_EQ(range.format(), format);
+        ASSERT_EQ(range.size(), keptCount);
+        for(int i=0; i<keptCount; ++i)
+        {
+            EXPECT_TRUE(samePoint(range.data(), 0, i, data, 0, firstKept+i));
+        }
+    }
+}
+
+// rangeFiltering() on organized scans must keep the points in range of all
+// rows (row-major order, all channels) in a dense output, also when rows are
+// not contiguous in memory.
+TEST(Util3dFilteringTest, RangeFilteringOrganizedLaserScan) {
+    const int rows = 3;
+    const int cols = 4;
+    std::vector<float> ranges(rows*cols);
+    for(int i=0; i<rows*cols; ++i)
+    {
+        ranges[i] = float(i+1); // 1 to 12 meters, row-major
+    }
+    const float rangeMin = 3.5f;
+    const float rangeMax = 9.5f;
+    const int firstKept = 3; // 4 to 9 meters: end of row 0, row 1, start of row 2
+    const int keptCount = 6;
+
+    for(LaserScan::Format format : kScanFormatsAllSizes)
+    {
+        for(int continuous=0; continuous<2; ++continuous)
+        {
+            cv::Mat data = makeRangeScanData(ranges, format).reshape(0, rows);
+            if(!continuous)
+            {
+                data = makeNonContinuous(data);
+            }
+            SCOPED_TRACE(uFormat("format=%s continuous=%d", LaserScan::formatName(format).c_str(), continuous));
+            LaserScan scan(data, 0, 0, format);
+            ASSERT_TRUE(scan.isOrganized());
+
+            LaserScan result = util3d::rangeFiltering(scan, rangeMin, rangeMax);
+            ASSERT_EQ(result.format(), format);
+            ASSERT_EQ(result.data().rows, 1);
+            ASSERT_EQ(result.size(), keptCount);
+            for(int i=0; i<keptCount; ++i)
+            {
+                const int index = firstKept+i;
+                EXPECT_TRUE(samePoint(result.data(), 0, i, data, index/cols, index%cols));
+            }
+        }
     }
 }
 

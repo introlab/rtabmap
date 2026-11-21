@@ -324,7 +324,7 @@ bool initCalibration(std::string calibration_file, cv::Size image_size, rtabmap:
 #endif
 
     // Get rotations
-    cv::Mat R_zed = (cv::Mat_<double>(1, 3) << camerareader.getValue("stereo:rx_" + resolution_str, 0.f), camerareader.getValue("stereo:cv_" + resolution_str, 0.f), camerareader.getValue("stereo:rz_" + resolution_str, 0.f));
+    cv::Mat R_zed = cv::Mat_<double>({1, 3}, {camerareader.getValue("stereo:rx_" + resolution_str, 0.f), camerareader.getValue("stereo:cv_" + resolution_str, 0.f), camerareader.getValue("stereo:rz_" + resolution_str, 0.f)});
     //R_zed *= -1.f; // FIXME: we had to invert T below, do we need to do this with R? I don't see much difference looking at the disparity image
     cv::Mat R;
 
@@ -333,15 +333,15 @@ bool initCalibration(std::string calibration_file, cv::Size image_size, rtabmap:
     cv::Mat distCoeffs_left, distCoeffs_right;
 
     // Left
-    cv::Mat cameraMatrix_left = (cv::Mat_<double>(3, 3) << left_cam_fx, 0, left_cam_cx, 0, left_cam_fy, left_cam_cy, 0, 0, 1);
-    distCoeffs_left = (cv::Mat_<double>(1, 5) << left_cam_k1, left_cam_k2, left_cam_p1, left_cam_p2, left_cam_k3);
+    cv::Mat cameraMatrix_left = cv::Mat_<double>({3, 3}, {left_cam_fx, 0, left_cam_cx, 0, left_cam_fy, left_cam_cy, 0, 0, 1});
+    distCoeffs_left = cv::Mat_<double>({1, 5}, {left_cam_k1, left_cam_k2, left_cam_p1, left_cam_p2, left_cam_k3});
 
     // Right
-    cv::Mat cameraMatrix_right = (cv::Mat_<double>(3, 3) << right_cam_fx, 0, right_cam_cx, 0, right_cam_fy, right_cam_cy, 0, 0, 1);
-    distCoeffs_right = (cv::Mat_<double>(1, 5) << right_cam_k1, right_cam_k2, right_cam_p1, right_cam_p2, right_cam_k3);
+    cv::Mat cameraMatrix_right = cv::Mat_<double>({3, 3}, {right_cam_fx, 0, right_cam_cx, 0, right_cam_fy, right_cam_cy, 0, 0, 1});
+    distCoeffs_right = cv::Mat_<double>({1, 5}, {right_cam_k1, right_cam_k2, right_cam_p1, right_cam_p2, right_cam_k3});
 
     // Stereo
-    cv::Mat T = (cv::Mat_<double>(3, 1) << T_[0], T_[1], T_[2]);
+    cv::Mat T = cv::Mat_<double>({3, 1}, {T_[0], T_[1], T_[2]});
     T /= -1000.f; // convert in meters, inverted to get positive baseline
     //std::cout << " Camera Matrix L: \n" << cameraMatrix_left << std::endl << std::endl;
     //std::cout << " Camera Matrix R: \n" << cameraMatrix_right << std::endl << std::endl;

@@ -192,6 +192,38 @@ TEST(OdometryTest, DefaultCapabilityFlags)
 	EXPECT_FALSE(odometry.canProcessAsyncIMU());
 }
 
+TEST(OdometryTest, ThreeDoFKalmanUsesPlanarVelocityStates)
+{
+	ParametersMap parameters = baseTestParameters();
+	parameters[Parameters::kRegForce3DoF()] = "true";
+	parameters[Parameters::kOdomFilteringStrategy()] = "1";
+	parameters[Parameters::kOdomGuessMotion()] = "true";
+
+	MockOdometry odometry(parameters);
+	odometry.reset(Transform::getIdentity());
+
+	odometry.setNextTransform(Transform::getIdentity());
+	SensorData initial = makeImageData(0, 0.0);
+	ASSERT_FALSE(odometry.process(initial).isNull());
+
+	// Frame 1 initializes the filter; frames 2 and 3 go through predict
+	// (motion guess) and correct (filtered transform).
+	const Transform step(1.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	odometry.setNextTransform(step);
+	for(int i=1; i<=3; ++i)
+	{
+		SCOPED_TRACE("frame " + uNumber2Str(i));
+		SensorData data = makeImageData(i, double(i));
+		OdometryInfo info;
+		ASSERT_FALSE(odometry.process(data, &info).isNull());
+		expectTransformNear(info.transformFiltered, step, 1e-2f);
+		if(i > 1)
+		{
+			expectTransformNear(odometry.lastGuess(), step, 1e-2f);
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Strategies driven through the public API on real frames committed under
 // data/. The tests above use MockOdometry, which overrides computeTransform(),
@@ -589,6 +621,86 @@ TEST(OdometryTest, RefusesAFirstScanTooSmallForTheCorrespondenceRatio)
 			<< "a scan of unknown sweep size was refused";
 }
 
+// OdomF2M/ScanRange>0 updates the local scan map with the points of the new
+// keyframe inside a box of ScanRange size around the sensor. When no point is
+// in that box (here the corner walls are 2 m away from the sensor and the box
+// is +-0.5 m), the empty cropped cloud crashed (SIGFPE) on PCL 1.12 (issue #1799).
+TEST(OdometryTest, ScanRangeWithNoPointInRangeKeepsTracking)
+{
+	ParametersMap parameters =
+			icpOdometryParameters(Odometry::kTypeF2M, /*force3DoF=*/true, /*guessMotion=*/true);
+	parameters[Parameters::kOdomF2MScanRange()] = "1.0";
+	parameters[Parameters::kOdomScanKeyFrameThr()] = "0"; // update local map on every frame
+	std::unique_ptr<Odometry> odometry(Odometry::create(parameters));
+	ASSERT_TRUE(odometry.get() != 0);
+
+	const LaserScan corner = makeCorner2D();
+	Transform motion = Transform::getIdentity();
+	int mapSize = 0;
+	for(int i=0; i<3; ++i)
+	{
+		SensorData data = makeScanData(util3d::transformLaserScan(corner, motion.inverse()), i+1, 0.1*i);
+		OdometryInfo info;
+		const Transform pose = odometry->process(data, &info);
+		expectPoseNear(pose, motion, 0.005f, 0.5f, uFormat("frame %d", i+1));
+		if(i == 0)
+		{
+			mapSize = info.localScanMapSize;
+			ASSERT_GT(mapSize, 0);
+		}
+		else
+		{
+			// nothing in range to add
+			EXPECT_EQ(info.localScanMapSize, mapSize) << "frame " << i+1;
+		}
+		motion = Transform(0.05f, 0.03f, 0.0f, 0.0f, 0.0f, 0.02f) * motion;
+	}
+}
+
+// With OdomF2M/ScanRange>0 and OdomF2M/ScanSubtractRadius=0 (no subtraction of
+// points already in the local map), all points of the new keyframe in range are
+// added to the local map. They were dropped (empty indices), then voxelizing with
+// a 0 radius asserted.
+TEST(OdometryTest, ScanRangeWithoutSubtractionAddsKeyFramePoints)
+{
+	ParametersMap parameters =
+			icpOdometryParameters(Odometry::kTypeF2M, /*force3DoF=*/true, /*guessMotion=*/true);
+	parameters[Parameters::kOdomF2MScanRange()] = "10.0"; // whole corner in range
+	parameters[Parameters::kOdomF2MScanSubtractRadius()] = "0";
+	parameters[Parameters::kOdomF2MScanMaxSize()] = "100000";
+	parameters[Parameters::kOdomScanKeyFrameThr()] = "0"; // update local map on every frame
+	std::unique_ptr<Odometry> odometry(Odometry::create(parameters));
+	ASSERT_TRUE(odometry.get() != 0);
+
+	const LaserScan corner = makeCorner2D();
+	Transform motion = Transform::getIdentity();
+	int mapSize = 0;
+	for(int i=0; i<3; ++i)
+	{
+		SensorData data = makeScanData(util3d::transformLaserScan(corner, motion.inverse()), i+1, 0.1*i);
+		OdometryInfo info;
+		const Transform pose = odometry->process(data, &info);
+		expectPoseNear(pose, motion, 0.005f, 0.5f, uFormat("frame %d", i+1));
+		if(i == 0)
+		{
+			mapSize = info.localScanMapSize;
+			ASSERT_GT(mapSize, 0);
+		}
+		else
+		{
+			// the reported local map is the one the frame was registered
+			// against, i.e., before adding this frame. All points of the
+			// previous frame should have been added, minus the few whose
+			// recomputed normal is degenerate (NaN normals are filtered when
+			// the map scan is rebuilt; how many depends on PCL/Eigen versions).
+			EXPECT_LE(info.localScanMapSize, mapSize) << "frame " << i+1;
+			EXPECT_GE(info.localScanMapSize, mapSize - (i-1)*(int)corner.size()/20) << "frame " << i+1;
+			mapSize += corner.size();
+		}
+		motion = Transform(0.05f, 0.03f, 0.0f, 0.0f, 0.0f, 0.02f) * motion;
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Lidar deskewing with an IMU (Odom/Deskewing): a sensor moving in a box-shaped room,
 // whose scans are generated point by point from where the sensor was at each point's
@@ -698,7 +810,7 @@ double deskewedWallDistance(const Trajectory & trajectory, int frames, const Par
 	parameters.insert(ParametersPair(Parameters::kIcpPointToPlaneK(), "10"));
 	parameters.insert(ParametersPair(Parameters::kIcpMaxTranslation(), "0"));
 	parameters.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), "0.5"));
-	for(const ParametersPair & p : extra) uInsert(parameters, p);
+	uInsert(parameters, extra);
 	std::unique_ptr<Odometry> odometry(Odometry::create(parameters));
 
 	double imuStamp = 0.0;

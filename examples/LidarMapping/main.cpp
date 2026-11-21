@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UDirectory.h"
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include <stdio.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
@@ -94,7 +95,7 @@ int main(int argc, char * argv[])
 	}
 	else
 	{
-		filepath = uReplaceChar(filepath, '~', UDirectory::homeDir());
+		filepath = UDirectory::expandHomeDir(filepath);
 		printf("Using file=%s\n", filepath.c_str());
 		lidar = new LidarVLP16(filepath);
 	}
@@ -111,6 +112,7 @@ int main(int argc, char * argv[])
 
 	// GUI stuff, there the handler will receive RtabmapEvent and construct the map
 	// We give it the lidar so the GUI can pause/resume the lidar
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
 	QApplication app(argc, argv);
 	MapBuilder mapBuilder(&lidarThread);
 

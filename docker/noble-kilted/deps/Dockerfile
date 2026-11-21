@@ -24,6 +24,7 @@ RUN apt-get update && \
     apt upgrade -y && \
     apt-get install -y \
       git \
+      libgtest-dev \
       wget \
       libtbb-dev \
       libproj-dev \

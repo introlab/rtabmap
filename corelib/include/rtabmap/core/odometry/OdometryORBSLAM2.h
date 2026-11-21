@@ -48,7 +48,7 @@ private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
 private:
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 2
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 2
 	ORBSLAM2System * orbslam_;
 	bool firstFrame_;
 	Transform originLocalTransform_;

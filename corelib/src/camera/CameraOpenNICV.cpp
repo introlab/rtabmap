@@ -82,9 +82,9 @@ bool CameraOpenNICV::init(const std::string & calibrationFolder, const std::stri
 		if( _capture.get( cv::CAP_OPENNI_IMAGE_GENERATOR_PRESENT ) )
 		{
 			UINFO("Image generator output mode:");
-			UINFO("FRAME_WIDTH    %f", _capture.get( cv::CAP_OPENNI_IMAGE_GENERATOR+cv::CAP_PROP_FRAME_WIDTH ));
-			UINFO("FRAME_HEIGHT   %f", _capture.get( cv::CAP_OPENNI_IMAGE_GENERATOR+cv::CAP_PROP_FRAME_HEIGHT ));
-			UINFO("FPS            %f", _capture.get( cv::CAP_OPENNI_IMAGE_GENERATOR+cv::CAP_PROP_FPS ));
+			UINFO("FRAME_WIDTH    %f", _capture.get( (int)cv::CAP_OPENNI_IMAGE_GENERATOR+cv::CAP_PROP_FRAME_WIDTH ));
+			UINFO("FRAME_HEIGHT   %f", _capture.get( (int)cv::CAP_OPENNI_IMAGE_GENERATOR+cv::CAP_PROP_FRAME_HEIGHT ));
+			UINFO("FPS            %f", _capture.get( (int)cv::CAP_OPENNI_IMAGE_GENERATOR+cv::CAP_PROP_FPS ));
 		}
 		else
 		{

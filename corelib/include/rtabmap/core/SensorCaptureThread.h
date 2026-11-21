@@ -554,6 +554,7 @@ private:
 	bool _imuBaseFrameConversion; ///< Convert IMU data to base frame
 	Feature2D * _featureDetector; ///< Feature detector for automatic feature extraction (owned, null if disabled)
 	bool _depthAsMask; ///< Use depth as mask for feature detection
+	int _failedCaptures; ///< Consecutive captures without data (a live sensor is retried before stopping)
 };
 
 /**

@@ -415,16 +415,10 @@ int main(int argc, char * argv[])
 		UINFO("avg inliers =%f (subInliers=%f)", sumInliers/float(inliers), sumSubInliers/float(subInliers));
 
 
-		cv::namedWindow( "Right", cv::WINDOW_AUTOSIZE );
-		cv::imshow( "Right", right );
-
-		cv::namedWindow( "Mask", cv::WINDOW_AUTOSIZE );
-		cv::imshow( "Mask", mask );
-
-		cv::namedWindow( "Left", cv::WINDOW_AUTOSIZE );
-		cv::imshow( "Left", left );
-
-		cv::waitKey(0);
+		cv::imwrite("stereoEval_right.png", right);
+		cv::imwrite("stereoEval_mask.png", mask);
+		cv::imwrite("stereoEval_left.png", left);
+		UINFO("Saved stereoEval_left.png, stereoEval_right.png and stereoEval_mask.png in the current directory.");
 
 	}
 

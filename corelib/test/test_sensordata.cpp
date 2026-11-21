@@ -632,7 +632,7 @@ TEST(SensorDataTest, SetUserData)
 TEST(SensorDataTest, SetUserDataCompressesRawData)
 {
     SensorData data;
-    const cv::Mat userData = (cv::Mat_<float>(1, 4) << 1.0f, 2.0f, 3.0f, 4.0f);
+    const cv::Mat userData = cv::Mat_<float>({1, 4}, {1.0f, 2.0f, 3.0f, 4.0f});
 
     data.setUserData(userData);
 
@@ -645,7 +645,7 @@ TEST(SensorDataTest, SetUserDataCompressesRawData)
 // setRGBDImage() do. With nothing compressed yet, the raw data is still compressed.
 TEST(SensorDataTest, SetUserDataWithoutClearingKeepsTheCompressedCopy)
 {
-    const cv::Mat userData = (cv::Mat_<float>(1, 4) << 1.0f, 2.0f, 3.0f, 4.0f);
+    const cv::Mat userData = cv::Mat_<float>({1, 4}, {1.0f, 2.0f, 3.0f, 4.0f});
     const cv::Mat compressed = compressData2(userData);
 
     SensorData data;

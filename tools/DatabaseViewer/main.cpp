@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
 #include "rtabmap/gui/DatabaseViewer.h"
 #include "rtabmap/utilite/ULogger.h"
 
@@ -56,6 +57,7 @@ int main(int argc, char * argv[])
 	// before QApplication is constructed.
 	QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
 	QApplication * app = new QApplication(argc, argv);
 	rtabmap::DatabaseViewer * mainWindow = new rtabmap::DatabaseViewer();
 

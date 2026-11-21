@@ -416,6 +416,46 @@ TEST(RegistrationIcpTest, ParseParametersOverridesDefaults)
 	EXPECT_FALSE(reg.force3DoF());
 }
 
+// Requesting a strategy not built in falls back to another one (issue #1800:
+// Icp/Strategy=2 without CCCoreLib fell back to libpointmatcher after the
+// libpointmatcher ICP object was created only for Icp/Strategy=1, crashing at
+// the first registration). Every requested strategy must give a usable
+// registration, whether set at construction or re-parsed afterwards
+// (e.g., rtabmap-reprocess overriding Icp/Strategy).
+TEST(RegistrationIcpTest, UnavailableStrategyFallsBackToWorkingBackend)
+{
+	const LaserScan from = makeScan(makeRandomCloud());
+	const Transform truth(0.05f, 0.03f, -0.02f, 0.0f, 0.0f, 0.0f);
+	const LaserScan to = util3d::transformLaserScan(from, truth.inverse());
+
+	for(int i = RegistrationIcp::kIcpPCL; i < RegistrationIcp::kIcpEnd; ++i)
+	{
+		const auto requested = static_cast<RegistrationIcp::IcpStrategy>(i);
+		SCOPED_TRACE(uFormat("requested Icp/Strategy=%d (available=%d)", i, RegistrationIcp::available(requested)?1:0));
+
+		for(int reparse = 0; reparse < 2; ++reparse)
+		{
+			SCOPED_TRACE(reparse ? "set by parseParameters()" : "set at construction");
+			RegistrationIcp reg(baseIcpParams(reparse ? RegistrationIcp::kIcpPCL : requested));
+			if(reparse)
+			{
+				ParametersMap update;
+				update[Parameters::kIcpStrategy()] = uNumber2Str(i);
+				reg.parseParameters(update);
+			}
+
+			Signature fromS = makeSignature(1, from);
+			Signature toS   = makeSignature(2, to);
+			RegistrationInfo info;
+			const Transform t = reg.computeTransformation(fromS, toS, Transform::getIdentity(), &info);
+			ASSERT_FALSE(t.isNull()) << info.rejectedMsg;
+			EXPECT_LT(t.getDistance(truth), kRecoveryTol)
+					<< "got=" << t.prettyPrint() << " truth=" << truth.prettyPrint();
+			EXPECT_LT(t.getAngle(truth), kRecoveryTol);
+		}
+	}
+}
+
 // =====================================================================
 // Corridor degeneracy: low-complexity detection + recovery strategy
 //

@@ -681,6 +681,29 @@ cv::Mat RTABMAP_CORE_EXPORT exposureFusion(
 	const std::vector<cv::Mat> & images);
 
 /**
+ * @brief Equalizes the exposure of the left and right images of a stereo camera.
+ *
+ * Their gains are estimated with cv::detail::GainCompensator, assuming both images see
+ * the same scene, and applied to each one. Stereo correspondences (e.g., by optical
+ * flow) assume the same brightness in both images: with cameras exposing differently,
+ * most of them would be rejected.
+ *
+ * @param left      Left image (8 bits, mono or color).
+ * @param right     Right image (8 bits, mono or color), of the same size.
+ * @param leftOut   Compensated left image (can be the same as @p left).
+ * @param rightOut  Compensated right image (can be the same as @p right).
+ * @param gains     If not null, the gains applied to the left and right images.
+ * @return false (and the images copied as they are) if not compensated: images of
+ *         different sizes or not 8 bits, or OpenCV version under 3.
+ */
+bool RTABMAP_CORE_EXPORT stereoExposureCompensation(
+	const cv::Mat & left,
+	const cv::Mat & right,
+	cv::Mat & leftOut,
+	cv::Mat & rightOut,
+	std::vector<double> * gains = 0);
+
+/**
  * @brief Converts a color from HSV (Hue, Saturation, Value) to RGB.
  * 
  * This function takes HSV color values and converts them to their corresponding

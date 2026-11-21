@@ -99,6 +99,7 @@ public:
 		kSrcK4A            = 10,
 		kSrcSeerSense      = 11,
 		kSrcOrbbecSDK      = 12,
+		kSrcEinstar        = 13,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,
@@ -373,6 +374,7 @@ private Q_SLOTS:
 	void updateStereoDisparityVisibility();
 	void updateFeatureMatchingVisibility();
 	void updateGlobalDescriptorVisibility();
+	void updateOnnxProviderVisibility();
 	void updateAvailableMarkerDictionaries();
 	void updateOdometryStackedIndex(int index);
 	void useOdomFeatures();
@@ -393,6 +395,12 @@ private Q_SLOTS:
 	void changePyMatcherModel();
 	void changePyDescriptorPath();
 	void changePyDetectorPath();
+	void changeOnnxDetectorModelPath();
+	void changeOnnxMatcherModelPath();
+	void changeOnnxDescriptorModelPath();
+	void changeOnnxTensorRTCachePath();
+	void changeOnnxOpenVINOCachePath();
+	void changeOnnxOpenVINOLibraryPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();
@@ -419,6 +427,8 @@ private Q_SLOTS:
 	void selectSourceOni2Path();
 	void selectSourceMKVPath();
 	void selectSourceSvoPath();
+	void selectSourceEinstarCalibration();
+	void selectSourceEinstarReplay();
 	void selectSourceRealsense2JsonPath();
 	void selectSourceDepthaiBlobPath();
 	void selectVlp16PcapPath();
@@ -459,6 +469,7 @@ private:
 	void addParameters(const QStackedWidget * stackedWidget, int panel = -1);
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
+	void changeOnnxModelPath(QLineEdit * lineEdit);
 	void readSettingsBegin();
 	Camera * createCamera(Src driver, const QString & device, const QString & calibrationPath, bool useRawImages, bool useColor, bool odomOnly, bool odomSensorExtrinsicsCalib); // return camera should be deleted if not null
 

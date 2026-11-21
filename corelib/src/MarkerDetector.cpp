@@ -29,10 +29,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
+#include <algorithm>
 
 #if CV_MAJOR_VERSION > 4
 #include <opencv2/geometry.hpp>
 #endif
+#include <opencv2/calib3d.hpp>
 
 #ifdef HAVE_OPENCV_ARUCO
 #if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
@@ -201,6 +203,8 @@ MarkerDetector::MarkerDetector(const ParametersMap & parameters) :
 	maxRange_(Parameters::defaultMarkerMaxRange()),
 	minRange_(Parameters::defaultMarkerMinRange()),
 	dictionaryId_(Parameters::defaultMarkerDictionary()),
+	aprilTagUpright_(Parameters::defaultMarkerAprilTagUpright()),
+	aprilTagOpenCVPnP_(Parameters::defaultMarkerAprilTagOpenCVPnP()),
 	apriltagLibDetector_(NULL),
 	apriltagLibFamily_(NULL)
 {
@@ -247,6 +251,8 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMarkerMaxRange(), maxRange_);
 	Parameters::parse(parameters, Parameters::kMarkerMinRange(), minRange_);
 	Parameters::parse(parameters, Parameters::kMarkerDictionary(), dictionaryId_);
+	Parameters::parse(parameters, Parameters::kMarkerAprilTagUpright(), aprilTagUpright_);
+	Parameters::parse(parameters, Parameters::kMarkerAprilTagOpenCVPnP(), aprilTagOpenCVPnP_);
 	
 	if(parameters.find(Parameters::kMarkerLengths()) != parameters.end())
 	{
@@ -348,7 +354,7 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 
 	
 #if CV_MAJOR_VERSION < 3 || (CV_MAJOR_VERSION == 3 && (CV_MINOR_VERSION <4 || (CV_MINOR_VERSION ==4 && CV_SUBMINOR_VERSION<2)))
-	if(dictionaryId_ = 17 && strategy_ == 0)
+	if(dictionaryId_ >= 17 && dictionaryId_ <=20 && strategy_ == 0)
 	{
 		UERROR("Cannot set AprilTag dictionary. OpenCV version should be at least 3.4.2, "
 				"current version is %s. Setting %s to default (%d)",
@@ -357,7 +363,8 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 				Parameters::defaultMarkerDictionary());
 		dictionaryId_ = Parameters::defaultMarkerDictionary();
 	}
-#elif CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
+#endif
+#if CV_MAJOR_VERSION < 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION <8)
 	if(dictionaryId_ == 21 && strategy_ == 0)
 	{
 		UERROR("Cannot set ARUCO_MIP_36h12 dictionary. OpenCV version should be at least 4.8.0, "
@@ -409,6 +416,14 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 		if(apriltagLibDetector_ == NULL)
 		{
 			apriltagLibDetector_ = apriltag_detector_create();
+			// Use our defaults, not the AprilTag library's ones (e.g., its quad_decimate is 2),
+			// for parameters not in the map
+			((apriltag_detector_t*)apriltagLibDetector_)->nthreads = Parameters::defaultMarkerAprilTagNThreads();
+			((apriltag_detector_t*)apriltagLibDetector_)->quad_decimate = Parameters::defaultMarkerAprilTagQuadDecimate();
+			((apriltag_detector_t*)apriltagLibDetector_)->quad_sigma = Parameters::defaultMarkerAprilTagQuadSigma();
+			((apriltag_detector_t*)apriltagLibDetector_)->refine_edges = Parameters::defaultMarkerAprilTagRefineEdges();
+			((apriltag_detector_t*)apriltagLibDetector_)->decode_sharpening = Parameters::defaultMarkerAprilTagDecodeSharpening();
+			((apriltag_detector_t*)apriltagLibDetector_)->debug = Parameters::defaultMarkerAprilTagDebug();
 		}
 		Parameters::parse(parameters, Parameters::kMarkerAprilTagNThreads(), ((apriltag_detector_t*)apriltagLibDetector_)->nthreads);
 		Parameters::parse(parameters, Parameters::kMarkerAprilTagQuadDecimate(), ((apriltag_detector_t*)apriltagLibDetector_)->quad_decimate);
@@ -442,10 +457,16 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 		}
 		apriltagLibFamily_  = createAprilTagPredefinedDictionary(dictFamily);
 		UASSERT_MSG(apriltagLibFamily_ != NULL, uFormat("AprilTag library cannot be used with dictionary type %d", (int)dictionaryId_).c_str());
+		// Correct up to 2 bit errors (AprilTag's default), but not more than the
+		// family can unambiguously correct (half its minimum Hamming distance),
+		// otherwise markers can be decoded with a wrong id (e.g., ArUco 4x4 with h=2).
+		apriltag_family_t * family = (apriltag_family_t*)apriltagLibFamily_;
+		int maxBitsCorrected = std::min(2, std::max(0, ((int)family->h-1)/2));
+		UDEBUG("AprilTag family %s (min Hamming distance=%d): correcting up to %d bit errors", family->name, (int)family->h, maxBitsCorrected);
 		errno = 0;
-		apriltag_detector_add_family(((apriltag_detector_t*)apriltagLibDetector_), (apriltag_family_t*)apriltagLibFamily_);
+		apriltag_detector_add_family_bits(((apriltag_detector_t*)apriltagLibDetector_), family, maxBitsCorrected);
 		if (errno == ENOMEM) {
-			UFATAL("Unable to add family to detector due to insufficient memory to allocate the tag-family decoder with the default maximum hamming value of 2. Try choosing an alternative tag family.");
+			UFATAL("Unable to add family to detector due to insufficient memory to allocate the tag-family decoder with a maximum hamming value of %d. Try choosing an alternative tag family.", maxBitsCorrected);
 		}
 	}
 #else
@@ -462,11 +483,12 @@ void MarkerDetector::parseParameters(const ParametersMap & parameters)
 }
 
 // deprecated
-#if (((CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION==4 && CV_MINOR_VERSION >=7)) && defined(HAVE_OPENCV_OBJDETECT)) || defined(HAVE_OPENCV_ARUCO)) && (CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7))
+#if defined(RTABMAP_APRILTAG) || CV_MAJOR_VERSION > 4 || (CV_MAJOR_VERSION == 4 && CV_MINOR_VERSION >= 7)
 // Drop-in replacement for cv::aruco::estimatePoseSingleMarkers(), which was deprecated
 // in OpenCV 4.7 and removed in OpenCV 5. It reproduces the legacy default behavior (marker
 // object points ordered as ARUCO_CCW_CENTER + SOLVEPNP_ITERATIVE) using cv::solvePnP() per
-// marker. For OpenCV < 4.7 the native cv::aruco::estimatePoseSingleMarkers() is still used.
+// marker. For OpenCV < 4.7 the native cv::aruco::estimatePoseSingleMarkers() is still used
+// by the OpenCV strategy. Also used by MarkerAprilTag/OpenCVPnP.
 static void estimatePoseSingleMarkers(
 		const std::vector<std::vector<cv::Point2f> > & corners,
 		float markerLength,
@@ -489,6 +511,13 @@ static void estimatePoseSingleMarkers(
 	}
 }
 #endif
+
+// Whether the marker's z axis (out of the marker) points toward the camera (at the
+// origin), i.e., the marker is seen from its front. Pose in camera optical frame.
+static bool facesCamera(const Transform & pose)
+{
+	return pose.r13()*pose.x() + pose.r23()*pose.y() + pose.r33()*pose.z() < 0.0f;
+}
 
 std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
                            const std::vector<CameraModel> & models,
@@ -606,52 +635,89 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 			MATD_EL(det->H, 0, 1) -= offsetX * MATD_EL(det->H, 2, 1);
 			MATD_EL(det->H, 0, 2) -= offsetX * MATD_EL(det->H, 2, 2);
 
-			apriltag_detection_info_t info;
-			info.det = det;
-			info.tagsize = 1.0f;
-			info.fx = model.fx();
-			info.fy = model.fy();
-			info.cx = model.cx();
-			info.cy = model.cy();
+			// AprilTag frame (x right, y down, z into the tag) to OpenCV
+			// frame (x right, y up, z out of the tag), relative to the
+			// AprilTag library's upright (see MarkerAprilTag/Upright below).
+			const Transform toOpenCV(1,0,0,0, 0,-1,0,0, 0,0,-1,0);
 
-			// Then call estimate_tag_pose.
-			apriltag_pose_t pose;
-			double err = estimate_tag_pose(&info, &pose);
-
-			if (pose.R && pose.t)
+			Transform markerPose; // in OpenCV frame
+			double err = 0.0;
+			if(aprilTagOpenCVPnP_)
 			{
-				if(MATD_EL(pose.t, 2, 0) > 0)
+				// AprilTag corners are in the same order than the object points of
+				// estimatePoseSingleMarkers(), so the pose is in AprilTag frame.
+				std::vector<std::vector<cv::Point2f> > tagCorners(1, std::vector<cv::Point2f>(4));
+				for(int i=0; i<4; ++i)
 				{
-					Transform t(MATD_EL(pose.R, 0, 0), MATD_EL(pose.R, 0, 1), MATD_EL(pose.R, 0, 2), MATD_EL(pose.t, 0, 0),
-								MATD_EL(pose.R, 1, 0), MATD_EL(pose.R, 1, 1), MATD_EL(pose.R, 1, 2), MATD_EL(pose.t, 1, 0),
-								MATD_EL(pose.R, 2, 0), MATD_EL(pose.R, 2, 1), MATD_EL(pose.R, 2, 2), MATD_EL(pose.t, 2, 0));
-					poses.push_back(t*Transform(-1,0,0,0, 0,1,0,0, 0,0,-1,0)); // Flip tag to match same frame than OpenCV (+x->-x, +z->-z)
+					tagCorners[0][i] = cv::Point2f(det->p[i][0], det->p[i][1]);
+				}
+				std::vector<cv::Vec3d> rvecs, tvecs;
+				estimatePoseSingleMarkers(tagCorners, 1.0f, model.K(), model.D(), rvecs, tvecs);
+				cv::Mat R;
+				cv::Rodrigues(rvecs[0], R);
+				markerPose = Transform(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvecs[0].val[0],
+							R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvecs[0].val[1],
+							R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvecs[0].val[2]) * toOpenCV;
+			}
+			else
+			{
+				apriltag_detection_info_t info;
+				info.det = det;
+				info.tagsize = 1.0f;
+				info.fx = model.fx();
+				info.fy = model.fy();
+				info.cx = model.cx();
+				info.cy = model.cy();
 
+				// Then call estimate_tag_pose.
+				apriltag_pose_t pose;
+				err = estimate_tag_pose(&info, &pose);
+
+				if (pose.R && pose.t)
+				{
+					markerPose = Transform(MATD_EL(pose.R, 0, 0), MATD_EL(pose.R, 0, 1), MATD_EL(pose.R, 0, 2), MATD_EL(pose.t, 0, 0),
+								MATD_EL(pose.R, 1, 0), MATD_EL(pose.R, 1, 1), MATD_EL(pose.R, 1, 2), MATD_EL(pose.t, 1, 0),
+								MATD_EL(pose.R, 2, 0), MATD_EL(pose.R, 2, 1), MATD_EL(pose.R, 2, 2), MATD_EL(pose.t, 2, 0)) * toOpenCV;
+				}
+
+				// Free pose memory
+				if (pose.R) matd_destroy(pose.R);
+				if (pose.t) matd_destroy(pose.t);
+			}
+
+			if (!markerPose.isNull())
+			{
+				if(markerPose.z() <= 0)
+				{
+					UWARN("Skipping %d because its estimated pose is behind the camera %d", det->id, cameraIndex);
+				}
+				else if(!facesCamera(markerPose))
+				{
+					UWARN("Skipping %d because its estimated pose is seen from its back by the camera %d", det->id, cameraIndex);
+				}
+				else
+				{
+					poses.push_back(markerPose);
+
+					// AprilTag corners are bottom-left first, counter-clockwise; reorder
+					// them like OpenCV: top-left first, clockwise.
 					corners.push_back(std::vector<cv::Point2f>(4));
 					for(int i=0; i<4; ++i)
 					{
 						// reconvert in original stitched image
-						corners.back()[i].x = det->p[i][0]+offsetX;
-						corners.back()[i].y = det->p[i][1];
+						corners.back()[i].x = det->p[3-i][0]+offsetX;
+						corners.back()[i].y = det->p[3-i][1];
 					}
 					ids.push_back(det->id);
 					cams.push_back(cameraIndex);
 					UDEBUG("Add marker %d (err = %f)", det->id, err);
 					idsAdded.insert(det->id);
 				}
-				else
-				{
-					UWARN("Skipping %d because its estimated pose is behind the camera %d", det->id, cameraIndex);
-				}
 			}
 			else
 			{
 				UWARN("Failed to compute pose for marker %d, ignoring...", det->id);
 			}
-
-			// Free pose memory
-			if (pose.R) matd_destroy(pose.R);
-			if (pose.t) matd_destroy(pose.t);
         }
 
 		apriltag_detections_destroy(apriltagDetections);
@@ -741,6 +807,11 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 				Transform t(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvecs[i].val[0],
 							R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvecs[i].val[1],
 							R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvecs[i].val[2]);
+				if(!facesCamera(t))
+				{
+					UWARN("Skipping %d because its estimated pose is seen from its back by the camera %d", cvIdsPerCam[cam][i], (int)cam);
+					continue;
+				}
 				poses.push_back(t);
 				ids.push_back(cvIdsPerCam[cam][i]);
 				cams.push_back(cam);
@@ -755,6 +826,21 @@ std::map<int, MarkerInfo> MarkerDetector::detect(const cv::Mat & image,
 #else
 	UERROR("RTAB-Map is not built with \"aruco\" module from OpenCV.");
 #endif
+	}
+
+	// The poses above are relative to the upright of the library used: all
+	// libraries agree for ArUco dictionaries, but OpenCV's AprilTag dictionaries
+	// have their top on the bottom of the official AprilTag images (which the
+	// AprilTag library uses). Rotate them if the requested upright is the other one.
+	const bool isAprilTagDictionary = dictionaryId_ >= 17 && dictionaryId_ <= 20; // DICT_APRILTAG_16h5 ... DICT_APRILTAG_36h11
+	const bool officialUpright = strategy_ == kStrategyApriltag;
+	if(isAprilTagDictionary && officialUpright != (aprilTagUpright_ == 1))
+	{
+		for(size_t i=0; i<poses.size(); ++i)
+		{
+			poses[i] = poses[i] * Transform(-1,0,0,0, 0,-1,0,0, 0,0,1,0); // 180 deg around z
+			std::rotate(corners[i].begin(), corners[i].begin()+2, corners[i].end()); // first corner on the top-left of the requested upright
+		}
 	}
 
 	// Estimate scale and fill up output detections

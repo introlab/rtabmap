@@ -25,6 +25,14 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+// Eigen::umeyama() (PCL's SVD registration below) loads its 3-float mean vectors
+// with 4-float SSE packets, which GCC >= 12 reports as -Warray-bounds (a false
+// positive). The warning comes out when the file is optimized, after any
+// diagnostic pop, so it is disabled for this whole file.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
+
 #include "rtabmap/core/util3d_registration.h"
 
 #include "rtabmap/core/util3d_transforms.h"

@@ -31,8 +31,31 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UFile.h"
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UConversion.h"
-#include <opencv2/highgui/highgui.hpp>
+#include "rtabmap/utilite/UThread.h"
+#include "rtabmap/utilite/UCv2Qt.h"
+#include <QApplication>
+#include <rtabmap/gui/QtPlatform.h>
+#include <QKeyEvent>
+#include <QLabel>
+#include <QPixmap>
 #include <stdio.h>
+
+// Images are shown with Qt instead of cv::imshow(): linking opencv_highgui
+// can load a different Qt major version than rtabmap_gui (e.g., Qt5 vs Qt6
+// on Ubuntu 26.04), which crashes the application on startup.
+bool running = true;
+class EscapeFilter : public QObject
+{
+protected:
+	virtual bool eventFilter(QObject * obj, QEvent * event)
+	{
+		if(event->type() == QEvent::KeyPress && ((QKeyEvent*)event)->key() == Qt::Key_Escape)
+		{
+			running = false; // if ESC, quit
+		}
+		return QObject::eventFilter(obj, event);
+	}
+};
 
 void showUsage()
 {
@@ -175,20 +198,31 @@ int main(int argc, char * argv[])
 		}
 	}
 
+	rtabmap::useXWaylandOnGnome(); // must be before QApplication
+	QApplication app(argc, argv);
+	EscapeFilter escapeFilter;
+	app.installEventFilter(&escapeFilter);
+	QLabel view;
+	view.setWindowTitle("Video");
+
 	cv::Mat rgb;
 	rgb = camera->takeImage().imageRaw();
-	cv::namedWindow("Video", cv::WINDOW_AUTOSIZE); // create window
-	while(!rgb.empty())
+	while(!rgb.empty() && running)
 	{
-		cv::imshow("Video", rgb); // show frame
+		view.setPixmap(QPixmap::fromImage(uCvMat2QImage(rgb))); // show frame
+		if(!view.isVisible())
+		{
+			view.resize(rgb.cols, rgb.rows);
+			view.show();
+		}
 
-		int c = cv::waitKey(10); // wait 10 ms or for key stroke
-		if(c == 27)
-			break; // if ESC, break and quit
+		app.processEvents();
+		uSleep(10);
+		if(!view.isVisible())
+			break; // window closed
 
 		rgb = camera->takeImage().imageRaw();
 	}
-	cv::destroyWindow("Video");
 	if(camera)
 	{
 		delete camera;

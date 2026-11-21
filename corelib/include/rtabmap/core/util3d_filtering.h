@@ -60,9 +60,13 @@ namespace util3d
  * Depending on the filtering options used, the output point cloud may be dense if the input is organized.
  *
  * @param scanIn Input LaserScan to be filtered.
- * @param downsamplingStep Step size for downsampling. A value >1 will reduce the scan resolution. For organized 
- *                         scans, only the largest dimension is downsampled and the result is dense. For example, 
- *                         if the input organized scan is 16x1024, the resulting scan will be 1x8192 (if all values are valid).
+ * @param downsamplingStep Step size for downsampling. A value >1 will reduce the scan resolution. Organized
+ *                         scans are sampled like downsample(const LaserScan&, int), and the result is dense:
+ *                         for LiDAR-like scans (one dimension at most 1/4 of the other, e.g. 16x1024), each ring is
+ *                         downsampled, so a 16x1024 scan with step 2 gives 1x8192 (if all values are valid); for
+ *                         depth-image-like scans (e.g. 480x640, or square), both dimensions are downsampled, so
+ *                         step 2 gives 1x76800 (remaining rows/cols when not divisible by step are dropped, and a dimension
+ *                         smaller than step is not downsampled).
  * @param rangeMin Minimum range to keep points from the scan viewpoint. Points closer than this value will be discarded. Output point cloud will be dense. Set to 0 to disable.
  * @param rangeMax Maximum range to keep points from the scan viewpoint. Points farther than this value will be discarded. Output point cloud will be dense. Set to 0 to disable.
  * @param voxelSize Size of the voxel grid in meters. A value >0 enables voxel filtering. Output point cloud will be dense.

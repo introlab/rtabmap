@@ -383,7 +383,15 @@ bool VWDictionary::setNNStrategy(NNStrategy strategy)
 #endif
 #endif
 
-	if(strategy>=kNNUndef)
+#ifndef RTABMAP_NANOFLANN
+	if(strategy == kNNNanoFlannKdTree)
+	{
+		UWARN("Nearest neighbor strategy \"kNNNanoFlannKdTree\" chosen but RTAB-Map is not built with nanoflann! Doing \"kNNFlannKdTree\" instead.");
+		strategy = kNNFlannKdTree;
+	}
+#endif
+
+	if((int)strategy < 0 || strategy>=kNNUndef)
 	{
 		UERROR("Nearest neighbor strategy \"%d\" chosen but this strategy cannot be used with a dictionary! Doing \"kNNBruteForce\" instead.", (int)strategy);
 		strategy = kNNBruteForce;

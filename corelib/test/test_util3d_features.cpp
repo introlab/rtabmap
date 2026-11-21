@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_features.h"
+#include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/utilite/UException.h"
 #include "rtabmap/utilite/UConversion.h"
@@ -287,4 +288,117 @@ TEST(Util3dFeaturesTest, AggregateEmptyInputReturnsEmptyMapOrInvalid) {
 
     wordIds.push_back(1);
     EXPECT_THROW(util3d::aggregate(wordIds, keypoints), UException);
+}
+namespace {
+
+// Synthetic 2-view setup for generateWords3DMono(): random 3D points seen by a
+// camera with a significant lever arm relative to the base frame, and a base
+// motion with rotation (so the lever arm also contributes to the camera
+// translation).
+struct MonoScene
+{
+    CameraModel model;
+    Transform baseMotion; // pose of next base frame in ref base frame
+    std::map<int, cv::KeyPoint> refWords;
+    std::map<int, cv::KeyPoint> nextWords;
+    std::map<int, cv::Point3f> points3D; // ground truth, in ref base frame
+};
+
+MonoScene makeMonoScene()
+{
+    MonoScene scene;
+    const Transform localTransform = Transform(0.3f, -0.1f, 0.5f, 0, 0, 0) * CameraModel::opticalRotation();
+    scene.model = CameraModel(300.0, 300.0, 160.0, 120.0, localTransform, 0, cv::Size(320, 240));
+    scene.baseMotion = Transform(0.15f, 0.05f, 0.0f, 0.0f, 0.0f, 0.15f);
+    const Transform cameraMotion = localTransform.inverse() * scene.baseMotion * localTransform;
+
+    cv::RNG rng(42);
+    for(int id=1; id<=200; ++id)
+    {
+        // in ref camera frame
+        cv::Point3f ptA(rng.uniform(-1.5f, 1.5f), rng.uniform(-1.0f, 1.0f), rng.uniform(2.0f, 5.0f));
+        cv::Point3f ptB = util3d::transformPoint(ptA, cameraMotion.inverse());
+        if(ptB.z <= 0)
+        {
+            continue;
+        }
+        float uA, vA, uB, vB;
+        scene.model.reproject(ptA.x, ptA.y, ptA.z, uA, vA);
+        scene.model.reproject(ptB.x, ptB.y, ptB.z, uB, vB);
+        if(scene.model.inFrame(uA, vA) && scene.model.inFrame(uB, vB))
+        {
+            scene.refWords.insert(std::make_pair(id, cv::KeyPoint(uA, vA, 3)));
+            scene.nextWords.insert(std::make_pair(id, cv::KeyPoint(uB, vB, 3)));
+            scene.points3D.insert(std::make_pair(id, util3d::transformPoint(ptA, localTransform)));
+        }
+    }
+    return scene;
+}
+
+void expectWordsInBaseFrame(const MonoScene & scene, const std::map<int, cv::Point3f> & words3D)
+{
+    ASSERT_GT(words3D.size(), scene.points3D.size()/2);
+    for(std::map<int, cv::Point3f>::const_iterator iter=words3D.begin(); iter!=words3D.end(); ++iter)
+    {
+        const cv::Point3f & gt = scene.points3D.at(iter->first);
+        EXPECT_NEAR(iter->second.x, gt.x, 0.02f) << "word " << iter->first;
+        EXPECT_NEAR(iter->second.y, gt.y, 0.02f) << "word " << iter->first;
+        EXPECT_NEAR(iter->second.z, gt.z, 0.02f) << "word " << iter->first;
+    }
+}
+
+} // namespace
+
+// Scale taken from the motion guess (Mem/StereoFromMotion, Vis/EstimationType=2):
+// the camera local transform translation must not be scaled.
+TEST(Util3dFeaturesTest, GenerateWords3DMonoWithMotionGuessAndLeverArm) {
+    MonoScene scene = makeMonoScene();
+    ASSERT_GT(scene.points3D.size(), 50u);
+
+    Transform cameraTransform = scene.baseMotion;
+    std::map<int, cv::Point3f> words3D = util3d::generateWords3DMono(
+        scene.refWords, scene.nextWords, scene.model, cameraTransform, 1.0f);
+
+    ASSERT_FALSE(cameraTransform.isNull());
+    EXPECT_NEAR(cameraTransform.x(), scene.baseMotion.x(), 0.005f);
+    EXPECT_NEAR(cameraTransform.y(), scene.baseMotion.y(), 0.005f);
+    EXPECT_NEAR(cameraTransform.z(), scene.baseMotion.z(), 0.005f);
+    EXPECT_NEAR(cameraTransform.theta(), scene.baseMotion.theta(), 0.005f);
+    expectWordsInBaseFrame(scene, words3D);
+}
+
+// Scale estimated from 3D guess points without motion guess (OdometryMono initialization).
+TEST(Util3dFeaturesTest, GenerateWords3DMonoWithPointsGuessAndLeverArm) {
+    MonoScene scene = makeMonoScene();
+    ASSERT_GT(scene.points3D.size(), 50u);
+
+    Transform cameraTransform;
+    double variance = -1.0;
+    std::map<int, cv::Point3f> words3D = util3d::generateWords3DMono(
+        scene.refWords, scene.nextWords, scene.model, cameraTransform, 1.0f, 0.99f, 4,
+        scene.points3D, &variance);
+
+    ASSERT_FALSE(cameraTransform.isNull());
+    EXPECT_NEAR(cameraTransform.x(), scene.baseMotion.x(), 0.005f);
+    EXPECT_NEAR(cameraTransform.y(), scene.baseMotion.y(), 0.005f);
+    EXPECT_NEAR(cameraTransform.z(), scene.baseMotion.z(), 0.005f);
+    EXPECT_LT(variance, 1e-4);
+    expectWordsInBaseFrame(scene, words3D);
+}
+
+// Variance against 3D guess points with motion guess (RegistrationVis
+// epipolar estimation, compared to Vis/EpipolarGeometryVar).
+TEST(Util3dFeaturesTest, GenerateWords3DMonoVarianceWithLeverArm) {
+    MonoScene scene = makeMonoScene();
+    ASSERT_GT(scene.points3D.size(), 50u);
+
+    Transform cameraTransform = scene.baseMotion;
+    double variance = -1.0;
+    std::map<int, cv::Point3f> words3D = util3d::generateWords3DMono(
+        scene.refWords, scene.nextWords, scene.model, cameraTransform, 1.0f, 0.99f, 4,
+        scene.points3D, &variance);
+
+    EXPECT_GE(variance, 0.0);
+    EXPECT_LT(variance, 1e-4);
+    expectWordsInBaseFrame(scene, words3D);
 }

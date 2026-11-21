@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 #include <thread>
+#include <atomic>
 
 namespace {
 
@@ -437,6 +438,7 @@ public:
     OtherThread() : logOnce_(false) {}
     std::string name() {return "OtherThread";}
     void logOnce() {logOnce_ = true;}
+    bool isLogPending() const {return logOnce_;}
 protected:
     virtual void mainLoopBegin() {ULogger::registerCurrentThread(name());}
     virtual void mainLoopEnd() {ULogger::unregisterCurrentThread();}
@@ -449,7 +451,7 @@ protected:
         }
     }
 private:
-    bool logOnce_;
+    std::atomic<bool> logOnce_;
 };
 
 TEST_F(ULoggerTest, ThreadIdFilterVector)
@@ -494,6 +496,12 @@ TEST_F(ULoggerTest, ThreadIdFilterVector)
     UINFO("This log should not appear");
 
     otherThread.logOnce();
+    // join(true) kills the thread right away, so wait until it has actually
+    // logged, otherwise it may exit its loop before calling mainLoop() again.
+    for(int i = 0; i < 200 && otherThread.isLogPending(); ++i)
+    {
+        uSleep(10);
+    }
     otherThread.join(true);
 
     // Make sure the log file is closed

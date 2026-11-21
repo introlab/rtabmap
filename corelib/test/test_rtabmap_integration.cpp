@@ -17,6 +17,7 @@
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/DBReader.h>
 #include <rtabmap/core/Features2d.h>
+#include <rtabmap/core/FlannIndex.h>
 #include <rtabmap/core/camera/CameraImages.h>
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/LocalGrid.h>
@@ -38,15 +39,20 @@
 #include <rtabmap/core/Statistics.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/util3d_filtering.h>
+#include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
 
 #include "TestUtils.h"
+#ifdef RTABMAP_TEST_ONNXRUNTIME
+#include "onnx/OnnxSession.h"
+#endif
 #include <opencv2/imgcodecs.hpp>
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -87,6 +93,7 @@ struct ReplayResult
 	int odomLost = 0;            // odometry returned a null pose
 	int loopClosuresAccepted = 0;
 	int loopClosuresRejected = 0;  // sum of frames with Loop/RejectedHypothesis=1
+	int graphRepairRemovedLinks = 0; // sum of Loop/Optimization_max_error_removed_count (RGBD/OptimizeMaxErrorRepairRadius)
 	int proximityDetections = 0;
 	Transform lastOdomPose;
 	// Latest Gt/translational_rmse from Rtabmap statistics (negative = never
@@ -113,6 +120,9 @@ struct ReplayResult
 	// Wall-clock seconds spent inside Odometry::process across all
 	// frames; divide by framesRead to get per-frame average.
 	double odomTotalSeconds = 0.0;
+	// Longest Odometry::process of a frame, the first one excluded (it
+	// initializes, e.g. builds the TensorRT engine of the detector).
+	double odomMaxSecondsAfterFirst = 0.0;
 	// The highest loop closure hypothesis of each node added, id and probability: the curve
 	// the Bayes filter draws over a session.
 	std::map<int, std::pair<int, float> > highestHypothesis;
@@ -338,7 +348,12 @@ ReplayResult replayDatabase(
 		OdometryInfo odomInfo;
 		UTimer odomTimer;
 		const Transform odomPose = odometry->process(odomData, guess, &odomInfo);
-		result.odomTotalSeconds += odomTimer.getElapsedTime();
+		const double odomSeconds = odomTimer.getElapsedTime();
+		result.odomTotalSeconds += odomSeconds;
+		if(result.framesRead > 1)
+		{
+			result.odomMaxSecondsAfterFirst = std::max(result.odomMaxSecondsAfterFirst, odomSeconds);
+		}
 
 		if(odomPose.isNull())
 		{
@@ -571,7 +586,11 @@ ReplayResult replayDatabaseWithStoredOdom(
 		// boundaries uses the frame above.
 		bool triggerNewMapOnSessionStart = false,
 		// Filled with the number of sessions replayed: one plus the boundaries triggered on.
-		int * sessionsReplayed = 0)
+		int * sessionsReplayed = 0,
+		// When >0, switchedParameters are applied with Rtabmap::parseParameters()
+		// once this number of frames has been processed.
+		int switchParametersAfterFrame = -1,
+		const ParametersMap & switchedParameters = ParametersMap())
 {
 	ReplayResult result;
 
@@ -716,6 +735,11 @@ ReplayResult replayDatabaseWithStoredOdom(
 		{
 			rtabmap.triggerNewMap();
 		}
+		if(switchParametersAfterFrame > 0
+				&& result.framesProcessed == switchParametersAfterFrame)
+		{
+			rtabmap.parseParameters(switchedParameters);
+		}
 		const Statistics & stats = rtabmap.getStatistics();
 		if(stats.loopClosureId() > 0)
 		{
@@ -734,6 +758,11 @@ ReplayResult replayDatabaseWithStoredOdom(
 		if(rejIt != stats.data().end() && rejIt->second > 0.5f)
 		{
 			++result.loopClosuresRejected;
+		}
+		const auto removedIt = stats.data().find(Statistics::kLoopOptimization_max_error_removed_count());
+		if(removedIt != stats.data().end())
+		{
+			result.graphRepairRemovedLinks += (int)removedIt->second;
 		}
 		const auto rmseIt = stats.data().find(Statistics::kGtTranslational_rmse());
 		if(rmseIt != stats.data().end())
@@ -781,6 +810,7 @@ ReplayResult replayDatabaseWithStoredOdom(
 			<< " framesIntermediate=" << result.framesIntermediate
 			<< " loops=" << result.loopClosuresAccepted
 			<< " loopsRejected=" << result.loopClosuresRejected
+			<< " repairRemovedLinks=" << result.graphRepairRemovedLinks
 			<< " proximity=" << result.proximityDetections
 			<< " localGraph=" << result.finalLocalGraphSize
 			<< " globalGraph=" << result.finalGlobalGraphSize
@@ -1002,7 +1032,16 @@ ParametersMap baseOdometryParams()
 	return ParametersMap();
 }
 
-class RtabmapIntegrationFixture : public ::testing::Test {};
+// The randomized FLANN indexes (visual words, feature matching) are seeded by
+// std::random_device by default, so the loop closures detected would change
+// from one run to another. Reset to a fixed seed before each test so it gives
+// the same results whatever ran before it.
+class RtabmapIntegrationFixture : public ::testing::Test
+{
+protected:
+	void SetUp() override { FlannIndex::setDeterministicSeed(true); }
+	void TearDown() override { FlannIndex::setDeterministicSeed(false); }
+};
 
 }  // namespace
 
@@ -1354,6 +1393,125 @@ TEST_F(RtabmapIntegrationFixture, Stereo20Hz)
 		++variantsTested;
 	}
 	ASSERT_GT(variantsTested, 0) << "no BA-capable optimizer was available";
+}
+
+// ---------------------------------------------------------------------------
+// Stereo 20 Hz with SuperPoint (OnnxDetector) and LightGlue (OnnxMatcher) for
+// every feature and match: odometry, the visual words of the loop closure
+// detection and the loop closure registrations. Frame-to-frame odometry, as
+// LightGlue matches two images (F2M's local map mixes the keypoints of many
+// frames), and Vis/CorGuessWinSize=0: with a motion guess, RegistrationVis
+// matches the projected features in a window instead of with LightGlue. The provider is
+// RTABMAP_TEST_ONNX_PROVIDER (0=CPU, 1=CUDA, 2=TensorRT, 3=OpenVINO); skipped
+// when it is not set, as it takes minutes (many on the CPU). With
+// TensorRT, it also checks that no engine is built again while mapping (the
+// matcher's is built at load for 1 to Onnx/TensorRTMaxKeypoints keypoints:
+// LightGlue gets a different keypoint count at every frame).
+// ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, Stereo20HzSuperPointLightGlue)
+{
+#ifndef RTABMAP_TEST_ONNXRUNTIME
+	GTEST_SKIP() << "RTAB-Map is not built with ONNX Runtime";
+#else
+	const std::string dbPath = testDataPath("stereo_20Hz.db");
+	SKIP_IF_MISSING(dbPath);
+	const std::string detectorModel = testDataPath("superpoint_magicleap.onnx");
+	const std::string matcherModel = testDataPath("superpoint_magicleap_lightglue.onnx");
+	SKIP_IF_MISSING(detectorModel);
+	SKIP_IF_MISSING(matcherModel);
+
+	const char * providerEnv = std::getenv("RTABMAP_TEST_ONNX_PROVIDER");
+	if(!providerEnv)
+	{
+		GTEST_SKIP() << "set RTABMAP_TEST_ONNX_PROVIDER to run (0=CPU (slow), 1=CUDA, 2=TensorRT, 3=OpenVINO)";
+	}
+	const int provider = uStr2Int(providerEnv);
+	if(!OnnxSession::isProviderAvailable((OnnxSession::Provider)provider, std::getenv("RTABMAP_TEST_OPENVINO_PLUGIN")?std::getenv("RTABMAP_TEST_OPENVINO_PLUGIN"):""))
+	{
+		GTEST_SKIP() << OnnxSession::providerName((OnnxSession::Provider)provider) << " execution provider not available";
+	}
+	const std::string label = OnnxSession::providerName((OnnxSession::Provider)provider);
+	SCOPED_TRACE("provider=" + label);
+
+	const std::string goldenPath = testDataPath("stereo_20Hz_gt.g2o");
+	std::map<int, Transform> goldenPoses;
+	std::multimap<int, Link> goldenLinks;
+	ASSERT_TRUE(graph::importPoses(
+			goldenPath, /*format=*/4, goldenPoses, &goldenLinks))
+			<< "Failed to load golden poses from " << goldenPath;
+
+	// The same features and matcher for odometry and rtabmap.
+	ParametersMap onnxParams;
+	onnxParams[Parameters::kVisFeatureType()] = uNumber2Str((int)Feature2D::kFeatureOnnxDetector);
+	onnxParams[Parameters::kKpDetectorStrategy()] = uNumber2Str((int)Feature2D::kFeatureOnnxDetector);
+	onnxParams[Parameters::kOnnxDetectorModelPath()] = detectorModel;
+	onnxParams[Parameters::kVisCorNNType()] = "10";
+	onnxParams[Parameters::kVisCorGuessWinSize()] = "0";
+	onnxParams[Parameters::kOnnxMatcherModelPath()] = matcherModel;
+	onnxParams[Parameters::kOnnxProvider()] = uNumber2Str(provider);
+	onnxParams[Parameters::kOnnxTensorRTCachePath()] = testDataPath("trt_cache");
+	onnxParams[Parameters::kOnnxOpenVINOCachePath()] = testDataPath("openvino_cache");
+	if(const char * plugin = std::getenv("RTABMAP_TEST_OPENVINO_PLUGIN"))
+	{
+		onnxParams[Parameters::kOnnxOpenVINOLibraryPath()] = plugin;
+	}
+	UDirectory::makeDir(testDataPath("trt_cache"));
+	UDirectory::makeDir(testDataPath("openvino_cache"));
+
+	ParametersMap rtabmapParams = baseRtabmapParams();
+	rtabmapParams[Parameters::kMemUseOdomFeatures()] = "true";
+	rtabmapParams[Parameters::kRtabmapDetectionRate()] = "2";
+	ParametersMap odomParams = baseOdometryParams();
+	odomParams[Parameters::kOdomStrategy()] = "1"; // F2F
+	// A new keyframe when the inliers drop under 60% of the keyframe's features
+	// (default 30%): F2F only has the keyframe to match, keep it overlapping.
+	odomParams[Parameters::kOdomKeyFrameThr()] = "0.6";
+	for(const auto & kv : onnxParams)
+	{
+		rtabmapParams[kv.first] = kv.second;
+		odomParams[kv.first] = kv.second;
+	}
+
+	const ReplayResult result = replayDatabase(dbPath, rtabmapParams, odomParams,
+			/*useStoredOdomAsGuess=*/false,
+			/*passOdomDataToRtabmap=*/true,
+			/*goldenStampedGroundTruth=*/nullptr,
+			/*frameStride=*/1,
+			/*runLabel=*/label);
+
+	EXPECT_GT(result.framesRead, 1000)
+			<< label << ": expected ~1035 frames from stereo_20Hz.db";
+	EXPECT_EQ(0, result.odomLost)
+			<< label << ": stereo odometry should not lose tracking";
+	EXPECT_GE(result.loopClosuresAccepted, 1)
+			<< label << ": expected at least one loop closure";
+	EXPECT_GT(result.finalGlobalGraphSize, 0);
+
+	float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
+	float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
+	graph::calcRMSE(goldenPoses, result.finalGlobalPoses,
+			tRmse, tMean, tMed, tStd, tMin, tMax,
+			rRmse, rMean, rMed, rStd, rMin, rMax,
+			/*align2D=*/false);
+	std::cerr << "[" << label << "] trans rmse=" << tRmse << "m max="
+			  << tMax << "m, rot rmse=" << rRmse << "deg max="
+			  << rMax << "deg, loop closures=" << result.loopClosuresAccepted
+			  << ", replay=" << result.replayWallSeconds
+			  << "s odom=" << result.odomTotalSeconds << "s (max/frame "
+			  << result.odomMaxSecondsAfterFirst << "s)\n";
+
+	// Same bounds as Stereo20Hz.
+	EXPECT_LT(tRmse, 0.15f) << label << " translational RMSE drifted vs golden";
+	EXPECT_LT(rRmse, 3.0f) << label << " rotational RMSE drifted vs golden";
+
+	// A TensorRT engine build takes seconds, a frame tens of milliseconds.
+	if(provider == OnnxSession::kProviderTensorRT)
+	{
+		EXPECT_LT(result.odomMaxSecondsAfterFirst, 2.0)
+				<< "an odometry update took " << result.odomMaxSecondsAfterFirst
+				<< "s: a TensorRT engine was built again while mapping";
+	}
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -2003,6 +2161,125 @@ TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereo)
 }
 
 // ---------------------------------------------------------------------------
+// Graph repair (RGBD/OptimizeMaxErrorRepairRadius) on the same robust-graph-
+// optimization DB. The first 80 frames are replayed without any safeguard
+// (Optimizer/Robust=false, RGBD/OptimizeMaxError=0), so the wrong loop
+// closures of this DB get accepted in the graph. RGBD/OptimizeMaxError is
+// then enabled: the next good loop closures are rejected because of the old
+// wrong ones. Without repair, they keep being rejected and the graph stays
+// wrong. With repair, the old wrong loop closures responsible of two
+// consecutive rejections are removed from the graph, which ends up close to
+// the golden trajectory.
+// ---------------------------------------------------------------------------
+TEST_F(RtabmapIntegrationFixture, RobustGraphOptimizationStereoRepair)
+{
+	const std::string srcPath = testDataPath("robust_graph_optimization_stereo.db");
+	SKIP_IF_MISSING(srcPath);
+
+	struct Variant {
+		Optimizer::Type optType;
+		float repairRadius;
+		const char * label;
+	};
+	const std::vector<Variant> variants = {
+		{Optimizer::kTypeG2O,   3.0f, "g2o-repair3"     },
+		{Optimizer::kTypeG2O,   0.0f, "g2o-norepair"    },
+		{Optimizer::kTypeGTSAM, 3.0f, "gtsam-repair3"   },
+		{Optimizer::kTypeGTSAM, 0.0f, "gtsam-norepair"  },
+	};
+	const int kEnableMaxErrorAfterFrame = 80;
+
+	const std::string goldenPath = testDataPath("robust_graph_optimization_stereo_gt.g2o");
+	std::map<int, Transform> goldenPoses;
+	std::multimap<int, Link> goldenLinks;
+	ASSERT_TRUE(graph::importPoses(
+			goldenPath, /*format=*/4, goldenPoses, &goldenLinks))
+			<< "Failed to load golden poses from " << goldenPath;
+
+	int variantsTested = 0;
+	for(const Variant & v : variants)
+	{
+		if(!Optimizer::isAvailable(v.optType))
+		{
+			std::cerr << "[skip] " << v.label << " (optimizer unavailable)\n";
+			continue;
+		}
+		SCOPED_TRACE(std::string(v.label));
+
+		ParametersMap params = baseRtabmapParams();
+		uInsert(params, ParametersPair(Parameters::kOptimizerStrategy(),
+				uNumber2Str(static_cast<int>(v.optType))));
+		uInsert(params, ParametersPair(Parameters::kOptimizerRobust(), "false"));
+		uInsert(params, ParametersPair(Parameters::kRGBDOptimizeMaxError(), "0"));
+		uInsert(params, ParametersPair(Parameters::kRGBDOptimizeMaxErrorRepairRadius(),
+				uNumber2Str(v.repairRadius)));
+		// Repair only triggers when the same wrong loop closure causes two
+		// consecutive rejections, which is sensitive to which loop closures
+		// are found. FLANN kd-trees are randomized, use linear search instead
+		// to get the same loop closures on every run.
+		uInsert(params, ParametersPair(Parameters::kKpNNStrategy(), "0"));
+		uInsert(params, ParametersPair(Parameters::kVisCorNNType(), "0"));
+		uInsert(params, ParametersPair(Parameters::kMemUseOdomFeatures(), "true"));
+		uInsert(params, ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "false"));
+		uInsert(params, ParametersPair(Parameters::kMemBinDataKept(), "false"));
+		uInsert(params, ParametersPair(Parameters::kKpFlannRebalancingFactor(), "1"));
+		uInsert(params, ParametersPair(Parameters::kRtabmapDetectionRate(), "0"));
+
+		ParametersMap enableMaxError;
+		enableMaxError.insert(ParametersPair(Parameters::kRGBDOptimizeMaxError(), "3"));
+
+		const std::string workDb = test::tempPath(uFormat(
+				"rtabmap_integration_RobustGraphOptimizationStereoRepair_%s.db", v.label));
+		std::cerr << "Working DB for " << v.label << ": " << workDb << "\n";
+
+		const ReplayResult result = replayDatabaseWithStoredOdom(
+				srcPath, workDb, params,
+				/*triggerNewMapAfterFrame=*/-1,
+				/*overrideOdomAngularVariance=*/-1.0,
+				/*overrideOdomLinearVariance=*/-1.0,
+				/*scanMaxRange=*/0.0f,
+				/*triggerNewMapOnSessionStart=*/false,
+				/*sessionsReplayed=*/0,
+				kEnableMaxErrorAfterFrame,
+				enableMaxError);
+
+		ASSERT_GT(result.framesProcessed, kEnableMaxErrorAfterFrame) << v.label << " produced too few frames";
+		ASSERT_GT(result.finalGlobalGraphSize, 0) << v.label << " produced empty graph";
+
+		float tRmse=0, tMean=0, tMed=0, tStd=0, tMin=0, tMax=0;
+		float rRmse=0, rMean=0, rMed=0, rStd=0, rMin=0, rMax=0;
+		graph::calcRMSE(goldenPoses, result.finalGlobalPoses,
+				tRmse, tMean, tMed, tStd, tMin, tMax,
+				rRmse, rMean, rMed, rStd, rMin, rMax,
+				/*align2D=*/false);
+		std::cerr << "[" << v.label << "] "
+				  << "repair removed links=" << result.graphRepairRemovedLinks << ", "
+				  << "trans rmse=" << tRmse << "m max=" << tMax << "m, "
+				  << "rot rmse=" << rRmse << "deg max=" << rMax << "deg\n";
+
+		if(v.repairRadius > 0.0f)
+		{
+			EXPECT_GT(result.graphRepairRemovedLinks, 0)
+					<< v.label << " no link removed by graph repair";
+			EXPECT_LT(tRmse, 0.05f)
+					<< v.label << " translational RMSE too large; expected near golden after repair";
+			EXPECT_LT(rRmse, 1.5f)
+					<< v.label << " rotational RMSE too large; expected near golden after repair";
+		}
+		else
+		{
+			// Without repair, the wrong loop closures accepted before
+			// enabling RGBD/OptimizeMaxError stay in the graph (~2 m RMSE).
+			EXPECT_EQ(result.graphRepairRemovedLinks, 0);
+			EXPECT_GT(tRmse, 0.5f)
+					<< v.label << " expected the wrong loop closures to remain in the graph without repair";
+		}
+		++variantsTested;
+	}
+	ASSERT_GT(variantsTested, 0) << "no compatible optimizer was available";
+}
+
+// ---------------------------------------------------------------------------
 // 3-iteration loop with GPS metadata. Replays the session frame-by-frame
 // with the stored odom, sweeping Rtabmap/LoopGPS on/off. GPS-aided loop
 // closure detection filters candidates by GPS proximity; with it off the
@@ -2581,6 +2858,7 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 	const std::string superpointTorchModel      = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_v1.pt";
 	const std::string superpointRpautratWeights = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_v6_from_tf.pth";
 	const std::string superpointRpautratModel   = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/superpoint_pytorch.py";
+	const std::string onnxDetectorModel         = std::string(RTABMAP_TEST_DATA_ROOT) + "/tests/disk.onnx";
 
 	// One pass per detector: prefer GPU if available, otherwise CPU. To
 	// keep wall-clock low, the two BoW likelihood variants (default raw
@@ -2635,6 +2913,13 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 					<< " (run scripts/fetch_test_data.sh)\n";
 			continue;
 		}
+		if(detectorType == Feature2D::kFeatureOnnxDetector && !UFile::exists(onnxDetectorModel))
+		{
+			std::cerr << "[skip] detector " << typeName
+					<< " missing model: " << onnxDetectorModel
+					<< " (run scripts/fetch_test_data.sh)\n";
+			continue;
+		}
 
 		// Probe GPU availability once per detector. Build the temp instance
 		// with the same asset paths the actual run uses; otherwise SuperPoint
@@ -2650,6 +2935,10 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			{
 				probeParams[Parameters::kSuperPointRpautratWeightsPath()] = superpointRpautratWeights;
 				probeParams[Parameters::kSuperPointRpautratModelPath()]   = superpointRpautratModel;
+			}
+			else if(detectorType == Feature2D::kFeatureOnnxDetector)
+			{
+				probeParams[Parameters::kOnnxDetectorModelPath()] = onnxDetectorModel;
 			}
 			std::unique_ptr<Feature2D> probe(Feature2D::create(detectorType, probeParams));
 			if(probe) gpuAvailable = probe->isGpuAvailable();
@@ -2715,6 +3004,11 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			params[Parameters::kSuperPointRpautratWeightsPath()] = superpointRpautratWeights;
 			params[Parameters::kSuperPointRpautratModelPath()]   = superpointRpautratModel;
 			params[Parameters::kSuperPointRpautratCuda()]        = gpuFlag;
+		}
+		else if(detectorType == Feature2D::kFeatureOnnxDetector)
+		{
+			params[Parameters::kOnnxDetectorModelPath()] = onnxDetectorModel;
+			params[Parameters::kOnnxProvider()]          = useGpu ? "1" : "0";
 		}
 		else if(useGpu)
 		{
@@ -2985,3 +3279,4 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 			<< "across any detector; data/samples or the BoW pipeline may "
 			<< "no longer be exercising the BadSignatures path";
 }
+

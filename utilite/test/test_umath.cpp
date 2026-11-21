@@ -34,6 +34,9 @@ TEST(UMathTest, UMin3)
     EXPECT_EQ(uMin3(1, 2, 3), 1);
     EXPECT_EQ(uMin3(2, 3, 1), 1);
     EXPECT_EQ(uMin3(1.5f, 2.5f, 0.5f), 0.5f);
+    // Doubles keep their precision (no float intermediate)
+    EXPECT_EQ(uMin3(1.0/9999.0, 1.0, 2.0), 1.0/9999.0);
+    EXPECT_EQ(uMin3(1.0, 1.0/9999.0, 2.0), 1.0/9999.0);
 }
 
 TEST(UMathTest, UMax3)
@@ -42,6 +45,9 @@ TEST(UMathTest, UMax3)
     EXPECT_EQ(uMax3(1, 2, 3), 3);
     EXPECT_EQ(uMax3(2, 3, 1), 3);
     EXPECT_EQ(uMax3(1.5f, 2.5f, 0.5f), 2.5f);
+    // Doubles keep their precision (no float intermediate)
+    EXPECT_EQ(uMax3(1.0/9999.0, 0.0, 0.00001), 1.0/9999.0);
+    EXPECT_EQ(uMax3(0.0, 0.00001, 1.0/9999.0), 1.0/9999.0);
 }
 
 TEST(UMathTest, UMaxArray)

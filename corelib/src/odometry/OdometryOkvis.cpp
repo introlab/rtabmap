@@ -141,7 +141,7 @@ OdometryOkvis::OdometryOkvis(const ParametersMap & parameters) :
 {
 #ifdef RTABMAP_OKVIS
 	Parameters::parse(parameters, Parameters::kOdomOKVISConfigPath(), configFilename_);
-	configFilename_ = uReplaceChar(configFilename_, '~', UDirectory::homeDir());
+	configFilename_ = UDirectory::expandHomeDir(configFilename_);
 	if(configFilename_.empty() || !UFile::exists(configFilename_))
 	{
 		UERROR("OKVIS config file is empty or doesn't exist (%s)!", Parameters::kOdomOKVISConfigPath().c_str());
@@ -291,7 +291,7 @@ Transform OdometryOkvis::computeTransform(
 				}
 				else
 				{
-					okvis::VioParametersReader vio_parameters_reader(uReplaceChar(configFilename_, '~', UDirectory::homeDir()));
+					okvis::VioParametersReader vio_parameters_reader(UDirectory::expandHomeDir(configFilename_));
 					vio_parameters_reader.getParameters(parameters);
 					if(parameters.nCameraSystem.numCameras() > 0)
 					{

@@ -374,3 +374,15 @@ TEST(Util3dTransformsTest, TransformPointXYZRGBNormal)
     EXPECT_NEAR(result.normal_x, 0.0f, 1e-6);
     EXPECT_NEAR(result.normal_y, 1.0f, 1e-6);
 }
+// PCL 1.12 transformPointCloud()/transformPointCloudWithNormals() divide by the
+// cloud width, which crashed (SIGFPE) on empty clouds (issue #1799).
+TEST(Util3dTransformsTest, TransformEmptyPointClouds)
+{
+    const Transform t(1, 2, 3, 0.1f, 0.2f, 0.3f);
+    EXPECT_TRUE(util3d::transformPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>), t)->empty());
+    EXPECT_TRUE(util3d::transformPointCloud(pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>), t)->empty());
+    EXPECT_TRUE(util3d::transformPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>), t)->empty());
+    EXPECT_TRUE(util3d::transformPointCloud(pcl::PointCloud<pcl::PointNormal>::Ptr(new pcl::PointCloud<pcl::PointNormal>), t)->empty());
+    EXPECT_TRUE(util3d::transformPointCloud(pcl::PointCloud<pcl::PointXYZINormal>::Ptr(new pcl::PointCloud<pcl::PointXYZINormal>), t)->empty());
+    EXPECT_TRUE(util3d::transformPointCloud(pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBNormal>), t)->empty());
+}

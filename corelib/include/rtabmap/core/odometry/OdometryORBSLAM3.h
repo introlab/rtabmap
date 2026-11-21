@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Odometry.h>
 
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 3
 #include <System.h>
 #endif
 
@@ -51,7 +51,7 @@ private:
 
 	bool init(const rtabmap::CameraModel & model1, const rtabmap::CameraModel & model2, double stamp, bool stereo, double baseline);
 private:
-#if defined(RTABMAP_ORB_SLAM) and RTABMAP_ORB_SLAM == 3
+#if defined(RTABMAP_ORB_SLAM) && RTABMAP_ORB_SLAM == 3
 	ORB_SLAM3::System * orbslam_;
 	bool firstFrame_;
 	Transform originLocalTransform_;

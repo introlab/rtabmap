@@ -115,11 +115,11 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 
 		Transform t = (iter->second * iterModel->second[0].localTransform()).inverse();
 
-		R[oi] = (cv::Mat_<double>(3,3) <<
+		R[oi] = cv::Mat_<double>({3,3}, {
 				(double)t.r11(), (double)t.r12(), (double)t.r13(),
 				(double)t.r21(), (double)t.r22(), (double)t.r23(),
-				(double)t.r31(), (double)t.r32(), (double)t.r33());
-		T[oi] = (cv::Mat_<double>(1,3) << (double)t.x(), (double)t.y(), (double)t.z());
+				(double)t.r31(), (double)t.r32(), (double)t.r33()});
+		T[oi] = cv::Mat_<double>({1,3}, {(double)t.x(), (double)t.y(), (double)t.z()});
 		++oi;
 
 		UDEBUG("Pose %d = %s", iter->first, t.prettyPrint().c_str());
