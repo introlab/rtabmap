@@ -15,6 +15,7 @@
 #include <opencv2/core/version.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <cmath>
+#include <limits>
 
 using namespace rtabmap;
 
@@ -584,6 +585,113 @@ TEST(Feature2DTest, GenerateKeypointsAndDescriptorsWithMask)
 		}
 	}
 	ASSERT_GT(tested, 0) << "no detector was available to exercise";
+}
+
+// A CV_16UC1 (mm) or CV_32FC1 (m) depth image given as mask to
+// generateKeypoints() is converted to a binary mask: valid where
+// Kp/MinDepth < depth <= Kp/MaxDepth (no upper bound when Kp/MaxDepth=0),
+// excluding 16U values 0 / 65535 and non-finite 32F values. The depth image
+// is made of vertical bands, one depth case each, over a checkerboard with
+// corners in every band. Keypoints must only land in valid bands, and every
+// valid band must get keypoints.
+TEST(Feature2DTest, GenerateKeypointsWithDepthMask)
+{
+	if(!Feature2D::isAvailable(Feature2D::kFeatureGfttOrb))
+	{
+		GTEST_SKIP() << "GFTT/ORB not available";
+	}
+
+	const float minDepth = 1.0f;
+	const float maxDepth = 3.0f;
+	const int bandWidth = 40;
+
+	struct Band
+	{
+		const char * label;
+		unsigned short depth16U;
+		float depth32F;
+		bool valid;          // 32F value, with Kp/MaxDepth=maxDepth
+		bool validNoMax;     // 32F value, with Kp/MaxDepth=0
+	};
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	const float inf = std::numeric_limits<float>::infinity();
+	// 16U values avoid exact bounds (mm*0.001f is not exact in float), their
+	// expected validity is computed below; exact bounds and non-finite values
+	// are checked with 32F values.
+	const std::vector<Band> bands = {
+		{"in range",           2000,  2.0f,     true,  true},
+		{"too close",          500,   0.5f,     false, false},
+		{"too far",            5000,  5.0f,     false, true},
+		{"zero",               0,     0.0f,     false, false},
+		{"65535 / NaN",        65535, nan,      false, false},
+		{"in range / +inf",    2500,  inf,      false, false}, // 32F: inf never valid, even without max
+		{"too close / =min",   100,   minDepth, false, false}, // 32F: min is exclusive
+		{"in range / =max",    2900,  maxDepth, true,  true},  // 32F: max is inclusive
+	};
+	const int rows = 80;
+	const int cols = bandWidth * (int)bands.size();
+	const cv::Mat image = checkerboardImage(rows, cols, 20);
+
+	for(int type : {CV_16UC1, CV_32FC1})
+	{
+		SCOPED_TRACE(type == CV_16UC1 ? "CV_16UC1" : "CV_32FC1");
+		cv::Mat depth(rows, cols, type);
+		for(size_t b = 0; b < bands.size(); ++b)
+		{
+			cv::Mat band = depth(cv::Rect((int)b * bandWidth, 0, bandWidth, rows));
+			if(type == CV_16UC1)
+			{
+				band.setTo(cv::Scalar(bands[b].depth16U));
+			}
+			else
+			{
+				band.setTo(cv::Scalar(bands[b].depth32F));
+			}
+		}
+
+		for(float maxDepthParam : {maxDepth, 0.0f})
+		{
+			SCOPED_TRACE(std::string("Kp/MaxDepth=") + uNumber2Str(maxDepthParam));
+			ParametersMap params = orbTestParams();
+			params.insert(ParametersPair(Parameters::kKpMinDepth(), uNumber2Str(minDepth)));
+			params.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(maxDepthParam)));
+			std::unique_ptr<Feature2D> detector(Feature2D::create(Feature2D::kFeatureGfttOrb, params));
+			ASSERT_TRUE(detector.get() != NULL);
+
+			const std::vector<cv::KeyPoint> keypoints = detector->generateKeypoints(image, depth);
+
+			std::vector<int> counts(bands.size(), 0);
+			for(size_t i = 0; i < keypoints.size(); ++i)
+			{
+				const int x = cvRound(keypoints[i].pt.x);
+				ASSERT_GE(x, 0);
+				ASSERT_LT(x, cols);
+				++counts[x / bandWidth];
+			}
+			for(size_t b = 0; b < bands.size(); ++b)
+			{
+				bool valid;
+				if(type == CV_16UC1)
+				{
+					const float m = bands[b].depth16U * 0.001f;
+					valid = bands[b].depth16U > 0 && bands[b].depth16U < 65535 &&
+							m > minDepth && (maxDepthParam == 0.0f || m <= maxDepthParam);
+				}
+				else
+				{
+					valid = maxDepthParam == 0.0f ? bands[b].validNoMax : bands[b].valid;
+				}
+				if(valid)
+				{
+					EXPECT_GT(counts[b], 0) << "no keypoints in valid band " << b << " (" << bands[b].label << ")";
+				}
+				else
+				{
+					EXPECT_EQ(counts[b], 0) << "keypoints in masked band " << b << " (" << bands[b].label << ")";
+				}
+			}
+		}
+	}
 }
 
 TEST(Feature2DTest, GenerateKeypointsAndDescriptorsWithRoi)
