@@ -132,30 +132,51 @@ std::string compareGraphs(
 	return "";
 }
 
-// Applies a correction X of the cameras' mount, in their body frame (x forward, y left,
-// z up), to their local transform T in this node: T becomes T * R^-1 * X * R (R: the
-// optical rotation), i.e., the base -> camera transform B becomes B * X. Unlike
-// overriding T, it keeps what differs between the nodes' T, e.g., the robot's motion
-// between the image's and the scan's stamps added to T in each node when mapping
-// (odom_sensor_sync in rtabmap_ros, or SensorCaptureThread with an odometry sensor).
-void correctCameraLocalTransforms(SensorData & data, const Transform & correction)
+// The string without its leading and trailing spaces.
+std::string trimSpaces(const std::string & str)
 {
-	const Transform C = CameraModel::opticalRotation().inverse() * correction * CameraModel::opticalRotation();
+	const size_t first = str.find_first_not_of(' ');
+	return first == std::string::npos ? std::string() : str.substr(first, str.find_last_not_of(' ') - first + 1);
+}
+
+// Applies a correction X of each camera's mount, in its body frame (x forward, y left,
+// z up), to its local transform T in this node: the base -> camera transform B becomes
+// B * X. Unlike overriding T, it keeps what differs between the nodes' T, e.g., the robot's
+// motion between the image's and the scan's stamps added to T in each node when mapping
+// (odom_sensor_sync in rtabmap_ros, or SensorCaptureThread with an odometry sensor). One
+// correction for all the cameras, or one per camera. For a stereo camera, it is of its
+// local transform, its left lens'.
+void correctCameraLocalTransforms(SensorData & data, const std::vector<Transform> & corrections)
+{
+	const size_t cameras = !data.cameraModels().empty() ? data.cameraModels().size() : data.stereoCameraModels().size();
+	if(cameras == 0)
+	{
+		return;
+	}
+	if(corrections.size() != 1 && corrections.size() != cameras)
+	{
+		UWARN("Node %d has %d cameras but %d camera transform corrections are given: not corrected.",
+				data.id(), (int)cameras, (int)corrections.size());
+		return;
+	}
+	const Transform & O = CameraModel::opticalRotation();
 	if(!data.cameraModels().empty())
 	{
 		std::vector<CameraModel> models = data.cameraModels();
 		for(size_t i=0; i<models.size(); ++i)
 		{
-			models[i].setLocalTransform(models[i].localTransform() * C);
+			const Transform & X = corrections.size() == 1 ? corrections[0] : corrections[i];
+			models[i].setLocalTransform(models[i].localTransform() * O.inverse() * X * O);
 		}
 		data.setCameraModels(models);
 	}
-	else if(!data.stereoCameraModels().empty())
+	else
 	{
 		std::vector<StereoCameraModel> models = data.stereoCameraModels();
 		for(size_t i=0; i<models.size(); ++i)
 		{
-			models[i].setLocalTransform(models[i].localTransform() * C);
+			const Transform & X = corrections.size() == 1 ? corrections[0] : corrections[i];
+			models[i].setLocalTransform(models[i].localTransform() * O.inverse() * X * O);
 		}
 		data.setStereoCameraModels(models);
 	}
@@ -244,10 +265,12 @@ void showUsage()
 			"     -cam_tf \"x y z roll pitch yaw\" Camera local transform override(s) without optical rotation. For multi-cameras, \n"
 			"                                      use a \";\" between each transform.\n"
 			"     -cam_tf_correction \"x y z roll pitch yaw\" Correct the camera local transform of every node by this\n"
-			"                                      transform, in the camera's body frame: base->camera B becomes B*X,\n"
+			"                                      transform X, in the camera's body frame: base->camera B becomes B*X,\n"
 			"                                      e.g., as estimated by rtabmap-lidarCameraCalibration. Unlike -cam_tf,\n"
 			"                                      differences between the nodes' transforms are kept (e.g., with\n"
-			"                                      odom_sensor_sync). Applied to all the cameras of a node.\n"
+			"                                      odom_sensor_sync). One for all the cameras of a node, or one per\n"
+			"                                      camera (streamed, see -cam) separated by \";\". For a stereo camera,\n"
+			"                                      X is of its local transform, its left lens'.\n"
 			"     -cam_tf_lens_offset #.#          Override camera local transform with an y-axis offset before optical rotation. \n"
 			"                                      If -cam_tf is also used, it is combined before optical rotation. For multi-cameras,\n"
 			"                                      -cam_tf should be also used, and explicitly enumerate offsets if they are different, \n"
@@ -482,7 +505,7 @@ int main(int argc, char * argv[])
 	std::vector<unsigned int> cameraIndices;
 	std::vector<Transform> cameraLocalTransformOverrides;
 	std::vector<float> cameraLocalTransformOffsetOverrides;
-	Transform cameraLocalTransformCorrection;
+	std::vector<Transform> cameraLocalTransformCorrections;
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
 	bool ignorePriors = false;
@@ -686,13 +709,18 @@ int main(int argc, char * argv[])
 			++i;
 			if(i < argc - 2)
 			{
-				cameraLocalTransformCorrection = Transform::fromString(argv[i]);
-				if(cameraLocalTransformCorrection.isNull())
+				std::list<std::string> tfStr = uSplit(argv[i], ';');
+				for(std::list<std::string>::iterator iter=tfStr.begin(); iter!=tfStr.end(); ++iter)
 				{
-					printf("[Error] Invalid -cam_tf_correction \"%s\": expecting \"x y z roll pitch yaw\".\n", argv[i]);
-					return 1;
+					std::list<std::string> values = uSplit(trimSpaces(*iter), ' ');
+					if(values.size() != 6)
+					{
+						printf("[Error] Invalid -cam_tf_correction \"%s\": expecting \"x y z roll pitch yaw\" for each camera, separated by \";\".\n", argv[i]);
+						return 1;
+					}
+					cameraLocalTransformCorrections.push_back(Transform::fromString(trimSpaces(*iter)));
+					printf("Camera transform correction %d = %s\n", (int)cameraLocalTransformCorrections.size()-1, cameraLocalTransformCorrections.back().prettyPrint().c_str());
 				}
-				printf("Camera transform correction = %s\n", cameraLocalTransformCorrection.prettyPrint().c_str());
 			}
 			else
 			{
@@ -954,7 +982,7 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	if(!cameraLocalTransformCorrection.isNull() && (!cameraLocalTransformOverrides.empty() || !cameraLocalTransformOffsetOverrides.empty()))
+	if(!cameraLocalTransformCorrections.empty() && (!cameraLocalTransformOverrides.empty() || !cameraLocalTransformOffsetOverrides.empty()))
 	{
 		printf("[Error] -cam_tf_correction cannot be used with -cam_tf or -cam_tf_lens_offset.\n");
 		return 1;
@@ -1100,6 +1128,30 @@ int main(int argc, char * argv[])
 					Parameters::kRtabmapImagesAlreadyRectified().c_str());
 			parametersToRestore.insert(ParametersPair(Parameters::kRtabmapImagesAlreadyRectified(), "false"));
 			uInsert(parameters, ParametersPair(Parameters::kRtabmapImagesAlreadyRectified(), "true"));
+		}
+	}
+
+	if(cameraLocalTransformCorrections.size() > 1)
+	{
+		// One correction per camera streamed: check their number on the first node with a
+		// calibration.
+		std::set<int> nodeIds;
+		dbDriver->getAllNodeIds(nodeIds);
+		for(std::set<int>::iterator iter=nodeIds.begin(); iter!=nodeIds.end(); ++iter)
+		{
+			std::vector<CameraModel> models;
+			std::vector<StereoCameraModel> stereoModels;
+			if(dbDriver->getCalibration(*iter, models, stereoModels) && (!models.empty() || !stereoModels.empty()))
+			{
+				const size_t cameras = cameraIndices.empty() ? std::max(models.size(), stereoModels.size()) : cameraIndices.size();
+				if(cameras != cameraLocalTransformCorrections.size())
+				{
+					printf("[Error] %d camera transform corrections given (-cam_tf_correction), but %d cameras are streamed.\n",
+							(int)cameraLocalTransformCorrections.size(), (int)cameras);
+					return 1;
+				}
+				break;
+			}
 		}
 	}
 
@@ -1551,9 +1603,9 @@ int main(int argc, char * argv[])
 	{
 		data.setLaserScan(LaserScan());
 	}
-	if(!cameraLocalTransformCorrection.isNull())
+	if(!cameraLocalTransformCorrections.empty())
 	{
-		correctCameraLocalTransforms(data, cameraLocalTransformCorrection);
+		correctCameraLocalTransforms(data, cameraLocalTransformCorrections);
 	}
 	if(depthFromScan)
 	{
@@ -1645,9 +1697,9 @@ int main(int argc, char * argv[])
 					{
 						data.setLaserScan(LaserScan());
 					}
-					if(!cameraLocalTransformCorrection.isNull())
+					if(!cameraLocalTransformCorrections.empty())
 					{
-						correctCameraLocalTransforms(data, cameraLocalTransformCorrection);
+						correctCameraLocalTransforms(data, cameraLocalTransformCorrections);
 					}
 					if(depthFromScan)
 					{
@@ -1991,9 +2043,9 @@ int main(int argc, char * argv[])
 		{
 			data.setLaserScan(LaserScan());
 		}
-		if(!cameraLocalTransformCorrection.isNull())
+		if(!cameraLocalTransformCorrections.empty())
 		{
-			correctCameraLocalTransforms(data, cameraLocalTransformCorrection);
+			correctCameraLocalTransforms(data, cameraLocalTransformCorrections);
 		}
 		if(depthFromScan)
 		{

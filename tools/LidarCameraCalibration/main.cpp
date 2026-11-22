@@ -134,6 +134,9 @@ void showUsage(const char * exec)
 			"                      used too, if kept. A window longer than the session\n"
 			"                      assembles the whole session.\n"
 			"    --assemble_voxel #.#  Voxel size (m) of the assembled scans (default 0.02).\n"
+			"    --camera #        Index of the camera to calibrate, in nodes with several cameras\n"
+			"                      (default 0). For a stereo camera, its left image is used, and\n"
+			"                      the correction is of its local transform (its left lens').\n"
 			"    --camera_tf \"x y z roll pitch yaw\"  The camera's transform T as configured (e.g., the\n"
 			"                      URDF's origin of camera_link, or the camera's local transform in\n"
 			"                      the standalone app's preferences, without optical rotation), to\n"
@@ -839,6 +842,7 @@ int main(int argc, char * argv[])
 	float assembleWindow = 0.0f;
 	float assembleVoxel = 0.02f;
 	Transform cameraTf;
+	int cameraIndex = 0;
 	for(int i = 1; i < argc - 1; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -916,6 +920,10 @@ int main(int argc, char * argv[])
 		else if(std::strcmp(argv[i], "--assemble_voxel") == 0 && i + 1 < argc - 1)
 		{
 			assembleVoxel = uStr2Float(argv[++i]);
+		}
+		else if(std::strcmp(argv[i], "--camera") == 0 && i + 1 < argc - 1)
+		{
+			cameraIndex = std::max(0, uStr2Int(argv[++i]));
 		}
 		else if(std::strcmp(argv[i], "--camera_tf") == 0 && i + 1 < argc - 1)
 		{
@@ -1060,6 +1068,9 @@ int main(int argc, char * argv[])
 	}
 	intermediateSignatures.clear();
 	size_t assembledScans = 0;
+	int nodeCameras = 0;  // cameras in the nodes (of the first one used)
+	bool stereoCamera = false;
+	double stereoBaseline = 0.0;  // of the first node's stereo camera
 
 	std::vector<Frame> frames;
 	int skipped = 0;
@@ -1145,10 +1156,31 @@ int main(int argc, char * argv[])
 		{
 			scan = util3d::commonFiltering(scan, 1, 0.0f, 0.0f, voxel);
 		}
-		if(!image.empty() && !scan.isEmpty() && data.cameraModels().size() == 1 &&
-		   data.cameraModels()[0].isValidForProjection())
+		// The camera calibrated: its part of the images (side by side), and its model; for a
+		// stereo camera, its left lens' (whose local transform is the stereo camera's).
+		const int cameras = !data.cameraModels().empty() ? (int)data.cameraModels().size() : (int)data.stereoCameraModels().size();
+		CameraModel model;
+		if(cameraIndex < (int)data.cameraModels().size())
 		{
-			const CameraModel & model = data.cameraModels()[0];
+			model = data.cameraModels()[cameraIndex];
+		}
+		else if(cameraIndex < (int)data.stereoCameraModels().size())
+		{
+			model = data.stereoCameraModels()[cameraIndex].left();
+		}
+		if(!image.empty() && cameras > 0 && image.cols % cameras == 0)
+		{
+			const int width = image.cols / cameras;
+			image = cv::Mat(image, cv::Rect(width * cameraIndex, 0, width, image.rows));
+		}
+		if(!image.empty() && !scan.isEmpty() && model.isValidForProjection())
+		{
+			if(nodeCameras == 0)
+			{
+				nodeCameras = cameras;
+				stereoCamera = data.cameraModels().empty();
+				stereoBaseline = stereoCamera ? data.stereoCameraModels()[cameraIndex].baseline() : 0.0;
+			}
 			Frame f;
 			f.id = s->id();
 			f.linearSpeed = linearSpeed;
@@ -1286,8 +1318,9 @@ int main(int argc, char * argv[])
 	{
 		points += f.cloud.rows;
 	}
-	printf("%d nodes with an image (one camera) and a lidar scan, %d skipped. %d lidar points per node on average%s (%.1f s).\n",
-			(int)frames.size(), skipped, frames.empty() ? 0 : int(points / frames.size()),
+	printf("%d nodes with an image (camera %d%s) and a lidar scan, %d skipped. %d lidar points per node on average%s (%.1f s).\n",
+			(int)frames.size(), cameraIndex, nodeCameras == 0 ? "" : uFormat(" of %d%s", nodeCameras, stereoCamera ? ", stereo: left image" : "").c_str(),
+			skipped, frames.empty() ? 0 : int(points / frames.size()),
 			voxel > 0.0f ? uFormat(" after a %g m voxel filter", voxel).c_str() : "", totalTimer.elapsed());
 	if(assembleWindow > 0.0f)
 	{
@@ -1348,6 +1381,13 @@ int main(int argc, char * argv[])
 			}
 		}
 		const double selectionTime = stepTimer.ticks();
+		if(points == 0)
+		{
+			// Nothing to align: a solver would return anything.
+			printf("No lidar edge points found in the nodes' images: the scans may be too sparse (e.g., a 2D\n"
+					"lidar), or not seen by the camera. Try --assemble, or a lower --decimation.\n");
+			return 1;
+		}
 		const double before = problem.score(correctionFrom(p));
 		const int evaluations = problem.evaluations();
 		solver->solve(problem, translation, p);
@@ -1444,12 +1484,26 @@ int main(int argc, char * argv[])
 		float x, y, z, roll, pitch, yaw;
 		X.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
 		const Eigen::Quaternionf q = X.getQuaternionf();
-		printf("Correction of the camera's mount X, in the camera's body frame (x forward, y left, z up):\n"
+		printf("Correction of the camera's mount X, in the camera's body frame (x forward, y left, z up)%s:\n"
 				"    xyz (m): %.6f %.6f %.6f\n"
 				"    roll pitch yaw (rad): %.6f %.6f %.6f  (deg: %.4f %.4f %.4f)\n"
 				"    quaternion (x y z w): %.6f %.6f %.6f %.6f\n\n",
+				stereoCamera ? ", the stereo camera's left lens" : "",
 				x, y, z, roll, pitch, yaw, roll * 180.0f / float(M_PI), pitch * 180.0f / float(M_PI), yaw * 180.0f / float(M_PI),
 				q.x(), q.y(), q.z(), q.w());
+	}
+	// A stereo camera's frame between its lenses (e.g., a URDF's camera_link, with the
+	// lenses' frames under it) -> its left lens, in the body frame (left lens on the left).
+	const Transform stereoCenterToLeft(0, stereoBaseline / 2.0, 0, 0, 0, 0);
+	if(stereoCamera)
+	{
+		float x, y, z, roll, pitch, yaw;
+		(stereoCenterToLeft * X * stereoCenterToLeft.inverse()).getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+		printf("The same correction about the stereo camera's frame between its lenses (baseline %.3f m,\n"
+				"e.g., a URDF's camera_link with the lenses' frames under it):\n"
+				"    xyz (m): %.6f %.6f %.6f\n"
+				"    roll pitch yaw (rad): %.6f %.6f %.6f\n\n",
+				stereoBaseline, x, y, z, roll, pitch, yaw);
 	}
 	if(initialRotation[0] != 0 || initialRotation[1] != 0 || initialRotation[2] != 0)
 	{
@@ -1470,25 +1524,53 @@ int main(int argc, char * argv[])
 		// (e.g., the motion compensation of odom_sensor_sync), unlike -cam_tf.
 		float x, y, z, roll, pitch, yaw;
 		X.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-		printf("\nTo reprocess the database with the corrected camera transforms:\n"
-				"    rtabmap-reprocess -cam_tf_correction \"%.6f %.6f %.6f %.6f %.6f %.6f\" \"%s\" output.db\n",
-				x, y, z, roll, pitch, yaw, databasePath.c_str());
+		const std::string correction = uFormat("%.6f %.6f %.6f %.6f %.6f %.6f", x, y, z, roll, pitch, yaw);
+		if(nodeCameras <= 1)
+		{
+			printf("\nTo reprocess the database with the corrected camera transforms:\n"
+					"    rtabmap-reprocess -cam_tf_correction \"%s\" \"%s\" output.db\n",
+					correction.c_str(), databasePath.c_str());
+		}
+		else
+		{
+			// Only this camera is calibrated: the others' corrections are to be filled in once
+			// they are (or "0 0 0 0 0 0" to keep one as it is).
+			std::string corrections;
+			for(int i = 0; i < nodeCameras; ++i)
+			{
+				corrections += (i ? ";" : "") + (i == cameraIndex ? correction : uFormat("<camera %d>", i));
+			}
+			printf("\nThis is camera %d's correction. To reprocess the database with the corrected camera\n"
+					"transforms, once each camera is calibrated (--camera), one correction per camera\n"
+					"(\"0 0 0 0 0 0\" to keep one as it is):\n"
+					"    rtabmap-reprocess -cam_tf_correction \"%s\" \"%s\" output.db\n",
+					cameraIndex, corrections.c_str(), databasePath.c_str());
+		}
 	}
 	if(!cameraTf.isNull())
 	{
 		// X is applied on the right of the camera's transform: T * X is right whatever is
 		// before T (e.g., other links of the URDF, or the per-node motion compensation).
-		float x, y, z, roll, pitch, yaw;
-		const Transform corrected = cameraTf * X;
-		corrected.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-		const Eigen::Quaternionf q = corrected.getQuaternionf();
-		printf("\nThe camera's transform T given (--camera_tf) corrected, T * X:\n"
-				"    x y z roll pitch yaw:  %.6f %.6f %.6f %.6f %.6f %.6f\n"
-				"    x y z qx qy qz qw:     %.6f %.6f %.6f %.6f %.6f %.6f %.6f\n"
-				"    URDF:                  <origin xyz=\"%.6f %.6f %.6f\" rpy=\"%.6f %.6f %.6f\"/>\n",
-				x, y, z, roll, pitch, yaw,
-				x, y, z, q.x(), q.y(), q.z(), q.w(),
-				x, y, z, roll, pitch, yaw);
+		// For a stereo camera, T can be its left lens' (the standalone app's local transform)
+		// or its frame between the lenses (a URDF's camera_link): T * L * X * L^-1 then puts
+		// the left lens (T * L) at T * L * X.
+		for(int k = 0; k < (stereoCamera ? 2 : 1); ++k)
+		{
+			float x, y, z, roll, pitch, yaw;
+			const Transform corrected = k == 0 ? cameraTf * X : cameraTf * stereoCenterToLeft * X * stereoCenterToLeft.inverse();
+			corrected.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+			const Eigen::Quaternionf q = corrected.getQuaternionf();
+			printf("\nThe camera's transform T given (--camera_tf) corrected, %s:\n"
+					"    x y z roll pitch yaw:  %.6f %.6f %.6f %.6f %.6f %.6f\n"
+					"    x y z qx qy qz qw:     %.6f %.6f %.6f %.6f %.6f %.6f %.6f\n"
+					"    URDF:                  <origin xyz=\"%.6f %.6f %.6f\" rpy=\"%.6f %.6f %.6f\"/>\n",
+					!stereoCamera ? "T * X" : k == 0 ?
+							"if T is the stereo camera's left lens (e.g., the standalone app's local transform)" :
+							"if T is the stereo camera's frame between its lenses (e.g., a URDF's camera_link)",
+					x, y, z, roll, pitch, yaw,
+					x, y, z, q.x(), q.y(), q.z(), q.w(),
+					x, y, z, roll, pitch, yaw);
+		}
 	}
 
 	printf("\nTime:\n");

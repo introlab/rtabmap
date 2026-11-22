@@ -10,7 +10,10 @@ The database is opened read-only. The tool prints a correction to apply to the c
 
 ## What the database needs
 
-Each node must have an image from one camera and a lidar scan taken at about the same time, with the camera's and the lidar's local transforms (from TF when mapping with ROS).
+Each node must have an image from a camera and a lidar scan taken at about the same time, with the camera's and the lidar's local transforms (from TF when mapping with ROS).
+
+- **Several cameras.** One camera is calibrated at a time, chosen with `--camera <index>` (0 by default), each with its own correction: they have their own mounts.
+- **Stereo cameras.** The left image is used. The correction is of the stereo camera's local transform, which in RTAB-Map is its left lens' (see [The result](#the-result) for a URDF with the stereo camera's frame between its lenses). A database with an RGB camera and the depth computed by the camera (e.g., a ZED with its depth enabled) is calibrated as any RGB-D camera.
 
 What helps:
 
@@ -71,6 +74,8 @@ The tool prints a correction `X` of the camera's mount, in the camera's body fra
 
 The tool cannot print `B * X` itself: the camera's transform stored in the nodes can be moved in each by the robot's motion between the image's and the scan's stamps (rtabmap_ros' `odom_sensor_sync`, or the standalone app with an odometry sensor), so it is not `B`. Give it the camera's transform `T` as configured with `--camera_tf`, e.g., the origin of the URDF's joint to `camera_link`, or the camera's local transform in the standalone app's preferences (which has no optical rotation), and it prints `T * X` to paste back, as `x y z roll pitch yaw`, `x y z qx qy qz qw` and a URDF `<origin>`. As `X` is applied after `T`, this is right whatever is before `T` (e.g., other links of the URDF).
 
+For a stereo camera, `X` is about its left lens, whose transform is the stereo camera's local transform in RTAB-Map (and in the standalone app's preferences). A URDF often has instead the stereo camera's frame between its lenses (`camera_link`), with the lenses' frames under it, half the baseline to each side: the tool also prints `X` about that frame, and with `--camera_tf`, the corrected transform for either case. They differ only by the motion of the lens about the center, `L * X * L^-1` with `L` the half baseline: about 2 mm for a 1.7 deg correction and a 12 cm baseline.
+
 Internally, the lidar is projected in the camera's optical frame (x right, y down, z forward), under the body frame through the optical rotation `R` (roll -pi/2, pitch 0, yaw -pi/2): the solvers search for the same correction there, `C = R^-1 * X * R`, each node's camera local transform `T` becoming `T * C`.
 
 ### Rotation only, by default
@@ -120,12 +125,14 @@ To reprocess the database with the corrected camera transforms:
     rtabmap-reprocess -cam_tf_correction "0.000000 0.000000 0.000000 0.001392 -0.002495 0.000992" "map.db" output.db
 ```
 
-`-cam_tf_correction "x y z roll pitch yaw"` multiplies the camera's local transform of every node by `X`, in the camera's body frame, as the tool estimates it: the base to camera transform `B` becomes `B * X` in each node. What differs between the nodes' transforms is kept, so this is exact also when they are not all the same:
+`-cam_tf_correction "x y z roll pitch yaw"` multiplies the camera's local transform of every node by `X`, in the camera's body frame (the left lens' for a stereo camera), as the tool estimates it: the base to camera transform `B` becomes `B * X` in each node. What differs between the nodes' transforms is kept, so this is exact also when they are not all the same:
 
 - With rtabmap_ros' `odom_sensor_sync`, or the standalone app with an odometry sensor (`SensorCaptureThread`), the camera's transform of each node is moved by the robot's motion between the image's and the scan's stamps: `D_i * B`, which becomes `D_i * B * X`.
 - With a camera on a joint (e.g., a pan-tilt), as long as the error is in the camera's own mount, after the joint.
 
 (`-cam_tf` instead sets the same transform in all the nodes, which would undo the above.)
+
+With several cameras, one correction per camera is given, separated by `;`, in the order of the cameras (as streamed, see `-cam` of `rtabmap-reprocess`): after `--camera 1`, the tool prints the command with its correction at its place and the others to fill in, e.g., `-cam_tf_correction "<camera 0>;0 0 0 -0.031238 0.005670 -0.030153"`. Calibrate each camera, then reprocess once with all their corrections (`0 0 0 0 0 0` to keep a camera as it is).
 
 If the depth images were made from the lidar when mapping (e.g., `gen_depth` with rtabmap_ros, for a camera without depth), they were projected with the old transform: add `-depth_from_scan` to make them again from the nodes' scans with the corrected one, with the same resolution and hole filling as when mapping (e.g., rtabmap_ros' `gen_depth_decimation:=4 gen_depth_fill_holes_size:=2` is `-depth_from_scan_decimation 4 -depth_from_scan_fill_holes 2`). A depth image from the camera itself (stereo, as the ZED's, or RGB-D) is in the camera's frame, and does not change.
 
@@ -158,6 +165,7 @@ Running the tool on the output database should then find no correction. For exam
 | `--voxel #.#` | `0` | Voxel filter the scans first (m), to compare the result at several lidar densities. |
 | `--assemble #.#` | `0` | Assemble each node's scan with the scans of the nodes within this time window (s) centered on it (see [Assembling the scans](#assembling-the-scans)). 0: the scans as stored. |
 | `--assemble_voxel #.#` | `0.02` | Voxel size (m) of the assembled scans. |
+| `--camera #` | `0` | Index of the camera to calibrate in nodes with several cameras. |
 | `--camera_tf "x y z roll pitch yaw"` | | The camera's transform `T` as configured (URDF, standalone app's preferences), to print `T * X` (see [The result](#the-result)). Same formats as the app's local transform: 3, 6, 7, 9 or 12 values, `PI_2` allowed. |
 
 ## Limits
@@ -166,7 +174,7 @@ Running the tool on the output database should then find no correction. For exam
 - **Motion within a node.** An assembled cloud spans a few sweeps; the points from the earlier ones are moved by odometry, whose error adds noise.
 - **Rolling shutter.** It is not modeled; fast rotations distort the images.
 - **Intrinsics.** The camera's calibration (focal lengths, center, distortion) is assumed right; an error there biases the rotation.
-- **One camera per node.** Nodes with several cameras are skipped.
+- **One camera at a time.** With several cameras, each is calibrated on its own (`--camera`), not their transforms relative to each other.
 
 ## Reference
 
