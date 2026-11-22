@@ -102,6 +102,21 @@ public:
         c[1] = (b[29]*b[7]*b[24]-b[29]*b[20]*b[11]+b[2]*b[20]*b[38]-b[2]*b[25]*b[33]-b[28]*b[20]*b[12]+b[28]*b[7]*b[25]-b[29]*b[19]*b[12]-b[3]*b[24]*b[33]+b[15]*b[33]*b[12]+b[3]*b[19]*b[38]-b[16]*b[6]*b[38]+b[3]*b[20]*b[37]+b[16]*b[32]*b[12]+b[29]*b[6]*b[25]-b[16]*b[7]*b[37]-b[3]*b[25]*b[32]-b[15]*b[7]*b[38]+b[16]*b[33]*b[11]);
         c[0] = -b[29]*b[20]*b[12]+b[29]*b[7]*b[25]+b[16]*b[33]*b[12]-b[16]*b[7]*b[38]+b[3]*b[20]*b[38]-b[3]*b[25]*b[33];
 
+        // Degenerate sample (e.g., identical points in both views, no motion):
+        // all non-constant coefficients vanish and the polynomial has no roots.
+        // Recent OpenCV versions assert in solvePoly() in that case instead of
+        // returning garbage roots, so reject the sample before.
+        bool degenerate = true;
+        for (int i = 1; i < 11 && degenerate; i++)
+        {
+            degenerate = std::abs(c[i]) <= DBL_EPSILON;
+        }
+        if (degenerate)
+        {
+            _model.release();
+            return 0;
+        }
+
         std::vector<Complex<double> > roots;
         solvePoly(coeffs, roots);
 
