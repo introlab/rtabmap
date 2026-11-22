@@ -134,6 +134,11 @@ void showUsage(const char * exec)
 			"                      used too, if kept. A window longer than the session\n"
 			"                      assembles the whole session.\n"
 			"    --assemble_voxel #.#  Voxel size (m) of the assembled scans (default 0.02).\n"
+			"    --camera_tf \"x y z roll pitch yaw\"  The camera's transform T as configured (e.g., the\n"
+			"                      URDF's origin of camera_link, or the camera's local transform in\n"
+			"                      the standalone app's preferences, without optical rotation), to\n"
+			"                      print the corrected one T * X to paste back. Same formats as the\n"
+			"                      app's local transform (3, 6, 7, 9 or 12 values, PI_2 allowed).\n"
 			"\n", exec, uJoin(std::list<std::string>(solvers.begin(), solvers.end()), ", ").c_str());
 	exit(1);
 }
@@ -833,6 +838,7 @@ int main(int argc, char * argv[])
 	double initialRotation[3] = {0, 0, 0};
 	float assembleWindow = 0.0f;
 	float assembleVoxel = 0.02f;
+	Transform cameraTf;
 	for(int i = 1; i < argc - 1; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -910,6 +916,21 @@ int main(int argc, char * argv[])
 		else if(std::strcmp(argv[i], "--assemble_voxel") == 0 && i + 1 < argc - 1)
 		{
 			assembleVoxel = uStr2Float(argv[++i]);
+		}
+		else if(std::strcmp(argv[i], "--camera_tf") == 0 && i + 1 < argc - 1)
+		{
+			std::string str = argv[++i];
+			const std::list<std::string> values = uSplit(str, ' ');
+			if(values.size() != 3 && values.size() != 6 && values.size() != 7 && values.size() != 9 && values.size() != 12)
+			{
+				printf("Invalid --camera_tf \"%s\": expecting 3, 6, 7, 9 or 12 values.\n", str.c_str());
+				showUsage(argv[0]);
+			}
+			for(size_t pos = str.find("PI_2"); pos != std::string::npos; pos = str.find("PI_2"))
+			{
+				str.replace(pos, 4, uNumber2Str(M_PI / 2.0, 12));
+			}
+			cameraTf = Transform::fromString(str);
 		}
 		else if(std::strcmp(argv[i], "--initial_rotation") == 0 && i + 3 < argc - 1)
 		{
@@ -1452,6 +1473,22 @@ int main(int argc, char * argv[])
 		printf("\nTo reprocess the database with the corrected camera transforms:\n"
 				"    rtabmap-reprocess -cam_tf_correction \"%.6f %.6f %.6f %.6f %.6f %.6f\" \"%s\" output.db\n",
 				x, y, z, roll, pitch, yaw, databasePath.c_str());
+	}
+	if(!cameraTf.isNull())
+	{
+		// X is applied on the right of the camera's transform: T * X is right whatever is
+		// before T (e.g., other links of the URDF, or the per-node motion compensation).
+		float x, y, z, roll, pitch, yaw;
+		const Transform corrected = cameraTf * X;
+		corrected.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+		const Eigen::Quaternionf q = corrected.getQuaternionf();
+		printf("\nThe camera's transform T given (--camera_tf) corrected, T * X:\n"
+				"    x y z roll pitch yaw:  %.6f %.6f %.6f %.6f %.6f %.6f\n"
+				"    x y z qx qy qz qw:     %.6f %.6f %.6f %.6f %.6f %.6f %.6f\n"
+				"    URDF:                  <origin xyz=\"%.6f %.6f %.6f\" rpy=\"%.6f %.6f %.6f\"/>\n",
+				x, y, z, roll, pitch, yaw,
+				x, y, z, q.x(), q.y(), q.z(), q.w(),
+				x, y, z, roll, pitch, yaw);
 	}
 
 	printf("\nTime:\n");

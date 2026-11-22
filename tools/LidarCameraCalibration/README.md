@@ -69,6 +69,8 @@ On the netherdrone bags (Ouster OS1-32 on a turning mast, whose camera transform
 
 The tool prints a correction `X` of the camera's mount, in the camera's body frame (x forward, y left, z up): the robot base to camera transform `B` (e.g., `base_link -> camera_link`) becomes `B * X`. It is a multiplication of transforms, not a sum of angles. Its roll is about the camera's viewing axis, its pitch is the camera's tilt and its yaw its pan. It prints it in radians and degrees, and as a quaternion. In TF, `X` can also be inserted after `B`, leaving the other transforms as they are: `base_link -[B]-> camera_link_measured -[X]-> camera_link`.
 
+The tool cannot print `B * X` itself: the camera's transform stored in the nodes can be moved in each by the robot's motion between the image's and the scan's stamps (rtabmap_ros' `odom_sensor_sync`, or the standalone app with an odometry sensor), so it is not `B`. Give it the camera's transform `T` as configured with `--camera_tf`, e.g., the origin of the URDF's joint to `camera_link`, or the camera's local transform in the standalone app's preferences (which has no optical rotation), and it prints `T * X` to paste back, as `x y z roll pitch yaw`, `x y z qx qy qz qw` and a URDF `<origin>`. As `X` is applied after `T`, this is right whatever is before `T` (e.g., other links of the URDF).
+
 Internally, the lidar is projected in the camera's optical frame (x right, y down, z forward), under the body frame through the optical rotation `R` (roll -pi/2, pitch 0, yaw -pi/2): the solvers search for the same correction there, `C = R^-1 * X * R`, each node's camera local transform `T` becoming `T * C`.
 
 ### Rotation only, by default
@@ -156,6 +158,7 @@ Running the tool on the output database should then find no correction. For exam
 | `--voxel #.#` | `0` | Voxel filter the scans first (m), to compare the result at several lidar densities. |
 | `--assemble #.#` | `0` | Assemble each node's scan with the scans of the nodes within this time window (s) centered on it (see [Assembling the scans](#assembling-the-scans)). 0: the scans as stored. |
 | `--assemble_voxel #.#` | `0.02` | Voxel size (m) of the assembled scans. |
+| `--camera_tf "x y z roll pitch yaw"` | | The camera's transform `T` as configured (URDF, standalone app's preferences), to print `T * X` (see [The result](#the-result)). Same formats as the app's local transform: 3, 6, 7, 9 or 12 values, `PI_2` allowed. |
 
 ## Limits
 
