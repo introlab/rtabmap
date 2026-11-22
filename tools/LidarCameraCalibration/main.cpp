@@ -1402,7 +1402,7 @@ int main(int argc, char * argv[])
 	{
 		// How often each kind of lidar edge lands on an image edge once corrected: what
 		// each brings, and how much of it is noise.
-		size_t near[3] = {0, 0, 0}, total[3] = {0, 0, 0};
+		size_t onImageEdge[3] = {0, 0, 0}, total[3] = {0, 0, 0};
 		for(const Frame & f : frames)
 		{
 			for(unsigned char t : f.edgeTypes)
@@ -1413,13 +1413,13 @@ int main(int argc, char * argv[])
 		problem.project(correctionFrom(p), [&](const Frame & f, size_t i, float u, float v) {
 			if(f.edgeDistance.at<float>(int(v + 0.5f), int(u + 0.5f)) <= 2.0f)
 			{
-				++near[f.edgeTypes[i]];
+				++onImageEdge[f.edgeTypes[i]];
 			}
 		});
 		printf("\nLidar edge points within 2 pixels of an image edge, once corrected: depth %.0f%%, crease %.0f%%, intensity %.0f%%\n",
-				total[kEdgeDepth] ? 100.0 * near[kEdgeDepth] / total[kEdgeDepth] : 0.0,
-				total[kEdgeCrease] ? 100.0 * near[kEdgeCrease] / total[kEdgeCrease] : 0.0,
-				total[kEdgeIntensity] ? 100.0 * near[kEdgeIntensity] / total[kEdgeIntensity] : 0.0);
+				total[kEdgeDepth] ? 100.0 * onImageEdge[kEdgeDepth] / total[kEdgeDepth] : 0.0,
+				total[kEdgeCrease] ? 100.0 * onImageEdge[kEdgeCrease] / total[kEdgeCrease] : 0.0,
+				total[kEdgeIntensity] ? 100.0 * onImageEdge[kEdgeIntensity] / total[kEdgeIntensity] : 0.0);
 	}
 
 	printf("\nConsistency, each half of the nodes on its own:\n");
