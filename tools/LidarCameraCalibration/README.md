@@ -127,10 +127,8 @@ To reprocess the database with the corrected camera transforms:
 
 If the depth images were made from the lidar when mapping (e.g., `gen_depth` with rtabmap_ros, for a camera without depth), they were projected with the old transform: add `-depth_from_scan` to make them again from the nodes' scans with the corrected one, with the same resolution and hole filling as when mapping (e.g., rtabmap_ros' `gen_depth_decimation:=4 gen_depth_fill_holes_size:=2` is `-depth_from_scan_decimation 4 -depth_from_scan_fill_holes 2`). A depth image from the camera itself (stereo, as the ZED's, or RGB-D) is in the camera's frame, and does not change.
 
-If the images were rectified by RTAB-Map when mapping (`Rtabmap/ImagesAlreadyRectified=false`, e.g., `rectify_images:=true` with rtabmap_ros), the database holds them rectified, but `rtabmap-reprocess` takes that parameter from the database and would rectify them again: add `--Rtabmap/ImagesAlreadyRectified true`.
-
 ```bash
-$ rtabmap-reprocess -cam_tf_correction "..." -depth_from_scan -depth_from_scan_decimation 4 -depth_from_scan_fill_holes 2 --Rtabmap/ImagesAlreadyRectified true map.db output.db
+$ rtabmap-reprocess -cam_tf_correction "..." -depth_from_scan -depth_from_scan_decimation 4 -depth_from_scan_fill_holes 2 map.db output.db
 ```
 
 Running the tool on the output database should then find no correction. For example, on a netherdrone map (camera transforms moved per node by `odom_sensor_sync`) made off by (1.72, -1.72, 1.72) deg with `-cam_tf_correction "0 0 0 0.03 -0.03 0.03"`, the tool found (-1.70, 1.51, -1.71) deg (that offset, and the 0.1 deg the original map is off by), and on the database reprocessed with it, (0.02, -0.01, 0.00) deg.

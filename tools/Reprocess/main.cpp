@@ -1063,6 +1063,46 @@ int main(int argc, char * argv[])
 	// so that it doesn't keep them.
 	ParametersMap parametersToRestore;
 
+	// Images rectified by RTAB-Map when mapping (Rtabmap/ImagesAlreadyRectified=false) are
+	// saved rectified in the database, with their raw calibration: rectifying them again
+	// would distort and shift them. Except RGB(-D) images with Rtabmap/RectifyOnlyFeatures,
+	// which are saved raw, only their features being rectified (stereo images are always
+	// rectified): the first node with a calibration tells which ones the database has.
+	if(configParameters.find(Parameters::kRtabmapImagesAlreadyRectified())==configParameters.end() &&
+		customParameters.find(Parameters::kRtabmapImagesAlreadyRectified())==customParameters.end())
+	{
+		bool imagesAlreadyRectified = Parameters::defaultRtabmapImagesAlreadyRectified();
+		bool rectifyOnlyFeatures = Parameters::defaultRtabmapRectifyOnlyFeatures();
+		Parameters::parse(parameters, Parameters::kRtabmapImagesAlreadyRectified(), imagesAlreadyRectified);
+		Parameters::parse(parameters, Parameters::kRtabmapRectifyOnlyFeatures(), rectifyOnlyFeatures);
+		bool stereo = false;
+		if(!imagesAlreadyRectified && rectifyOnlyFeatures)
+		{
+			std::set<int> nodeIds;
+			dbDriver->getAllNodeIds(nodeIds);
+			for(std::set<int>::iterator iter=nodeIds.begin(); iter!=nodeIds.end(); ++iter)
+			{
+				std::vector<CameraModel> models;
+				std::vector<StereoCameraModel> stereoModels;
+				if(dbDriver->getCalibration(*iter, models, stereoModels) && (!models.empty() || !stereoModels.empty()))
+				{
+					stereo = !stereoModels.empty();
+					break;
+				}
+			}
+		}
+		if(!imagesAlreadyRectified && (!rectifyOnlyFeatures || stereo))
+		{
+			printf("[Warning] Parameter %s is false in the opened database: its images were rectified "
+					"when mapping and saved rectified. Setting it to true for this reprocessing so that "
+					"they are not rectified again. Set %s explicitly to suppress this warning.\n",
+					Parameters::kRtabmapImagesAlreadyRectified().c_str(),
+					Parameters::kRtabmapImagesAlreadyRectified().c_str());
+			parametersToRestore.insert(ParametersPair(Parameters::kRtabmapImagesAlreadyRectified(), "false"));
+			uInsert(parameters, ParametersPair(Parameters::kRtabmapImagesAlreadyRectified(), "true"));
+		}
+	}
+
 	bool useOdomFeatures = Parameters::defaultMemUseOdomFeatures();
 	if((configParameters.find(Parameters::kKpDetectorStrategy())!=configParameters.end() ||
 		configParameters.find(Parameters::kVisFeatureType())!=configParameters.end() ||
