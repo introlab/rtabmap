@@ -14,7 +14,7 @@ Each node must have an image from one camera and a lidar scan taken at about the
 
 What helps:
 
-- **Dense scans.** Edges are found where the scan, projected in the image, leaves no holes. An assembled cloud (a few lidar sweeps per node) at full resolution, or with a small voxel (2 cm), works better than a sparse one.
+- **Dense scans.** Edges are found where the scan, projected in the image, leaves no holes. An assembled cloud (a few lidar sweeps per node) at full resolution, or with a small voxel (2 cm), works better than a sparse one. If the nodes hold a single sweep each (e.g., a map made with the standalone app, which does not assemble scans), `--assemble` does it here (see [Assembling the scans](#assembling-the-scans)).
 - **Images and scans taken together.** The tool assumes that the camera's and the lidar's clocks are synchronized: it does not estimate a time offset between them, which would look like a rotation while the robot turns. With `odom_sensor_sync`, the camera's transform stored in each node already compensates the motion between the image's and the scan's stamps. The tool estimates its correction on top of that.
 - **Many nodes from varied viewpoints.** The correction is the one that fits all the nodes; a single view constrains it much less.
 - **Intensity in the scans** (format `XYZI`). It is used when there; see below.
@@ -52,6 +52,18 @@ The lidar edge points are then selected again with the result, and the solver ru
 A new solver implements `CorrectionSolver` and is added to `createSolver()` and `availableSolvers()`.
 
 This is the approach of Levinson and Thrun (see [Reference](#reference)), with intensity edges added.
+
+### Assembling the scans
+
+With `--assemble <window>`, each node's scan is replaced, before anything else, by the scans of all the nodes taken within the window (in seconds) centered on its time, its own included, moved into its lidar frame with the nodes' odometry poses. Nodes without an image count too, as do the ones skipped for their speed, and intermediate nodes if their data was kept: with `Rtabmap/CreateIntermediateNodes=true` and `Mem/IntermediateNodeDataKept=true`, every sweep is saved in the database, not only the nodes' ones (at `Rtabmap/DetectionRate`). Only the points in front of the camera and in or near its image (a margin of a quarter of the image around it) are kept, then the cloud is voxel filtered (`--assemble_voxel`, 2 cm). The projection keeps the nearest point per cell, so the points of the other nodes hidden behind a surface from this node's camera do not count.
+
+- Poses are odometry's: over a few seconds, they are as consistent with each other as the optimized ones (the results with either were the same on the maps below), intermediate nodes have them, and only the nodes of the same session are assembled.
+- A window longer than the session (e.g., `--assemble 1000`) assembles the whole session in every node. It finds more lidar edges, but the pose errors over the map, and anything that moved, blur them: fewer of them land on image edges. A window of a few seconds is a better default.
+- In the window, the robot's motion over time adds the odometry's error to the lidar edges, as for a cloud assembled when mapping.
+
+For example, on a Velodyne VLP-16 and ZED map of 56 nodes (one every 1.2 s, each already an assembled cloud), the correction found is the same with the scans as stored (pitch -1.24 deg), assembled over 3 s (-1.33 deg) or 6 s (-1.37 deg), or with the whole map (-1.57 deg), each half of the nodes within 0.3 deg of the others. With the whole map, 22% of the depth discontinuities are within 2 pixels of an image edge once corrected, against 40% with the scans as stored.
+
+On the netherdrone bags (Ouster OS1-32 on a turning mast, whose camera transform in TF was already calibrated), with a single deskewed sweep per scan: on its own, a sweep is too sparse for intensity edges and creases, and the result is 0.65 deg off in roll. Assembled over 1 s, it is within 0.15 deg of the calibration, and over 4.3 s (half a turn of the mast, as the demo assembles when mapping) within 0.1 deg. That was with a node every second and the sweeps in between kept as intermediate nodes (56 nodes, 383 intermediate), as with a node per sweep (427 nodes).
 
 ## The result
 
@@ -116,6 +128,8 @@ It is also worth running it again with other values of `--decimation`, `--intens
 | `--max_angular_speed #.#` | `0` | Skip the nodes rotating faster than this (deg/s): the mean since the previous node, from their odometry poses, over which an assembled scan is taken (else the instantaneous odometry velocity stored in the node). 0: keep all. |
 | `--max_linear_speed #.#` | `0` | Skip the nodes moving faster than this (m/s). 0: keep all. |
 | `--voxel #.#` | `0` | Voxel filter the scans first (m), to compare the result at several lidar densities. |
+| `--assemble #.#` | `0` | Assemble each node's scan with the scans of the nodes within this time window (s) centered on it (see [Assembling the scans](#assembling-the-scans)). 0: the scans as stored. |
+| `--assemble_voxel #.#` | `0.02` | Voxel size (m) of the assembled scans. |
 
 ## Limits
 

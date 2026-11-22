@@ -100,7 +100,7 @@ void showUsage(const char * exec)
 			"                      are found, so that the projected scan is dense (default 4).\n"
 			"    --jump #.#        Relative depth jump for a lidar point to be on a\n"
 			"                      discontinuity, as a fraction of its depth: 0.15 (default)\n"
-			"                      means a neighbor at least 15% of this point's depth farther\n"
+			"                      means a neighbor at least 15%% of this point's depth farther\n"
 			"                      than where this point's surface would continue.\n"
 			"    --intensity_jump #.#  Relative intensity change for a lidar point to be on an\n"
 			"                      intensity edge, as a fraction: 0.4 (default) means a\n"
@@ -126,8 +126,79 @@ void showUsage(const char * exec)
 			"                      0: all).\n"
 			"    --voxel #.#       Voxel filter the scans first (m, default 0: as stored), to\n"
 			"                      compare the result at several lidar densities.\n"
+			"    --assemble #.#    Assemble each node's scan with the scans of the nodes taken\n"
+			"                      within this time window (s) centered on it, moved into its\n"
+			"                      lidar frame with odometry's poses (same session only),\n"
+			"                      e.g., for a database with a single lidar sweep per node\n"
+			"                      (default 0: as stored). Intermediate nodes' scans are\n"
+			"                      used too, if kept. A window longer than the session\n"
+			"                      assembles the whole session.\n"
+			"    --assemble_voxel #.#  Voxel size (m) of the assembled scans (default 0.02).\n"
 			"\n", exec, uJoin(std::list<std::string>(solvers.begin(), solvers.end()), ", ").c_str());
 	exit(1);
+}
+
+// A node's scan with the scans of the nodes around it (--assemble): each given with its
+// transform into the node's lidar frame. Only the points in front of the camera and
+// near its image (a margin of a quarter of the image around it, as the correction moves
+// them) are kept, then the cloud is voxel filtered. Nx4 CV_32F, x y z intensity, in the
+// node's lidar frame; hasIntensity: whether all the scans have intensity.
+cv::Mat assembleScans(
+		const std::vector<std::pair<Transform, LaserScan> > & scans,
+		const Transform & lidarToCam,
+		const cv::Mat & K,
+		const cv::Size & imageSize,
+		float minDepth,
+		float voxel,
+		bool & hasIntensity)
+{
+	hasIntensity = !scans.empty();
+	for(const std::pair<Transform, LaserScan> & scan : scans)
+	{
+		hasIntensity = hasIntensity && scan.second.hasIntensity();
+	}
+	const float fx = K.at<double>(0, 0), fy = K.at<double>(1, 1), cx = K.at<double>(0, 2), cy = K.at<double>(1, 2);
+	const float marginU = imageSize.width / 4.0f, marginV = imageSize.height / 4.0f;
+	pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
+	for(const std::pair<Transform, LaserScan> & scan : scans)
+	{
+		const Eigen::Affine3f toLidar = scan.first.toEigen3f();
+		const Eigen::Affine3f toCam = (lidarToCam * scan.first).toEigen3f();
+		const LaserScan & s = scan.second;
+		const int intensityOffset = hasIntensity ? s.getIntensityOffset() : -1;
+		for(int i = 0; i < s.size(); ++i)
+		{
+			const float * p = s.data().ptr<float>(0, i);
+			const Eigen::Vector3f point(p[0], p[1], s.is2d() ? 0.0f : p[2]);
+			const Eigen::Vector3f c = toCam * point;
+			if(c.z() <= minDepth)
+			{
+				continue;
+			}
+			const float u = fx * c.x() / c.z() + cx;
+			const float v = fy * c.y() / c.z() + cy;
+			if(u < -marginU || u > imageSize.width + marginU || v < -marginV || v > imageSize.height + marginV)
+			{
+				continue;
+			}
+			const Eigen::Vector3f l = toLidar * point;
+			pcl::PointXYZI pt;
+			pt.x = l.x(); pt.y = l.y(); pt.z = l.z();
+			pt.intensity = intensityOffset >= 0 ? p[intensityOffset] : 0.0f;
+			cloud->push_back(pt);
+		}
+	}
+	if(voxel > 0.0f && !cloud->empty())
+	{
+		cloud = util3d::voxelize(cloud, voxel);
+	}
+	cv::Mat out(cloud->size(), 4, CV_32F);
+	for(size_t i = 0; i < cloud->size(); ++i)
+	{
+		float * o = out.ptr<float>(i);
+		o[0] = cloud->at(i).x; o[1] = cloud->at(i).y; o[2] = cloud->at(i).z; o[3] = cloud->at(i).intensity;
+	}
+	return out;
 }
 
 void computeEdgeMaps(Frame & f, float sigma)
@@ -588,7 +659,10 @@ void saveOverlay(const Frame & f, const Transform & C, float minDepth, const std
 		}
 	}
 	drawNodeInfo(out, f);
-	cv::imwrite(path, out);
+	if(!cv::imwrite(path, out))
+	{
+		UWARN("Failed to write image \"%s\".", path.c_str());
+	}
 }
 
 // The cell maps the lidar edges are found from, half transparent over the image, with the
@@ -647,7 +721,10 @@ void saveCellMapOverlays(const Frame & f, const Transform & C, int decimation, f
 		mapEdges &= inside;
 		out(roi).setTo(cv::Scalar(255, 0, 0), mapEdges);
 		drawNodeInfo(out, f);
-	cv::imwrite(path, out);
+	if(!cv::imwrite(path, out))
+	{
+		UWARN("Failed to write image \"%s\".", path.c_str());
+	}
 	};
 
 	if(!maps.logIntensity.empty())
@@ -754,6 +831,8 @@ int main(int argc, char * argv[])
 	float maxAngularSpeed = 0.0f;
 	float maxLinearSpeed = 0.0f;
 	double initialRotation[3] = {0, 0, 0};
+	float assembleWindow = 0.0f;
+	float assembleVoxel = 0.02f;
 	for(int i = 1; i < argc - 1; ++i)
 	{
 		if(std::strcmp(argv[i], "--help") == 0)
@@ -824,6 +903,14 @@ int main(int argc, char * argv[])
 		{
 			maxLinearSpeed = uStr2Float(argv[++i]);
 		}
+		else if(std::strcmp(argv[i], "--assemble") == 0 && i + 1 < argc - 1)
+		{
+			assembleWindow = uStr2Float(argv[++i]);
+		}
+		else if(std::strcmp(argv[i], "--assemble_voxel") == 0 && i + 1 < argc - 1)
+		{
+			assembleVoxel = uStr2Float(argv[++i]);
+		}
 		else if(std::strcmp(argv[i], "--initial_rotation") == 0 && i + 3 < argc - 1)
 		{
 			for(int k = 0; k < 3; ++k)
@@ -860,6 +947,12 @@ int main(int argc, char * argv[])
 	{
 		showUsage(argv[0]);
 	}
+	// Before the processing, rather than finding out at the end.
+	if(!imagesDir.empty() && !UDirectory::makeDir(imagesDir, true))
+	{
+		printf("Cannot create the images directory \"%s\".\n", imagesDir.c_str());
+		return 1;
+	}
 
 	DBDriver * driver = DBDriver::create();
 	if(!driver->openConnection(databasePath, false, /*readOnly=*/true))
@@ -888,6 +981,9 @@ int main(int argc, char * argv[])
 	};
 	std::map<int, OdometrySample> odometry;
 	std::list<Signature *> signatures;
+	// With --assemble, the intermediate nodes' scans are assembled too, if they were kept
+	// (Mem/IntermediateNodeDataKept): every sweep can be saved without making each a node.
+	std::list<Signature *> intermediateSignatures;
 	int intermediateNodes = 0;
 	for(Signature * s : allSignatures)
 	{
@@ -896,7 +992,14 @@ int main(int argc, char * argv[])
 		if(intermediate)
 		{
 			++intermediateNodes;
-			delete s;
+			if(assembleWindow > 0.0f)
+			{
+				intermediateSignatures.push_back(s);
+			}
+			else
+			{
+				delete s;
+			}
 		}
 		else
 		{
@@ -904,6 +1007,38 @@ int main(int argc, char * argv[])
 		}
 	}
 	driver->loadNodeData(signatures, true, true, false, false);
+	driver->loadNodeData(intermediateSignatures, false, true, false, false);
+
+	// With --assemble, the scans of all the nodes (with an image or not), kept compressed,
+	// with their poses: each node's scan is assembled with those taken around its time.
+	struct ScanSource
+	{
+		Transform pose;  // of the robot base, odometry's
+		double stamp;
+		int mapId;
+		LaserScan compressed;
+	};
+	std::map<int, ScanSource> scanSources;
+	std::map<int, LaserScan> scanCache;  // uncompressed, for the nodes near the current one
+	if(assembleWindow > 0.0f)
+	{
+		std::list<Signature *> sources = signatures;
+		sources.insert(sources.end(), intermediateSignatures.begin(), intermediateSignatures.end());
+		for(Signature * s : sources)
+		{
+			const Transform & pose = s->getPose();
+			if(!pose.isNull() && !s->sensorData().laserScanCompressed().isEmpty())
+			{
+				scanSources.insert(std::make_pair(s->id(), ScanSource{pose, s->getStamp(), s->mapId(), s->sensorData().laserScanCompressed()}));
+			}
+		}
+	}
+	for(Signature * s : intermediateSignatures)
+	{
+		delete s;
+	}
+	intermediateSignatures.clear();
+	size_t assembledScans = 0;
 
 	std::vector<Frame> frames;
 	int skipped = 0;
@@ -1012,18 +1147,76 @@ int main(int argc, char * argv[])
 			computeEdgeMaps(f, sigma);
 			f.K = model.K().clone();
 			f.scanToCam = scan.localTransform().inverse() * model.localTransform();
-			// Scan frame, as stored.
-			f.hasIntensity = scan.hasIntensity();
-			f.cloud = cv::Mat(scan.size(), 4, CV_32F, cv::Scalar(0));
-			for(int i = 0; i < scan.size(); ++i)
+			std::map<int, ScanSource>::const_iterator self = scanSources.find(s->id());
+			if(assembleWindow > 0.0f && self != scanSources.end())
 			{
-				const float * p = scan.data().ptr<float>(0, i);
-				f.cloud.at<float>(i, 0) = p[0];
-				f.cloud.at<float>(i, 1) = p[1];
-				f.cloud.at<float>(i, 2) = scan.is2d() ? 0.0f : p[2];
-				if(f.hasIntensity)
+				// The scans of the nodes within the window, into this node's lidar frame.
+				// Uncompressed once each: the nodes come in order, so a scan is kept while
+				// the window can still reach it.
+				const Transform worldToLidar = (self->second.pose * scan.localTransform()).inverse();
+				const double stamp = self->second.stamp;
+				for(std::map<int, LaserScan>::iterator iter = scanCache.begin(); iter != scanCache.end();)
 				{
-					f.cloud.at<float>(i, 3) = p[scan.getIntensityOffset()];
+					if(scanSources.at(iter->first).stamp < stamp - assembleWindow / 2.0)
+					{
+						iter = scanCache.erase(iter);
+					}
+					else
+					{
+						++iter;
+					}
+				}
+				std::vector<std::pair<Transform, LaserScan> > scans;
+				for(const std::pair<const int, ScanSource> & source : scanSources)
+				{
+					if(std::fabs(source.second.stamp - stamp) > assembleWindow / 2.0 ||
+					   source.second.mapId != self->second.mapId)
+					{
+						continue;
+					}
+					std::map<int, LaserScan>::iterator cached = scanCache.find(source.first);
+					if(cached == scanCache.end())
+					{
+						LaserScan uncompressed;
+						if(source.first == s->id())
+						{
+							uncompressed = scan;  // already uncompressed, and voxel filtered
+						}
+						else
+						{
+							SensorData tmp;
+							tmp.setLaserScan(source.second.compressed);
+							tmp.uncompressDataConst(0, 0, &uncompressed);
+							if(voxel > 0.0f && !uncompressed.isEmpty())
+							{
+								uncompressed = util3d::commonFiltering(uncompressed, 1, 0.0f, 0.0f, voxel);
+							}
+						}
+						cached = scanCache.insert(std::make_pair(source.first, uncompressed)).first;
+					}
+					if(!cached->second.isEmpty())
+					{
+						scans.push_back(std::make_pair(worldToLidar * source.second.pose * cached->second.localTransform(), cached->second));
+					}
+				}
+				assembledScans += scans.size();
+				f.cloud = assembleScans(scans, f.scanToCam.inverse(), f.K, f.gray.size(), minDepth, assembleVoxel, f.hasIntensity);
+			}
+			else
+			{
+				// Scan frame, as stored.
+				f.hasIntensity = scan.hasIntensity();
+				f.cloud = cv::Mat(scan.size(), 4, CV_32F, cv::Scalar(0));
+				for(int i = 0; i < scan.size(); ++i)
+				{
+					const float * p = scan.data().ptr<float>(0, i);
+					f.cloud.at<float>(i, 0) = p[0];
+					f.cloud.at<float>(i, 1) = p[1];
+					f.cloud.at<float>(i, 2) = scan.is2d() ? 0.0f : p[2];
+					if(f.hasIntensity)
+					{
+						f.cloud.at<float>(i, 3) = p[scan.getIntensityOffset()];
+					}
 				}
 			}
 			if((creaseAngle > 0.0f || !imagesDir.empty()) && !scan.is2d())
@@ -1075,9 +1268,15 @@ int main(int argc, char * argv[])
 	printf("%d nodes with an image (one camera) and a lidar scan, %d skipped. %d lidar points per node on average%s (%.1f s).\n",
 			(int)frames.size(), skipped, frames.empty() ? 0 : int(points / frames.size()),
 			voxel > 0.0f ? uFormat(" after a %g m voxel filter", voxel).c_str() : "", totalTimer.elapsed());
+	if(assembleWindow > 0.0f)
+	{
+		printf("Scans assembled over %g s around each node (odometry poses), %.1f scans per node on average, %g m voxel, cropped to the camera's view.\n",
+				assembleWindow, frames.empty() ? 0.0 : double(assembledScans) / frames.size(), assembleVoxel);
+	}
 	if(intermediateNodes)
 	{
-		printf("%d intermediate nodes (odometry poses only), for the nodes' mean speeds.\n", intermediateNodes);
+		printf("%d intermediate nodes, for the nodes' mean speeds%s.\n", intermediateNodes,
+				assembleWindow > 0.0f ? " and, if they have scans, assembled with the nodes' ones" : " (only their odometry poses)");
 	}
 	if(maxAngularSpeed > 0.0f || maxLinearSpeed > 0.0f)
 	{
@@ -1205,7 +1404,6 @@ int main(int argc, char * argv[])
 
 	if(!imagesDir.empty())
 	{
-		UDirectory::makeDir(imagesDir);
 		for(size_t i = 0; i < frames.size(); ++i)
 		{
 			const std::string prefix = imagesDir + "/" + uFormat("%04d", frames[i].id);

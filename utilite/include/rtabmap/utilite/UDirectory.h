@@ -66,9 +66,11 @@ public:
 	/**
 	 * Make a directory.
 	 * @param dirPath the directory path
+	 * @param createParents if true, also make the missing parent directories, and succeed
+	 *        if the directory already exists (as "mkdir -p").
 	 * @return true on success, false otherwise.
 	 */
-	static bool makeDir(const std::string & dirPath);
+	static bool makeDir(const std::string & dirPath, bool createParents = false);
 
 	/**
 	 * Remove a directory.
