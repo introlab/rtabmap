@@ -3251,9 +3251,15 @@ TEST_F(RtabmapIntegrationFixture, AppearanceOnly_PrecisionRecall)
 		const bool xfeatures2dDescriptor = freakOrBriefDescriptor || daisyDescriptor;
 
 		const bool kazeDescriptor = detectorType == Feature2D::kFeatureKaze;
+		// OnnxDetector (SuperPoint) results are not deterministic across CI
+		// runs (ONNX Runtime threading / runner CPU): with the same code, we
+		// saw accepted fp=2, 4 and 5 (tp=43-44) on ubuntu-24.04, the last one
+		// giving 0.896 precision.
+		const bool onnxDetector = detectorType == Feature2D::kFeatureOnnxDetector;
 		//We saw FAST+FREAK sat at 0.84375 on a macOS CI run with 0.85.
 		const float kMinPrecision = tfIdfUsed ? 0.70f :
-				(looseFloors || kazeDescriptor ? 0.80f : 0.9f);
+				(looseFloors || kazeDescriptor ? 0.80f :
+				(onnxDetector ? 0.85f : 0.9f));
 		const float kMinRecall    = xfeatures2dDescriptor ? 0.5f :
 				(looseFloors ? 0.7f : 0.85f);
 		EXPECT_GE(acceptedPrec, kMinPrecision)

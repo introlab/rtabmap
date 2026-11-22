@@ -1,0 +1,54 @@
+name: 'Install ONNX Runtime'
+description: 'Installs the ONNX Runtime CPU release (Linux x64) in the runner temp directory, cached, and sets ONNXRUNTIME_ROOT'
+inputs:
+  version:
+    description: 'ONNX Runtime version, e.g. 1.23.2'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    # FindONNXRuntime.cmake reads ONNXRUNTIME_ROOT from the environment. The
+    # library is loaded from there at runtime too.
+    - name: Set ONNXRUNTIME_ROOT
+      shell: bash
+      run: echo "ONNXRUNTIME_ROOT=${{ runner.temp }}/onnxruntime-linux-x64-${{ inputs.version }}" >> "$GITHUB_ENV"
+
+    - name: Cache ONNX Runtime
+      id: cache-onnxruntime
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/onnxruntime-linux-x64-${{ inputs.version }}
+        key: ${{ runner.os }}-onnxruntime-linux-x64-${{ inputs.version }}
+
+    # The GitHub release archive first. If it can't be downloaded, the same
+    # binaries come from the Microsoft.ML.OnnxRuntime NuGet package, laid out
+    # like the release archive (include/, lib/, VERSION_NUMBER).
+    - name: Download ONNX Runtime
+      if: steps.cache-onnxruntime.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -eo pipefail
+        version="${{ inputs.version }}"
+        root="$ONNXRUNTIME_ROOT"
+        tmp="${{ runner.temp }}/onnxruntime-download"
+        rm -rf "$root" "$tmp"
+        mkdir -p "$tmp"
+        if curl -fsSL --retry 3 -o "$tmp/ort.tgz" "https://github.com/microsoft/onnxruntime/releases/download/v${version}/onnxruntime-linux-x64-${version}.tgz"; then
+          tar -xzf "$tmp/ort.tgz" -C "${{ runner.temp }}"
+        else
+          echo "GitHub release archive not available, using the NuGet package."
+          curl -fsSL --retry 3 -o "$tmp/ort.nupkg" "https://www.nuget.org/api/v2/package/Microsoft.ML.OnnxRuntime/${version}"
+          unzip -q "$tmp/ort.nupkg" 'build/native/include/*' 'runtimes/linux-x64/native/*' -d "$tmp/nupkg"
+          mkdir -p "$root/lib"
+          cp -r "$tmp/nupkg/build/native/include" "$root/include"
+          cp "$tmp/nupkg/runtimes/linux-x64/native/"*.so "$root/lib/"
+          # Same symlinks as the release archive (SONAME is libonnxruntime.so.1).
+          mv "$root/lib/libonnxruntime.so" "$root/lib/libonnxruntime.so.${version}"
+          ln -s "libonnxruntime.so.${version}" "$root/lib/libonnxruntime.so.1"
+          ln -s "libonnxruntime.so.1" "$root/lib/libonnxruntime.so"
+          echo "${version}" > "$root/VERSION_NUMBER"
+        fi
+        rm -rf "$tmp"
+        test -f "$root/include/onnxruntime_cxx_api.h"
+        test -e "$root/lib/libonnxruntime.so"
+        ls -l "$root" "$root/lib"
