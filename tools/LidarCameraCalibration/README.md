@@ -107,6 +107,34 @@ Before (left) and after (right) the correction: the intensity of the same node, 
 
 It is also worth running it again with other values of `--decimation`, `--intensity_jump` or `--voxel` (which voxel filters the scans first, to compare densities): a result that does not move with them is more trustworthy than one that does.
 
+## Reprocessing the database with the calibration
+
+The database can be reprocessed with the corrected camera transforms, without mapping again. The tool prints the `rtabmap-reprocess` command to do it, with the correction `X`:
+
+```bash
+$ rtabmap-lidarCameraCalibration --assemble 1 map.db
+...
+To reprocess the database with the corrected camera transforms:
+    rtabmap-reprocess -cam_tf_correction "0.000000 0.000000 0.000000 0.001392 -0.002495 0.000992" "map.db" output.db
+```
+
+`-cam_tf_correction "x y z roll pitch yaw"` multiplies the camera's local transform of every node by `X`, in the camera's body frame, as the tool estimates it: the base to camera transform `B` becomes `B * X` in each node. What differs between the nodes' transforms is kept, so this is exact also when they are not all the same:
+
+- With rtabmap_ros' `odom_sensor_sync`, or the standalone app with an odometry sensor (`SensorCaptureThread`), the camera's transform of each node is moved by the robot's motion between the image's and the scan's stamps: `D_i * B`, which becomes `D_i * B * X`.
+- With a camera on a joint (e.g., a pan-tilt), as long as the error is in the camera's own mount, after the joint.
+
+(`-cam_tf` instead sets the same transform in all the nodes, which would undo the above.)
+
+If the depth images were made from the lidar when mapping (e.g., `gen_depth` with rtabmap_ros, for a camera without depth), they were projected with the old transform: add `-depth_from_scan` to make them again from the nodes' scans with the corrected one, with the same resolution and hole filling as when mapping (e.g., rtabmap_ros' `gen_depth_decimation:=4 gen_depth_fill_holes_size:=2` is `-depth_from_scan_decimation 4 -depth_from_scan_fill_holes 2`). A depth image from the camera itself (stereo, as the ZED's, or RGB-D) is in the camera's frame, and does not change.
+
+If the images were rectified by RTAB-Map when mapping (`Rtabmap/ImagesAlreadyRectified=false`, e.g., `rectify_images:=true` with rtabmap_ros), the database holds them rectified, but `rtabmap-reprocess` takes that parameter from the database and would rectify them again: add `--Rtabmap/ImagesAlreadyRectified true`.
+
+```bash
+$ rtabmap-reprocess -cam_tf_correction "..." -depth_from_scan -depth_from_scan_decimation 4 -depth_from_scan_fill_holes 2 --Rtabmap/ImagesAlreadyRectified true map.db output.db
+```
+
+Running the tool on the output database should then find no correction. For example, on a netherdrone map (camera transforms moved per node by `odom_sensor_sync`) made off by (1.72, -1.72, 1.72) deg with `-cam_tf_correction "0 0 0 0.03 -0.03 0.03"`, the tool found (-1.70, 1.51, -1.71) deg (that offset, and the 0.1 deg the original map is off by), and on the database reprocessed with it, (0.02, -0.01, 0.00) deg.
+
 ## Options
 
 | Option | Default | Description |

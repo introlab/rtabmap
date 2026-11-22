@@ -1444,6 +1444,15 @@ int main(int argc, char * argv[])
 	printf("The robot base -> camera transform B (e.g., base_link -> camera_link) becomes B * X.\n"
 			"Or insert X after B in TF: base_link -[B]-> camera_link_measured -[X]-> camera_link,\n"
 			"the rest unchanged.\n");
+	{
+		// Applied to each node's camera transform, which keeps what differs between the nodes
+		// (e.g., the motion compensation of odom_sensor_sync), unlike -cam_tf.
+		float x, y, z, roll, pitch, yaw;
+		X.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+		printf("\nTo reprocess the database with the corrected camera transforms:\n"
+				"    rtabmap-reprocess -cam_tf_correction \"%.6f %.6f %.6f %.6f %.6f %.6f\" \"%s\" output.db\n",
+				x, y, z, roll, pitch, yaw, databasePath.c_str());
+	}
 
 	printf("\nTime:\n");
 	for(const std::pair<std::string, double> & t : times)
