@@ -84,7 +84,7 @@ private:
 	int lastFrameOldestNewId_;
 	std::vector<std::pair<pcl::PointCloud<pcl::PointXYZINormal>::Ptr, pcl::IndicesPtr> > scansBuffer_;
 
-	std::map<int, std::map<int, FeatureBA> > bundleWordReferences_; //<WordId, <FrameId, pt2D+depth>>
+	std::map<int, std::multimap<int, FeatureBA> > bundleWordReferences_; //<WordId, <FrameId, pt2D+depth>>
 	std::map<int, Transform> bundlePoses_;
 	std::multimap<int, Link> bundleLinks_;
 	std::multimap<int, Link> bundleIMUOrientations_;

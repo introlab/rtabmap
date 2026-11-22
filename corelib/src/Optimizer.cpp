@@ -32,6 +32,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/Graph.h>
 #include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/util3d.h>
+#include <rtabmap/core/util3d_features.h>
+#include <limits>
 #include <rtabmap/core/RegistrationVis.h>
 #include <set>
 #include <queue>
@@ -475,7 +478,7 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
+		const std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
 		BAOutliers * outliers)
 {
 	if(outliers)
@@ -485,6 +488,23 @@ std::map<int, Transform> Optimizer::optimizeBA(
 	UERROR("Optimizer %d doesn't implement optimizeBA() method.", (int)this->type());
 	return std::map<int, Transform>();
 }
+std::map<int, Transform> Optimizer::optimizeBA(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		const std::map<int, std::vector<CameraModel> > & models,
+		std::map<int, cv::Point3f> & points3DMap,
+		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
+		BAOutliers * outliers)
+{
+	std::map<int, std::multimap<int, FeatureBA> > references;
+	for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter=wordReferences.begin(); iter!=wordReferences.end(); ++iter)
+	{
+		references.insert(references.end(), std::make_pair(iter->first, std::multimap<int, FeatureBA>(iter->second.begin(), iter->second.end())));
+	}
+	return optimizeBA(rootId, poses, links, models, points3DMap, references, outliers);
+}
+
 
 std::map<int, Transform> Optimizer::optimizeBA(
 		int rootId,
@@ -492,7 +512,7 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, Signature> & signatures,
 		std::map<int, cv::Point3f> & points3DMap,
-		std::map<int, std::map<int, FeatureBA> > & wordReferences,
+		std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
 		bool rematchFeatures,
 		const ParametersMap & registrationParameters)
 {
@@ -558,7 +578,7 @@ std::map<int, Transform> Optimizer::optimizeBA(
 		const ParametersMap & registrationParameters)
 {
 	std::map<int, cv::Point3f> points3DMap;
-	std::map<int, std::map<int, FeatureBA> > wordReferences;
+	std::map<int, std::multimap<int, FeatureBA> > wordReferences;
 	return optimizeBA(rootId, poses, links, signatures, points3DMap, wordReferences, rematchFeatures, registrationParameters);
 }
 
@@ -566,7 +586,7 @@ Transform Optimizer::optimizeBA(
 		const Link & link,
 		const CameraModel & model,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
+		const std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
 		BAOutliers * outliers)
 {
 	std::map<int, Transform> poses;
@@ -598,12 +618,27 @@ struct KeyPointCompare
    }
 };
 
+// The width of the image of one camera of a multi-camera signature, 0 for a single camera
+static int subImageWidthOf(const Signature & signature)
+{
+	const SensorData & data = signature.sensorData();
+	if(data.cameraModels().size() > 1)
+	{
+		return data.cameraModels()[0].imageWidth();
+	}
+	if(data.stereoCameraModels().size() > 1)
+	{
+		return data.stereoCameraModels()[0].left().imageWidth();
+	}
+	return 0;
+}
+
 void Optimizer::computeBACorrespondences(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
 		const std::map<int, Signature> & signatures,
 		std::map<int, cv::Point3f> & points3DMap,
-		std::map<int, std::map<int, FeatureBA> > & wordReferences,
+		std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
 		bool rematchFeatures,
 		bool useLinkTransformAsGuess,
 		ParametersMap registrationParameters)
@@ -696,41 +731,86 @@ void Optimizer::computeBACorrespondences(
 
 						Transform pose = poses.at(sFrom.id());
 						UASSERT(!pose.isNull());
+
+						// The observations of each word, one per camera of the rig seeing it
+						std::multimap<int, int> observationsFrom;
+						std::map<int, int> bestFrom = util3d::uniqueWordObservations(sFrom.getWords(), sFrom.getWordsKpts(), sFrom.getWords3(), subImageWidthOf(sFrom), &observationsFrom);
+						std::multimap<int, int> observationsTo;
+						std::map<int, int> bestTo = util3d::uniqueWordObservations(sTo.getWords(), sTo.getWordsKpts(), sTo.getWords3(), subImageWidthOf(sTo), &observationsTo);
+
+						// The word of a keypoint already added, if any
+						auto wordOf = [&frameToWordMap](const Signature & s, const std::multimap<int, int> & observations, int id)
+						{
+							std::map<int, std::map<cv::KeyPoint, int, KeyPointCompare> >::const_iterator frameIter = frameToWordMap.find(s.id());
+							if(frameIter != frameToWordMap.end())
+							{
+								for(std::multimap<int, int>::const_iterator jter=observations.lower_bound(id); jter!=observations.end() && jter->first == id; ++jter)
+								{
+									std::map<cv::KeyPoint, int, KeyPointCompare>::const_iterator kter = frameIter->second.find(s.getWordsKpts()[jter->second]);
+									if(kter != frameIter->second.end())
+									{
+										return kter->second;
+									}
+								}
+							}
+							return -1;
+						};
+						// Adds the observations of a word not added yet, one per camera.
+						// The depth is the one of the point along the camera's optical axis.
+						auto addObservations = [&frameToWordMap, &wordReferences](const Signature & s, const std::multimap<int, int> & observations, int id, int wordId, const cv::Point3f & pointInBase)
+						{
+							std::map<cv::KeyPoint, int, KeyPointCompare> & frameWords = frameToWordMap[s.id()];
+							for(std::multimap<int, int>::const_iterator jter=observations.lower_bound(id); jter!=observations.end() && jter->first == id; ++jter)
+							{
+								cv::KeyPoint kpt = s.getWordsKpts()[jter->second];
+								if(frameWords.find(kpt) != frameWords.end())
+								{
+									continue;
+								}
+								frameWords.insert(std::make_pair(kpt, wordId));
+
+								cv::Mat descriptor;
+								if(!s.getWordsDescriptors().empty())
+								{
+									UASSERT(jter->second < s.getWordsDescriptors().rows);
+									descriptor = s.getWordsDescriptors().row(jter->second);
+								}
+								int cameraIndex = 0;
+								int subImageWidth = subImageWidthOf(s);
+								if(subImageWidth > 0)
+								{
+									cameraIndex = int(kpt.pt.x / subImageWidth);
+									kpt.pt.x = kpt.pt.x - (subImageWidth*float(cameraIndex));
+								}
+								float depth = 0.0f;
+								if(util3d::isFinite(pointInBase))
+								{
+									const Transform & localTransform = !s.sensorData().cameraModels().empty()?
+											s.sensorData().cameraModels()[cameraIndex].localTransform():
+											s.sensorData().stereoCameraModels()[cameraIndex].localTransform();
+									depth = util3d::transformPoint(pointInBase, localTransform.inverse()).z;
+								}
+								wordReferences.at(wordId).insert(std::make_pair(s.id(), FeatureBA(kpt, depth, descriptor, cameraIndex)));
+							}
+						};
+
 						for(unsigned int i=0; i<info.inliersIDs.size(); ++i)
 						{
-							int indexFrom = sFrom.getWords().lower_bound(info.inliersIDs[i])->second;
-							cv::Point3f p = sFrom.getWords3()[indexFrom];
+							const int id = info.inliersIDs[i];
+							UASSERT(bestFrom.find(id) != bestFrom.end());
+							const cv::Point3f & p = sFrom.getWords3()[bestFrom.at(id)];
 							if(p.x > 0.0f) // make sure the point is valid
 							{
-								cv::KeyPoint ptFrom = sFrom.getWordsKpts()[indexFrom];
-								int indexTo = sTo.getWords().lower_bound(info.inliersIDs[i])->second;
-								cv::KeyPoint ptTo = sTo.getWordsKpts()[indexTo];
-
-								int wordId = -1;
-
 								// find if the word is already added
-								std::map<int, std::map<cv::KeyPoint, int, KeyPointCompare> >::iterator fromIter = frameToWordMap.find(sFrom.id());
-								std::map<int, std::map<cv::KeyPoint, int, KeyPointCompare> >::iterator toIter = frameToWordMap.find(sTo.id());
-								bool fromAlreadyAdded = false;
-								bool toAlreadyAdded = false;
-								if( fromIter != frameToWordMap.end() &&
-									fromIter->second.find(ptFrom) != fromIter->second.end())
+								int wordId = wordOf(sFrom, observationsFrom, id);
+								if(wordId == -1)
 								{
-									wordId = fromIter->second.at(ptFrom);
-									fromAlreadyAdded = true;
+									wordId = wordOf(sTo, observationsTo, id);
 								}
-								if( toIter != frameToWordMap.end() &&
-									toIter->second.find(ptTo) != toIter->second.end())
-								{
-									wordId = toIter->second.at(ptTo);
-									toAlreadyAdded = true;
-								}
-
 								if(wordId == -1)
 								{
 									wordId = ++wordCount;
-									wordReferences.insert(std::make_pair(wordId, std::map<int, FeatureBA>()));
-
+									wordReferences.insert(std::make_pair(wordId, std::multimap<int, FeatureBA>()));
 									points3DMap.insert(std::make_pair(wordId, util3d::transformPoint(p, pose)));
 								}
 								else
@@ -739,76 +819,14 @@ void Optimizer::computeBACorrespondences(
 									UASSERT(points3DMap.find(wordId) != points3DMap.end());
 								}
 
-								if(!fromAlreadyAdded)
+								addObservations(sFrom, observationsFrom, id, wordId, p);
+								// the point as the "to" frame sees it, for the depth of its observations
+								cv::Point3f pTo(std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN());
+								if(!sTo.getWords3().empty() && bestTo.find(id) != bestTo.end())
 								{
-									cv::Mat descriptorFrom;
-									if(!sFrom.getWordsDescriptors().empty())
-									{
-										UASSERT(indexFrom < sFrom.getWordsDescriptors().rows);
-										descriptorFrom = sFrom.getWordsDescriptors().row(indexFrom);
-									}
-									int cameraIndex = 0;
-									if(sFrom.sensorData().cameraModels().size()>1 || sFrom.sensorData().stereoCameraModels().size()>1)
-									{
-										float subImageWidth = sFrom.sensorData().cameraModels().size()>1?sFrom.sensorData().cameraModels()[0].imageWidth():sFrom.sensorData().stereoCameraModels()[0].left().imageWidth();
-										cameraIndex = int(ptFrom.pt.x / subImageWidth);
-										ptFrom.pt.x = ptFrom.pt.x - (subImageWidth*float(cameraIndex));
-									}
-									
-									float depth = 0.0f;
-									if(!sFrom.sensorData().cameraModels().empty())
-									{
-										depth = util3d::transformPoint(p, sFrom.sensorData().cameraModels()[cameraIndex].localTransform().inverse()).z;
-									}
-									else
-									{
-										UASSERT(!sFrom.sensorData().stereoCameraModels().empty());
-										depth = util3d::transformPoint(p, sFrom.sensorData().stereoCameraModels()[cameraIndex].localTransform().inverse()).z;
-									}
-
-
-									wordReferences.at(wordId).insert(std::make_pair(sFrom.id(), FeatureBA(ptFrom, depth, descriptorFrom, cameraIndex)));
-									frameToWordMap.insert(std::make_pair(sFrom.id(), std::map<cv::KeyPoint, int, KeyPointCompare>()));
-									frameToWordMap.at(sFrom.id()).insert(std::make_pair(ptFrom, wordId));
+									pTo = sTo.getWords3()[bestTo.at(id)];
 								}
-
-								if(!toAlreadyAdded)
-								{
-									cv::Mat descriptorTo;
-									if(!sTo.getWordsDescriptors().empty())
-									{
-										UASSERT(indexTo < sTo.getWordsDescriptors().rows);
-										descriptorTo = sTo.getWordsDescriptors().row(indexTo);
-									}
-
-									int cameraIndex = 0;
-									if(sTo.sensorData().cameraModels().size()>1 || sTo.sensorData().stereoCameraModels().size()>1)
-									{
-										float subImageWidth = sTo.sensorData().cameraModels().size()>1?sTo.sensorData().cameraModels()[0].imageWidth():sTo.sensorData().stereoCameraModels()[0].left().imageWidth();
-										cameraIndex = int(ptTo.pt.x / subImageWidth);
-										ptTo.pt.x = ptTo.pt.x - (subImageWidth*float(cameraIndex));
-									}
-
-									float depth = 0.0f;
-									if(!sTo.getWords3().empty())
-									{
-										UASSERT(indexTo < (int)sTo.getWords3().size());
-										const cv::Point3f & pt = sTo.getWords3()[indexTo];
-										if(!sTo.sensorData().cameraModels().empty())
-										{
-											depth = util3d::transformPoint(pt, sTo.sensorData().cameraModels()[cameraIndex].localTransform().inverse()).z;
-										}
-										else
-										{
-											UASSERT(!sTo.sensorData().stereoCameraModels().empty());
-											depth = util3d::transformPoint(pt, sTo.sensorData().stereoCameraModels()[cameraIndex].localTransform().inverse()).z;
-										}
-									}
-
-									wordReferences.at(wordId).insert(std::make_pair(sTo.id(), FeatureBA(ptTo, depth, descriptorTo, cameraIndex)));
-									frameToWordMap.insert(std::make_pair(sTo.id(), std::map<cv::KeyPoint, int, KeyPointCompare>()));
-									frameToWordMap.at(sTo.id()).insert(std::make_pair(ptTo, wordId));
-								}
+								addObservations(sTo, observationsTo, id, wordId, pTo);
 							}
 						}
 						++edgeWithWordsAdded;

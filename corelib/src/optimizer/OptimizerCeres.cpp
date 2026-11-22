@@ -414,7 +414,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/Disparity>)
+		const std::map<int, std::multimap<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/Disparity>)
 		BAOutliers * outliers)
 {
 	if(outliers)
@@ -442,7 +442,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	baProblem.num_cameras_ = totalCameras;
 	baProblem.num_points_ = points3DMap.size();
 	baProblem.num_observations_ = 0;
-	for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
+	for(std::map<int, std::multimap<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
 		iter!=wordReferences.end();
 		++iter)
 	{
@@ -485,9 +485,9 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 
 			UASSERT(oi+6 <= baProblem.num_cameras_*6);
 
-			baProblem.cameras_[oi++] = rvec.at<double>(0,0);
-			baProblem.cameras_[oi++] = rvec.at<double>(0,1);
-			baProblem.cameras_[oi++] = rvec.at<double>(0,2);
+			baProblem.cameras_[oi++] = rvec.at<double>(0);
+			baProblem.cameras_[oi++] = rvec.at<double>(1);
+			baProblem.cameras_[oi++] = rvec.at<double>(2);
 			baProblem.cameras_[oi++] = t.x();
 			baProblem.cameras_[oi++] = t.y();
 			baProblem.cameras_[oi++] = t.z();
@@ -521,11 +521,11 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	std::vector<std::pair<int,int> > obsWordPose(baProblem.num_observations_);
 
 	oi = 0;
-	for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
+	for(std::map<int, std::multimap<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
 		iter!=wordReferences.end();
 		++iter)
 	{
-		for(std::map<int, FeatureBA>::const_iterator jter=iter->second.begin();
+		for(std::multimap<int, FeatureBA>::const_iterator jter=iter->second.begin();
 			jter!=iter->second.end();
 			++jter)
 		{
@@ -664,7 +664,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 				(double)camLink.r31(), (double)camLink.r32(), (double)camLink.r33()});
 		cv::Mat rvec(1, 3, CV_64FC1);
 		cv::Rodrigues(R, rvec);
-		const Eigen::Vector3d aa_meas(rvec.at<double>(0,0), rvec.at<double>(0,1), rvec.at<double>(0,2));
+		const Eigen::Vector3d aa_meas(rvec.at<double>(0), rvec.at<double>(1), rvec.at<double>(2));
 		const Eigen::Vector3d t_meas(camLink.x(), camLink.y(), camLink.z());
 
 		// Information matrix from the link covariance. rtabmap stores it as
@@ -740,7 +740,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 					(double)camLink.r31(), (double)camLink.r32(), (double)camLink.r33()});
 			cv::Mat rvec(1, 3, CV_64FC1);
 			cv::Rodrigues(R, rvec);
-			const Eigen::Vector3d aa(rvec.at<double>(0,0), rvec.at<double>(0,1), rvec.at<double>(0,2));
+			const Eigen::Vector3d aa(rvec.at<double>(0), rvec.at<double>(1), rvec.at<double>(2));
 			const Eigen::Vector3d tm(camLink.x(), camLink.y(), camLink.z());
 			ceres::CostFunction * cost = ceres::BetweenCamerasError::Create(tm, aa, rigSqrtInfo);
 			problem.AddResidualBlock(cost,

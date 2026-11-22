@@ -1450,7 +1450,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
+		const std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
 		BAOutliers * outliers)
 {
 	std::map<int, Transform> optimizedPoses;
@@ -1850,7 +1850,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			int poseId;
 		};
 		std::list<EdgeReference> edges;
-		for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
+		for(std::map<int, std::multimap<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 		{
 			int id = iter->first;
 			if(points3DMap.find(id) != points3DMap.end())
@@ -1879,7 +1879,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				//UDEBUG("Added 3D point %d (%f,%f,%f)", vpt3d->id()-stepVertexId, pt3d.x, pt3d.y, pt3d.z);
 
 				// set observations
-				for(std::map<int, FeatureBA>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+				for(std::multimap<int, FeatureBA>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
 				{
 					int poseId = jter->first;
 					int camIndex = jter->second.cameraIndex;

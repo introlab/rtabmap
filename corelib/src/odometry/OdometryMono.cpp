@@ -451,7 +451,7 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 							std::map<int, std::vector<CameraModel> > models = keyFrameModels_;
 							links.insert(std::make_pair(keyFramePoses_.rbegin()->first, newLink));
 							models.insert(std::make_pair(newS->id(), newModel));
-							std::map<int, std::map<int, FeatureBA> > wordReferences;
+							std::map<int, std::multimap<int, FeatureBA> > wordReferences;
 
 							for(std::set<int>::iterator iter = memory_->getStMem().begin(); iter!=memory_->getStMem().end(); ++iter)
 							{
@@ -462,7 +462,7 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 									{
 										if(wordReferences.find(jter->first)==wordReferences.end())
 										{
-											wordReferences.insert(std::make_pair(jter->first, std::map<int, FeatureBA>()));
+											wordReferences.insert(std::make_pair(jter->first, std::multimap<int, FeatureBA>()));
 										}
 										float depth = 0.0f;
 										if(keyFrameWords3D_.find(s->id()) != keyFrameWords3D_.end() &&

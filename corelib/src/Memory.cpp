@@ -3798,7 +3798,17 @@ Transform Memory::computeTransform(
 						UDEBUG("Signature %d doesn't have features set. Cannot be added in the local feature map.", s->id());
 						continue;
 					}
-					const std::map<int, int> & wordsTo = uMultimapToMapUnique(s->getWords());
+					// A word seen by several cameras of a rig keeps its closest 3D point
+					int subImageWidth = 0;
+					if(s->sensorData().cameraModels().size()>1)
+					{
+						subImageWidth = s->sensorData().cameraModels()[0].imageWidth();
+					}
+					else if(s->sensorData().stereoCameraModels().size()>1)
+					{
+						subImageWidth = s->sensorData().stereoCameraModels()[0].left().imageWidth();
+					}
+					const std::map<int, int> wordsTo = util3d::uniqueWordObservations(s->getWords(), s->getWordsKpts(), s->getWords3(), subImageWidth);
 					for(std::map<int, int>::const_iterator jter=wordsTo.begin(); jter!=wordsTo.end(); ++jter)
 					{
 						const cv::Point3f & pt = s->getWords3()[jter->second];
@@ -3831,7 +3841,7 @@ Transform Memory::computeTransform(
 				std::map<int, Transform> bundlePoses;
 				std::multimap<int, Link> bundleLinks;
 				std::map<int, std::vector<CameraModel> > bundleModels;
-				std::map<int, std::map<int, FeatureBA> > wordReferences;
+				std::map<int, std::multimap<int, FeatureBA> > wordReferences;
 
 				links.insert(std::make_pair(toS.id(), Link(fromS.id(), toS.id(), Link::kGlobalClosure, transform, info->covariance.inv())));
 				links.insert(std::make_pair(fromS.id(), Link()));
@@ -3898,8 +3908,10 @@ Transform Memory::computeTransform(
 								UDEBUG("Signature %d doesn't have features set. Keypoints won't be added in local bundle adjustment.", s->id());
 								continue;
 							}
-							const std::map<int,int> & words = uMultimapToMapUnique(s->getWords());
-							for(std::map<int, int>::const_iterator jter=words.begin(); jter!=words.end(); ++jter)
+							// The observations of each word, one per camera of the rig seeing it
+							std::multimap<int, int> words;
+							util3d::uniqueWordObservations(s->getWords(), s->getWordsKpts(), s->getWords3(), models.size()>1?models[0].imageWidth():0, &words);
+							for(std::multimap<int, int>::const_iterator jter=words.begin(); jter!=words.end(); ++jter)
 							{
 								if(points3DMap.find(jter->first)!=points3DMap.end() &&
 										(id == tmpTo.id() || jter->first > 0)) // Since we added negative words of "from", only accept matches with current frame
@@ -3923,7 +3935,7 @@ Transform Memory::computeTransform(
 										Transform invLocalTransform = models[cameraIndex].localTransform().inverse();
 										d = util3d::transformPoint(s->getWords3()[jter->second], invLocalTransform).z;
 									}
-									wordReferences.insert(std::make_pair(jter->first, std::map<int, FeatureBA>()));
+									wordReferences.insert(std::make_pair(jter->first, std::multimap<int, FeatureBA>()));
 									wordReferences.at(jter->first).insert(std::make_pair(id, FeatureBA(kpts, d, cv::Mat(), cameraIndex)));
 									++totalWordReferences;
 								}

@@ -244,7 +244,7 @@ void ExportBundlerDialog::exportBundler(
 		}
 
 		std::map<int, cv::Point3f> points3DMap;
-		std::map<int, std::map<int, FeatureBA> > wordReferences;
+		std::map<int, std::multimap<int, FeatureBA> > wordReferences;
 		if(_ui->groupBox_export_points->isEnabled() && _ui->groupBox_export_points->isChecked())
 		{
 			std::map<int, Transform> posesOut;
@@ -399,9 +399,9 @@ void ExportBundlerDialog::exportBundler(
 							if(wordReferences.size())
 							{
 								std::list<FeatureBA> descriptors;
-								for(std::map<int, std::map<int, FeatureBA> >::iterator jter=wordReferences.begin(); jter!=wordReferences.end(); ++jter)
+								for(std::map<int, std::multimap<int, FeatureBA> >::iterator jter=wordReferences.begin(); jter!=wordReferences.end(); ++jter)
 								{
-									for(std::map<int, FeatureBA>::iterator kter=jter->second.begin(); kter!=jter->second.end(); ++kter)
+									for(std::multimap<int, FeatureBA>::iterator kter=jter->second.begin(); kter!=jter->second.end(); ++kter)
 									{
 										if(kter->first == iter->first)
 										{
@@ -581,13 +581,13 @@ void ExportBundlerDialog::exportBundler(
 				std::map<int, int> descriptorIndexes;
 				for(std::map<int, cv::Point3f>::iterator iter=points3DMap.begin(); iter!=points3DMap.end(); ++iter)
 				{
-					std::map<int, std::map<int, FeatureBA> >::iterator jter = wordReferences.find(iter->first);
+					std::map<int, std::multimap<int, FeatureBA> >::iterator jter = wordReferences.find(iter->first);
 					out << iter->second.x << " " << iter->second.y << " " << iter->second.z << "\n";
 					UASSERT(colors.find(iter->first) != colors.end());
 					QColor & c = colors.at(iter->first);
 					out << c.red() << " " << c.green() << " " << c.blue() << "\n";
 					out << jter->second.size();
-					for(std::map<int, FeatureBA>::iterator kter = jter->second.begin(); kter!=jter->second.end(); ++kter)
+					for(std::multimap<int, FeatureBA>::iterator kter = jter->second.begin(); kter!=jter->second.end(); ++kter)
 					{
 						// <camera> <key> <x> <y>
 						int camId = kter->first;

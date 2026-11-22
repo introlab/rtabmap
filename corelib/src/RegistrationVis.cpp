@@ -69,6 +69,72 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+// The camera models of a signature, the left ones for a stereo rig.
+static std::vector<CameraModel> cameraModelsOf(const SensorData & data)
+{
+	std::vector<CameraModel> models;
+	if(!data.stereoCameraModels().empty())
+	{
+		for(size_t i=0; i<data.stereoCameraModels().size(); ++i)
+		{
+			models.push_back(data.stereoCameraModels()[i].left());
+		}
+	}
+	else
+	{
+		models = data.cameraModels();
+	}
+	return models;
+}
+
+// The width of the image of one camera of a multi-camera signature, as
+// util3d::uniqueWordObservations() needs it to tell the cameras apart, 0
+// when there is a single camera or no keypoints to tell apart.
+static int subImageWidthOf(const Signature & signature)
+{
+	if(signature.getWordsKpts().empty())
+	{
+		return 0;
+	}
+	std::vector<CameraModel> models = cameraModelsOf(signature.sensorData());
+	return models.size() > 1 && models[0].imageWidth() > 0 ? models[0].imageWidth() : 0;
+}
+
+static bool allValidForProjection(const std::vector<CameraModel> & models)
+{
+	for(size_t i=0; i<models.size(); ++i)
+	{
+		if(!models[i].isValidForProjection() || models[i].imageWidth() != models[0].imageWidth())
+		{
+			return false;
+		}
+	}
+	return !models.empty();
+}
+
+// The observations to keep among the keypoints matched to words: a word
+// observed once, or once per camera of a rig (a feature in the overlap of
+// two cameras). A word matched to several keypoints of a same image is
+// ambiguous: none of its observations is kept.
+static std::vector<bool> observationsToKeep(const std::list<int> & wordIds, const std::vector<cv::KeyPoint> & kpts, int subImageWidth)
+{
+	UASSERT(kpts.empty() || kpts.size() == wordIds.size());
+	std::map<int, std::vector<int> > camerasOf; // word -> camera of each observation
+	int i=0;
+	for(std::list<int>::const_iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter, ++i)
+	{
+		camerasOf[*iter].push_back(subImageWidth > 0 && !kpts.empty() ? int(kpts[i].pt.x / subImageWidth) : 0);
+	}
+	std::vector<bool> keep(wordIds.size());
+	i=0;
+	for(std::list<int>::const_iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter, ++i)
+	{
+		const std::vector<int> & cameras = camerasOf.at(*iter);
+		keep[i] = cameras.size() == 1 || std::set<int>(cameras.begin(), cameras.end()).size() == cameras.size();
+	}
+	return keep;
+}
+
 // The dictionary strategy a Vis/CorNNType value stands for. Vis/CorNNType
 // shares the values of Kp/NNStrategy for the strategies the dictionary
 // implements, and extends them with matching approaches of its own, hence the
@@ -1134,8 +1200,9 @@ Transform RegistrationVis::computeTransformationImpl(
 					std::vector<cv::Point2f> cornersProjected;
 					std::vector<int> projectedIndexToDescIndex;
 					float subImageWidth = models[0].imageWidth();
+					// A point in the overlap of two cameras is projected in each of them, to be matched in each
 					std::set<int> added;
-					int duplicates=0;
+					int duplicates=0; // the points projected in more than one camera
 					for(size_t m=0; m<models.size(); ++m)
 					{
 						Transform guessCameraRef = (guess * models[m].localTransform()).inverse();
@@ -1160,17 +1227,15 @@ Transform RegistrationVis::computeTransformationImpl(
 							   uIsInBounds(projected[i].y, 0.0f, float(models[m].imageHeight()-1)) &&
 							   util3d::transformPoint(kptsFrom3D[i], guessCameraRef).z > 0.0)
 							{
-								if(added.find(i) != added.end())
+								if(!added.insert(i).second)
 								{
 									++duplicates;
-									continue;
 								}
 
 								projectedIndexToDescIndex.push_back(i);
 								projected[i].x += subImageWidth*float(m); // Convert in multicam stitched image
 								cornersProjected.push_back(projected[i]);
 								++cornersInFrame;
-								added.insert(i);
 							}
 						}
 						UDEBUG("corners in frame=%d (camera index=%ld)", cornersInFrame, m);
@@ -1433,15 +1498,16 @@ Transform RegistrationVis::computeTransformationImpl(
 									}
 
 									int id = !orignalWordsFromIds.empty()?orignalWordsFromIds[matchedIndexFrom]:matchedIndexFrom;
-									addedWordsFrom.insert(addedWordsFrom.end(), matchedIndexFrom);
-
-									wordsFrom.insert(wordsFrom.end(), std::make_pair(id, wordsFrom.size()));
-									if(!kptsFrom.empty())
+									if(addedWordsFrom.insert(matchedIndexFrom).second) // once, even if projected in several cameras
 									{
-										wordsKptsFrom.push_back(kptsFrom[matchedIndexFrom]);
+										wordsFrom.insert(wordsFrom.end(), std::make_pair(id, wordsFrom.size()));
+										if(!kptsFrom.empty())
+										{
+											wordsKptsFrom.push_back(kptsFrom[matchedIndexFrom]);
+										}
+										words3From.push_back(kptsFrom3D[matchedIndexFrom]);
+										wordsDescFrom.push_back(descriptorsFrom.row(matchedIndexFrom));
 									}
-									words3From.push_back(kptsFrom3D[matchedIndexFrom]);
-									wordsDescFrom.push_back(descriptorsFrom.row(matchedIndexFrom));
 
 									if(	matchedIndexTo >= 0 &&
 										addedWordsTo.find(matchedIndexTo) == addedWordsTo.end())
@@ -1666,15 +1732,17 @@ Transform RegistrationVis::computeTransformationImpl(
 						dictionary.clear(false);
 					}
 
-					std::multiset<int> fromWordIdsSet(fromWordIds.begin(), fromWordIds.end());
-					std::multiset<int> toWordIdsSet(toWordIds.begin(), toWordIds.end());
+					// A word is kept when observed once, or once per camera of a rig
+					std::vector<CameraModel> modelsFrom = cameraModelsOf(fromSignature.sensorData());
+					std::vector<bool> keepFrom = observationsToKeep(fromWordIds, kptsFrom, modelsFrom.size() > 1 && modelsFrom[0].imageWidth() > 0 ? modelsFrom[0].imageWidth() : 0);
+					std::vector<bool> keepTo = observationsToKeep(toWordIds, kptsTo, models.size() > 1 && models[0].imageWidth() > 0 ? models[0].imageWidth() : 0);
 
 					UASSERT(kptsFrom3D.empty() || fromWordIds.size() == kptsFrom3D.size());
 					UASSERT(int(fromWordIds.size()) == descriptorsFrom.rows);
 					int i=0;
 					for(std::list<int>::iterator iter=fromWordIds.begin(); iter!=fromWordIds.end(); ++iter)
 					{
-						if(fromWordIdsSet.count(*iter) == 1)
+						if(keepFrom[i])
 						{
 							wordsFrom.insert(wordsFrom.end(), std::make_pair(*iter, wordsFrom.size()));
 							if (!kptsFrom.empty())
@@ -1695,7 +1763,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					i=0;
 					for(std::list<int>::iterator iter=toWordIds.begin(); iter!=toWordIds.end(); ++iter)
 					{
-						if(toWordIdsSet.count(*iter) == 1)
+						if(keepTo[i])
 						{
 							wordsTo.insert(wordsTo.end(), std::make_pair(*iter, wordsTo.size()));
 							wordsKptsTo.push_back(kptsTo[i]);
@@ -1707,6 +1775,19 @@ Transform RegistrationVis::computeTransformationImpl(
 						}
 						++i;
 					}
+				}
+
+				if(models.size() > 1 && isCalibrated && !wordsTo.empty())
+				{
+					// A feature new in this frame and in the overlap of two cameras
+					// is observed twice: make its observations one word
+					std::set<int> knownWords;
+					for(std::multimap<int, int>::const_iterator iter=wordsFrom.begin(); iter!=wordsFrom.end(); ++iter)
+					{
+						knownWords.insert(knownWords.end(), iter->first);
+					}
+					int merged = util3d::mergeMultiCameraObservations(wordsTo, wordsKptsTo, words3To, wordsDescTo, models, knownWords, _nndr, _PnPReprojError);
+					UDEBUG("Merged %d observations of new features seen by several cameras", merged);
 				}
 			}
 			else if(descriptorsFrom.rows)
@@ -1722,6 +1803,14 @@ Transform RegistrationVis::computeTransformationImpl(
 					{
 						words3From.push_back(kptsFrom3D[i]);
 					}
+				}
+
+				std::vector<CameraModel> modelsFrom = cameraModelsOf(fromSignature.sensorData());
+				if(modelsFrom.size() > 1 && allValidForProjection(modelsFrom))
+				{
+					// A feature in the overlap of two cameras is observed twice: make its observations one word
+					int merged = util3d::mergeMultiCameraObservations(wordsFrom, wordsKptsFrom, words3From, wordsDescFrom, modelsFrom, std::set<int>(), _nndr, _PnPReprojError);
+					UDEBUG("Merged %d observations of features seen by several cameras", merged);
 				}
 			}
 			matchingTime = matchingTimer.ticks();
@@ -1866,35 +1955,28 @@ Transform RegistrationVis::computeTransformationImpl(
 				{
 					std::vector<int> inliersV;
 					std::vector<int> matchesV;
-					std::map<int, int> uniqueWordsA = uMultimapToMapUnique(fromSignature.getWords());
-					std::map<int, int> uniqueWordsB = uMultimapToMapUnique(toSignature.getWords());
+					std::vector<CameraModel> models = cameraModelsOf(toSignature.sensorData());
+					// A word seen by several cameras of a rig gives one observation per camera
+					std::map<int, int> uniqueWordsA = util3d::uniqueWordObservations(fromSignature.getWords(), fromSignature.getWordsKpts(), fromSignature.getWords3(), subImageWidthOf(fromSignature));
+					std::multimap<int, int> allWordsB;
+					std::map<int, int> uniqueWordsB = util3d::uniqueWordObservations(toSignature.getWords(), toSignature.getWordsKpts(), toSignature.getWords3(), subImageWidthOf(toSignature), &allWordsB);
 					std::map<int, cv::Point3f> words3A;
 					std::map<int, cv::Point3f> words3B;
-					std::map<int, cv::KeyPoint> wordsB;
+					std::multimap<int, cv::KeyPoint> wordsB;
 					for(std::map<int, int>::iterator iter=uniqueWordsA.begin(); iter!=uniqueWordsA.end(); ++iter)
 					{
 						words3A.insert(std::make_pair(iter->first, fromSignature.getWords3()[iter->second]));
 					}
-					for(std::map<int, int>::iterator iter=uniqueWordsB.begin(); iter!=uniqueWordsB.end(); ++iter)
+					for(std::multimap<int, int>::iterator iter=allWordsB.begin(); iter!=allWordsB.end(); ++iter)
 					{
-						wordsB.insert(std::make_pair(iter->first, toSignature.getWordsKpts()[iter->second]));
-						if(!toSignature.getWords3().empty())
+						wordsB.insert(wordsB.end(), std::make_pair(iter->first, toSignature.getWordsKpts()[iter->second]));
+					}
+					if(!toSignature.getWords3().empty())
+					{
+						for(std::map<int, int>::iterator iter=uniqueWordsB.begin(); iter!=uniqueWordsB.end(); ++iter)
 						{
 							words3B.insert(std::make_pair(iter->first, toSignature.getWords3()[iter->second]));
 						}
-					}
-
-					std::vector<CameraModel> models;
-					if(toSignature.sensorData().stereoCameraModels().size())
-					{
-						for(size_t i=0; i<toSignature.sensorData().stereoCameraModels().size(); ++i)
-						{
-							models.push_back(toSignature.sensorData().stereoCameraModels()[i].left());
-						}
-					}
-					else
-					{
-						models = toSignature.sensorData().cameraModels();
 					}
 
 					if(models.size()>1)
@@ -1924,16 +2006,31 @@ Transform RegistrationVis::computeTransformationImpl(
 								&inliersPerCam,
 								_PnPSplitLinearCovarianceComponents);
 
+						// A word seen by several cameras counts in each of them, but is listed once
+						std::set<int> added;
 						info.matchesPerCam.resize(matchesPerCam.size());
 						for(size_t i=0; i<matchesPerCam.size(); ++i)
 						{
-							matches.insert(matches.end(), matchesPerCam[i].begin(), matchesPerCam[i].end());
+							for(size_t j=0; j<matchesPerCam[i].size(); ++j)
+							{
+								if(added.insert(matchesPerCam[i][j]).second)
+								{
+									matches.push_back(matchesPerCam[i][j]);
+								}
+							}
 							info.matchesPerCam[i] = matchesPerCam[i].size();
 						}
+						added.clear();
 						info.inliersPerCam.resize(inliersPerCam.size());
 						for(size_t i=0; i<inliersPerCam.size(); ++i)
 						{
-							inliers.insert(inliers.end(), inliersPerCam[i].begin(), inliersPerCam[i].end());
+							for(size_t j=0; j<inliersPerCam[i].size(); ++j)
+							{
+								if(added.insert(inliersPerCam[i][j]).second)
+								{
+									inliers.push_back(inliersPerCam[i][j]);
+								}
+							}
 							info.inliersPerCam[i] = inliersPerCam[i].size();
 						}
 					}
@@ -1943,7 +2040,7 @@ Transform RegistrationVis::computeTransformationImpl(
 
 						transform = util3d::estimateMotion3DTo2D(
 								words3A,
-								wordsB,
+								std::map<int, cv::KeyPoint>(wordsB.begin(), wordsB.end()),
 								models[0],
 								_minInliers,
 								_iterations,
@@ -1991,8 +2088,9 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				std::vector<int> inliersV;
 				std::vector<int> matchesV;
-				std::map<int, int> uniqueWordsA = uMultimapToMapUnique(fromSignature.getWords());
-				std::map<int, int> uniqueWordsB = uMultimapToMapUnique(toSignature.getWords());
+				// A word seen by several cameras of a rig keeps its closest 3D point
+				std::map<int, int> uniqueWordsA = util3d::uniqueWordObservations(fromSignature.getWords(), fromSignature.getWordsKpts(), fromSignature.getWords3(), subImageWidthOf(fromSignature));
+				std::map<int, int> uniqueWordsB = util3d::uniqueWordObservations(toSignature.getWords(), toSignature.getWordsKpts(), toSignature.getWords3(), subImageWidthOf(toSignature));
 				std::map<int, cv::Point3f> words3A;
 				std::map<int, cv::Point3f> words3B;
 				for(std::map<int, int>::iterator iter=uniqueWordsA.begin(); iter!=uniqueWordsA.end(); ++iter)
@@ -2127,72 +2225,79 @@ Transform RegistrationVis::computeTransformationImpl(
 			models.insert(std::make_pair(1, cameraModelsFrom));
 			models.insert(std::make_pair(2, cameraModelsTo));
 
-			std::map<int, std::map<int, FeatureBA> > wordReferences;
+			std::map<int, std::multimap<int, FeatureBA> > wordReferences;
 			BAOutliers sbaOutliers;
 			UDEBUG("");
+			// The observations of each word: one per camera of the rig seeing it
+			std::multimap<int, int> allFrom;
+			std::map<int, int> observationsFrom = util3d::uniqueWordObservations(fromSignature.getWords(), fromSignature.getWordsKpts(), fromSignature.getWords3(), subImageWidthOf(fromSignature), &allFrom);
+			std::multimap<int, int> allTo;
+			util3d::uniqueWordObservations(toSignature.getWords(), toSignature.getWordsKpts(), toSignature.getWords3(), subImageWidthOf(toSignature), &allTo);
 			for(unsigned int i=0; i<inliers.size(); ++i)
 			{
 				int wordId = inliers[i];
-				int indexFrom = fromSignature.getWords().find(wordId)->second;
+				UASSERT(observationsFrom.find(wordId) != observationsFrom.end());
+				int indexFrom = observationsFrom.at(wordId);
 				const cv::Point3f & pt3D = fromSignature.getWords3()[indexFrom];
 				UASSERT_MSG(util3d::isFinite(pt3D), uFormat("3D point %d is not finite!?", wordId).c_str());
 
 				points3DMap.insert(std::make_pair(wordId, pt3D));
 
-				std::map<int, FeatureBA> ptMap;
+				std::multimap<int, FeatureBA> ptMap;
 				if(!fromSignature.getWordsKpts().empty())
 				{
-					cv::KeyPoint kpt = fromSignature.getWordsKpts()[indexFrom];
-
-					int cameraIndex = 0;
 					const std::vector<CameraModel> & cam = models.at(1);
-					if(cam.size()>1)
+					for(std::multimap<int, int>::const_iterator jter=allFrom.lower_bound(wordId); jter!=allFrom.end() && jter->first == wordId; ++jter)
 					{
-						UASSERT(cam[0].imageWidth()>0);
-						float subImageWidth = cam[0].imageWidth();
-						cameraIndex = int(kpt.pt.x / subImageWidth);
-						kpt.pt.x = kpt.pt.x - (subImageWidth*float(cameraIndex));
+						cv::KeyPoint kpt = fromSignature.getWordsKpts()[jter->second];
+
+						int cameraIndex = 0;
+						if(cam.size()>1)
+						{
+							UASSERT(cam[0].imageWidth()>0);
+							float subImageWidth = cam[0].imageWidth();
+							cameraIndex = int(kpt.pt.x / subImageWidth);
+							kpt.pt.x = kpt.pt.x - (subImageWidth*float(cameraIndex));
+						}
+
+						UASSERT(cam[cameraIndex].isValidForProjection());
+
+						float depthFrom = util3d::transformPoint(pt3D, cam[cameraIndex].localTransform().inverse()).z;
+						ptMap.insert(std::make_pair(1,FeatureBA(kpt, depthFrom, cv::Mat(), cameraIndex)));
 					}
-
-					UASSERT(cam[cameraIndex].isValidForProjection());
-
-					float depthFrom = util3d::transformPoint(pt3D, cam[cameraIndex].localTransform().inverse()).z;
-					ptMap.insert(std::make_pair(1,FeatureBA(kpt, depthFrom, cv::Mat(), cameraIndex)));
 				}
 
 				if(!toSignature.getWordsKpts().empty())
 				{
-					int indexTo = toSignature.getWords().find(wordId)->second;
-					cv::KeyPoint kpt = toSignature.getWordsKpts()[indexTo];
-
-					int cameraIndex = 0;
+					UASSERT(allTo.find(wordId) != allTo.end());
 					const std::vector<CameraModel> & cam = models.at(2);
-					if(cam.size()>1)
+					for(std::multimap<int, int>::const_iterator jter=allTo.lower_bound(wordId); jter!=allTo.end() && jter->first == wordId; ++jter)
 					{
-						UASSERT(cam[0].imageWidth()>0);
-						float subImageWidth = cam[0].imageWidth();
-						cameraIndex = int(kpt.pt.x / subImageWidth);
-						kpt.pt.x = kpt.pt.x - (subImageWidth*float(cameraIndex));
+						int indexTo = jter->second;
+						cv::KeyPoint kpt = toSignature.getWordsKpts()[indexTo];
+
+						int cameraIndex = 0;
+						if(cam.size()>1)
+						{
+							UASSERT(cam[0].imageWidth()>0);
+							float subImageWidth = cam[0].imageWidth();
+							cameraIndex = int(kpt.pt.x / subImageWidth);
+							kpt.pt.x = kpt.pt.x - (subImageWidth*float(cameraIndex));
+						}
+
+						UASSERT(cam[cameraIndex].isValidForProjection());
+
+						float depthTo = 0.0f;
+						if(!toSignature.getWords3().empty() && util3d::isFinite(toSignature.getWords3()[indexTo]))
+						{
+							depthTo = util3d::transformPoint(toSignature.getWords3()[indexTo], cam[cameraIndex].localTransform().inverse()).z;
+						}
+
+						ptMap.insert(std::make_pair(2,FeatureBA(kpt, depthTo, cv::Mat(), cameraIndex)));
 					}
-
-					UASSERT(cam[cameraIndex].isValidForProjection());
-
-					float depthTo = 0.0f;
-					if(!toSignature.getWords3().empty())
-					{
-						depthTo = util3d::transformPoint(toSignature.getWords3()[indexTo], cam[cameraIndex].localTransform().inverse()).z;
-					}
-
-					ptMap.insert(std::make_pair(2,FeatureBA(kpt, depthTo, cv::Mat(), cameraIndex)));
 				}
 
 				wordReferences.insert(std::make_pair(wordId, ptMap));
-
-				//UDEBUG("%d (%f,%f,%f)", wordId, points3DMap.at(wordId).x, points3DMap.at(wordId).y, points3DMap.at(wordId).z);
-				//for(std::map<int, cv::Point3f>::iterator iter=ptMap.begin(); iter!=ptMap.end(); ++iter)
-				//{
-				//	UDEBUG("%d (%f,%f) d=%f", iter->first, iter->second.x, iter->second.y, iter->second.z);
-				//}
 			}
 
 			optimizedPoses = sba->optimizeBA(1, poses, links, models, points3DMap, wordReferences, &sbaOutliers);
@@ -2380,7 +2485,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	info.motionEstimationTime = motionEstimationTime;
 	info.bundleAdjustmentTime = bundleAdjustmentTime;
 	info.inliers = inliersCount;
-	info.inliersRatio = !toSignature.getWords().empty()?float(inliersCount)/float(toSignature.getWords().size()):0;
+	info.inliersRatio = !toSignature.getWords().empty()?float(inliersCount)/float(uUniqueKeys(toSignature.getWords()).size()):0;
 	info.matches = matchesCount;
 	info.rejectedMsg = msg;
 	info.covariance = covariance;

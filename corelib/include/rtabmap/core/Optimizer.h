@@ -41,12 +41,14 @@ namespace rtabmap {
 
 /**
  * @class FeatureBA
- * @brief A single bundle adjustment feature observation: one keypoint seen in one frame.
+ * @brief A single bundle adjustment feature observation: one keypoint seen in one frame by one camera.
  *
  * Used as the per-frame value in the @c wordReferences map (`<wordId, <frameId, FeatureBA>>`)
- * passed to @ref Optimizer::optimizeBA(). @ref depth is in meters when available (RGB-D / stereo
- * with disparity) or 0 if unknown (monocular). @ref descriptor and @ref cameraIndex are optional;
- * @ref cameraIndex selects which @ref CameraModel of a multi-camera rig the keypoint belongs to.
+ * passed to @ref Optimizer::optimizeBA(). A frame holds several observations of a word when
+ * several cameras of its rig see the feature at the same time (one per camera, hence the
+ * multimap). @ref depth is in meters when available (RGB-D / stereo with disparity) or 0 if
+ * unknown (monocular). @ref descriptor and @ref cameraIndex are optional; @ref cameraIndex
+ * selects which @ref CameraModel of a multi-camera rig the keypoint belongs to.
  */
 class FeatureBA
 {
@@ -249,11 +251,24 @@ public:
 	 * @param models  Camera model(s) per frame; for stereo, @c Tx must be set on the model
 	 *                (= -baseline*fx). Multi-camera rigs have multiple entries per frame.
 	 * @param points3DMap  In/out: world 3D points keyed by word id; refined on return.
-	 * @param wordReferences  Observations: `<wordId, <frameId, FeatureBA>>`. See @ref FeatureBA.
+	 * @param wordReferences  Observations: `<wordId, <frameId, FeatureBA>>`, several per frame
+	 *                        when several cameras of the frame's rig see the word. See @ref FeatureBA.
 	 * @param outliers  Optional output: word ids dropped by the back-end's outlier rejection.
 	 * @return Refined poses, or empty on failure.
 	 */
 	virtual std::map<int, Transform> optimizeBA(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const std::map<int, std::vector<CameraModel> > & models,
+			std::map<int, cv::Point3f> & points3DMap,
+			const std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
+			BAOutliers * outliers = 0);
+
+	/**
+	 * @brief Same as above, with one observation per word and frame (kept for source compatibility).
+	 */
+	std::map<int, Transform> optimizeBA(
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
@@ -280,7 +295,7 @@ public:
 			const std::multimap<int, Link> & links,
 			const std::map<int, Signature> & signatures,
 			std::map<int, cv::Point3f> & points3DMap,
-			std::map<int, std::map<int, FeatureBA> > & wordReferences,
+			std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
 			bool rematchFeatures = false,
 			const ParametersMap & registrationParameters = ParametersMap());
 
@@ -305,7 +320,7 @@ public:
 			const Link & link,
 			const CameraModel & model,
 			std::map<int, cv::Point3f> & points3DMap,
-			const std::map<int, std::map<int, FeatureBA> > & wordReferences,
+			const std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
 			BAOutliers * outliers = 0);
 
 	/**
@@ -328,7 +343,7 @@ public:
 			const std::multimap<int, Link> & links,
 			const std::map<int, Signature> & signatures,
 			std::map<int, cv::Point3f> & points3DMap,
-			std::map<int, std::map<int, FeatureBA > > & wordReferences,
+			std::map<int, std::multimap<int, FeatureBA > > & wordReferences,
 			bool rematchFeatures = false,
 			bool useLinkTransformAsGuess = false,
 			ParametersMap registrationParameters = ParametersMap());

@@ -173,8 +173,37 @@ Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			std::vector<std::vector<int> > * inliersOut,
 			bool splitLinearCovarianceComponents);
 /**
+ * @brief Multi-camera estimateMotion3DTo2D() accepting several observations of a same 3D point.
+ *
+ * A feature in the overlap of two cameras of the rig is observed twice in the same frame: the
+ * same word ID with a keypoint in each sub-image. Each observation is one 2D-3D correspondence
+ * of the non-central PnP. Output matches and inliers are per camera, so a word ID observed by
+ * several cameras appears in several of them.
+ *
+ * @see estimateMotion3DTo2D() for the other parameters.
+ */
+Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
+			const std::map<int, cv::Point3f> & words3A,
+			const std::multimap<int, cv::KeyPoint> & words2B,
+			const std::vector<CameraModel> & cameraModels,
+			unsigned int samplingPolicy,
+			int minInliers,
+			int iterations,
+			double reprojError,
+			int flagsPnP,
+			int refineIterations,
+			int varianceMedianRatio,
+			float maxVariance,
+			const Transform & guess,
+			const std::map<int, cv::Point3f> & words3B,
+			cv::Mat * covariance,
+			std::vector<std::vector<int> > * matchesOut,
+			std::vector<std::vector<int> > * inliersOut,
+			bool splitLinearCovarianceComponents);
+/**
  * @brief Estimates the 3D-to-2D motion (pose) transformation between a set of 3D points and their corresponding 2D keypoints using the OpenGV library.
- * @see estimateMotion3DTo2D(), the only difference is that output matches and inliers are combined in same vector instead of per camera
+ * @see estimateMotion3DTo2D(), the only difference is that output matches and inliers are combined in same vector instead of per camera.
+ * A word ID observed by several cameras is listed once.
  */
 Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,

@@ -5,6 +5,9 @@
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/utilite/UException.h"
 #include "rtabmap/utilite/UConversion.h"
+#include <limits>
+#include <map>
+#include <set>
 
 using namespace rtabmap;
 
@@ -401,4 +404,166 @@ TEST(Util3dFeaturesTest, GenerateWords3DMonoVarianceWithLeverArm) {
     EXPECT_GE(variance, 0.0);
     EXPECT_LT(variance, 1e-4);
     expectWordsInBaseFrame(scene, words3D);
+}
+
+TEST(Util3dFeaturesTest, UniqueWordObservationsSingleCameraDropsAmbiguousWords) {
+    // Word 2 matched to two keypoints of the same image: ambiguous, as uMultimapToMapUnique()
+    std::multimap<int, int> words = {{1,0}, {2,1}, {2,2}, {3,3}};
+    std::vector<cv::KeyPoint> keypoints(4, cv::KeyPoint(10.0f, 10.0f, 3.0f));
+    std::vector<cv::Point3f> words3;
+    std::multimap<int, int> all;
+    std::map<int, int> unique = util3d::uniqueWordObservations(words, keypoints, words3, 0, &all);
+    EXPECT_EQ(unique, (std::map<int, int>{{1,0}, {3,3}}));
+    EXPECT_EQ(all, (std::multimap<int, int>{{1,0}, {3,3}}));
+}
+
+TEST(Util3dFeaturesTest, UniqueWordObservationsMultiCameraKeepsTheClosestPoint) {
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    // Stitched image of 640 px wide cameras: word 2 is seen by cameras 0 and 1,
+    // word 3 twice by camera 1 (ambiguous), word 4 by cameras 0 (no depth) and 2.
+    std::multimap<int, int> words = {{1,0}, {2,1}, {2,2}, {3,3}, {3,4}, {4,5}, {4,6}};
+    std::vector<cv::KeyPoint> keypoints;
+    const float xs[7] = {10, 20, 650, 700, 710, 30, 1300};
+    for(int i=0; i<7; ++i) {
+        keypoints.push_back(cv::KeyPoint(xs[i], 10.0f, 3.0f));
+    }
+    std::vector<cv::Point3f> words3 = {
+        cv::Point3f(1,0,0), cv::Point3f(3,0,0), cv::Point3f(2,0,0), cv::Point3f(1,0,0),
+        cv::Point3f(1,0,0), cv::Point3f(nan,nan,nan), cv::Point3f(2,0,0)};
+    std::multimap<int, int> all;
+    std::map<int, int> unique = util3d::uniqueWordObservations(words, keypoints, words3, 640, &all);
+    EXPECT_EQ(unique, (std::map<int, int>{{1,0}, {2,2}, {4,6}}));
+    EXPECT_EQ(all, (std::multimap<int, int>{{1,0}, {2,1}, {2,2}, {4,5}, {4,6}}));
+
+    // Without a sub-image width, the words seen twice are ambiguous
+    unique = util3d::uniqueWordObservations(words, keypoints, words3, 0);
+    EXPECT_EQ(unique, (std::map<int, int>{{1,0}}));
+}
+
+namespace {
+
+// Two cameras looking forward (x), the second one `baseline` meters to the left,
+// 116 deg of horizontal field of view: everything in front is in both.
+std::vector<CameraModel> twoCameraRig(float baseline)
+{
+    std::vector<CameraModel> models;
+    models.push_back(CameraModel(200, 200, 320, 240, CameraModel::opticalRotation(), 0, cv::Size(640, 480)));
+    models.push_back(CameraModel(200, 200, 320, 240, Transform(0, baseline, 0, 0, 0, 0)*CameraModel::opticalRotation(), 0, cv::Size(640, 480)));
+    return models;
+}
+
+// The keypoint of a base-frame point in a camera, in the stitched image
+cv::KeyPoint observe(const std::vector<CameraModel> & models, int camera, const cv::Point3f & pt, float dx = 0.0f, float dy = 0.0f)
+{
+    const cv::Point3f inCamera = util3d::transformPoint(pt, models[camera].localTransform().inverse());
+    float u, v;
+    models[camera].reproject(inCamera.x, inCamera.y, inCamera.z, u, v);
+    return cv::KeyPoint(u + dx + float(camera)*models[camera].imageWidth(), v + dy, 3.0f);
+}
+
+struct MergeScene
+{
+    // Landmark A seen by both cameras (keypoints 0 and 1, same descriptor),
+    // landmark B seen by camera 0 only (keypoint 2), landmark C by camera 1 only (keypoint 3)
+    MergeScene(float baseline = 0.2f, float dxOfSecondObservation = 0.0f, float dyOfSecondObservation = 0.0f) :
+        models(twoCameraRig(baseline)),
+        A(3.0f, 0.1f, 0.2f), B(2.0f, 1.0f, -0.3f), C(4.0f, -0.5f, 0.1f)
+    {
+        keypoints.push_back(observe(models, 0, A));
+        keypoints.push_back(observe(models, 1, A, dxOfSecondObservation, dyOfSecondObservation));
+        keypoints.push_back(observe(models, 0, B));
+        keypoints.push_back(observe(models, 1, C));
+        words = {{10,0}, {11,1}, {12,2}, {13,3}};
+        words3 = {A, A, B, C};
+        descriptors = cv::Mat(4, 32, CV_8UC1);
+        cv::RNG rng(7);
+        rng.fill(descriptors, cv::RNG::UNIFORM, 0, 256);
+        descriptors.row(0).copyTo(descriptors.row(1));
+    }
+    std::vector<CameraModel> models;
+    cv::Point3f A, B, C;
+    std::vector<cv::KeyPoint> keypoints;
+    std::multimap<int, int> words;
+    std::vector<cv::Point3f> words3;
+    cv::Mat descriptors;
+};
+
+} // namespace
+
+TEST(Util3dFeaturesTest, MergeMultiCameraObservationsBothWithDepth) {
+    MergeScene scene;
+    int merged = util3d::mergeMultiCameraObservations(scene.words, scene.keypoints, scene.words3, scene.descriptors, scene.models, std::set<int>(), 0.8f, 2.0f);
+    EXPECT_EQ(merged, 1);
+    // The smallest word ID is kept, the other words are untouched
+    EXPECT_EQ(scene.words, (std::multimap<int, int>{{10,0}, {10,1}, {12,2}, {13,3}}));
+    EXPECT_FLOAT_EQ(scene.words3[1].x, scene.A.x);
+}
+
+TEST(Util3dFeaturesTest, MergeMultiCameraObservationsGivesDepthToTheObservationWithout) {
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    MergeScene scene;
+    scene.words3[1] = cv::Point3f(nan, nan, nan);
+    int merged = util3d::mergeMultiCameraObservations(scene.words, scene.keypoints, scene.words3, scene.descriptors, scene.models, std::set<int>(), 0.8f, 2.0f);
+    EXPECT_EQ(merged, 1);
+    EXPECT_EQ(scene.words.count(10), 2u);
+    ASSERT_TRUE(util3d::isFinite(scene.words3[1]));
+    EXPECT_NEAR(cv::norm(scene.words3[1] - scene.A), 0.0, 1e-5);
+}
+
+TEST(Util3dFeaturesTest, MergeMultiCameraObservationsTriangulatesWithoutDepth) {
+    MergeScene scene;
+    scene.words3.clear(); // no depth at all
+    int merged = util3d::mergeMultiCameraObservations(scene.words, scene.keypoints, scene.words3, scene.descriptors, scene.models, std::set<int>(), 0.8f, 2.0f);
+    EXPECT_EQ(merged, 1);
+    EXPECT_EQ(scene.words.count(10), 2u);
+    // A 0.2 m baseline at 3 m: enough parallax, both observations get the triangulated point
+    ASSERT_EQ(scene.words3.size(), 4u);
+    EXPECT_NEAR(cv::norm(scene.words3[0] - scene.A), 0.0, 1e-3);
+    EXPECT_NEAR(cv::norm(scene.words3[1] - scene.A), 0.0, 1e-3);
+    EXPECT_FALSE(util3d::isFinite(scene.words3[2]));
+    EXPECT_FALSE(util3d::isFinite(scene.words3[3]));
+}
+
+TEST(Util3dFeaturesTest, MergeMultiCameraObservationsWithoutParallaxKeepsDepthUnknown) {
+    MergeScene scene(0.001f); // 1 mm baseline: the rays are parallel
+    scene.words3.clear();
+    int merged = util3d::mergeMultiCameraObservations(scene.words, scene.keypoints, scene.words3, scene.descriptors, scene.models, std::set<int>(), 0.8f, 2.0f);
+    EXPECT_EQ(merged, 1) << "the rays still agree, the observations are the same feature";
+    EXPECT_EQ(scene.words.count(10), 2u);
+    EXPECT_TRUE(scene.words3.empty()) << "no depth can be triangulated";
+}
+
+TEST(Util3dFeaturesTest, MergeMultiCameraObservationsRejectsInconsistentGeometry) {
+    // Same descriptor, but the second keypoint is 20 px off the landmark
+    MergeScene scene(0.2f, 20.0f);
+    int merged = util3d::mergeMultiCameraObservations(scene.words, scene.keypoints, scene.words3, scene.descriptors, scene.models, std::set<int>(), 0.8f, 2.0f);
+    EXPECT_EQ(merged, 0);
+    EXPECT_EQ(scene.words, (std::multimap<int, int>{{10,0}, {11,1}, {12,2}, {13,3}}));
+
+    // Without depth, a shift along the epipolar line (horizontal, the baseline
+    // being horizontal) is only another depth: the keypoint must be off the
+    // epipolar line for the rays not to intersect
+    MergeScene alongEpipolarLine(0.2f, 20.0f);
+    alongEpipolarLine.words3.clear();
+    merged = util3d::mergeMultiCameraObservations(alongEpipolarLine.words, alongEpipolarLine.keypoints, alongEpipolarLine.words3, alongEpipolarLine.descriptors, alongEpipolarLine.models, std::set<int>(), 0.8f, 2.0f);
+    EXPECT_EQ(merged, 1);
+    MergeScene noDepth(0.2f, 0.0f, 20.0f);
+    noDepth.words3.clear();
+    merged = util3d::mergeMultiCameraObservations(noDepth.words, noDepth.keypoints, noDepth.words3, noDepth.descriptors, noDepth.models, std::set<int>(), 0.8f, 2.0f);
+    EXPECT_EQ(merged, 0);
+    EXPECT_TRUE(noDepth.words3.empty());
+}
+
+TEST(Util3dFeaturesTest, MergeMultiCameraObservationsLeavesKnownWordsAlone) {
+    MergeScene scene;
+    std::set<int> known = {10}; // already matched to the other signature
+    int merged = util3d::mergeMultiCameraObservations(scene.words, scene.keypoints, scene.words3, scene.descriptors, scene.models, known, 0.8f, 2.0f);
+    EXPECT_EQ(merged, 0);
+    EXPECT_EQ(scene.words.count(10), 1u);
+    EXPECT_EQ(scene.words.count(11), 1u);
+
+    // A single camera: nothing to merge
+    MergeScene single;
+    single.models.resize(1);
+    EXPECT_EQ(util3d::mergeMultiCameraObservations(single.words, single.keypoints, single.words3, single.descriptors, single.models, std::set<int>(), 0.8f, 2.0f), 0);
 }

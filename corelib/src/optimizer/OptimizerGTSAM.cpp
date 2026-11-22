@@ -1173,7 +1173,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
+		const std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
 		BAOutliers * outliers)
 {
 	std::map<int, Transform> optimizedPoses;
@@ -1395,7 +1395,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 	{
 	obsFactors.clear();
 	insertedPoints.clear();
-	for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
+	for(std::map<int, std::multimap<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 	{
 		const int wordId = iter->first;
 		if(points3DMap.find(wordId) == points3DMap.end())
@@ -1412,8 +1412,8 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		BAOutliers::const_iterator excludedIter = excluded.find(wordId);
 
 		// Collect usable observations first: none left means no variable at all.
-		std::vector<std::map<int, FeatureBA>::const_iterator> kept;
-		for(std::map<int, FeatureBA>::const_iterator jter = iter->second.begin(); jter != iter->second.end(); ++jter)
+		std::vector<std::multimap<int, FeatureBA>::const_iterator> kept;
+		for(std::multimap<int, FeatureBA>::const_iterator jter = iter->second.begin(); jter != iter->second.end(); ++jter)
 		{
 			const int poseId = jter->first;
 			const std::pair<int,int> camKey(poseId, jter->second.cameraIndex);
