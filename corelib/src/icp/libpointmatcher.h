@@ -215,7 +215,7 @@ DP laserScanToDP(const rtabmap::LaserScan & scan, bool ignoreLocalTransform = fa
 	int oi = 0;
 	for(int i=0; i<scan.size(); ++i)
 	{
-		const float * ptr = scan.data().ptr<float>(0, i);
+		const float * ptr = scan.point(i);
 
 		if(uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && (scan.is2d() || uIsFinite(ptr[2])))
 		{

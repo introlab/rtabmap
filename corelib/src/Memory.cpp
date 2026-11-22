@@ -5232,7 +5232,7 @@ int Memory::cleanupLocalGrids(
 			int oi = 0;
 			for(int i=0; i<scan.size(); ++i)
 			{
-				const float * ptr = scan.data().ptr<float>(0, i);
+				const float * ptr = scan.point(i);
 				cv::Point3f pt(ptr[0], ptr[1], scan.is2d()?0:ptr[2]);
 				pt = util3d::transformPoint(pt, mapToScan);
 
@@ -6754,7 +6754,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			float maxRange = 0.0f;
 			for(int i=0; i<laserScan.size(); ++i)
 			{
-				const float * ptr = laserScan.data().ptr<float>(0, i);
+				const float * ptr = laserScan.point(i);
 				float r;
 				if(id2d)
 				{

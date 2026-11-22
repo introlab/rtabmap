@@ -48,8 +48,8 @@ LaserScan transformLaserScan(const LaserScan & laserScan, const Transform & tran
 		int nz = ny+1;
 		for(int i=0; i<laserScan.size(); ++i)
 		{
-			const float * ptr = laserScan.data().ptr<float>(0, i);
-			float * out = output.ptr<float>(0, i);
+			const float * ptr = laserScan.point(i);
+			float * out = output.ptr<float>(i / output.cols, i % output.cols); // organized or not
 			if(nx == -1)
 			{
 				pcl::PointXYZ pt(ptr[0], ptr[1], laserScan.is2d()?0:ptr[2]);
