@@ -177,13 +177,12 @@ jobs:
           -DBUILD_SHARED_LIBS=ON
         cmake --build ${{runner.temp}}/gtsam-build --target install -j $(nproc)
 
-    # The CPU release archive: FindONNXRuntime.cmake reads ONNXRUNTIME_ROOT from
-    # the environment. The library is loaded from there at runtime too.
+    # The CPU release, cached; sets ONNXRUNTIME_ROOT.
     - name: Install ONNX Runtime
       if: matrix.onnxruntime != ''
-      run: |
-        curl -fsSL https://github.com/microsoft/onnxruntime/releases/download/v${{ matrix.onnxruntime }}/onnxruntime-linux-x64-${{ matrix.onnxruntime }}.tgz | tar -xz -C ${{ runner.temp }}
-        echo "ONNXRUNTIME_ROOT=${{ runner.temp }}/onnxruntime-linux-x64-${{ matrix.onnxruntime }}" >> "$GITHUB_ENV"
+      uses: ./.github/actions/install-onnxruntime
+      with:
+        version: ${{ matrix.onnxruntime }}
 
     - name: Set up Python
       uses: actions/setup-python@v5
