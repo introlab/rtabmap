@@ -2968,13 +2968,21 @@ FeatureBA baObservation(
 	return FeatureBA(cv::KeyPoint(u+offsetU, v+offsetV, 1.0f));
 }
 
-// The rejected poses reported for one word, or an empty set if the word wasn't
-// flagged at all -- lets a missing word be compared like a wrong one instead of
-// aborting the test on a bad at().
+// The rejected poses reported for one word (single camera rigs here), or an
+// empty set if the word wasn't flagged at all -- lets a missing word be
+// compared like a wrong one instead of aborting the test on a bad at().
 std::set<int> outliersFor(const BAOutliers & outliers, int wordId)
 {
+	std::set<int> poses;
 	BAOutliers::const_iterator iter = outliers.find(wordId);
-	return iter != outliers.end() ? iter->second : std::set<int>();
+	if(iter != outliers.end())
+	{
+		for(std::set<std::pair<int, int> >::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+		{
+			poses.insert(jter->first);
+		}
+	}
+	return poses;
 }
 
 float pointDistance(const cv::Point3f & a, const cv::Point3f & b)
@@ -3000,9 +3008,9 @@ std::string formatOutliers(const BAOutliers & outliers)
 	for(BAOutliers::const_iterator iter=outliers.begin(); iter!=outliers.end(); ++iter)
 	{
 		stream << iter->first << ":";
-		for(std::set<int>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+		for(std::set<std::pair<int, int> >::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
 		{
-			stream << " " << *jter;
+			stream << " " << jter->first << "." << jter->second;
 		}
 		stream << "; ";
 	}
@@ -3059,10 +3067,10 @@ protected:
 					partialTruth_, poses_.at(id), model_,
 					corrupt ?  partialOffsetPx : 0.0f,
 					corrupt ? -partialOffsetPx : 0.0f)});
-			allObservations_[partialWordId_].insert(id);
+			allObservations_[partialWordId_].insert(std::make_pair(id, 0));
 			if(corrupt)
 			{
-				corrupted_[partialWordId_].insert(id);
+				corrupted_[partialWordId_].insert(std::make_pair(id, 0));
 			}
 		}
 		// Poses 1 and 9 -- the ends of the trajectory -- so that the two
@@ -3074,10 +3082,10 @@ protected:
 			const float offsetU = withOutliers ? (i == 0 ? 100.0f : -100.0f) : 0.0f;
 			wordReferences_[rejectedWordId_].insert({rejectedPoses[i], baObservation(
 					rejectedTruth_, poses_.at(rejectedPoses[i]), model_, offsetU)});
-			allObservations_[rejectedWordId_].insert(rejectedPoses[i]);
+			allObservations_[rejectedWordId_].insert(std::make_pair(rejectedPoses[i], 0));
 			if(withOutliers)
 			{
-				corrupted_[rejectedWordId_].insert(rejectedPoses[i]);
+				corrupted_[rejectedWordId_].insert(std::make_pair(rejectedPoses[i], 0));
 			}
 		}
 	}
@@ -3174,10 +3182,10 @@ TEST_P(BAOutlierRejectionTest, RejectsBadObservationsAndReportsThem)
 	// First pin what the scene actually holds, so the check below can't be
 	// vacuous: word -42 seen from poses 1-9 with only pose 4 displaced, word 7
 	// seen from poses 1 and 9 with both displaced.
-	ASSERT_EQ(allObservations_[partialWordId_],  std::set<int>({1, 2, 3, 4, 5, 6, 7, 8, 9}));
-	ASSERT_EQ(allObservations_[rejectedWordId_], std::set<int>({1, 9}));
-	ASSERT_EQ(corrupted_[partialWordId_],        std::set<int>({4}));
-	ASSERT_EQ(corrupted_[rejectedWordId_],       std::set<int>({1, 9}));
+	ASSERT_EQ(outliersFor(allObservations_, partialWordId_),  std::set<int>({1, 2, 3, 4, 5, 6, 7, 8, 9}));
+	ASSERT_EQ(outliersFor(allObservations_, rejectedWordId_), std::set<int>({1, 9}));
+	ASSERT_EQ(outliersFor(corrupted_, partialWordId_),        std::set<int>({4}));
+	ASSERT_EQ(outliersFor(corrupted_, rejectedWordId_),       std::set<int>({1, 9}));
 
 	// Then: exactly those, attributed to the right word *and* pose -- a flat set
 	// of word ids could not say which view was the bad one.
@@ -3426,6 +3434,69 @@ TEST(OptimizerTest, ComputeBACorrespondencesKeepsOneObservationPerCamera)
 		wordsWithTwoObservationsInNode1 += camerasOfNode1.size() == 2 ? 1 : 0;
 	}
 	EXPECT_EQ(wordsWithTwoObservationsInNode1, landmarksInBothCameras);
+}
+
+TEST_P(BAMultiObservationTest, RejectsOneCameraObservationAndKeepsTheOther)
+{
+	// Robust kernel on, as the outlier rejection needs it
+	ParametersMap parameters;
+	parameters.insert(ParametersPair(Parameters::kOptimizerRobustKernelDelta(), "8"));
+	opt_.reset(Optimizer::create(GetParam(), parameters));
+	ASSERT_NE(opt_.get(), nullptr);
+	opt_->setIterations(50);
+
+	// A well-constrained scene: six poses along a line, 12 points seen by
+	// both cameras from every pose, with the second camera's observation of
+	// point 20 from pose 3 corrupted
+	std::map<int, Transform> poses;
+	std::map<int, std::vector<CameraModel> > models;
+	std::multimap<int, Link> links;
+	for(int id=1; id<=6; ++id)
+	{
+		poses.insert({id, Transform(0.0f, -0.3f*(id-1), 0.0f, 0.0f, 0.0f, 0.0f)});
+		models.insert({id, rig_});
+		if(id > 1)
+		{
+			links.insert({id-1, Link(id-1, id, Link::kNeighbor, poses.at(id-1).inverse()*poses.at(id), cv::Mat::eye(6, 6, CV_64FC1) * 1000000.0)});
+		}
+	}
+	std::map<int, cv::Point3f> points3D;
+	std::map<int, std::multimap<int, FeatureBA> > wordReferences;
+	for(int i=0; i<12; ++i)
+	{
+		const int wordId = 20 + i;
+		const cv::Point3f pt(3.0f + 0.1f*(i%4), -0.8f + 0.3f*(i%3), -0.5f + 0.1f*i);
+		points3D.insert({wordId, pt});
+		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			const cv::Point3f inBase = util3d::transformPoint(pt, iter->second.inverse());
+			for(int camera=0; camera<2; ++camera)
+			{
+				FeatureBA observation = observe(inBase, camera);
+				if(wordId == 20 && iter->first == 3 && camera == 1)
+				{
+					observation.kpt.pt.x += 100.0f; // the outlier
+				}
+				wordReferences[wordId].insert({iter->first, observation});
+			}
+		}
+	}
+
+	BAOutliers outliers;
+	const std::map<int, Transform> optimized = opt_->optimizeBA(1, poses, links, models, points3D, wordReferences, &outliers);
+	ASSERT_EQ(optimized.size(), 6u) << optimizerTypeName(GetParam());
+
+	// Only that observation is rejected: the first camera's one in the same frame is kept
+	const BAOutliers expected = {{20, {std::make_pair(3, 1)}}};
+	EXPECT_EQ(outliers, expected) << optimizerTypeName(GetParam()) << ": " << formatOutliers(outliers);
+	EXPECT_TRUE(baObservationRejected(outliers, 20, 3, 1));
+	EXPECT_FALSE(baObservationRejected(outliers, 20, 3, 0));
+	EXPECT_FALSE(baPoseRejected(outliers, wordReferences.at(20), 20, 3)) << "the frame still observes the word with its other camera";
+	EXPECT_FALSE(baPoseRejected(outliers, wordReferences.at(20), 20, 9)) << "a pose not observing the word";
+	BAOutliers both = expected;
+	both[20].insert(std::make_pair(3, 0));
+	EXPECT_TRUE(baPoseRejected(both, wordReferences.at(20), 20, 3)) << "both observations rejected";
+	EXPECT_LT(cv::norm(points3D.at(20) - cv::Point3f(3.0f, -0.8f, -0.5f)), 0.01) << optimizerTypeName(GetParam());
 }
 
 INSTANTIATE_TEST_SUITE_P(

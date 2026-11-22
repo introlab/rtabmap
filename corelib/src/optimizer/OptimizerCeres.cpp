@@ -517,8 +517,8 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	// branch picks the mono cost function in that case.
 	std::vector<double> observed_disparity(baProblem.num_observations_, 0.0);
 	std::vector<double> baseline_fx(baProblem.num_observations_, 0.0);
-	// <word, pose> per observation: names the rejections, counts views left.
-	std::vector<std::pair<int,int> > obsWordPose(baProblem.num_observations_);
+	// <word, <pose, camera>> per observation: names the rejections, counts views left.
+	std::vector<std::pair<int, std::pair<int,int> > > obsWordPose(baProblem.num_observations_);
 
 	oi = 0;
 	for(std::map<int, std::multimap<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
@@ -543,7 +543,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 
 			baProblem.camera_index_[oi] = camIt->second;
 			baProblem.point_index_[oi] = pointIdToIndex.at(iter->first);
-			obsWordPose[oi] = std::make_pair(iter->first, poseId);
+			obsWordPose[oi] = std::make_pair(iter->first, std::make_pair(poseId, camIdx));
 			baProblem.observations_[4*oi] = jter->second.kpt.pt.x - m.cx();
 			baProblem.observations_[4*oi+1] = jter->second.kpt.pt.y - m.cy();
 			baProblem.observations_[4*oi+2] = m.fx();

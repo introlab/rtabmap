@@ -3955,11 +3955,16 @@ Transform Memory::computeTransform(
 				bundlePoses = sba.optimizeBA(-toS.id(), bundlePoses, bundleLinks, bundleModels, points3DMap, wordReferences, &sbaOutliers);
 				UDEBUG("sba...end");
 
+				// A word is an outlier when every observation of it by the current frame is rejected
+				auto rejected = [&sbaOutliers, &wordReferences, &toS](int wordId)
+				{
+					std::map<int, std::multimap<int, FeatureBA> >::const_iterator ref = wordReferences.find(wordId);
+					return ref != wordReferences.end() && baPoseRejected(sbaOutliers, ref->second, wordId, toS.id());
+				};
 				int sbaOutliersCount = 0;
 				for(unsigned int i=0; i<info->inliersIDs.size(); ++i)
 				{
-					BAOutliers::const_iterator iter = sbaOutliers.find(info->inliersIDs[i]);
-					if(iter != sbaOutliers.end() && iter->second.find(toS.id()) != iter->second.end())
+					if(rejected(info->inliersIDs[i]))
 					{
 						++sbaOutliersCount;
 					}
@@ -3975,8 +3980,7 @@ Transform Memory::computeTransform(
 						int oi=0;
 						for(unsigned int i=0; i<info->inliersIDs.size(); ++i)
 						{
-							BAOutliers::const_iterator iter = sbaOutliers.find(info->inliersIDs[i]);
-							if(iter == sbaOutliers.end() || iter->second.find(toS.id()) == iter->second.end())
+							if(!rejected(info->inliersIDs[i]))
 							{
 								newInliers[oi++] = info->inliersIDs[i];
 							}

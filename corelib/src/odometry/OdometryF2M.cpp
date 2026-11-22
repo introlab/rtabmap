@@ -100,15 +100,6 @@ static int frameCount(const std::multimap<int, FeatureBA> & references)
 	return frames;
 }
 
-// Counts the observations of a word in a frame, per camera
-static void countPerCamera(const std::multimap<int, FeatureBA> & references, int frameId, std::vector<int> & perCamera)
-{
-	for(std::multimap<int, FeatureBA>::const_iterator iter=references.lower_bound(frameId); iter!=references.end() && iter->first == frameId; ++iter)
-	{
-		UASSERT(iter->second.cameraIndex >= 0 && iter->second.cameraIndex < (int)perCamera.size());
-		perCamera[iter->second.cameraIndex] += 1;
-	}
-}
 
 OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	Odometry(parameters),
@@ -523,11 +514,11 @@ Transform OdometryF2M::computeTransform(
 							bundlePoses = sba_->optimizeBA(-lastFrame_->id(), bundlePoses, bundleLinks, bundleModels, points3DMap, wordReferences, &sbaOutliers);
 							bundleTime = bundleTimer.ticks();
 							UDEBUG("sba...end");
+							// A word is an outlier when every observation of it by this frame is rejected
 							int sbaOutliersCount = 0;
 							for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 							{
-								BAOutliers::const_iterator iter = sbaOutliers.find(regInfo.inliersIDs[i]);
-								if(iter != sbaOutliers.end() && iter->second.find(lastFrame_->id()) != iter->second.end())
+								if(baPoseRejected(sbaOutliers, wordReferences.at(regInfo.inliersIDs[i]), regInfo.inliersIDs[i], lastFrame_->id()))
 								{
 									++sbaOutliersCount;
 								}
@@ -551,22 +542,32 @@ Transform OdometryF2M::computeTransform(
 									{
 										info->localBundleOutliersPerCam = std::vector<int>(lastFrameModels.size(),0);
 									}
-									if(sbaOutliersCount)
+									if(!sbaOutliers.empty())
 									{
 										regInfo.inliersPerCam = std::vector<int>(lastFrameModels.size(),0);
 										std::vector<int> newInliers(regInfo.inliersIDs.size());
 										int oi=0;
 										for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 										{
-											BAOutliers::const_iterator iter = sbaOutliers.find(regInfo.inliersIDs[i]);
-											if(iter == sbaOutliers.end() || iter->second.find(lastFrame_->id()) == iter->second.end())
+											const int wordId = regInfo.inliersIDs[i];
+											const std::multimap<int, FeatureBA> & references = wordReferences.at(wordId);
+											if(!baPoseRejected(sbaOutliers, references, wordId, lastFrame_->id()))
 											{
-												newInliers[oi++] = regInfo.inliersIDs[i];
-												countPerCamera(wordReferences.at(regInfo.inliersIDs[i]), lastFrame_->id(), regInfo.inliersPerCam);
+												newInliers[oi++] = wordId;
 											}
-											else if(info)
+											// the observations of this frame kept and rejected, per camera
+											for(std::multimap<int, FeatureBA>::const_iterator jter=references.lower_bound(lastFrame_->id()); jter!=references.end() && jter->first == lastFrame_->id(); ++jter)
 											{
-												countPerCamera(wordReferences.at(regInfo.inliersIDs[i]), lastFrame_->id(), info->localBundleOutliersPerCam);
+												const int cameraIndex = jter->second.cameraIndex;
+												UASSERT(cameraIndex >= 0 && cameraIndex < (int)lastFrameModels.size());
+												if(!baObservationRejected(sbaOutliers, wordId, lastFrame_->id(), cameraIndex))
+												{
+													regInfo.inliersPerCam[cameraIndex] += 1;
+												}
+												else if(info)
+												{
+													info->localBundleOutliersPerCam[cameraIndex] += 1;
+												}
 											}
 										}
 										newInliers.resize(oi);

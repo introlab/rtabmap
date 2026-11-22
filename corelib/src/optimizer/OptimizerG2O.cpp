@@ -1848,6 +1848,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			g2o::OptimizableGraph::Edge* edge;
 			int wordId;
 			int poseId;
+			int cameraIndex;
 		};
 		std::list<EdgeReference> edges;
 		for(std::map<int, std::multimap<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
@@ -1989,7 +1990,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							UERROR("Failed adding BA observation for word %d in pose %d.", id, poseId);
 							return optimizedPoses;
 						}
-						edges.push_back(EdgeReference{e, id, poseId});
+						edges.push_back(EdgeReference{e, id, poseId, camIndex});
 					}
 				}
 			}
@@ -2075,7 +2076,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				++outlierEdgesPerWord[iter->wordId];
 				if(outliers)
 				{
-					(*outliers)[iter->wordId].insert(iter->poseId);
+					(*outliers)[iter->wordId].insert(std::make_pair(iter->poseId, iter->cameraIndex));
 				}
 			}
 		}

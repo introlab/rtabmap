@@ -67,7 +67,38 @@ public:
 	int cameraIndex;      ///< Index into the frame's camera model list for multi-camera rigs.
 };
 
-typedef std::map<int, std::set<int> > BAOutliers; // <word ID, rejected pose IDs>, matching wordReferences
+/**
+ * The observations rejected by a bundle adjustment: word ID -> the (pose ID, camera index) of each
+ * rejected observation, matching @c wordReferences. A word seen by several cameras of a rig in a
+ * frame can have one of them rejected and the others kept.
+ */
+typedef std::map<int, std::set<std::pair<int, int> > > BAOutliers;
+
+/** @brief Whether the bundle adjustment rejected this observation of a word. */
+inline bool baObservationRejected(const BAOutliers & outliers, int wordId, int poseId, int cameraIndex)
+{
+	BAOutliers::const_iterator iter = outliers.find(wordId);
+	return iter != outliers.end() && iter->second.count(std::make_pair(poseId, cameraIndex)) != 0;
+}
+
+/**
+ * @brief Whether the bundle adjustment rejected every observation of a word by a pose,
+ * @p references being the observations of the word passed to it (`<poseId, FeatureBA>`).
+ * False when the pose doesn't observe the word.
+ */
+inline bool baPoseRejected(const BAOutliers & outliers, const std::multimap<int, FeatureBA> & references, int wordId, int poseId)
+{
+	bool observed = false;
+	for(std::multimap<int, FeatureBA>::const_iterator iter=references.lower_bound(poseId); iter!=references.end() && iter->first == poseId; ++iter)
+	{
+		observed = true;
+		if(!baObservationRejected(outliers, wordId, poseId, iter->second.cameraIndex))
+		{
+			return false;
+		}
+	}
+	return observed;
+}
 
 /**
  * @class Optimizer
@@ -253,7 +284,8 @@ public:
 	 * @param points3DMap  In/out: world 3D points keyed by word id; refined on return.
 	 * @param wordReferences  Observations: `<wordId, <frameId, FeatureBA>>`, several per frame
 	 *                        when several cameras of the frame's rig see the word. See @ref FeatureBA.
-	 * @param outliers  Optional output: word ids dropped by the back-end's outlier rejection.
+	 * @param outliers  Optional output: the observations (pose, camera) of each word dropped by
+	 *                  the back-end's outlier rejection. See @ref BAOutliers.
 	 * @return Refined poses, or empty on failure.
 	 */
 	virtual std::map<int, Transform> optimizeBA(

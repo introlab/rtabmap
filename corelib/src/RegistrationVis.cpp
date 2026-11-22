@@ -2310,11 +2310,11 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				UDEBUG("Pose optimization: %s -> %s", transform.prettyPrint().c_str(), optimizedPoses.rbegin()->second.prettyPrint().c_str());
 
+				// A word is an outlier when every observation of it by the "to" frame is rejected
 				int sbaOutliersCount = 0;
 				for(unsigned int i=0; i<inliers.size(); ++i)
 				{
-					BAOutliers::const_iterator iter = sbaOutliers.find(inliers[i]);
-					if(iter != sbaOutliers.end() && iter->second.find(2) != iter->second.end())
+					if(baPoseRejected(sbaOutliers, wordReferences.at(inliers[i]), inliers[i], 2))
 					{
 						++sbaOutliersCount;
 					}
@@ -2325,8 +2325,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					int oi=0;
 					for(unsigned int i=0; i<inliers.size(); ++i)
 					{
-						BAOutliers::const_iterator iter = sbaOutliers.find(inliers[i]);
-						if(iter == sbaOutliers.end() || iter->second.find(2) == iter->second.end())
+						if(!baPoseRejected(sbaOutliers, wordReferences.at(inliers[i]), inliers[i], 2))
 						{
 							newInliers[oi++] = inliers[i];
 						}
