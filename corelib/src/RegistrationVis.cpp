@@ -49,6 +49,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
+#include <opencv2/core/hal/hal.hpp>
+#include <limits>
 #if CV_MAJOR_VERSION > 4
 #include <opencv2/geometry.hpp>
 #endif
@@ -169,6 +171,41 @@ static bool passesDistanceRatio(
 		}
 	}
 	return nearestOther == std::numeric_limits<float>::max() || distance(candidateRow) < nndr * nearestOther;
+}
+
+// Returns the candidate nearest to the query descriptor, or -1 if it fails the
+// NNDR test against the second nearest one. No NNDR test if nndr <= 0.
+static int matchNearestDescriptor(
+		const cv::Mat & query,
+		int queryRow,
+		const cv::Mat & train,
+		const std::vector<size_t> & candidates,
+		const std::vector<int> * candidateToRow,
+		float nndr)
+{
+	UASSERT(query.type() == train.type() && query.cols == train.cols);
+	UASSERT(query.type() == CV_8UC1 || query.type() == CV_32FC1);
+	int best = -1;
+	float bestDist = std::numeric_limits<float>::max();
+	float secondDist = std::numeric_limits<float>::max();
+	for(size_t j=0; j<candidates.size(); ++j)
+	{
+		const int row = candidateToRow ? candidateToRow->at(candidates[j]) : (int)candidates[j];
+		const float dist = query.type() == CV_8UC1 ?
+				(float)cv::hal::normHamming(query.ptr<uchar>(queryRow), train.ptr<uchar>(row), query.cols) :
+				cv::hal::normL2Sqr_(query.ptr<float>(queryRow), train.ptr<float>(row), query.cols);
+		if(dist < bestDist)
+		{
+			secondDist = bestDist;
+			bestDist = dist;
+			best = (int)candidates[j];
+		}
+		else if(dist < secondDist)
+		{
+			secondDist = dist;
+		}
+	}
+	return best >= 0 && (nndr <= 0.0f || bestDist < nndr * secondDist) ? best : -1;
 }
 
 // The dictionary strategy a Vis/CorNNType value stands for. Vis/CorNNType
@@ -1285,6 +1322,9 @@ Transform RegistrationVis::computeTransformationImpl(
 							added.size(), duplicates);
 					if(cornersProjected.size())
 					{
+						// Brute force cross check (5) of a single query is just its nearest
+						// neighbor: no NNDR test. Otherwise brute force knn with NNDR test.
+						const float nndr = _nnType == 5 ? 0.0f : _nndr;
 						if(_guessMatchToProjection)
 						{
 							UDEBUG("match frame to projected");
@@ -1321,7 +1361,6 @@ Transform RegistrationVis::computeTransformationImpl(
 							// can be near the same one, hence the set. OdometryF2M uses
 							// them to know which words of its map are still seen.
 							std::set<int> projectedIDs;
-							cv::Mat descriptors(10, descriptorsTo.cols, descriptorsTo.type());
 							// Pass 1: the projected point matched to each keypoint. A keypoint
 							// with a single projected point in its window is checked
 							// afterwards against the other projected points of its camera.
@@ -1339,41 +1378,7 @@ Transform RegistrationVis::computeTransformationImpl(
 								int & matchedIndex = matchedIndices[i];
 								if(indices[i].size() >= 2)
 								{
-									std::vector<int> descriptorsIndices(indices[i].size());
-									int oi=0;
-									if((int)indices[i].size() > descriptors.rows)
-									{
-										descriptors.resize(indices[i].size());
-									}
-									for(unsigned int j=0; j<indices[i].size(); ++j)
-									{
-										descriptorsFrom.row(projectedIndexToDescIndex[indices[i].at(j)]).copyTo(descriptors.row(oi));
-										descriptorsIndices[oi++] = indices[i].at(j);
-									}
-									descriptorsIndices.resize(oi);
-									UASSERT(oi >=2);
-
-									cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, _nnType == 5);
-									if(_nnType == 5) // bruteforce cross check
-									{
-										std::vector<cv::DMatch> matches;
-										matcher.match(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches);
-										if(!matches.empty())
-										{
-											matchedIndex = descriptorsIndices.at(matches.at(0).trainIdx);
-										}
-									}
-									else // bruteforce knn
-									{
-										std::vector<std::vector<cv::DMatch> > matches;
-										matcher.knnMatch(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
-										UASSERT(matches.size() == 1);
-										UASSERT(matches[0].size() == 2);
-										if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
-										{
-											matchedIndex = descriptorsIndices.at(matches[0].at(0).trainIdx);
-										}
-									}
+									matchedIndex = matchNearestDescriptor(descriptorsTo, i, descriptorsFrom, indices[i], &projectedIndexToDescIndex, nndr);
 								}
 								else if(indices[i].size() == 1)
 								{
@@ -1509,9 +1514,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							std::set<int> addedWordsTo;
 							std::set<int> addedWordsFrom;
 							double bruteForceTotalTime = 0.0;
-							double bruteForceDescCopy = 0.0;
 							UTimer bruteForceTimer;
-							cv::Mat descriptors(10, descriptorsTo.cols, descriptorsTo.type());
 							// Pass 1: the keypoint matched to each projected point. A projected
 							// point with a single keypoint in its window is checked afterwards
 							// against the other keypoints of that camera.
@@ -1532,42 +1535,8 @@ Transform RegistrationVis::computeTransformationImpl(
 									if(indices[i].size() >= 2)
 									{
 										bruteForceTimer.restart();
-										std::vector<int> descriptorsIndices(indices[i].size());
-										int oi=0;
-										if((int)indices[i].size() > descriptors.rows)
-										{
-											descriptors.resize(indices[i].size());
-										}
-										for(unsigned int j=0; j<indices[i].size(); ++j)
-										{
-											descriptorsTo.row(indices[i].at(j)).copyTo(descriptors.row(oi));
-											descriptorsIndices[oi++] = indices[i].at(j);
-										}
-										bruteForceDescCopy += bruteForceTimer.ticks();
-										UASSERT(oi >=2);
-
-										cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR, _nnType==5);
-										if(_nnType==5) // bruteforce cross check
-										{
-											std::vector<cv::DMatch> matches;
-											matcher.match(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches);
-											if(!matches.empty())
-											{
-												matchedIndexTo = descriptorsIndices.at(matches.at(0).trainIdx);
-											}
-										}
-										else // bruteforce knn
-										{
-											std::vector<std::vector<cv::DMatch> > matches;
-											matcher.knnMatch(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
-											UASSERT(matches.size() == 1);
-											UASSERT(matches[0].size() == 2);
-											bruteForceTotalTime+=bruteForceTimer.elapsed();
-											if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
-											{
-												matchedIndexTo = descriptorsIndices.at(matches[0].at(0).trainIdx);
-											}
-										}
+										matchedIndexTo = matchNearestDescriptor(descriptorsFrom, matchedIndexFrom, descriptorsTo, indices[i], 0, nndr);
+										bruteForceTotalTime+=bruteForceTimer.elapsed();
 									}
 									else if(indices[i].size() == 1)
 									{
@@ -1638,7 +1607,7 @@ Transform RegistrationVis::computeTransformationImpl(
 									}
 								}
 							}
-							UDEBUG("bruteForceDescCopy=%fs, bruteForceTotalTime=%fs, single keypoints rejected=%d", bruteForceDescCopy, bruteForceTotalTime, singleRejected);
+							UDEBUG("bruteForceTotalTime=%fs, single keypoints rejected=%d", bruteForceTotalTime, singleRejected);
 
 							// create fake ids for not matched words from "from"
 							for(unsigned int i=0; i<kptsFrom3D.size(); ++i)
