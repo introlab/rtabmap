@@ -142,46 +142,44 @@ static std::vector<bool> observationsToKeep(const std::list<int> & wordIds, cons
 	return keep;
 }
 
-// Whether a candidate of the query descriptor passes the nearest neighbor
-// distance ratio against the nearest other train descriptor among `others`
-// (rows of `train`), as the ratio test applied when a search window holds
-// several candidates. Kept with no other descriptor.
-static bool passesDistanceRatio(
-		const cv::Mat & query,
-		int queryRow,
-		const cv::Mat & train,
-		int candidateRow,
-		const std::vector<int> & others,
-		float nndr)
+// The distance between two descriptors (rows), Hamming for binary ones, squared
+// L2 otherwise, as the window matching computes it.
+static float descriptorDistance(const cv::Mat & query, int queryRow, const cv::Mat & train, int trainRow)
 {
 	UASSERT(query.type() == train.type() && query.cols == train.cols);
 	UASSERT(query.type() == CV_8UC1 || query.type() == CV_32FC1);
-	auto distance = [&](int row)
+	return query.type() == CV_8UC1 ?
+			(float)cv::hal::normHamming(query.ptr<uchar>(queryRow), train.ptr<uchar>(trainRow), query.cols) :
+			cv::hal::normL2Sqr_(query.ptr<float>(queryRow), train.ptr<float>(trainRow), query.cols);
+}
+
+// The distance under which a feature projected onto a single keypoint of its
+// window is matched to it: the distance ratio applied to the typical distance
+// of a non-match in this frame, the median of the second nearest distances the
+// ratio test saw where a window held several candidates. No other feature of
+// the image is involved, so a good guess still matches alone keypoints in a
+// repetitive environment. -1 (no limit) without such distances or ratio test.
+static float maxSingleMatchDistance(std::vector<float> secondDistances, float nndr)
+{
+	if(nndr <= 0.0f || secondDistances.empty())
 	{
-		return query.type() == CV_8UC1 ?
-				(float)cv::hal::normHamming(query.ptr<uchar>(queryRow), train.ptr<uchar>(row), query.cols) :
-				cv::hal::normL2Sqr_(query.ptr<float>(queryRow), train.ptr<float>(row), query.cols);
-	};
-	float nearestOther = std::numeric_limits<float>::max();
-	for(size_t j=0; j<others.size(); ++j)
-	{
-		if(others[j] != candidateRow)
-		{
-			nearestOther = std::min(nearestOther, distance(others[j]));
-		}
+		return -1.0f;
 	}
-	return nearestOther == std::numeric_limits<float>::max() || distance(candidateRow) < nndr * nearestOther;
+	std::nth_element(secondDistances.begin(), secondDistances.begin() + secondDistances.size()/2, secondDistances.end());
+	return nndr * secondDistances[secondDistances.size()/2];
 }
 
 // Returns the candidate nearest to the query descriptor, or -1 if it fails the
-// NNDR test against the second nearest one. No NNDR test if nndr <= 0.
+// NNDR test against the second nearest one. No NNDR test if nndr <= 0. The
+// second nearest distance, when there is one, is given through secondDistOut.
 static int matchNearestDescriptor(
 		const cv::Mat & query,
 		int queryRow,
 		const cv::Mat & train,
 		const std::vector<size_t> & candidates,
 		const std::vector<int> * candidateToRow,
-		float nndr)
+		float nndr,
+		float * secondDistOut = 0)
 {
 	UASSERT(query.type() == train.type() && query.cols == train.cols);
 	UASSERT(query.type() == CV_8UC1 || query.type() == CV_32FC1);
@@ -204,6 +202,10 @@ static int matchNearestDescriptor(
 		{
 			secondDist = dist;
 		}
+	}
+	if(secondDistOut && secondDist < std::numeric_limits<float>::max())
+	{
+		*secondDistOut = secondDist;
 	}
 	return best >= 0 && (nndr <= 0.0f || bestDist < nndr * secondDist) ? best : -1;
 }
@@ -1362,10 +1364,11 @@ Transform RegistrationVis::computeTransformationImpl(
 							// them to know which words of its map are still seen.
 							std::set<int> projectedIDs;
 							// Pass 1: the projected point matched to each keypoint. A keypoint
-							// with a single projected point in its window is checked
-							// afterwards against the other projected points of its camera.
+							// with a single projected point in its window is checked afterwards
+							// against the typical non-match distance of the frame.
 							std::vector<int> matchedIndices(pointsToMat.rows, -1);
 							std::vector<int> singles;
+							std::vector<float> secondDistances;
 							for(int i = 0; i < pointsToMat.rows; ++i)
 							{
 								for(unsigned int j=0; j<indices[i].size(); ++j)
@@ -1378,7 +1381,12 @@ Transform RegistrationVis::computeTransformationImpl(
 								int & matchedIndex = matchedIndices[i];
 								if(indices[i].size() >= 2)
 								{
-									matchedIndex = matchNearestDescriptor(descriptorsTo, i, descriptorsFrom, indices[i], &projectedIndexToDescIndex, nndr);
+									float secondDist = -1.0f;
+									matchedIndex = matchNearestDescriptor(descriptorsTo, i, descriptorsFrom, indices[i], &projectedIndexToDescIndex, nndr, &secondDist);
+									if(secondDist >= 0.0f)
+									{
+										secondDistances.push_back(secondDist);
+									}
 								}
 								else if(indices[i].size() == 1)
 								{
@@ -1388,23 +1396,17 @@ Transform RegistrationVis::computeTransformationImpl(
 							}
 
 							// A keypoint with a single projected point in its window is often
-							// another feature than the projected one: it is kept only if that
-							// projected point is its nearest neighbor among the ones projected
-							// in its camera by the distance ratio, as with several candidates.
+							// another feature than the projected one: it is kept only if their
+							// descriptors are closer than the distance ratio times the typical
+							// non-match distance of the frame, as with several candidates.
 							int singleRejected = 0;
-							if(_nnType != 5 && !singles.empty())
+							const float maxSingleDistance = maxSingleMatchDistance(secondDistances, nndr);
+							if(maxSingleDistance >= 0.0f)
 							{
-								// the descriptor rows of the points projected in each camera
-								std::vector<std::vector<int> > projectedPerCamera(models.size());
-								for(size_t k=0; k<cornersProjected.size(); ++k)
-								{
-									projectedPerCamera[int(cornersProjected[k].x / subImageWidth)].push_back(projectedIndexToDescIndex[k]);
-								}
 								for(size_t j=0; j<singles.size(); ++j)
 								{
 									const int i = singles[j];
-									const int camera = int(kptsTo[i].pt.x / subImageWidth);
-									if(!passesDistanceRatio(descriptorsTo, i, descriptorsFrom, projectedIndexToDescIndex[matchedIndices[i]], projectedPerCamera[camera], _nndr))
+									if(descriptorDistance(descriptorsTo, i, descriptorsFrom, projectedIndexToDescIndex[matchedIndices[i]]) >= maxSingleDistance)
 									{
 										matchedIndices[i] = -1;
 										++singleRejected;
@@ -1517,9 +1519,10 @@ Transform RegistrationVis::computeTransformationImpl(
 							UTimer bruteForceTimer;
 							// Pass 1: the keypoint matched to each projected point. A projected
 							// point with a single keypoint in its window is checked afterwards
-							// against the other keypoints of that camera.
+							// against the typical non-match distance of the frame.
 							std::vector<int> matchedIndicesTo(cornersProjected.size(), -1);
 							std::vector<int> singles;
+							std::vector<float> secondDistances;
 							for(unsigned int i = 0; i < cornersProjected.size(); ++i)
 							{
 								int matchedIndexFrom = projectedIndexToDescIndex[i];
@@ -1535,7 +1538,12 @@ Transform RegistrationVis::computeTransformationImpl(
 									if(indices[i].size() >= 2)
 									{
 										bruteForceTimer.restart();
-										matchedIndexTo = matchNearestDescriptor(descriptorsFrom, matchedIndexFrom, descriptorsTo, indices[i], 0, nndr);
+										float secondDist = -1.0f;
+										matchedIndexTo = matchNearestDescriptor(descriptorsFrom, matchedIndexFrom, descriptorsTo, indices[i], 0, nndr, &secondDist);
+										if(secondDist >= 0.0f)
+										{
+											secondDistances.push_back(secondDist);
+										}
 										bruteForceTotalTime+=bruteForceTimer.elapsed();
 									}
 									else if(indices[i].size() == 1)
@@ -1548,23 +1556,17 @@ Transform RegistrationVis::computeTransformationImpl(
 
 							// A projected point with a single keypoint in its window often
 							// falls on another feature, when its own isn't detected there: the
-							// keypoint is kept only if it is the nearest neighbor of the
-							// projected feature among the keypoints of its camera by the
-							// distance ratio, as with several candidates.
+							// keypoint is kept only if their descriptors are closer than the
+							// distance ratio times the typical non-match distance of the frame,
+							// as with several candidates.
 							int singleRejected = 0;
-							if(_nnType != 5 && !singles.empty())
+							const float maxSingleDistance = maxSingleMatchDistance(secondDistances, nndr);
+							if(maxSingleDistance >= 0.0f)
 							{
-								// the keypoints of each camera
-								std::vector<std::vector<int> > keypointsPerCamera(models.size());
-								for(size_t k=0; k<kptsTo.size(); ++k)
-								{
-									keypointsPerCamera[int(kptsTo[k].pt.x / subImageWidth)].push_back((int)k);
-								}
 								for(size_t j=0; j<singles.size(); ++j)
 								{
 									const int i = singles[j];
-									const int camera = int(kptsTo[matchedIndicesTo[i]].pt.x / subImageWidth);
-									if(!passesDistanceRatio(descriptorsFrom, projectedIndexToDescIndex[i], descriptorsTo, matchedIndicesTo[i], keypointsPerCamera[camera], _nndr))
+									if(descriptorDistance(descriptorsFrom, projectedIndexToDescIndex[i], descriptorsTo, matchedIndicesTo[i]) >= maxSingleDistance)
 									{
 										matchedIndicesTo[i] = -1;
 										++singleRejected;

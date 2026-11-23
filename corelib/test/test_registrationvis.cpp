@@ -765,10 +765,12 @@ TEST(RegistrationVisTest, DISABLED_CaptureGoldenTransforms)
 
 // Guess based matching on a two-camera rig: a projected map point whose window in
 // the second camera holds a single keypoint that doesn't look like the feature
-// (another descriptor) is not matched to it: the keypoint fails the distance
-// ratio (Vis/CorNNDR) against the other keypoints of that camera, as a match
-// among several candidates would. A ratio accepting anything restores the old
-// behavior, where the lone keypoint was taken.
+// (another descriptor) is not matched to it: their descriptor distance is not
+// under the distance ratio (Vis/CorNNDR) times the typical non-match distance
+// of the frame. A ratio accepting anything restores the old behavior, where the
+// lone keypoint was taken. The check involves no other feature of the image: a
+// lone keypoint that is the feature is matched even when identical descriptors
+// are found elsewhere (repetitive texture), as a good guess allows.
 TEST(RegistrationVisTest, GuessMatchingRejectsALoneKeypointWithAnotherDescriptor)
 {
 #ifndef RTABMAP_OPENGV
@@ -859,6 +861,7 @@ TEST(RegistrationVisTest, GuessMatchingRejectsALoneKeypointWithAnotherDescriptor
 	std::vector<cv::Point3f> frame3D;
 	cv::Mat frameDesc;
 	std::set<int> trapWords;
+	std::set<int> repeatedWords; // repetitive texture: the feature alone in its window, a twin far away
 	for(int i=0; i<count; ++i)
 	{
 		const cv::Point3f inBase = util3d::transformPoint(landmarks[i], pose.inverse());
@@ -866,9 +869,14 @@ TEST(RegistrationVisTest, GuessMatchingRejectsALoneKeypointWithAnotherDescriptor
 		const bool in0 = observe(inBase, 0, u0, v0);
 		const bool in1 = observe(inBase, 1, u1, v1);
 		const bool trap = in0 && in1 && i % 4 == 0 && i < (int)gridCount && i % 5 != 1;
+		const bool repeated = in0 && i % 4 == 2 && i < (int)gridCount && i % 5 != 1;
 		if(trap)
 		{
 			trapWords.insert(i+1);
+		}
+		if(repeated)
+		{
+			repeatedWords.insert(i+1);
 		}
 		for(int camera=0; camera<2; ++camera)
 		{
@@ -890,12 +898,21 @@ TEST(RegistrationVisTest, GuessMatchingRejectsALoneKeypointWithAnotherDescriptor
 			frameKpts.push_back(cv::KeyPoint(u, v, 3.0f));
 			frame3D.push_back(inBase);
 			frameDesc.push_back(descriptors.row(i));
+			if(repeated && camera == 0)
+			{
+				// no decoy in the window, the identical descriptor 60 px away instead
+				frameKpts.push_back(cv::KeyPoint(u + 45.0f, v + 45.0f, 3.0f));
+				frame3D.push_back(cv::Point3f(nan, nan, nan));
+				frameDesc.push_back(descriptors.row(i));
+				continue;
+			}
 			frameKpts.push_back(cv::KeyPoint(u + 15.0f, v, 3.0f));
 			frame3D.push_back(cv::Point3f(nan, nan, nan));
 			frameDesc.push_back(decoy);
 		}
 	}
 	ASSERT_GE(trapWords.size(), 4u);
+	ASSERT_GE(repeatedWords.size(), 4u);
 
 	// With the default distance ratio, in both matching directions, and with a
 	// ratio accepting anything
@@ -944,6 +961,17 @@ TEST(RegistrationVisTest, GuessMatchingRejectsALoneKeypointWithAnotherDescriptor
 		}
 		// Either way, those wrong observations are not inliers of the motion estimation
 		EXPECT_EQ(trapsInlierInSecondCamera, 0) << label;
+		// The lone keypoints of the repetitive texture are matched: the twin far away doesn't matter
+		int repeatedMatched = 0;
+		for(int id : repeatedWords)
+		{
+			for(std::multimap<int, int>::const_iterator iter=to.getWords().lower_bound(id); iter!=to.getWords().end() && iter->first == id; ++iter)
+			{
+				const cv::KeyPoint & kpt = to.getWordsKpts()[iter->second];
+				repeatedMatched += kpt.pt.x < rig[0].imageWidth() && std::count(info.inliersIDsPerCam[0].begin(), info.inliersIDsPerCam[0].end(), id) ? 1 : 0;
+			}
+		}
+		EXPECT_EQ(repeatedMatched, (int)repeatedWords.size()) << label;
 		// The per-camera inlier ids are consistent with the per-camera counts
 		for(size_t cam=0; cam<2; ++cam)
 		{
