@@ -469,10 +469,28 @@ LaserScan LaserScan::densify() const
 
 float & LaserScan::field(unsigned int pointIndex, unsigned int channelOffset)
 {
-	UASSERT(pointIndex < (unsigned int)data_.total());
 	UASSERT(channelOffset < (unsigned int)data_.channels());
+	return point(pointIndex)[channelOffset];
+}
+
+float LaserScan::field(unsigned int pointIndex, unsigned int channelOffset) const
+{
+	UASSERT(channelOffset < (unsigned int)data_.channels());
+	return point(pointIndex)[channelOffset];
+}
+
+const float * LaserScan::point(unsigned int pointIndex) const
+{
+	UASSERT(pointIndex < (unsigned int)data_.total());
 	unsigned int row = pointIndex / data_.cols;
-	return data_.ptr<float>(row, pointIndex - row * data_.cols)[channelOffset];
+	return data_.ptr<float>(row, pointIndex - row * data_.cols);
+}
+
+float * LaserScan::point(unsigned int pointIndex)
+{
+	UASSERT(pointIndex < (unsigned int)data_.total());
+	unsigned int row = pointIndex / data_.cols;
+	return data_.ptr<float>(row, pointIndex - row * data_.cols);
 }
 
 LaserScan & LaserScan::operator+=(const LaserScan & scan)

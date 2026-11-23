@@ -3242,7 +3242,7 @@ float computeNormalsComplexity(
 		}
 		for (int i = 0; i < scan.size(); ++i)
 		{
-			const float * ptrScan = scan.data().ptr<float>(0, i);
+			const float * ptrScan = scan.point(i);
 
 			if(is2d)
 			{
