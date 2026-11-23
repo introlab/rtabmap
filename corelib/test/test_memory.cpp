@@ -3230,6 +3230,164 @@ TEST(MemoryTest, CreateSignaturePostDecimatesImageWhenPostDecimationGreaterThanO
 	EXPECT_EQ(s->sensorData().cameraModels()[0].imageHeight(), 8);
 }
 
+// Mem/ImagePostDecimation on an intermediate node (SensorData id < 0) whose data is
+// saved (Mem/IntermediateNodeDataKept=true): its images must be decimated like
+// those of any other node, instead of being saved at full resolution.
+TEST(MemoryTest, CreateSignaturePostDecimatesIntermediateNodeWhenItsDataIsKept)
+{
+	for(int kept = 0; kept <= 1; ++kept)
+	{
+		SCOPED_TRACE(std::string(Parameters::kMemIntermediateNodeDataKept()) +
+				"=" + (kept ? "true" : "false"));
+		ParametersMap params = defaultMemoryParams();
+		params[Parameters::kMemBinDataKept()] = "true";
+		params[Parameters::kMemIntermediateNodeDataKept()] = kept ? "true" : "false";
+		params[Parameters::kMemImagePostDecimation()] = "2";
+		params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+		Memory memory(params);
+
+		const cv::Mat image(16, 16, CV_8UC1, cv::Scalar(64));
+		const cv::Mat depth(16, 16, CV_16UC1, cv::Scalar(1000));
+		const cv::Mat confidence(16, 16, CV_8UC1, cv::Scalar(100));
+		const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+		const CameraModel model(10.0, 10.0, 8.0, 8.0,
+				CameraModel::opticalRotation(), 0.0, cv::Size(16, 16));
+
+		// The first node cannot be an intermediate node.
+		SensorData first;
+		first.setRGBDImage(image, depth, confidence, std::vector<CameraModel>{model});
+		ASSERT_TRUE(memory.update(first, Transform(0, 0, 0, 0, 0, 0), covariance));
+
+		SensorData data;
+		data.setRGBDImage(image, depth, confidence, std::vector<CameraModel>{model});
+		data.setId(-1); // intermediate node
+		ASSERT_TRUE(memory.update(data, Transform(1, 0, 0, 0, 0, 0), covariance));
+		const Signature * s = memory.getSignature(memory.getLastSignatureId());
+		ASSERT_NE(s, nullptr);
+		ASSERT_EQ(s->getWeight(), -1);
+
+		if(kept)
+		{
+			EXPECT_EQ(s->sensorData().imageRaw().size(), cv::Size(8, 8));
+			EXPECT_EQ(s->sensorData().depthRaw().size(), cv::Size(8, 8));
+			EXPECT_EQ(s->sensorData().depthConfidenceRaw().size(), cv::Size(8, 8));
+			ASSERT_EQ(s->sensorData().cameraModels().size(), 1u);
+			EXPECT_EQ(s->sensorData().cameraModels()[0].imageSize(), cv::Size(8, 8));
+			EXPECT_EQ(uncompressImage(s->sensorData().imageCompressed()).size(), cv::Size(8, 8));
+			EXPECT_EQ(uncompressImage(s->sensorData().depthOrRightCompressed()).size(), cv::Size(8, 8));
+		}
+		else
+		{
+			// Nothing is saved, no need to decimate.
+			EXPECT_TRUE(s->sensorData().imageCompressed().empty());
+			EXPECT_TRUE(s->sensorData().depthOrRightCompressed().empty());
+		}
+	}
+}
+
+// Same as above, but the intermediate node comes with compressed images only:
+// they have to be uncompressed to be decimated.
+TEST(MemoryTest, CreateSignaturePostDecimatesCompressedIntermediateNodeWhenItsDataIsKept)
+{
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemIntermediateNodeDataKept()] = "true";
+	params[Parameters::kMemImagePostDecimation()] = "2";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+	Memory memory(params);
+
+	const cv::Mat image(16, 16, CV_8UC1, cv::Scalar(64));
+	const cv::Mat depth(16, 16, CV_16UC1, cv::Scalar(1000));
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const CameraModel model(10.0, 10.0, 8.0, 8.0,
+			CameraModel::opticalRotation(), 0.0, cv::Size(16, 16));
+
+	ASSERT_TRUE(memory.update(SensorData(image, depth, model), Transform(0, 0, 0, 0, 0, 0), covariance));
+
+	SensorData data(compressImage2(image, ".png"), compressImage2(depth, ".png"), model, -1);
+	ASSERT_TRUE(data.imageRaw().empty());
+	ASSERT_FALSE(data.imageCompressed().empty());
+	ASSERT_TRUE(memory.update(data, Transform(1, 0, 0, 0, 0, 0), covariance));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	ASSERT_EQ(s->getWeight(), -1);
+
+	EXPECT_EQ(uncompressImage(s->sensorData().imageCompressed()).size(), cv::Size(8, 8));
+	EXPECT_EQ(uncompressImage(s->sensorData().depthOrRightCompressed()).size(), cv::Size(8, 8));
+	ASSERT_EQ(s->sensorData().cameraModels().size(), 1u);
+	EXPECT_EQ(s->sensorData().cameraModels()[0].imageSize(), cv::Size(8, 8));
+}
+
+// Keypoints provided by odometry to an intermediate node whose data is kept are
+// rescaled to the post-decimated image, like those of other nodes.
+TEST(MemoryTest, CreateSignatureRescalesIntermediateNodeWordsToPostDecimatedImage)
+{
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemIntermediateNodeDataKept()] = "true";
+	params[Parameters::kMemUseOdomFeatures()] = "true";
+	params[Parameters::kMemImagePostDecimation()] = "2";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+	Memory memory(params);
+
+	const cv::Mat image(16, 16, CV_8UC1, cv::Scalar(64));
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const CameraModel model(10.0, 10.0, 8.0, 8.0,
+			CameraModel::opticalRotation(), 0.0, cv::Size(16, 16));
+
+	SensorData first;
+	first.setRGBDImage(image, cv::Mat(), std::vector<CameraModel>{model});
+	ASSERT_TRUE(memory.update(first, Transform(0, 0, 0, 0, 0, 0), covariance));
+
+	SensorData data;
+	data.setRGBDImage(image, cv::Mat(), std::vector<CameraModel>{model});
+	data.setId(-1); // intermediate node
+	cv::KeyPoint kpt(12.0f, 6.0f, 4.0f);
+	kpt.octave = 1;
+	data.setFeatures(std::vector<cv::KeyPoint>(1, kpt),
+			std::vector<cv::Point3f>(1, cv::Point3f(0.0f, 0.0f, 1.0f)),
+			cv::Mat::ones(1, 32, CV_8UC1));
+	ASSERT_TRUE(memory.update(data, Transform(1, 0, 0, 0, 0, 0), covariance));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	ASSERT_EQ(s->getWeight(), -1);
+	ASSERT_EQ(s->sensorData().imageRaw().size(), cv::Size(8, 8));
+	ASSERT_EQ(s->getWordsKpts().size(), 1u);
+	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].pt.x, 6.0f);
+	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].pt.y, 3.0f);
+	EXPECT_FLOAT_EQ(s->getWordsKpts()[0].size, 2.0f);
+	EXPECT_EQ(s->getWordsKpts()[0].octave, 0);
+}
+
+// Post-decimation of a depth image as big as the RGB image: the depth is
+// decimated by the same factor so that it is never bigger than the RGB image,
+// even when Mem/ImagePreDecimation is different.
+TEST(MemoryTest, CreateSignaturePostDecimatesDepthToRgbSize)
+{
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePreDecimation()] = "1";
+	params[Parameters::kMemImagePostDecimation()] = "2";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+	Memory memory(params);
+
+	const cv::Mat image(16, 16, CV_8UC1, cv::Scalar(64));
+	const cv::Mat depth(16, 16, CV_16UC1, cv::Scalar(1000));
+	const cv::Mat confidence(16, 16, CV_8UC1, cv::Scalar(100));
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const CameraModel model(10.0, 10.0, 8.0, 8.0,
+			CameraModel::opticalRotation(), 0.0, cv::Size(16, 16));
+
+	SensorData data;
+	data.setRGBDImage(image, depth, confidence, std::vector<CameraModel>{model});
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), covariance));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	EXPECT_EQ(s->sensorData().imageRaw().size(), cv::Size(8, 8));
+	EXPECT_EQ(s->sensorData().depthRaw().size(), cv::Size(8, 8));
+	EXPECT_EQ(s->sensorData().depthConfidenceRaw().size(), cv::Size(8, 8));
+}
+
 // Exhaustive checks of the rotation logic itself (all four roll cases, marker
 // positions, dimension swaps) live in test_util2d (RotateImagesUpsideUpIfNecessary*).
 // Here we just verify that Memory actually invokes util2d::rotateImagesUpsideUpIfNecessary

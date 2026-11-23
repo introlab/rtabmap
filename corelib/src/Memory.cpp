@@ -5409,6 +5409,8 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	SensorData data = inputData;
 
 	bool isIntermediateNode = data.id() < 0;
+	// Data of intermediate nodes is saved only if Mem/IntermediateNodeDataKept is true
+	bool isDataKept = !isIntermediateNode || _saveIntermediateNodeData;
 
 	if(this->getSignatures().empty() && isIntermediateNode)
 	{
@@ -5451,6 +5453,18 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				needRawScan && data.laserScanRaw().empty() && !data.laserScanCompressed().empty() ? &laserScan : 0);
 			UDEBUG("Uncompressing data...done!");
 		}
+	}
+	else if(isDataKept && _imagePostDecimation > 1 &&
+		((data.imageRaw().empty() && !data.imageCompressed().empty()) ||
+		 (data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty())))
+	{
+		// Intermediate node with data kept: we need raw images to post-decimate them
+		cv::Mat left, right;
+		UDEBUG("Uncompressing images of intermediate node...");
+		data.uncompressData(
+			data.imageRaw().empty() && !data.imageCompressed().empty() ? &left : 0,
+			data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty() ? &right : 0);
+		UDEBUG("Uncompressing images of intermediate node...done!");
 	}
 
 	UASSERT(data.imageRaw().empty() ||
@@ -6496,7 +6510,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
 			cv::KeyPoint kpt = keypoints[i];
-			if(preDecimation != _imagePostDecimation && !isIntermediateNode)
+			if(preDecimation != _imagePostDecimation && isDataKept)
 			{
 				// remap keypoints to final image size
 				kpt.pt.x *= decimationRatio;
@@ -6601,7 +6615,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	std::vector<StereoCameraModel> stereoCameraModels = data.stereoCameraModels();
 
 	// apply decimation?
-	if(_imagePostDecimation > 1 && !isIntermediateNode)
+	if(_imagePostDecimation > 1 && isDataKept)
 	{
 		if(_imagePostDecimation == preDecimation && decimatedData.isValid())
 		{
@@ -6613,13 +6627,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 		else
 		{
-			int decimationDepth = _imagePreDecimation;
+			int decimationDepth = _imagePostDecimation;
 			if(	!data.cameraModels().empty() &&
 				data.cameraModels()[0].imageHeight()>0 &&
 				data.cameraModels()[0].imageWidth()>0)
 			{
 				// decimate from RGB image size
-				int targetSize = data.cameraModels()[0].imageHeight() / _imagePreDecimation;
+				int targetSize = data.cameraModels()[0].imageHeight() / _imagePostDecimation;
 				if(targetSize >= data.depthRaw().rows)
 				{
 					decimationDepth = 1;
@@ -6632,6 +6646,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, _imagePostDecimation, data.depthOrRightRaw().rows, decimationDepth);
 
 			depthOrRightImage = util2d::decimate(depthOrRightImage, decimationDepth);
+			depthConfidence = util2d::decimate(depthConfidence, decimationDepth);
 			image = util2d::decimate(image, _imagePostDecimation);
 			for(unsigned int i=0; i<cameraModels.size(); ++i)
 			{
