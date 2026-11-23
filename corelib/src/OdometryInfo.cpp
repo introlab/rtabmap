@@ -124,12 +124,6 @@ std::map<std::string, float> OdometryInfo::statistics(const Transform & pose)
 			stats.insert(std::make_pair(uFormat("Odometry/inliersRatioCam%ld/", i), reg.matchesPerCam[i]>0 ? (float)reg.inliersPerCam[i] / (float)reg.matchesPerCam[i] : 0.0f));
 		}
 	}
-	for(size_t i=0; i<reg.inliersReprojOffsetPerCam.size(); ++i)
-	{
-		// a consistent non-zero offset on a camera reveals a calibration error
-		stats.insert(std::make_pair(uFormat("Odometry/reprojOffsetXCam%ld/pix", i), reg.inliersReprojOffsetPerCam[i].x));
-		stats.insert(std::make_pair(uFormat("Odometry/reprojOffsetYCam%ld/pix", i), reg.inliersReprojOffsetPerCam[i].y));
-	}
 	stats.insert(std::make_pair("Odometry/ICPInliersRatio/", reg.icpInliersRatio));
 	stats.insert(std::make_pair("Odometry/ICPRotation/rad", reg.icpRotation));
 	stats.insert(std::make_pair("Odometry/ICPTranslation/m", reg.icpTranslation));

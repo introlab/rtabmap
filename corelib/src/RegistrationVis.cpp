@@ -210,20 +210,6 @@ static int matchNearestDescriptor(
 	return best >= 0 && (nndr <= 0.0f || bestDist < nndr * secondDist) ? best : -1;
 }
 
-// Whether the observation of a word by a camera is an inlier of the motion
-// estimation: all the observations of an inlier word with a single camera (no
-// per-camera inlier ids), the ones listed for the camera otherwise.
-static bool inlierObservationsOf(const RegistrationInfo & info, int wordId, int camera)
-{
-	if(info.inliersIDsPerCam.empty())
-	{
-		return true;
-	}
-	UASSERT(camera >= 0 && camera < (int)info.inliersIDsPerCam.size());
-	const std::vector<int> & ids = info.inliersIDsPerCam[camera];
-	return std::find(ids.begin(), ids.end(), wordId) != ids.end();
-}
-
 // The dictionary strategy a Vis/CorNNType value stands for. Vis/CorNNType
 // shares the values of Kp/NNStrategy for the strategies the dictionary
 // implements, and extends them with matching approaches of its own, hence the
@@ -1924,11 +1910,6 @@ Transform RegistrationVis::computeTransformationImpl(
 	/////////////////////
 	UTimer motionTimer;
 	Transform transform;
-	// Multi-camera: the inlier observations of the 3D->2D estimation, for the mean
-	// reprojection offset per camera at the final pose (after bundle adjustment)
-	std::vector<CameraModel> offsetModels;
-	std::map<int, cv::Point3f> offsetPoints;
-	std::multimap<int, cv::KeyPoint> offsetObservations;
 	cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
 	int inliersCount = 0;
 	int matchesCount = 0;
@@ -2173,15 +2154,6 @@ Transform RegistrationVis::computeTransformationImpl(
 					else if(this->force3DoF())
 					{
 						transform = transform.to3DoF();
-					}
-
-					if(models.size() > 1)
-					{
-						// the observations and the points, for the reprojection offsets
-						// per camera computed once the pose and the inliers are final
-						offsetModels = models;
-						offsetPoints = words3A;
-						offsetObservations = wordsB;
 					}
 				}
 				else
@@ -2511,25 +2483,6 @@ Transform RegistrationVis::computeTransformationImpl(
 		info.matchesIDs = matches;
 		inliersCount = (int)inliers.size();
 		matchesCount = (int)matches.size();
-
-		if(!transform.isNull() && !offsetModels.empty())
-		{
-			// Mean reprojection offset of the inlier observations per camera of the
-			// rig, at the final pose (bundle adjusted when enabled): a calibration
-			// error of a camera shows as a consistent offset there. Not for a single
-			// camera, where the pose absorbs it.
-			const std::set<int> inlierSet(inliers.begin(), inliers.end());
-			std::multimap<int, cv::KeyPoint> observations;
-			for(std::multimap<int, cv::KeyPoint>::const_iterator iter=offsetObservations.begin(); iter!=offsetObservations.end(); ++iter)
-			{
-				const int c = int(iter->second.pt.x / offsetModels[0].imageWidth());
-				if(inlierSet.count(iter->first) && c >= 0 && c < (int)offsetModels.size() && inlierObservationsOf(info, iter->first, c))
-				{
-					observations.insert(*iter);
-				}
-			}
-			info.inliersReprojOffsetPerCam = util3d::reprojectionOffsetPerCamera(offsetPoints, transform, offsetModels, observations);
-		}
 
 		if(!transform.isNull() && !inliers.empty() && (_minInliersDistributionThr>0.0f || _maxInliersMeanDistance>0.0f))
 		{
