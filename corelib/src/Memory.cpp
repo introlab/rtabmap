@@ -5260,7 +5260,7 @@ int Memory::cleanupLocalGrids(
 					if(map.at<unsigned char>(y,x) != 0 || obstacleDetected)
 					{
 						// Verify that we don't have an obstacle on neighbor cells
-						cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(filtered, cv::Range::all(), cv::Range(oi,oi+1)));
+						memcpy(filtered.ptr<float>(0, oi), scan.point(i), scan.data().elemSize());
 						++oi;
 					}
 				}

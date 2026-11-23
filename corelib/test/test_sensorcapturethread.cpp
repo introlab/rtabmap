@@ -1,4 +1,11 @@
 #include <gtest/gtest.h>
+#include <limits>
+#include <algorithm>
+#include <vector>
+#include <rtabmap/utilite/UMutex.h>
+#include <rtabmap/utilite/UEventsHandler.h>
+#include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/core/SensorEvent.h>
 #include <rtabmap/core/SensorCaptureThread.h>
 #include <rtabmap/core/Camera.h>
 #include <rtabmap/core/Lidar.h>
@@ -57,12 +64,14 @@ public:
 	{
 		if (odomProvided_)
 		{
-			pose = Transform(1, 0, 0, 0, 0, 0, 1);
+			// moving along x at poseVelocity_ (m/s) when set, else a fixed pose
+			pose = poseVelocity_ != 0.0f ? Transform(poseVelocity_ * float(stamp), 0, 0, 0, 0, 0) : Transform(1, 0, 0, 0, 0, 0, 1);
 			covariance = cv::Mat::eye(6, 6, CV_64FC1);
 			return true;
 		}
 		return false;
 	}
+	void setPoseVelocity(float velocity) { poseVelocity_ = velocity; }
 
 	// Test helpers
 	void setInitResult(bool result) { initResult_ = result; }
@@ -91,6 +100,7 @@ private:
 	std::string serial_;
 	bool calibrated_;
 	bool odomProvided_;
+	float poseVelocity_ = 0.0f;
 	std::string calibrationFolder_;
 	std::string cameraName_;
 	int captureCount_;
@@ -127,6 +137,8 @@ public:
 	// Test helpers
 	void setInitResult(bool result) { initResult_ = result; }
 	void setSerial(const std::string & serial) { serial_ = serial; }
+	// A scan to capture instead of the default one, stamped at scanStamp (s)
+	void setScan(const LaserScan & scan, double scanStamp) { scan_ = scan; scanStamp_ = scanStamp; }
 	
 	bool wasInitCalled() const { return initCalled_; }
 	std::string getCalibrationFolder() const { return calibrationFolder_; }
@@ -138,11 +150,11 @@ protected:
 	{
 		++captureCount_;
 		
-		// Create a simple laser scan
-		LaserScan scan = LaserScan::backwardCompatibility(cv::Mat(1, 100, CV_32FC2));
+		// Create a simple laser scan, unless one was given
+		LaserScan scan = scan_.isEmpty() ? LaserScan::backwardCompatibility(cv::Mat(1, 100, CV_32FC2)) : scan_;
 		SensorData data;
 		data.setLaserScan(scan);
-		data.setStamp(UTimer::now());
+		data.setStamp(scan_.isEmpty() ? UTimer::now() : scanStamp_);
 		return data;
 	}
 
@@ -153,9 +165,45 @@ private:
 	std::string calibrationFolder_;
 	std::string cameraName_;
 	int captureCount_;
+	LaserScan scan_;
+	double scanStamp_ = 0.0;
 };
 
 // Constructor Tests
+
+// Collects the data of the SensorEvents posted by the thread (dispatched on the
+// UEventsManager thread, read from the test thread: hence the mutex).
+class SensorEventCollector : public UEventsHandler
+{
+public:
+	std::vector<SensorData> snapshot() const
+	{
+		UScopeMutex lock(mutex_);
+		return datas_;
+	}
+	size_t size() const
+	{
+		UScopeMutex lock(mutex_);
+		return datas_.size();
+	}
+protected:
+	virtual bool handleEvent(UEvent * event)
+	{
+		if(event->getClassName().compare("SensorEvent") == 0)
+		{
+			SensorEvent * sensorEvent = (SensorEvent*)event;
+			if(sensorEvent->getCode() == SensorEvent::kCodeData)
+			{
+				UScopeMutex lock(mutex_);
+				datas_.push_back(sensorEvent->data());
+			}
+		}
+		return false;
+	}
+private:
+	mutable UMutex mutex_;
+	std::vector<SensorData> datas_;
+};
 
 TEST(SensorCaptureThreadTest, ConstructorCameraOnly)
 {
@@ -570,3 +618,65 @@ TEST(SensorCaptureThreadTest, ScanParametersEdgeCases)
 	// Thread was never started, destructor will handle cleanup
 }
 
+
+// With an odometry sensor and deskewing on, a timed scan is deskewed from the
+// poses at its first and last points. The scan here is organized (rings x
+// columns): its last point is on the last row, where a 1xN addressing would be
+// out of bounds. Deskewing drops the time channel and densifies the scan.
+TEST(SensorCaptureThreadTest, DeskewsAnOrganizedTimedScanWithTheOdomSensor)
+{
+	const int rings = 4;
+	const int columns = 8;
+	cv::Mat points(rings, columns, CV_32FC(5));
+	for(int v=0; v<rings; ++v)
+	{
+		for(int u=0; u<columns; ++u)
+		{
+			float * p = points.ptr<float>(v, u);
+			p[0] = 2.0f; p[1] = 0.1f*float(u); p[2] = 0.1f*float(v); p[3] = 1.0f;
+			p[4] = 0.05f*float(u)/float(columns-1); // time: 50 ms sweep
+		}
+	}
+	MockLidar * lidar = new MockLidar();
+	lidar->setScan(LaserScan(points, rings*columns, 0.0f, LaserScan::kXYZIT), /*scanStamp=*/100.0);
+	lidar->init();
+	MockCamera * odomSensor = new MockCamera();
+	odomSensor->setOdomProvided(true);
+	odomSensor->setPoseVelocity(1.0f); // 1 m/s along x
+	odomSensor->init();
+
+	SensorCaptureThread thread(lidar, odomSensor, 0.0, 1.0f, 0.1);
+	thread.setScanParameters(false, 1, 0.0f, 0.0f, 0.0f, 0, 0.0f, 0.0f, /*deskewing=*/true);
+
+	SensorEventCollector collector;
+	UEventsManager::addHandler(&collector);
+	thread.start();
+	UTimer timer;
+	while(timer.elapsed() < 3.0 && collector.size() == 0)
+	{
+		uSleep(5);
+	}
+	thread.kill();
+	thread.join(true);
+	UEventsManager::removeHandler(&collector);
+
+	const std::vector<SensorData> datas = collector.snapshot();
+	ASSERT_FALSE(datas.empty()) << "no data posted by the capture thread";
+	const LaserScan & scan = datas[0].laserScanRaw();
+	ASSERT_FALSE(scan.isEmpty());
+	EXPECT_EQ(scan.format(), LaserScan::kXYZI) << "deskewed: the time channel is consumed";
+	EXPECT_EQ(scan.size(), rings*columns);
+	EXPECT_FALSE(scan.isOrganized());
+	// The sensor moved 5 cm along x during the 50 ms sweep: the points are
+	// brought into one frame, so the last column ends up 5 cm further along x
+	// than the first one (all were given the same x), whatever the order the
+	// deskewed points come in
+	float xMin = std::numeric_limits<float>::max();
+	float xMax = -std::numeric_limits<float>::max();
+	for(int i=0; i<scan.size(); ++i)
+	{
+		xMin = std::min(xMin, scan.point(i)[0]);
+		xMax = std::max(xMax, scan.point(i)[0]);
+	}
+	EXPECT_NEAR(xMax - xMin, 0.05f, 5e-3f);
+}
