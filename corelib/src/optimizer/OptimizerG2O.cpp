@@ -1450,7 +1450,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
+		const std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
 		BAOutliers * outliers)
 {
 	std::map<int, Transform> optimizedPoses;
@@ -1848,9 +1848,10 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			g2o::OptimizableGraph::Edge* edge;
 			int wordId;
 			int poseId;
+			int cameraIndex;
 		};
 		std::list<EdgeReference> edges;
-		for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
+		for(std::map<int, std::multimap<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 		{
 			int id = iter->first;
 			if(points3DMap.find(id) != points3DMap.end())
@@ -1879,7 +1880,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				//UDEBUG("Added 3D point %d (%f,%f,%f)", vpt3d->id()-stepVertexId, pt3d.x, pt3d.y, pt3d.z);
 
 				// set observations
-				for(std::map<int, FeatureBA>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+				for(std::multimap<int, FeatureBA>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
 				{
 					int poseId = jter->first;
 					int camIndex = jter->second.cameraIndex;
@@ -1989,7 +1990,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 							UERROR("Failed adding BA observation for word %d in pose %d.", id, poseId);
 							return optimizedPoses;
 						}
-						edges.push_back(EdgeReference{e, id, poseId});
+						edges.push_back(EdgeReference{e, id, poseId, camIndex});
 					}
 				}
 			}
@@ -2075,7 +2076,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				++outlierEdgesPerWord[iter->wordId];
 				if(outliers)
 				{
-					(*outliers)[iter->wordId].insert(iter->poseId);
+					(*outliers)[iter->wordId].insert(std::make_pair(iter->poseId, iter->cameraIndex));
 				}
 			}
 		}

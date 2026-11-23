@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 
 #include <pcl/common/common.h>
+#include <set>
 
 #include "opencv/solvepnp.h"
 
@@ -345,18 +346,33 @@ Transform estimateMotion3DTo2D(
 		matchesOut?&matchesPerCamera:0,
 		inliersOut?&inliersPerCamera:0,
 		splitLinearCovarianceComponents);
+	// A word observed by several cameras is listed once
 	if(matchesOut)
 	{
+		std::set<int> added;
 		for(size_t i=0; i<matchesPerCamera.size(); ++i)
 		{
-			matchesOut->insert(matchesOut->end(), matchesPerCamera[i].begin(), matchesPerCamera[i].end());
+			for(size_t j=0; j<matchesPerCamera[i].size(); ++j)
+			{
+				if(added.insert(matchesPerCamera[i][j]).second)
+				{
+					matchesOut->push_back(matchesPerCamera[i][j]);
+				}
+			}
 		}
 	}
 	if(inliersOut)
 	{
+		std::set<int> added;
 		for(size_t i=0; i<inliersPerCamera.size(); ++i)
 		{
-			inliersOut->insert(inliersOut->end(), inliersPerCamera[i].begin(), inliersPerCamera[i].end());
+			for(size_t j=0; j<inliersPerCamera[i].size(); ++j)
+			{
+				if(added.insert(inliersPerCamera[i][j]).second)
+				{
+					inliersOut->push_back(inliersPerCamera[i][j]);
+				}
+			}
 		}
 	}
 	return t;
@@ -365,6 +381,45 @@ Transform estimateMotion3DTo2D(
 Transform estimateMotion3DTo2D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
+			const std::vector<CameraModel> & cameraModels,
+			unsigned int samplingPolicy,
+			int minInliers,
+			int iterations,
+			double reprojError,
+			int flagsPnP,
+			int refineIterations,
+			int varianceMedianRatio,
+			float maxVariance,
+			const Transform & guess,
+			const std::map<int, cv::Point3f> & words3B,
+			cv::Mat * covariance,
+			std::vector<std::vector<int> > * matchesOut,
+			std::vector<std::vector<int> > * inliersOut,
+			bool splitLinearCovarianceComponents)
+{
+	return estimateMotion3DTo2D(
+			words3A,
+			std::multimap<int, cv::KeyPoint>(words2B.begin(), words2B.end()),
+			cameraModels,
+			samplingPolicy,
+			minInliers,
+			iterations,
+			reprojError,
+			flagsPnP,
+			refineIterations,
+			varianceMedianRatio,
+			maxVariance,
+			guess,
+			words3B,
+			covariance,
+			matchesOut,
+			inliersOut,
+			splitLinearCovarianceComponents);
+}
+
+Transform estimateMotion3DTo2D(
+			const std::map<int, cv::Point3f> & words3A,
+			const std::multimap<int, cv::KeyPoint> & words2B,
 			const std::vector<CameraModel> & cameraModels,
 			unsigned int samplingPolicy,
 			int minInliers,
@@ -403,19 +458,18 @@ Transform estimateMotion3DTo2D(
 		*covariance = cv::Mat::eye(6,6,CV_64FC1);
 	}
 
-	// find correspondences
-	std::vector<int> ids = uKeys(words2B);
-	std::vector<cv::Point3f> objectPoints(ids.size());
-	std::vector<cv::Point2f> imagePoints(ids.size());
+	// find correspondences (a word observed by several cameras gives one per camera)
+	std::vector<cv::Point3f> objectPoints(words2B.size());
+	std::vector<cv::Point2f> imagePoints(words2B.size());
 	int oi=0;
-	matches.resize(ids.size());
-	std::vector<int> cameraIndexes(ids.size());
-	for(unsigned int i=0; i<ids.size(); ++i)
+	matches.resize(words2B.size());
+	std::vector<int> cameraIndexes(words2B.size());
+	for(std::multimap<int, cv::KeyPoint>::const_iterator jter=words2B.begin(); jter!=words2B.end(); ++jter)
 	{
-		std::map<int, cv::Point3f>::const_iterator iter=words3A.find(ids[i]);
+		std::map<int, cv::Point3f>::const_iterator iter=words3A.find(jter->first);
 		if(iter != words3A.end() && util3d::isFinite(iter->second))
 		{
-			const cv::Point2f & kpt = words2B.find(ids[i])->second.pt;
+			const cv::Point2f & kpt = jter->second.pt;
 			int cameraIndex = int(kpt.x / subImageWidth);
 			UASSERT_MSG(cameraIndex >= 0 && cameraIndex < (int)cameraModels.size(),
 					uFormat("cameraIndex=%d, models=%d, kpt.x=%f, subImageWidth=%f (Camera model image width=%d)",
@@ -427,7 +481,7 @@ Transform estimateMotion3DTo2D(
 			// convert in image space
 			imagePoints[oi].x = imagePoints[oi].x - (cameraIndex*subImageWidth);
 			cameraIndexes[oi] = cameraIndex;
-			matches[oi++] = ids[i];
+			matches[oi++] = jter->first;
 		}
 	}
 

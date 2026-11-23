@@ -15,6 +15,13 @@
 #include <rtabmap/core/util3d_transforms.h>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <set>
+#include <limits>
+#include <algorithm>
+#include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/Signature.h>
 
 using namespace rtabmap;
 
@@ -754,4 +761,222 @@ TEST(RegistrationVisTest, DISABLED_CaptureGoldenTransforms)
 	};
 	printFmOfDist("rgbd", rgbdFrom, rgbdTo);
 	printFmOfDist("stereo", stereoFrom, stereoTo);
+}
+
+// Guess based matching on a two-camera rig: a projected map point whose window in
+// the second camera holds a single keypoint that doesn't look like the feature
+// (another descriptor) is not matched to it: their descriptor distance is not
+// under the distance ratio (Vis/CorNNDR) times the typical non-match distance
+// of the frame. A ratio accepting anything restores the old behavior, where the
+// lone keypoint was taken. The check involves no other feature of the image: a
+// lone keypoint that is the feature is matched even when identical descriptors
+// are found elsewhere (repetitive texture), as a good guess allows.
+TEST(RegistrationVisTest, GuessMatchingRejectsALoneKeypointWithAnotherDescriptor)
+{
+#ifndef RTABMAP_OPENGV
+	GTEST_SKIP() << "multi-camera PnP needs OpenGV";
+#endif
+	// Two cameras fanned out in yaw, 116 deg of field of view each
+	std::vector<CameraModel> rig;
+	rig.push_back(CameraModel(200.0, 200.0, 320.0, 240.0, Transform(0.0f, -0.15f, 0.0f, 0.0f, 0.0f, -0.4f)*CameraModel::opticalRotation(), 0.0, cv::Size(640, 480)));
+	rig.push_back(CameraModel(200.0, 200.0, 320.0, 240.0, Transform(0.0f, 0.15f, 0.0f, 0.0f, 0.0f, 0.4f)*CameraModel::opticalRotation(), 0.0, cv::Size(640, 480)));
+
+	// Landmarks on a 90 px grid of each camera's image, 2 to 3 m away, with their
+	// own descriptors: far enough apart for a projection to have a single keypoint
+	// in its window when its decoy is the only one around
+	cv::RNG rng(5);
+	std::vector<cv::Point3f> landmarks;
+	for(size_t camera=0; camera<rig.size(); ++camera)
+	{
+		for(int v=70; v<=430; v+=90)
+		{
+			for(int u=70; u<=580; u+=90)
+			{
+				float x, y, z;
+				rig[camera].project((float)u, (float)v, 2.0f + 0.1f*float((u/90 + v/90) % 10), x, y, z);
+				const cv::Point3f landmark = util3d::transformPoint(cv::Point3f(x, y, z), rig[camera].localTransform());
+				// the second camera's grid only where the first one doesn't see:
+				// no interleaving of the two grids in the overlap
+				const cv::Point3f inFirst = util3d::transformPoint(landmark, rig[0].localTransform().inverse());
+				float uFirst, vFirst;
+				rig[0].reproject(inFirst.x, inFirst.y, inFirst.z, uFirst, vFirst);
+				if(camera == 0 || inFirst.z <= 0.0f || uFirst < 0.0f || uFirst >= rig[0].imageWidth() || vFirst < 0.0f || vFirst >= rig[0].imageHeight())
+				{
+					landmarks.push_back(landmark);
+				}
+			}
+		}
+	}
+	// A few close pairs (12 cm apart, about 10 px), so that some windows hold
+	// several candidates and the ratio test has matches to calibrate the check
+	const size_t gridCount = landmarks.size();
+	for(size_t i=1; i<gridCount; i+=5)
+	{
+		landmarks.push_back(landmarks[i] + cv::Point3f(0.0f, 0.12f, 0.0f));
+	}
+	const int count = (int)landmarks.size();
+	cv::Mat descriptors(count, 32, CV_8UC1);
+	rng.fill(descriptors, cv::RNG::UNIFORM, 0, 256);
+	// The keypoint of a point of the frame's base frame in a camera, in the stitched image
+	auto observe = [&rig](const cv::Point3f & inBase, int camera, float & u, float & v)
+	{
+		const cv::Point3f inCamera = util3d::transformPoint(inBase, rig[camera].localTransform().inverse());
+		if(inCamera.z <= 0.3f)
+		{
+			return false;
+		}
+		rig[camera].reproject(inCamera.x, inCamera.y, inCamera.z, u, v);
+		if(u < 30.0f || u > rig[camera].imageWidth()-30.0f || v < 30.0f || v > rig[camera].imageHeight()-30.0f)
+		{
+			return false;
+		}
+		u += float(camera)*rig[camera].imageWidth();
+		return true;
+	};
+
+	// The map ("from"): one observation per landmark, from the origin
+	std::multimap<int, int> mapWords;
+	std::vector<cv::KeyPoint> mapKpts;
+	std::vector<cv::Point3f> map3D;
+	cv::Mat mapDesc;
+	for(int i=0; i<count; ++i)
+	{
+		float u, v;
+		if(observe(landmarks[i], 0, u, v) || observe(landmarks[i], 1, u, v))
+		{
+			mapWords.insert(std::make_pair(i+1, (int)mapKpts.size()));
+			mapKpts.push_back(cv::KeyPoint(u, v, 3.0f));
+			map3D.push_back(landmarks[i]);
+			mapDesc.push_back(descriptors.row(i));
+		}
+	}
+
+	// The frame ("to") a little further: every landmark seen with its own keypoint
+	// and, 15 px away, a decoy with another descriptor (the ratio test picks the
+	// right one). For the trap landmarks, the second camera only has the decoy, 10
+	// px from the projection: a lone keypoint that is not the feature.
+	const Transform pose(0.05f, 0.02f, 0.0f, 0.0f, 0.0f, 0.01f);
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	std::vector<cv::KeyPoint> frameKpts;
+	std::vector<cv::Point3f> frame3D;
+	cv::Mat frameDesc;
+	std::set<int> trapWords;
+	std::set<int> repeatedWords; // repetitive texture: the feature alone in its window, a twin far away
+	for(int i=0; i<count; ++i)
+	{
+		const cv::Point3f inBase = util3d::transformPoint(landmarks[i], pose.inverse());
+		float u0, v0, u1, v1;
+		const bool in0 = observe(inBase, 0, u0, v0);
+		const bool in1 = observe(inBase, 1, u1, v1);
+		const bool trap = in0 && in1 && i % 4 == 0 && i < (int)gridCount && i % 5 != 1;
+		const bool repeated = in0 && i % 4 == 2 && i < (int)gridCount && i % 5 != 1;
+		if(trap)
+		{
+			trapWords.insert(i+1);
+		}
+		if(repeated)
+		{
+			repeatedWords.insert(i+1);
+		}
+		for(int camera=0; camera<2; ++camera)
+		{
+			if(!(camera == 0 ? in0 : in1))
+			{
+				continue;
+			}
+			const float u = camera == 0 ? u0 : u1;
+			const float v = camera == 0 ? v0 : v1;
+			cv::Mat decoy(1, 32, CV_8UC1);
+			rng.fill(decoy, cv::RNG::UNIFORM, 0, 256);
+			if(trap && camera == 1)
+			{
+				frameKpts.push_back(cv::KeyPoint(u + 10.0f, v, 3.0f));
+				frame3D.push_back(cv::Point3f(nan, nan, nan));
+				frameDesc.push_back(decoy);
+				continue;
+			}
+			frameKpts.push_back(cv::KeyPoint(u, v, 3.0f));
+			frame3D.push_back(inBase);
+			frameDesc.push_back(descriptors.row(i));
+			if(repeated && camera == 0)
+			{
+				// no decoy in the window, the identical descriptor 60 px away instead
+				frameKpts.push_back(cv::KeyPoint(u + 45.0f, v + 45.0f, 3.0f));
+				frame3D.push_back(cv::Point3f(nan, nan, nan));
+				frameDesc.push_back(descriptors.row(i));
+				continue;
+			}
+			frameKpts.push_back(cv::KeyPoint(u + 15.0f, v, 3.0f));
+			frame3D.push_back(cv::Point3f(nan, nan, nan));
+			frameDesc.push_back(decoy);
+		}
+	}
+	ASSERT_GE(trapWords.size(), 4u);
+	ASSERT_GE(repeatedWords.size(), 4u);
+
+	// With the default distance ratio, in both matching directions, and with a
+	// ratio accepting anything
+	struct Case { float nndr; bool matchToProjection; };
+	for(const Case & c : {Case{0.8f, false}, Case{0.8f, true}, Case{10.0f, false}})
+	{
+		ParametersMap params;
+		params.insert(ParametersPair(Parameters::kVisEstimationType(), "1"));
+		params.insert(ParametersPair(Parameters::kVisCorGuessWinSize(), "25"));
+		params.insert(ParametersPair(Parameters::kVisCorNNDR(), uNumber2Str(c.nndr)));
+		params.insert(ParametersPair(Parameters::kVisCorGuessMatchToProjection(), c.matchToProjection?"true":"false"));
+		RegistrationVis reg(params);
+
+		Signature from(1);
+		from.setWords(mapWords, mapKpts, map3D, mapDesc);
+		Signature to(2);
+		to.sensorData() = SensorData(cv::Mat(), cv::Mat(), rig, 2);
+		to.sensorData().setFeatures(frameKpts, frame3D, frameDesc);
+
+		RegistrationInfo info;
+		const Transform result = reg.computeTransformationMod(from, to, pose, &info);
+		const std::string label = uFormat("nndr=%.1f matchToProjection=%d", c.nndr, c.matchToProjection?1:0);
+		ASSERT_FALSE(result.isNull()) << label << ": " << info.rejectedMsg;
+		EXPECT_NEAR(result.x(), pose.x(), 0.01f) << label;
+		EXPECT_NEAR(result.y(), pose.y(), 0.01f) << label;
+		ASSERT_EQ(info.inliersIDsPerCam.size(), 2u) << label;
+
+		// The lone decoys matched to the trap words in the second camera
+		int trapsMatchedInSecondCamera = 0;
+		int trapsInlierInSecondCamera = 0;
+		for(int id : trapWords)
+		{
+			for(std::multimap<int, int>::const_iterator iter=to.getWords().lower_bound(id); iter!=to.getWords().end() && iter->first == id; ++iter)
+			{
+				trapsMatchedInSecondCamera += to.getWordsKpts()[iter->second].pt.x >= rig[0].imageWidth() ? 1 : 0;
+			}
+			trapsInlierInSecondCamera += std::count(info.inliersIDsPerCam[1].begin(), info.inliersIDsPerCam[1].end(), id);
+		}
+		if(c.nndr < 1.0f)
+		{
+			EXPECT_EQ(trapsMatchedInSecondCamera, 0) << label << ": a lone keypoint with another descriptor is not the feature";
+		}
+		else
+		{
+			EXPECT_EQ(trapsMatchedInSecondCamera, (int)trapWords.size()) << label << ": without the check the lone keypoint is taken";
+		}
+		// Either way, those wrong observations are not inliers of the motion estimation
+		EXPECT_EQ(trapsInlierInSecondCamera, 0) << label;
+		// The lone keypoints of the repetitive texture are matched: the twin far away doesn't matter
+		int repeatedMatched = 0;
+		for(int id : repeatedWords)
+		{
+			for(std::multimap<int, int>::const_iterator iter=to.getWords().lower_bound(id); iter!=to.getWords().end() && iter->first == id; ++iter)
+			{
+				const cv::KeyPoint & kpt = to.getWordsKpts()[iter->second];
+				repeatedMatched += kpt.pt.x < rig[0].imageWidth() && std::count(info.inliersIDsPerCam[0].begin(), info.inliersIDsPerCam[0].end(), id) ? 1 : 0;
+			}
+		}
+		EXPECT_EQ(repeatedMatched, (int)repeatedWords.size()) << label;
+		// The per-camera inlier ids are consistent with the per-camera counts
+		for(size_t cam=0; cam<2; ++cam)
+		{
+			EXPECT_EQ((int)info.inliersIDsPerCam[cam].size(), info.inliersPerCam[cam]) << label;
+		}
+		EXPECT_GE(info.inliers, 30) << label;
+	}
 }

@@ -30,6 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/core/util3d_features.h"
+#include <set>
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/util3d_motion_estimation.h"
 #include "rtabmap/core/util3d_filtering.h"
@@ -57,6 +59,53 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 namespace rtabmap {
+
+// The observations of a word in a frame, one per camera of the rig seeing it,
+// as bundle adjustment references: the keypoint in the camera's own image
+// and the depth along its optical axis. With `keep`, only the observations
+// (word, camera) it holds, e.g. the inliers of the motion estimation.
+static std::multimap<int, FeatureBA> frameReferences(const Signature & frame, int wordId, const std::vector<CameraModel> & models, const std::set<std::pair<int, int> > * keep = 0)
+{
+	std::multimap<int, FeatureBA> references;
+	UASSERT(!frame.getWordsKpts().empty());
+	for(std::multimap<int, int>::const_iterator iter=frame.getWords().lower_bound(wordId); iter!=frame.getWords().end() && iter->first == wordId; ++iter)
+	{
+		cv::KeyPoint kpt = frame.getWordsKpts()[iter->second];
+		int cameraIndex = 0;
+		if(models.size()>1)
+		{
+			UASSERT(models[0].imageWidth()>0);
+			float subImageWidth = models[0].imageWidth();
+			cameraIndex = int(kpt.pt.x / subImageWidth);
+			UASSERT(cameraIndex < (int)models.size());
+			kpt.pt.x = kpt.pt.x - (subImageWidth*float(cameraIndex));
+		}
+		if(keep && keep->count(std::make_pair(wordId, cameraIndex)) == 0)
+		{
+			continue;
+		}
+		float depth = 0.0f;
+		if(!frame.getWords3().empty() && util3d::isFinite(frame.getWords3()[iter->second]))
+		{
+			//move back point in camera frame (to get depth along z)
+			depth = util3d::transformPoint(frame.getWords3()[iter->second], models[cameraIndex].localTransform().inverse()).z;
+		}
+		references.insert(std::make_pair(frame.id(), FeatureBA(kpt, depth, cv::Mat(), cameraIndex)));
+	}
+	return references;
+}
+
+// Number of frames observing a word
+static int frameCount(const std::multimap<int, FeatureBA> & references)
+{
+	int frames = 0;
+	for(std::multimap<int, FeatureBA>::const_iterator iter=references.begin(); iter!=references.end(); iter=references.upper_bound(iter->first))
+	{
+		++frames;
+	}
+	return frames;
+}
+
 
 OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	Odometry(parameters),
@@ -289,6 +338,14 @@ Transform OdometryF2M::computeTransform(
 			std::map<int, std::vector<CameraModel> > bundleModels;
 			float bundleAvgInlierDistance = 0.0f;
 
+			// The observation of each word of the frame to use: a word seen by several
+			// cameras of the rig keeps the one with the closest 3D point
+			std::map<int, int> lastFrameWordObs;
+			// The inlier observations (word, camera) of the motion estimation, when the
+			// registration tells them apart (multi-camera): the others are not kept as
+			// bundle adjustment references nor as map observations. Null otherwise.
+			std::set<std::pair<int, int> > inlierObservations;
+			const std::set<std::pair<int, int> > * keptObservations = 0;
 			for(int guessIteration=0;
 					guessIteration<(!guess.isNull()&&regPipeline_->isImageRequired()?2:1) && transform.isNull();
 					++guessIteration)
@@ -343,6 +400,21 @@ Transform OdometryF2M::computeTransform(
 
 				data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().keypoints3D(), lastFrame_->sensorData().descriptors());
 				data.setLaserScan(lastFrame_->sensorData().laserScanRaw());
+				lastFrameWordObs = util3d::uniqueWordObservations(
+						lastFrame_->getWords(),
+						lastFrame_->getWordsKpts(),
+						lastFrame_->getWords3(),
+						lastFrameModels.size()>1 && lastFrameModels[0].imageWidth()>0 && !lastFrame_->getWordsKpts().empty() ? lastFrameModels[0].imageWidth() : 0);
+				inlierObservations.clear();
+				keptObservations = 0;
+				for(size_t c=0; c<regInfo.inliersIDsPerCam.size(); ++c)
+				{
+					for(size_t i=0; i<regInfo.inliersIDsPerCam[c].size(); ++i)
+					{
+						inlierObservations.insert(std::make_pair(regInfo.inliersIDsPerCam[c][i], (int)c));
+					}
+					keptObservations = &inlierObservations;
+				}
 
 				UDEBUG("Registration time = %fs", regInfo.totalTime);
 				if(!transform.isNull())
@@ -393,7 +465,7 @@ Transform OdometryF2M::computeTransform(
 							bundleModels.insert(std::make_pair(lastFrame_->id(), lastFrameModels));
 
 							UDEBUG("Fill matches (%d)", (int)regInfo.inliersIDs.size());
-							std::map<int, std::map<int, FeatureBA> > wordReferences;
+							std::map<int, std::multimap<int, FeatureBA> > wordReferences;
 							size_t maxKeyFramesForInlier = 0;
 							for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 							{
@@ -405,62 +477,47 @@ Transform OdometryF2M::computeTransform(
 								points3DMap.insert(std::make_pair(wordId, tmpMap.getWords3()[iter3D->second]));
 
 								// all other references
-								std::map<int, std::map<int, FeatureBA> >::iterator refIter = bundleWordReferences_.find(wordId);
+								std::map<int, std::multimap<int, FeatureBA> >::iterator refIter = bundleWordReferences_.find(wordId);
 								UASSERT_MSG(refIter != bundleWordReferences_.end(), uFormat("wordId=%d", wordId).c_str());
-								if(info && refIter->second.size() > maxKeyFramesForInlier)
+								// A frame observes the word once per camera seeing it
+								int frames = frameCount(refIter->second);
+								if(info && frames > (int)maxKeyFramesForInlier)
 								{
-									maxKeyFramesForInlier = refIter->second.size();
+									maxKeyFramesForInlier = frames;
 								}
 
-								std::map<int, FeatureBA> references;
-								int step = bundleMaxFrames_>0?(refIter->second.size() / bundleMaxFrames_):1;
+								std::multimap<int, FeatureBA> references;
+								int step = bundleMaxFrames_>0?(frames / bundleMaxFrames_):1;
 								if(step == 0)
 								{
 									step = 1;
 								}
 								int oi=0;
-								for(std::map<int, FeatureBA>::iterator jter=refIter->second.begin(); jter!=refIter->second.end(); ++jter)
+								for(std::multimap<int, FeatureBA>::iterator jter=refIter->second.begin(); jter!=refIter->second.end(); jter=refIter->second.upper_bound(jter->first))
 								{
 									if(oi++ % step == 0 && bundlePoses.find(jter->first)!=bundlePoses.end())
 									{
-										references.insert(*jter);
+										for(std::multimap<int, FeatureBA>::iterator kter=jter; kter!=refIter->second.end() && kter->first == jter->first; ++kter)
+										{
+											references.insert(*kter);
+											++totalBundleWordReferencesUsed;
+										}
+									}
+								}
+								//make sure the last frame is here
+								if(frames > 1 && references.find(refIter->second.rbegin()->first) == references.end())
+								{
+									for(std::multimap<int, FeatureBA>::iterator kter=refIter->second.lower_bound(refIter->second.rbegin()->first); kter!=refIter->second.end(); ++kter)
+									{
+										references.insert(*kter);
 										++totalBundleWordReferencesUsed;
 									}
 								}
-								//make sure the last reference is here
-								if(refIter->second.size() > 1)
+
+								if(lastFrameWordObs.find(wordId) != lastFrameWordObs.end())
 								{
-									if(references.insert(*refIter->second.rbegin()).second)
-									{
-										++totalBundleWordReferencesUsed;
-									}
-								}
-
-								std::multimap<int, int>::const_iterator iter2D = lastFrame_->getWords().find(wordId);
-								if(iter2D!=lastFrame_->getWords().end())
-								{
-									UASSERT(!lastFrame_->getWordsKpts().empty());
-									cv::KeyPoint kpt = lastFrame_->getWordsKpts()[iter2D->second];
-
-									int cameraIndex = 0;
-									if(lastFrameModels.size()>1)
-									{
-										UASSERT(lastFrameModels[0].imageWidth()>0);
-										float subImageWidth = lastFrameModels[0].imageWidth();
-										cameraIndex = int(kpt.pt.x / subImageWidth);
-										UASSERT(cameraIndex < (int)lastFrameModels.size());
-										kpt.pt.x = kpt.pt.x - (subImageWidth*float(cameraIndex));
-									}
-
-									//get depth
-									float d = 0.0f;
-									if( !lastFrame_->getWords3().empty() &&
-										util3d::isFinite(lastFrame_->getWords3()[iter2D->second]))
-									{
-										//move back point in camera frame (to get depth along z)
-										d = util3d::transformPoint(lastFrame_->getWords3()[iter2D->second], lastFrameModels[cameraIndex].localTransform().inverse()).z;
-									}
-									references.insert(std::make_pair(lastFrame_->id(), FeatureBA(kpt, d, cv::Mat(), cameraIndex)));
+									std::multimap<int, FeatureBA> current = frameReferences(*lastFrame_, wordId, lastFrameModels, keptObservations);
+									references.insert(current.begin(), current.end());
 								}
 								wordReferences.insert(std::make_pair(wordId, references));
 
@@ -478,11 +535,11 @@ Transform OdometryF2M::computeTransform(
 							bundlePoses = sba_->optimizeBA(-lastFrame_->id(), bundlePoses, bundleLinks, bundleModels, points3DMap, wordReferences, &sbaOutliers);
 							bundleTime = bundleTimer.ticks();
 							UDEBUG("sba...end");
+							// A word is an outlier when every observation of it by this frame is rejected
 							int sbaOutliersCount = 0;
 							for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 							{
-								BAOutliers::const_iterator iter = sbaOutliers.find(regInfo.inliersIDs[i]);
-								if(iter != sbaOutliers.end() && iter->second.find(lastFrame_->id()) != iter->second.end())
+								if(baPoseRejected(sbaOutliers, wordReferences.at(regInfo.inliersIDs[i]), regInfo.inliersIDs[i], lastFrame_->id()))
 								{
 									++sbaOutliersCount;
 								}
@@ -506,22 +563,55 @@ Transform OdometryF2M::computeTransform(
 									{
 										info->localBundleOutliersPerCam = std::vector<int>(lastFrameModels.size(),0);
 									}
-									if(sbaOutliersCount)
+									if(!sbaOutliers.empty())
 									{
+										// the observations it rejected are not kept either
+										for(std::set<std::pair<int, int> >::iterator oter=inlierObservations.begin(); oter!=inlierObservations.end();)
+										{
+											if(baObservationRejected(sbaOutliers, oter->first, lastFrame_->id(), oter->second))
+											{
+												oter = inlierObservations.erase(oter);
+											}
+											else
+											{
+												++oter;
+											}
+										}
+										for(size_t c=0; c<regInfo.inliersIDsPerCam.size(); ++c)
+										{
+											regInfo.inliersIDsPerCam[c].clear();
+										}
+										for(std::set<std::pair<int, int> >::const_iterator oter=inlierObservations.begin(); oter!=inlierObservations.end(); ++oter)
+										{
+											if(oter->second < (int)regInfo.inliersIDsPerCam.size())
+											{
+												regInfo.inliersIDsPerCam[oter->second].push_back(oter->first);
+											}
+										}
 										regInfo.inliersPerCam = std::vector<int>(lastFrameModels.size(),0);
 										std::vector<int> newInliers(regInfo.inliersIDs.size());
 										int oi=0;
 										for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 										{
-											BAOutliers::const_iterator iter = sbaOutliers.find(regInfo.inliersIDs[i]);
-											if(iter == sbaOutliers.end() || iter->second.find(lastFrame_->id()) == iter->second.end())
+											const int wordId = regInfo.inliersIDs[i];
+											const std::multimap<int, FeatureBA> & references = wordReferences.at(wordId);
+											if(!baPoseRejected(sbaOutliers, references, wordId, lastFrame_->id()))
 											{
-												newInliers[oi++] = regInfo.inliersIDs[i];
-												regInfo.inliersPerCam[wordReferences.at(regInfo.inliersIDs[i]).at(lastFrame_->id()).cameraIndex] += 1;
+												newInliers[oi++] = wordId;
 											}
-											else if(info)
+											// the observations of this frame kept and rejected, per camera
+											for(std::multimap<int, FeatureBA>::const_iterator jter=references.lower_bound(lastFrame_->id()); jter!=references.end() && jter->first == lastFrame_->id(); ++jter)
 											{
-												info->localBundleOutliersPerCam[wordReferences.at(regInfo.inliersIDs[i]).at(lastFrame_->id()).cameraIndex] += 1;
+												const int cameraIndex = jter->second.cameraIndex;
+												UASSERT(cameraIndex >= 0 && cameraIndex < (int)lastFrameModels.size());
+												if(!baObservationRejected(sbaOutliers, wordId, lastFrame_->id(), cameraIndex))
+												{
+													regInfo.inliersPerCam[cameraIndex] += 1;
+												}
+												else if(info)
+												{
+													info->localBundleOutliersPerCam[cameraIndex] += 1;
+												}
 											}
 										}
 										newInliers.resize(oi);
@@ -576,18 +666,26 @@ Transform OdometryF2M::computeTransform(
 											int count = 0;
 											for(unsigned int i=0; i<regInfo.inliersIDs.size(); ++i)
 											{
-												std::map<int, std::map<int, FeatureBA> >::iterator wter = wordReferences.find(regInfo.inliersIDs[i]);
+												std::map<int, std::multimap<int, FeatureBA> >::iterator wter = wordReferences.find(regInfo.inliersIDs[i]);
 												if(wter != wordReferences.end())
 												{
-													std::map<int, FeatureBA>::iterator fter = wter->second.find(bundlePoses_.rbegin()->first);
-													if(fter != wter->second.end())
+													// each observation of the current key-frame against the previous key-frame's one in the same camera
+													const int previousId = bundlePoses_.rbegin()->first;
+													for(std::multimap<int, FeatureBA>::iterator fter = wter->second.lower_bound(lastFrame_->id()); fter != wter->second.end() && fter->first == lastFrame_->id(); ++fter)
 													{
-														const FeatureBA & f1 = fter->second; // previous key-frame
-														const FeatureBA & f2 = wter->second.find(lastFrame_->id())->second; // current key-frame
-														float dx = f1.kpt.pt.x - f2.kpt.pt.x;
-														float dy = f1.kpt.pt.y - f2.kpt.pt.y;
-														bundleAvgInlierDistance += sqrt(dx*dx + dy*dy);
-														++count;
+														const FeatureBA & f2 = fter->second; // current key-frame
+														for(std::multimap<int, FeatureBA>::iterator pter = wter->second.lower_bound(previousId); pter != wter->second.end() && pter->first == previousId; ++pter)
+														{
+															const FeatureBA & f1 = pter->second; // previous key-frame
+															if(f1.cameraIndex == f2.cameraIndex)
+															{
+																float dx = f1.kpt.pt.x - f2.kpt.pt.x;
+																float dy = f1.kpt.pt.y - f2.kpt.pt.y;
+																bundleAvgInlierDistance += sqrt(dx*dx + dy*dy);
+																++count;
+																break;
+															}
+														}
 													}
 												}
 											}
@@ -715,7 +813,7 @@ Transform OdometryF2M::computeTransform(
 				bool addVisualKeyFrame = regPipeline_->isImageRequired() &&
 						 (keyFrameThr_ == 0.0f ||
 						  visKeyFrameThr_ == 0 ||
-						  float(regInfo.inliers) <= (keyFrameThr_*float(lastFrame_->getWords().size())) ||
+						  float(regInfo.inliers) <= (keyFrameThr_*float(uUniqueKeys(lastFrame_->getWords()).size())) ||
 						  regInfo.inliers <= visKeyFrameThr_) &&
 						  (bundleAdjustment_==0 || bundleAvgInlierDistance >= bundleMinMotion_);
 
@@ -810,7 +908,7 @@ Transform OdometryF2M::computeTransform(
 					if(!lastFrameModels.empty())
 					{
 						UASSERT(lastFrame_->getWordsKpts().size() == lastFrame_->getWords().size());
-						for(std::multimap<int, int>::const_iterator iter = lastFrame_->getWords().begin(); iter!=lastFrame_->getWords().end(); ++iter)
+						for(std::map<int, int>::const_iterator iter = lastFrameWordObs.begin(); iter!=lastFrameWordObs.end(); ++iter)
 						{
 							const cv::Point3f & pt = lastFrame_->getWords3()[iter->second];
 							cv::KeyPoint kpt = lastFrame_->getWordsKpts()[iter->second];
@@ -839,42 +937,38 @@ Transform OdometryF2M::computeTransform(
 							}
 							else if(bundleAdjustment_>0)
 							{
-								if(lastFrame_->getWords().count(iter->first) == 1)
+								std::multimap<int, int>::iterator iterKpts = mapWords.find(iter->first);
+								if(iterKpts!=mapWords.end() && !mapWordsKpts.empty())
 								{
-									std::multimap<int, int>::iterator iterKpts = mapWords.find(iter->first);
-									if(iterKpts!=mapWords.end() && !mapWordsKpts.empty())
-									{
-										mapWordsKpts[iterKpts->second].octave = kpt.octave;
-									}
+									mapWordsKpts[iterKpts->second].octave = kpt.octave;
+								}
 
-									UASSERT(iterBundlePosesRef!=bundlePoseReferences_.end());
-									iterBundlePosesRef->second += 1;
+								// the observations of the word in this frame (one per camera seeing
+								// it) that are inliers of the motion estimation
+								std::multimap<int, FeatureBA> framePt = frameReferences(*lastFrame_, iter->first, lastFrameModels, keptObservations);
+								if(framePt.empty())
+								{
+									continue;
+								}
+								UASSERT(iterBundlePosesRef!=bundlePoseReferences_.end());
+								iterBundlePosesRef->second += 1;
 
-									//move back point in camera frame (to get depth along z)
-									float depth = 0.0f;
-									if(util3d::isFinite(pt))
+								if(bundleWordReferences_.find(iter->first) == bundleWordReferences_.end())
+								{
+									bundleWordReferences_.insert(std::make_pair(iter->first, framePt));
+								}
+								else
+								{
+									std::multimap<int, rtabmap::FeatureBA> & keyframes = bundleWordReferences_.find(iter->first)->second;
+									if(bundleMaxKeyFramesPerFeature_ != 0 && frameCount(keyframes) > bundleMaxKeyFramesPerFeature_)
 									{
-										depth = util3d::transformPoint(pt, lastFrameModels[cameraIndex].localTransform().inverse()).z;
+										// To keep number of keyframes looking at same feature bounded
+										int frameId = keyframes.rbegin()->first;
+										UASSERT(bundlePoseReferences_.find(frameId) != bundlePoseReferences_.end());
+										bundlePoseReferences_.at(frameId) -= 1;
+										keyframes.erase(frameId);
 									}
-									if(bundleWordReferences_.find(iter->first) == bundleWordReferences_.end())
-									{
-										std::map<int, FeatureBA> framePt;
-										framePt.insert(std::make_pair(lastFrame_->id(), FeatureBA(kpt, depth, cv::Mat(), cameraIndex)));
-										bundleWordReferences_.insert(std::make_pair(iter->first, framePt));
-									}
-									else
-									{
-										std::map<int, rtabmap::FeatureBA> & keyframes = bundleWordReferences_.find(iter->first)->second;
-										if(bundleMaxKeyFramesPerFeature_ != 0 && (int)keyframes.size() > bundleMaxKeyFramesPerFeature_)
-										{
-											// To keep number of keyframes looking at same feature bounded
-											int frameId = keyframes.rbegin()->first;
-											UASSERT(bundlePoseReferences_.find(frameId) != bundlePoseReferences_.end());
-											bundlePoseReferences_.at(frameId) -= 1;
-											keyframes.erase(frameId);
-										}
-										keyframes.insert(std::make_pair(lastFrame_->id(), FeatureBA(kpt, depth, cv::Mat(), cameraIndex)));
-									}
+									keyframes.insert(framePt.begin(), framePt.end());
 								}
 							}
 						}
@@ -914,27 +1008,18 @@ Transform OdometryF2M::computeTransform(
 
 							if(bundleAdjustment_>0)
 							{
-								if(lastFrame_->getWords().count(iter->second.first) == 1)
-								{
-									UASSERT(iterBundlePosesRef!=bundlePoseReferences_.end());
-									iterBundlePosesRef->second += 1;
+								UASSERT(iterBundlePosesRef!=bundlePoseReferences_.end());
+								iterBundlePosesRef->second += 1;
 
-									//move back point in camera frame (to get depth along z)
-									float depth = 0.0f;
-									if(util3d::isFinite(iter->second.second.second.first))
-									{
-										depth = util3d::transformPoint(iter->second.second.second.first, lastFrameModels[cameraIndex].localTransform().inverse()).z;
-									}
-									if(bundleWordReferences_.find(iter->second.first) == bundleWordReferences_.end())
-									{
-										std::map<int, FeatureBA> framePt;
-										framePt.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter->second.second.first, depth, cv::Mat(), cameraIndex)));
-										bundleWordReferences_.insert(std::make_pair(iter->second.first, framePt));
-									}
-									else
-									{
-										bundleWordReferences_.find(iter->second.first)->second.insert(std::make_pair(lastFrame_->id(), FeatureBA(iter->second.second.first, depth, cv::Mat(), cameraIndex)));
-									}
+								// every observation of the word in this frame (one per camera seeing it)
+								std::multimap<int, FeatureBA> framePt = frameReferences(*lastFrame_, iter->second.first, lastFrameModels);
+								if(bundleWordReferences_.find(iter->second.first) == bundleWordReferences_.end())
+								{
+									bundleWordReferences_.insert(std::make_pair(iter->second.first, framePt));
+								}
+								else
+								{
+									bundleWordReferences_.find(iter->second.first)->second.insert(framePt.begin(), framePt.end());
 								}
 							}
 
@@ -980,10 +1065,10 @@ Transform OdometryF2M::computeTransform(
 							int id = ids.at(i);
 							if(inliers.find(id) == inliers.end())
 							{
-								std::map<int, std::map<int, FeatureBA> >::iterator iterRef = bundleWordReferences_.find(id);
+								std::map<int, std::multimap<int, FeatureBA> >::iterator iterRef = bundleWordReferences_.find(id);
 								if(iterRef != bundleWordReferences_.end())
 								{
-									for(std::map<int, FeatureBA>::iterator iterFrame = iterRef->second.begin(); iterFrame != iterRef->second.end(); ++iterFrame)
+									for(std::multimap<int, FeatureBA>::iterator iterFrame = iterRef->second.begin(); iterFrame != iterRef->second.end(); ++iterFrame)
 									{
 										if(bundlePoseReferences_.find(iterFrame->first) != bundlePoseReferences_.end())
 										{
@@ -1004,10 +1089,10 @@ Transform OdometryF2M::computeTransform(
 						{
 							if(inliers.find(iter->first) == inliers.end())
 							{
-								std::map<int, std::map<int, FeatureBA> >::iterator iterRef = bundleWordReferences_.find(iter->first);
+								std::map<int, std::multimap<int, FeatureBA> >::iterator iterRef = bundleWordReferences_.find(iter->first);
 								if(iterRef != bundleWordReferences_.end())
 								{
-									for(std::map<int, FeatureBA>::iterator iterFrame = iterRef->second.begin(); iterFrame != iterRef->second.end(); ++iterFrame)
+									for(std::multimap<int, FeatureBA>::iterator iterFrame = iterRef->second.begin(); iterFrame != iterRef->second.end(); ++iterFrame)
 									{
 										if(bundlePoseReferences_.find(iterFrame->first) != bundlePoseReferences_.end())
 										{
@@ -1362,10 +1447,16 @@ Transform OdometryF2M::computeTransform(
 					std::vector<cv::Point3f> transformedPoints;
 					std::multimap<int, int> mapPointWeights;
 					cv::Mat descriptors;
+					// A word seen by several cameras of the rig is one map point, with the closest 3D point
+					std::map<int, int> observations = util3d::uniqueWordObservations(
+							lastFrame_->getWords(),
+							lastFrame_->getWordsKpts(),
+							lastFrame_->getWords3(),
+							lastFrameModels.size()>1 && lastFrameModels[0].imageWidth()>0 && !lastFrame_->getWordsKpts().empty() ? lastFrameModels[0].imageWidth() : 0);
 					if(!lastFrame_->getWords3().empty() && !lastFrameModels.empty())
 					{
-						for (std::multimap<int, int>::const_iterator iter = lastFrame_->getWords().begin();
-							iter != lastFrame_->getWords().end();
+						for (std::map<int, int>::const_iterator iter = observations.begin();
+							iter != observations.end();
 							++iter)
 						{
 							const cv::Point3f & pt = lastFrame_->getWords3()[iter->second];
@@ -1387,36 +1478,9 @@ Transform OdometryF2M::computeTransform(
 						{
 							for(std::multimap<int, int>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 							{
-								if(words.count(iter->first) == 1)
-								{
-									UASSERT(bundleWordReferences_.find(iter->first) == bundleWordReferences_.end());
-									std::map<int, FeatureBA> framePt;
-
-									cv::KeyPoint kpt = wordsKpts[iter->second];
-
-									int cameraIndex = 0;
-									if(lastFrameModels.size()>1)
-									{
-										UASSERT(lastFrameModels[0].imageWidth()>0);
-										float subImageWidth = lastFrameModels[0].imageWidth();
-										cameraIndex = int(kpt.pt.x / subImageWidth);
-										kpt.pt.x = kpt.pt.x - (subImageWidth*float(cameraIndex));
-									}
-
-									//get depth
-									float d = 0.0f;
-									if(lastFrame_->getWords().count(iter->first) == 1 &&
-									  !lastFrame_->getWords3().empty() &&
-										util3d::isFinite(lastFrame_->getWords3()[lastFrame_->getWords().find(iter->first)->second]))
-									{
-										//move back point in camera frame (to get depth along z)
-										d = util3d::transformPoint(lastFrame_->getWords3()[lastFrame_->getWords().find(iter->first)->second], lastFrameModels[cameraIndex].localTransform().inverse()).z;
-									}
-
-
-									framePt.insert(std::make_pair(lastFrame_->id(), FeatureBA(kpt, d, cv::Mat(), cameraIndex)));
-									bundleWordReferences_.insert(std::make_pair(iter->first, framePt));
-								}
+								UASSERT(bundleWordReferences_.find(iter->first) == bundleWordReferences_.end());
+								// every observation of the word in this frame (one per camera seeing it)
+								bundleWordReferences_.insert(std::make_pair(iter->first, frameReferences(*lastFrame_, iter->first, lastFrameModels)));
 							}
 						}
 

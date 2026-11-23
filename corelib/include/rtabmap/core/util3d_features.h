@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/StereoCameraModel.h>
 #include <list>
 #include <map>
+#include <set>
 
 namespace rtabmap
 {
@@ -190,6 +191,67 @@ std::map<int, cv::Point3f> RTABMAP_CORE_EXPORT generateWords3DMono(
 std::multimap<int, cv::KeyPoint> RTABMAP_CORE_EXPORT aggregate(
 		const std::list<int> & wordIds,
 		const std::vector<cv::KeyPoint> & keypoints);
+
+/**
+ * @brief The observation of each word to use when a single one is needed.
+ *
+ * A word of a multi-camera signature can be observed by several cameras of the rig at the
+ * same time (a feature in the overlap of two fields of view): its keypoints are in different
+ * sub-images of the stitched image. Such a word keeps the observation with the closest finite
+ * 3D point (the most accurate depth), or its first observation when none has a 3D point. A word
+ * matched to several keypoints of a same sub-image is ambiguous and is dropped, as
+ * uMultimapToMapUnique() does.
+ *
+ * @param words           Word ID -> keypoint index.
+ * @param keypoints       Keypoints in the stitched image (x offset by cameraIndex*subImageWidth), one per index.
+ * @param words3          3D points in the base frame, one per keypoint index, or empty.
+ * @param subImageWidth   Width of the image of one camera, 0 for a single camera (then only the words observed once are kept).
+ * @param allObservations Optional output: every observation of the kept words, several per word when seen by several cameras.
+ * @return Word ID -> index of the observation to use.
+ */
+std::map<int, int> RTABMAP_CORE_EXPORT uniqueWordObservations(
+		const std::multimap<int, int> & words,
+		const std::vector<cv::KeyPoint> & keypoints,
+		const std::vector<cv::Point3f> & words3,
+		int subImageWidth,
+		std::multimap<int, int> * allObservations = 0);
+
+/**
+ * @brief Merges the observations, by different cameras of a rig, of a same new feature.
+ *
+ * Two cameras with overlapping fields of view see a same feature at the same time: two
+ * keypoints with similar descriptors, in different sub-images of the stitched image. For the
+ * keypoints of the words not linked yet to another signature (not in @p knownWords), the
+ * descriptors are matched between each pair of cameras (nearest neighbor distance ratio, in
+ * both directions) and a pair is merged into one word when the observations agree geometrically:
+ * - both with a 3D point: each 3D point reprojects on the other keypoint within @p reprojError,
+ *   which tolerates a depth error that grows with the distance;
+ * - one with a 3D point: it reprojects on the other keypoint, which then gets that 3D point;
+ * - none with a 3D point: the two rays intersect (within @p reprojError in both cameras); the
+ *   triangulated point is given to both observations when the rays make an angle of at least
+ *   @p minParallax, otherwise the depth stays unknown.
+ *
+ * @param words        Word ID -> keypoint index, updated: merged observations get the same word ID (the smallest one).
+ * @param keypoints    Keypoints in the stitched image, one per index.
+ * @param words3       3D points in the base frame, one per keypoint index, or empty. Updated with the depths found.
+ * @param descriptors  One row per keypoint index.
+ * @param models       Camera models of the rig (left camera for stereo), all with the same image size.
+ * @param knownWords   Word IDs already linked to the other signature, left untouched.
+ * @param nndr         Nearest neighbor distance ratio accepted for a descriptor match.
+ * @param reprojError  Maximum reprojection error (pixels) for two observations to be the same feature.
+ * @param minParallax  Minimum angle (radians) between the two rays to keep a triangulated 3D point.
+ * @return Number of observations merged into the word of another camera.
+ */
+int RTABMAP_CORE_EXPORT mergeMultiCameraObservations(
+		std::multimap<int, int> & words,
+		const std::vector<cv::KeyPoint> & keypoints,
+		std::vector<cv::Point3f> & words3,
+		const cv::Mat & descriptors,
+		const std::vector<CameraModel> & models,
+		const std::set<int> & knownWords,
+		float nndr,
+		float reprojError,
+		float minParallax = 0.0174533f); // 1 degree
 
 } // namespace util3d
 } // namespace rtabmap

@@ -414,7 +414,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/Disparity>)
+		const std::map<int, std::multimap<int, FeatureBA> > & wordReferences, // <ID words, IDs frames + keypoint/Disparity>)
 		BAOutliers * outliers)
 {
 	if(outliers)
@@ -442,7 +442,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	baProblem.num_cameras_ = totalCameras;
 	baProblem.num_points_ = points3DMap.size();
 	baProblem.num_observations_ = 0;
-	for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
+	for(std::map<int, std::multimap<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
 		iter!=wordReferences.end();
 		++iter)
 	{
@@ -517,15 +517,15 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 	// branch picks the mono cost function in that case.
 	std::vector<double> observed_disparity(baProblem.num_observations_, 0.0);
 	std::vector<double> baseline_fx(baProblem.num_observations_, 0.0);
-	// <word, pose> per observation: names the rejections, counts views left.
-	std::vector<std::pair<int,int> > obsWordPose(baProblem.num_observations_);
+	// <word, <pose, camera>> per observation: names the rejections, counts views left.
+	std::vector<std::pair<int, std::pair<int,int> > > obsWordPose(baProblem.num_observations_);
 
 	oi = 0;
-	for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
+	for(std::map<int, std::multimap<int, FeatureBA> >::const_iterator iter=wordReferences.begin();
 		iter!=wordReferences.end();
 		++iter)
 	{
-		for(std::map<int, FeatureBA>::const_iterator jter=iter->second.begin();
+		for(std::multimap<int, FeatureBA>::const_iterator jter=iter->second.begin();
 			jter!=iter->second.end();
 			++jter)
 		{
@@ -543,7 +543,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 
 			baProblem.camera_index_[oi] = camIt->second;
 			baProblem.point_index_[oi] = pointIdToIndex.at(iter->first);
-			obsWordPose[oi] = std::make_pair(iter->first, poseId);
+			obsWordPose[oi] = std::make_pair(iter->first, std::make_pair(poseId, camIdx));
 			baProblem.observations_[4*oi] = jter->second.kpt.pt.x - m.cx();
 			baProblem.observations_[4*oi+1] = jter->second.kpt.pt.y - m.cy();
 			baProblem.observations_[4*oi+2] = m.fx();

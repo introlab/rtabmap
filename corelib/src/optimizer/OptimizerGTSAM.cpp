@@ -1173,7 +1173,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, std::vector<CameraModel> > & models,
 		std::map<int, cv::Point3f> & points3DMap,
-		const std::map<int, std::map<int, FeatureBA> > & wordReferences,
+		const std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
 		BAOutliers * outliers)
 {
 	std::map<int, Transform> optimizedPoses;
@@ -1354,6 +1354,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		size_t factorIndex;
 		int wordId;
 		int poseId;
+		int cameraIndex;
 	};
 	std::vector<ObsFactor> obsFactors;
 	std::set<gtsam::Key> insertedPoints;
@@ -1395,7 +1396,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 	{
 	obsFactors.clear();
 	insertedPoints.clear();
-	for(std::map<int, std::map<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
+	for(std::map<int, std::multimap<int, FeatureBA> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 	{
 		const int wordId = iter->first;
 		if(points3DMap.find(wordId) == points3DMap.end())
@@ -1412,8 +1413,8 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 		BAOutliers::const_iterator excludedIter = excluded.find(wordId);
 
 		// Collect usable observations first: none left means no variable at all.
-		std::vector<std::map<int, FeatureBA>::const_iterator> kept;
-		for(std::map<int, FeatureBA>::const_iterator jter = iter->second.begin(); jter != iter->second.end(); ++jter)
+		std::vector<std::multimap<int, FeatureBA>::const_iterator> kept;
+		for(std::multimap<int, FeatureBA>::const_iterator jter = iter->second.begin(); jter != iter->second.end(); ++jter)
 		{
 			const int poseId = jter->first;
 			const std::pair<int,int> camKey(poseId, jter->second.cameraIndex);
@@ -1421,7 +1422,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 			if(poses.find(poseId) == poses.end() ||
 			   calMono.find(camKey) == calMono.end() ||
 			   !poseValues.exists(xkey) ||
-			   (excludedIter != excluded.end() && excludedIter->second.count(poseId)))
+			   (excludedIter != excluded.end() && excludedIter->second.count(std::make_pair(poseId, jter->second.cameraIndex))))
 			{
 				continue;
 			}
@@ -1466,7 +1467,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 				graph.add(gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3_S2>(
 						gtsam::Point2(f.kpt.pt.x, f.kpt.pt.y), monoNoiseModel, xkey, pkey, K));
 			}
-			obsFactors.push_back(ObsFactor{factorIdx, wordId, poseId});
+			obsFactors.push_back(ObsFactor{factorIdx, wordId, poseId, f.cameraIndex});
 		}
 	}
 	};
@@ -1568,7 +1569,7 @@ std::map<int, Transform> OptimizerGTSAM::optimizeBA(
 			if(iter->factorIndex >= graph.size()) continue;
 			if(2.0 * graph.at(iter->factorIndex)->error(result) > robustKernelDelta_)
 			{
-				rejected[iter->wordId].insert(iter->poseId);
+				rejected[iter->wordId].insert(std::make_pair(iter->poseId, iter->cameraIndex));
 				++rejectedCount;
 			}
 		}

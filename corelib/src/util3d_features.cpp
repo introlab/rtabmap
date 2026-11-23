@@ -44,6 +44,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/point_tests.h>
 
 #include <opencv2/video/tracking.hpp>
+#include <opencv2/features2d/features2d.hpp>
+#include <iterator>
+#include <limits>
+#include <set>
 
 namespace rtabmap
 {
@@ -441,6 +445,289 @@ std::multimap<int, cv::KeyPoint> aggregate(
 		++kpIter;
 	}
 	return words;
+}
+
+std::map<int, int> uniqueWordObservations(
+		const std::multimap<int, int> & words,
+		const std::vector<cv::KeyPoint> & keypoints,
+		const std::vector<cv::Point3f> & words3,
+		int subImageWidth,
+		std::multimap<int, int> * allObservations)
+{
+	UASSERT(words3.empty() || words3.size() == keypoints.size());
+	std::map<int, int> unique;
+	if(allObservations)
+	{
+		allObservations->clear();
+	}
+	for(std::multimap<int, int>::const_iterator iter=words.begin(); iter!=words.end();)
+	{
+		std::multimap<int, int>::const_iterator end = words.upper_bound(iter->first);
+		int best = iter->second;
+		if(std::next(iter) != end)
+		{
+			// Observed several times: by different cameras of the rig, or ambiguous
+			bool ambiguous = subImageWidth <= 0;
+			std::set<int> cameras;
+			float bestDistance = std::numeric_limits<float>::max();
+			for(std::multimap<int, int>::const_iterator jter=iter; jter!=end && !ambiguous; ++jter)
+			{
+				UASSERT(jter->second >= 0 && jter->second < (int)keypoints.size());
+				ambiguous = !cameras.insert(int(keypoints[jter->second].pt.x / subImageWidth)).second;
+				if(!words3.empty() && util3d::isFinite(words3[jter->second]))
+				{
+					float distance = (float)cv::norm(words3[jter->second]);
+					if(distance < bestDistance)
+					{
+						bestDistance = distance;
+						best = jter->second;
+					}
+				}
+			}
+			if(ambiguous)
+			{
+				iter = end;
+				continue;
+			}
+		}
+		unique.insert(unique.end(), std::make_pair(iter->first, best));
+		if(allObservations)
+		{
+			allObservations->insert(iter, end);
+		}
+		iter = end;
+	}
+	return unique;
+}
+
+namespace {
+
+// Best match of each query descriptor in train, by nearest neighbor distance
+// ratio (a single train descriptor is accepted as is), -1 when none.
+std::vector<int> nndrMatches(const cv::Mat & query, const cv::Mat & train, cv::BFMatcher & matcher, float nndr)
+{
+	std::vector<int> best(query.rows, -1);
+	std::vector<std::vector<cv::DMatch> > matches;
+	matcher.knnMatch(query, train, matches, train.rows>1?2:1);
+	UASSERT((int)matches.size() == query.rows);
+	for(int i=0; i<query.rows; ++i)
+	{
+		if(matches[i].size() == 1 ||
+		   (matches[i].size() == 2 && matches[i][0].distance < nndr * matches[i][1].distance))
+		{
+			best[i] = matches[i][0].trainIdx;
+		}
+	}
+	return best;
+}
+
+} // namespace
+
+int mergeMultiCameraObservations(
+		std::multimap<int, int> & words,
+		const std::vector<cv::KeyPoint> & keypoints,
+		std::vector<cv::Point3f> & words3,
+		const cv::Mat & descriptors,
+		const std::vector<CameraModel> & models,
+		const std::set<int> & knownWords,
+		float nndr,
+		float reprojError,
+		float minParallax)
+{
+	if(models.size() < 2 || words.empty())
+	{
+		return 0;
+	}
+	UASSERT(descriptors.rows == (int)keypoints.size());
+	UASSERT(words3.empty() || words3.size() == keypoints.size());
+	UASSERT(models[0].imageWidth() > 0);
+	const float subImageWidth = models[0].imageWidth();
+	std::vector<Transform> baseToCamera(models.size());
+	for(size_t i=0; i<models.size(); ++i)
+	{
+		UASSERT(models[i].isValidForProjection());
+		UASSERT(models[i].imageWidth() == models[0].imageWidth());
+		baseToCamera[i] = models[i].localTransform().inverse();
+	}
+
+	// The keypoints to match, per camera: the ones of the words not linked yet
+	std::vector<std::vector<int> > candidates(models.size());
+	std::vector<int> wordOf(keypoints.size(), 0);
+	for(std::multimap<int, int>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+	{
+		UASSERT(iter->second >= 0 && iter->second < (int)keypoints.size());
+		wordOf[iter->second] = iter->first;
+		if(knownWords.find(iter->first) == knownWords.end())
+		{
+			int camera = int(keypoints[iter->second].pt.x / subImageWidth);
+			UASSERT(camera >= 0 && camera < (int)models.size());
+			candidates[camera].push_back(iter->second);
+		}
+	}
+
+	// Does a point of the base frame reproject on this keypoint?
+	const float reprojErrorSqrd = reprojError * reprojError;
+	auto reprojects = [&](const cv::Point3f & pt, int camera, int index)
+	{
+		cv::Point3f inCamera = util3d::transformPoint(pt, baseToCamera[camera]);
+		if(inCamera.z <= 0.0f)
+		{
+			return false;
+		}
+		float u, v;
+		models[camera].reproject(inCamera.x, inCamera.y, inCamera.z, u, v);
+		float du = u + float(camera)*subImageWidth - keypoints[index].pt.x;
+		float dv = v - keypoints[index].pt.y;
+		return du*du + dv*dv <= reprojErrorSqrd;
+	};
+	// The ray of a keypoint, in the base frame
+	auto ray = [&](int camera, int index, cv::Point3f & origin, cv::Point3f & direction)
+	{
+		float x, y, z;
+		models[camera].project(keypoints[index].pt.x - float(camera)*subImageWidth, keypoints[index].pt.y, 1.0f, x, y, z);
+		direction = util3d::transformPoint(cv::Point3f(x, y, z), models[camera].localTransform());
+		origin = util3d::transformPoint(cv::Point3f(0, 0, 0), models[camera].localTransform());
+		direction -= origin;
+		direction *= 1.0f/(float)cv::norm(direction);
+	};
+
+	std::map<int, int> remap; // dropped word ID -> word ID kept
+	auto resolve = [&](int id)
+	{
+		for(std::map<int, int>::const_iterator iter=remap.find(id); iter!=remap.end(); iter=remap.find(id))
+		{
+			id = iter->second;
+		}
+		return id;
+	};
+
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
+	int merged = 0;
+	for(size_t a=0; a<models.size(); ++a)
+	{
+		for(size_t b=a+1; b<models.size(); ++b)
+		{
+			if(candidates[a].empty() || candidates[b].empty())
+			{
+				continue;
+			}
+			cv::Mat descriptorsA((int)candidates[a].size(), descriptors.cols, descriptors.type());
+			for(size_t i=0; i<candidates[a].size(); ++i)
+			{
+				descriptors.row(candidates[a][i]).copyTo(descriptorsA.row((int)i));
+			}
+			cv::Mat descriptorsB((int)candidates[b].size(), descriptors.cols, descriptors.type());
+			for(size_t i=0; i<candidates[b].size(); ++i)
+			{
+				descriptors.row(candidates[b][i]).copyTo(descriptorsB.row((int)i));
+			}
+			std::vector<int> bestAB = nndrMatches(descriptorsA, descriptorsB, matcher, nndr);
+			std::vector<int> bestBA = nndrMatches(descriptorsB, descriptorsA, matcher, nndr);
+
+			for(size_t i=0; i<bestAB.size(); ++i)
+			{
+				int j = bestAB[i];
+				if(j < 0 || bestBA[j] != (int)i)
+				{
+					continue; // not mutual
+				}
+				int indexA = candidates[a][i];
+				int indexB = candidates[b][j];
+				int idA = resolve(wordOf[indexA]);
+				int idB = resolve(wordOf[indexB]);
+				if(idA == idB)
+				{
+					continue; // already the same word
+				}
+
+				bool finiteA = !words3.empty() && util3d::isFinite(words3[indexA]);
+				bool finiteB = !words3.empty() && util3d::isFinite(words3[indexB]);
+				cv::Point3f pointA(nan, nan, nan); // the depth given to A by the merge
+				cv::Point3f pointB(nan, nan, nan);
+				bool consistent = false;
+				if(finiteA && finiteB)
+				{
+					consistent = reprojects(words3[indexA], (int)b, indexB) && reprojects(words3[indexB], (int)a, indexA);
+				}
+				else if(finiteA)
+				{
+					consistent = reprojects(words3[indexA], (int)b, indexB);
+					pointB = words3[indexA];
+				}
+				else if(finiteB)
+				{
+					consistent = reprojects(words3[indexB], (int)a, indexA);
+					pointA = words3[indexB];
+				}
+				else
+				{
+					// Triangulate: the two rays should intersect
+					cv::Point3f originA, directionA, originB, directionB;
+					ray((int)a, indexA, originA, directionA);
+					ray((int)b, indexB, originB, directionB);
+					float cosParallax = directionA.dot(directionB);
+					if(cosParallax < std::cos(minParallax))
+					{
+						// Closest points of the two rays (unit directions, so a=c=1)
+						cv::Point3f w = originA - originB;
+						float d = directionA.dot(w);
+						float e = directionB.dot(w);
+						float denominator = 1.0f - cosParallax*cosParallax;
+						float s = (cosParallax*e - d) / denominator;
+						float t = (e - cosParallax*d) / denominator;
+						if(s > 0.0f && t > 0.0f)
+						{
+							cv::Point3f pt = (originA + directionA*s + originB + directionB*t) * 0.5f;
+							consistent = reprojects(pt, (int)a, indexA) && reprojects(pt, (int)b, indexB);
+							pointA = pointB = pt;
+						}
+					}
+					else
+					{
+						// Nearly parallel rays (feature far away): check that each ray
+						// is seen along the other one, the depth stays unknown
+						const float farAlong = 100.0f; // meters
+						consistent = reprojects(originA + directionA*farAlong, (int)b, indexB) &&
+									 reprojects(originB + directionB*farAlong, (int)a, indexA);
+					}
+				}
+				if(!consistent)
+				{
+					continue;
+				}
+
+				remap.insert(std::make_pair(std::max(idA, idB), std::min(idA, idB)));
+				++merged;
+				if(util3d::isFinite(pointA) || util3d::isFinite(pointB))
+				{
+					if(words3.empty())
+					{
+						words3.resize(keypoints.size(), cv::Point3f(nan, nan, nan));
+					}
+					if(util3d::isFinite(pointA))
+					{
+						words3[indexA] = pointA;
+					}
+					if(util3d::isFinite(pointB))
+					{
+						words3[indexB] = pointB;
+					}
+				}
+			}
+		}
+	}
+
+	if(merged)
+	{
+		std::multimap<int, int> updated;
+		for(std::multimap<int, int>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+		{
+			updated.insert(std::make_pair(resolve(iter->first), iter->second));
+		}
+		words = updated;
+	}
+	return merged;
 }
 
 }

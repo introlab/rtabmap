@@ -15,6 +15,7 @@
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/Version.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -23,7 +24,9 @@
 #include <rtabmap/utilite/UStl.h>
 #include <cmath>
 #include <limits>
+#include <set>
 #include <string>
+#include <vector>
 
 using namespace rtabmap;
 
@@ -913,6 +916,415 @@ TEST(OdometryTest, InitialOrientationIsTheImuOrientationAtTheFirstFrame)
 	}
 	EXPECT_NEAR(given->getPose().theta(), 1.0, 1e-6);
 }
+
+// Multi-camera rig with overlapping fields of view, feeding OdometryF2M with
+// synthetic features: a landmark seen by two cameras of the rig in the same
+// frame is one 3D feature, observed twice, and must be a single point of the
+// local feature map.
+namespace {
+
+struct MultiCameraRig
+{
+	// Four pinhole cameras fanned out in yaw, 116 deg of horizontal field of
+	// view each and 34 deg apart: wide overlaps between neighbours, so a
+	// landmark is often seen by two (or three) cameras at once.
+	explicit MultiCameraRig(float mountRadius = 0.05f)
+	{
+		const float yaws[4] = {-0.9f, -0.3f, 0.3f, 0.9f};
+		for(int i=0; i<4; ++i)
+		{
+			const Transform mount(mountRadius*std::cos(yaws[i]), mountRadius*std::sin(yaws[i]), 0.0f, 0.0f, 0.0f, yaws[i]);
+			models.push_back(CameraModel(200.0, 200.0, 320.0, 240.0, mount*CameraModel::opticalRotation(), 0.0, cv::Size(640, 480)));
+		}
+	}
+
+	// A landmark's observations by the rig at a given pose, one keypoint per
+	// camera seeing it, in the stitched image convention (x offset by
+	// cameraIndex*width). The 3D points are exact, in the rig's base frame.
+	int observe(
+			const cv::Point3f & landmarkInWorld,
+			const Transform & pose,
+			std::vector<cv::KeyPoint> & keypoints,
+			std::vector<cv::Point3f> & keypoints3D) const
+	{
+		const cv::Point3f inBase = util3d::transformPoint(landmarkInWorld, pose.inverse());
+		int seen = 0;
+		for(size_t c=0; c<models.size(); ++c)
+		{
+			const cv::Point3f inCamera = util3d::transformPoint(inBase, models[c].localTransform().inverse());
+			if(inCamera.z <= 0.3f)
+			{
+				continue;
+			}
+			float u, v;
+			models[c].reproject(inCamera.x, inCamera.y, inCamera.z, u, v);
+			// Keep away from the borders, where a real detector has no feature
+			if(u < 10.0f || u > models[c].imageWidth()-10.0f || v < 10.0f || v > models[c].imageHeight()-10.0f)
+			{
+				continue;
+			}
+			keypoints.push_back(cv::KeyPoint(u + float(c)*models[c].imageWidth(), v, 7.0f, -1.0f, 1.0f));
+			keypoints3D.push_back(inBase);
+			++seen;
+		}
+		return seen;
+	}
+
+	std::vector<CameraModel> models;
+};
+
+struct SyntheticScene
+{
+	// Landmarks spread in front of the rig, each with its own random binary
+	// descriptor (ORB-like, 32 bytes), far enough from all the others for the
+	// matching to be unambiguous.
+	explicit SyntheticScene(int landmarkCount)
+	{
+		cv::RNG rng(42);
+		descriptors = cv::Mat(landmarkCount, 32, CV_8UC1);
+		rng.fill(descriptors, cv::RNG::UNIFORM, 0, 256);
+		for(int i=0; i<landmarkCount; ++i)
+		{
+			landmarks.push_back(cv::Point3f(
+					rng.uniform(1.5f, 4.0f),   // forward
+					rng.uniform(-3.0f, 3.0f),  // left
+					rng.uniform(-1.0f, 1.0f))); // up
+		}
+	}
+
+	// The frame the rig captures at this pose: features only, no image, as a
+	// camera driver extracting its own features would give. The landmarks it
+	// contains are added to landmarksSeen; landmarksInFrame and observations
+	// count the distinct landmarks of this frame and their keypoints.
+	SensorData frame(const MultiCameraRig & rig, const Transform & pose, int id, double stamp, std::set<int> & landmarksSeen, int & landmarksInFrame, int & observations) const
+	{
+		std::vector<cv::KeyPoint> keypoints;
+		std::vector<cv::Point3f> keypoints3D;
+		cv::Mat frameDescriptors;
+		landmarksInFrame = 0;
+		observations = 0;
+		wrongObservations = 0;
+		for(size_t i=0; i<landmarks.size(); ++i)
+		{
+			const int seen = rig.observe(landmarks[i], pose, keypoints, keypoints3D);
+			for(int k=0; k<seen; ++k)
+			{
+				frameDescriptors.push_back(descriptors.row((int)i));
+				if(depthless.count((int)i))
+				{
+					const float nan = std::numeric_limits<float>::quiet_NaN();
+					keypoints3D[keypoints3D.size()-1-k] = cv::Point3f(nan, nan, nan);
+				}
+			}
+			if(seen >= 2 && wrongInSecondCamera.count((int)i))
+			{
+				// the second camera's keypoint is another feature 12 px away, with
+				// the 3D point of that pixel (same depth)
+				cv::KeyPoint & kpt = keypoints.back();
+				const int camera = int(kpt.pt.x / rig.models[0].imageWidth());
+				const CameraModel & model = rig.models[camera];
+				const float depth = util3d::transformPoint(keypoints3D.back(), model.localTransform().inverse()).z;
+				kpt.pt.x += 12.0f;
+				float x, y, z;
+				model.project(kpt.pt.x - float(camera)*model.imageWidth(), kpt.pt.y, depth, x, y, z);
+				keypoints3D.back() = util3d::transformPoint(cv::Point3f(x, y, z), model.localTransform());
+				++wrongObservations;
+			}
+			if(seen)
+			{
+				landmarksSeen.insert((int)i);
+				++landmarksInFrame;
+				observations += seen;
+			}
+		}
+		SensorData data(cv::Mat(), cv::Mat(), rig.models, id, stamp);
+		data.setFeatures(keypoints, keypoints3D, frameDescriptors);
+		return data;
+	}
+
+	std::vector<cv::Point3f> landmarks;
+	cv::Mat descriptors;
+	std::set<int> depthless; // the landmarks observed without depth (2D only)
+	std::set<int> wrongInSecondCamera; // the landmarks whose second camera observation is wrong
+	mutable int wrongObservations = 0; // how many wrong observations the last frame holds
+};
+
+// Points of the local map closer than this are the same landmark added twice:
+// the synthetic depths are exact and the landmarks are metres apart.
+const float kDuplicateDistance = 0.01f;
+
+int countDuplicatedMapPoints(const std::map<int, cv::Point3f> & localMap)
+{
+	int duplicates = 0;
+	for(std::map<int, cv::Point3f>::const_iterator iter=localMap.begin(); iter!=localMap.end(); ++iter)
+	{
+		std::map<int, cv::Point3f>::const_iterator jter = iter;
+		for(++jter; jter!=localMap.end(); ++jter)
+		{
+			if(cv::norm(iter->second - jter->second) < kDuplicateDistance)
+			{
+				++duplicates;
+				break;
+			}
+		}
+	}
+	return duplicates;
+}
+
+// How far the farthest point of the local map is from a true landmark
+float maxDistanceToALandmark(const std::map<int, cv::Point3f> & localMap, const std::vector<cv::Point3f> & landmarks)
+{
+	float worst = 0.0f;
+	for(std::map<int, cv::Point3f>::const_iterator iter=localMap.begin(); iter!=localMap.end(); ++iter)
+	{
+		float best = std::numeric_limits<float>::max();
+		for(size_t i=0; i<landmarks.size(); ++i)
+		{
+			best = std::min(best, (float)cv::norm(iter->second - landmarks[i]));
+		}
+		worst = std::max(worst, best);
+	}
+	return worst;
+}
+
+ParametersMap multiCameraF2MParameters(int bundleAdjustment)
+{
+	ParametersMap parameters;
+	parameters.insert(ParametersPair(Parameters::kOdomStrategy(), "0")); // F2M
+	parameters.insert(ParametersPair(Parameters::kOdomF2MBundleAdjustment(), uNumber2Str(bundleAdjustment)));
+	parameters.insert(ParametersPair(Parameters::kVisEstimationType(), "1")); // PnP
+	parameters.insert(ParametersPair(Parameters::kOdomFillInfoData(), "true"));
+	parameters.insert(ParametersPair(Parameters::kRtabmapImagesAlreadyRectified(), "true"));
+	return parameters;
+}
+
+class OdometryF2MMultiCameraTest : public ::testing::TestWithParam<int> // OdomF2M/BundleAdjustment
+{
+};
+
+} // namespace
+
+TEST_P(OdometryF2MMultiCameraTest, OverlappingCamerasAddALandmarkOnceToTheLocalMap)
+{
+#ifndef RTABMAP_OPENGV
+	GTEST_SKIP() << "multi-camera PnP needs OpenGV";
+#endif
+#ifndef RTABMAP_G2O
+	if(GetParam() == 1)
+	{
+		GTEST_SKIP() << "g2o not built in";
+	}
+#endif
+	std::unique_ptr<Odometry> odometry(Odometry::create(multiCameraF2MParameters(GetParam())));
+	ASSERT_NE(odometry, nullptr);
+	ASSERT_EQ(odometry->getType(), Odometry::kTypeF2M);
+
+	const MultiCameraRig rig;
+	const SyntheticScene scene(120);
+
+	// The rig drives forward, drifting left and turning slowly: the landmarks
+	// move across the cameras and the overlaps.
+	std::set<int> landmarksSeen;
+	Transform previousPose = Transform::getIdentity();
+	for(int k=0; k<5; ++k)
+	{
+		const Transform pose(0.1f*k, 0.04f*k, 0.0f, 0.0f, 0.0f, 0.03f*k);
+		int landmarksInFrame = 0;
+		int observations = 0;
+		SensorData data = scene.frame(rig, pose, k+1, 0.1*(k+1), landmarksSeen, landmarksInFrame, observations);
+		ASSERT_GT(landmarksInFrame, 40) << "frame " << k;
+		ASSERT_GT(observations, landmarksInFrame + 20)
+				<< "frame " << k << ": the scene should have landmarks seen by two cameras at once";
+
+		// From the second frame on, the true motion is given as guess (like an
+		// IMU or wheel odometry would), so the correspondences are searched by
+		// projecting the local map in the frame, the usual odometry path.
+		OdometryInfo info;
+		const Transform guess = k == 0 ? Transform() : previousPose.inverse()*pose;
+		const Transform estimated = odometry->process(data, guess, &info);
+		ASSERT_FALSE(estimated.isNull()) << "frame " << k;
+		ASSERT_FALSE(info.lost) << "frame " << k;
+		EXPECT_NEAR(estimated.x(), pose.x(), 0.01f) << "frame " << k;
+		EXPECT_NEAR(estimated.y(), pose.y(), 0.01f) << "frame " << k;
+		EXPECT_NEAR(estimated.z(), pose.z(), 0.01f) << "frame " << k;
+		EXPECT_NEAR(estimated.theta(), pose.theta(), 0.005f) << "frame " << k;
+		previousPose = estimated;
+
+		// Every landmark seen so far is in the local map, once
+		EXPECT_EQ(info.localMapSize, (int)landmarksSeen.size()) << "frame " << k;
+		EXPECT_EQ(info.localMap.size(), landmarksSeen.size()) << "frame " << k;
+		EXPECT_EQ(countDuplicatedMapPoints(info.localMap), 0)
+				<< "frame " << k << ": a landmark seen by two cameras was added twice to the local map";
+
+		if(k > 0)
+		{
+			// Both observations of a landmark in an overlap are correspondences of the PnP:
+			// more inliers over the cameras than inlier landmarks
+			int inliersOverCameras = 0;
+			for(size_t c=0; c<info.reg.inliersPerCam.size(); ++c)
+			{
+				inliersOverCameras += info.reg.inliersPerCam[c];
+			}
+			EXPECT_EQ(info.reg.inliersPerCam.size(), rig.models.size()) << "frame " << k;
+			EXPECT_GT(inliersOverCameras, info.reg.inliers + 20) << "frame " << k;
+			EXPECT_GE(info.reg.inliers, (int)landmarksSeen.size() - 20) << "frame " << k;
+
+			if(GetParam() > 0)
+			{
+				// The local bundle adjustment gets every observation of an inlier
+				// landmark by the previous key frames, one per camera seeing it:
+				// more constraints than inliers times key frames
+				const int previousKeyFrames = (int)info.localBundlePoses.size() - 1;
+				EXPECT_GT(info.localBundleConstraints, info.reg.inliers * previousKeyFrames) << "frame " << k;
+			}
+		}
+	}
+}
+
+TEST_P(OdometryF2MMultiCameraTest, OverlappingCamerasTriangulateLandmarksWithoutDepth)
+{
+#ifndef RTABMAP_OPENGV
+	GTEST_SKIP() << "multi-camera PnP needs OpenGV";
+#endif
+#ifndef RTABMAP_G2O
+	if(GetParam() == 1)
+	{
+		GTEST_SKIP() << "g2o not built in";
+	}
+#endif
+	std::unique_ptr<Odometry> odometry(Odometry::create(multiCameraF2MParameters(GetParam())));
+	ASSERT_NE(odometry, nullptr);
+
+	// A wider rig (0.3 m), for the rays of two cameras to make a usable angle
+	const MultiCameraRig rig(0.3f);
+	SyntheticScene scene(120);
+
+	// Some of the landmarks seen by two cameras from the start have no depth
+	// (a feature on a dark or reflective surface for a RGB-D camera): their
+	// depth has to come from the two rays
+	for(size_t i=0; i<scene.landmarks.size(); ++i)
+	{
+		std::vector<cv::KeyPoint> keypoints;
+		std::vector<cv::Point3f> keypoints3D;
+		if(rig.observe(scene.landmarks[i], Transform::getIdentity(), keypoints, keypoints3D) >= 2 && i % 4 == 0)
+		{
+			scene.depthless.insert((int)i);
+		}
+	}
+	ASSERT_GT(scene.depthless.size(), 10u);
+
+	std::set<int> landmarksSeen;
+	Transform previousPose = Transform::getIdentity();
+	for(int k=0; k<3; ++k)
+	{
+		// Small motions: the depthless landmarks stay in their overlap
+		const Transform pose(0.01f*k, 0.005f*k, 0.0f, 0.0f, 0.0f, 0.002f*k);
+		int landmarksInFrame = 0;
+		int observations = 0;
+		SensorData data = scene.frame(rig, pose, k+1, 0.1*(k+1), landmarksSeen, landmarksInFrame, observations);
+
+		OdometryInfo info;
+		const Transform guess = k == 0 ? Transform() : previousPose.inverse()*pose;
+		const Transform estimated = odometry->process(data, guess, &info);
+		ASSERT_FALSE(estimated.isNull()) << "frame " << k;
+		EXPECT_NEAR(estimated.x(), pose.x(), 0.01f) << "frame " << k;
+		EXPECT_NEAR(estimated.y(), pose.y(), 0.01f) << "frame " << k;
+		EXPECT_NEAR(estimated.theta(), pose.theta(), 0.005f) << "frame " << k;
+		previousPose = estimated;
+
+		EXPECT_EQ(info.localMapSize, (int)landmarksSeen.size()) << "frame " << k;
+		EXPECT_EQ(countDuplicatedMapPoints(info.localMap), 0) << "frame " << k;
+		// The depthless landmarks are in the map where they are, triangulated from the two cameras
+		EXPECT_LT(maxDistanceToALandmark(info.localMap, scene.landmarks), 0.02f) << "frame " << k;
+	}
+}
+
+TEST_P(OdometryF2MMultiCameraTest, WrongSecondCameraObservationsAreNotKept)
+{
+#ifndef RTABMAP_OPENGV
+	GTEST_SKIP() << "multi-camera PnP needs OpenGV";
+#endif
+#ifndef RTABMAP_G2O
+	if(GetParam() == 1)
+	{
+		GTEST_SKIP() << "g2o not built in";
+	}
+#endif
+	std::unique_ptr<Odometry> odometry(Odometry::create(multiCameraF2MParameters(GetParam())));
+	ASSERT_NE(odometry, nullptr);
+
+	// A third of the landmarks seen by two cameras get a wrong keypoint in the
+	// second one (a neighbouring feature taken by the matching): the motion
+	// estimation flags those observations, and they must not become bundle
+	// adjustment references nor map observations
+	const MultiCameraRig rig;
+	SyntheticScene scene(120);
+	for(size_t i=0; i<scene.landmarks.size(); ++i)
+	{
+		std::vector<cv::KeyPoint> keypoints;
+		std::vector<cv::Point3f> keypoints3D;
+		if(rig.observe(scene.landmarks[i], Transform::getIdentity(), keypoints, keypoints3D) >= 2 && i % 3 == 0)
+		{
+			scene.wrongInSecondCamera.insert((int)i);
+		}
+	}
+	ASSERT_GT(scene.wrongInSecondCamera.size(), 15u);
+
+	std::set<int> landmarksSeen;
+	Transform previousPose = Transform::getIdentity();
+	for(int k=0; k<4; ++k)
+	{
+		const Transform pose(0.1f*k, 0.04f*k, 0.0f, 0.0f, 0.0f, 0.03f*k);
+		int landmarksInFrame = 0;
+		int observations = 0;
+		SensorData data = scene.frame(rig, pose, k+1, 0.1*(k+1), landmarksSeen, landmarksInFrame, observations);
+		ASSERT_GT(scene.wrongObservations, 10) << "frame " << k;
+
+		OdometryInfo info;
+		const Transform guess = k == 0 ? Transform() : previousPose.inverse()*pose;
+		const Transform estimated = odometry->process(data, guess, &info);
+		ASSERT_FALSE(estimated.isNull()) << "frame " << k;
+		EXPECT_NEAR(estimated.x(), pose.x(), 0.01f) << "frame " << k;
+		EXPECT_NEAR(estimated.y(), pose.y(), 0.01f) << "frame " << k;
+		EXPECT_NEAR(estimated.theta(), pose.theta(), 0.005f) << "frame " << k;
+		previousPose = estimated;
+
+		if(k > 0)
+		{
+			// The wrong observations are not inliers: fewer inlier observations than observations
+			int inliersOverCameras = 0;
+			ASSERT_EQ(info.reg.inliersIDsPerCam.size(), rig.models.size()) << "frame " << k;
+			for(size_t c=0; c<rig.models.size(); ++c)
+			{
+				EXPECT_EQ((int)info.reg.inliersIDsPerCam[c].size(), info.reg.inliersPerCam[c]) << "frame " << k << " camera " << c;
+				inliersOverCameras += info.reg.inliersPerCam[c];
+			}
+			EXPECT_LE(inliersOverCameras, observations - scene.wrongObservations) << "frame " << k;
+			EXPECT_GE(info.reg.inliers, (int)landmarksSeen.size() - 25) << "frame " << k << ": the landmarks are still tracked by their good observation";
+			if(GetParam() > 0)
+			{
+				// Nothing wrong reaches the local bundle adjustment: only exact observations
+				int rejected = 0;
+				for(size_t c=0; c<info.localBundleOutliersPerCam.size(); ++c)
+				{
+					rejected += info.localBundleOutliersPerCam[c];
+				}
+				EXPECT_EQ(rejected, 0) << "frame " << k << ": a wrong observation flagged by the motion estimation was given to the bundle adjustment";
+				EXPECT_EQ(info.localBundleOutliers, 0) << "frame " << k;
+			}
+		}
+		EXPECT_EQ(countDuplicatedMapPoints(info.localMap), 0) << "frame " << k;
+	}
+}
+
+INSTANTIATE_TEST_SUITE_P(
+	BundleAdjustment,
+	OdometryF2MMultiCameraTest,
+	::testing::Values(0, 1),
+	[](const ::testing::TestParamInfo<int> & info)
+	{
+		return info.param == 0 ? "Off" : "G2o";
+	});
 
 namespace {
 

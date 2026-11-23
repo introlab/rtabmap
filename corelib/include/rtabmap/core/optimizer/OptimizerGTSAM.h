@@ -64,7 +64,7 @@ public:
 			const std::multimap<int, Link> & links,
 			const std::map<int, std::vector<CameraModel> > & models,
 			std::map<int, cv::Point3f> & points3DMap,
-			const std::map<int, std::map<int, FeatureBA> > & wordReferences,
+			const std::map<int, std::multimap<int, FeatureBA> > & wordReferences,
 			BAOutliers * outliers = 0);
 
 private:

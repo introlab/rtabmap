@@ -16,6 +16,8 @@
 #include <rtabmap/core/Version.h>
 #include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/Link.h>
+#include <rtabmap/core/Signature.h>
+#include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
@@ -23,6 +25,7 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <memory>
+#include <set>
 #include <random>
 
 using namespace rtabmap;
@@ -1587,7 +1590,7 @@ struct BundleGraph
 	std::map<int, Transform>                       initialPoses;        // possibly noisy
 	std::map<int, cv::Point3f>                     initialPoints3D;     // possibly noisy
 	std::multimap<int, Link>                       links;               // pose-graph constraints
-	std::map<int, std::map<int, FeatureBA>>        wordReferences;      // word_id -> camera_id -> FeatureBA
+	std::map<int, std::multimap<int, FeatureBA>>        wordReferences;      // word_id -> camera_id -> FeatureBA
 };
 
 // Build the BA scenario:
@@ -2355,7 +2358,7 @@ TEST_P(NegativeWordIdBaTest, OptimizeBaHandlesNegativeIds)
 	// the landmark/feature side of the BA graph.
 	std::map<int, cv::Point3f>                     truePoints3D;
 	std::map<int, cv::Point3f>                     initialPoints3D;
-	std::map<int, std::map<int, FeatureBA>>        wordReferences;
+	std::map<int, std::multimap<int, FeatureBA>>        wordReferences;
 	for(const auto & kv : g.truePoints3D)    truePoints3D[-kv.first]    = kv.second;
 	for(const auto & kv : g.initialPoints3D) initialPoints3D[-kv.first] = kv.second;
 	for(const auto & kv : g.wordReferences)  wordReferences[-kv.first]  = kv.second;
@@ -2541,7 +2544,7 @@ struct MultiCamBundleGraph
 	std::map<int, cv::Point3f>                     initialPoints3D;
 	std::map<int, std::vector<CameraModel>>        models;
 	std::multimap<int, Link>                       links;
-	std::map<int, std::map<int, FeatureBA>>        wordReferences;
+	std::map<int, std::multimap<int, FeatureBA>>        wordReferences;
 };
 
 MultiCamBundleGraph buildMultiCamBundleGraph(MultiCamFov fov = MultiCamFov::kWide,
@@ -2965,13 +2968,21 @@ FeatureBA baObservation(
 	return FeatureBA(cv::KeyPoint(u+offsetU, v+offsetV, 1.0f));
 }
 
-// The rejected poses reported for one word, or an empty set if the word wasn't
-// flagged at all -- lets a missing word be compared like a wrong one instead of
-// aborting the test on a bad at().
+// The rejected poses reported for one word (single camera rigs here), or an
+// empty set if the word wasn't flagged at all -- lets a missing word be
+// compared like a wrong one instead of aborting the test on a bad at().
 std::set<int> outliersFor(const BAOutliers & outliers, int wordId)
 {
+	std::set<int> poses;
 	BAOutliers::const_iterator iter = outliers.find(wordId);
-	return iter != outliers.end() ? iter->second : std::set<int>();
+	if(iter != outliers.end())
+	{
+		for(std::set<std::pair<int, int> >::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+		{
+			poses.insert(jter->first);
+		}
+	}
+	return poses;
 }
 
 float pointDistance(const cv::Point3f & a, const cv::Point3f & b)
@@ -2997,9 +3008,9 @@ std::string formatOutliers(const BAOutliers & outliers)
 	for(BAOutliers::const_iterator iter=outliers.begin(); iter!=outliers.end(); ++iter)
 	{
 		stream << iter->first << ":";
-		for(std::set<int>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+		for(std::set<std::pair<int, int> >::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
 		{
-			stream << " " << *jter;
+			stream << " " << jter->first << "." << jter->second;
 		}
 		stream << "; ";
 	}
@@ -3056,10 +3067,10 @@ protected:
 					partialTruth_, poses_.at(id), model_,
 					corrupt ?  partialOffsetPx : 0.0f,
 					corrupt ? -partialOffsetPx : 0.0f)});
-			allObservations_[partialWordId_].insert(id);
+			allObservations_[partialWordId_].insert(std::make_pair(id, 0));
 			if(corrupt)
 			{
-				corrupted_[partialWordId_].insert(id);
+				corrupted_[partialWordId_].insert(std::make_pair(id, 0));
 			}
 		}
 		// Poses 1 and 9 -- the ends of the trajectory -- so that the two
@@ -3071,10 +3082,10 @@ protected:
 			const float offsetU = withOutliers ? (i == 0 ? 100.0f : -100.0f) : 0.0f;
 			wordReferences_[rejectedWordId_].insert({rejectedPoses[i], baObservation(
 					rejectedTruth_, poses_.at(rejectedPoses[i]), model_, offsetU)});
-			allObservations_[rejectedWordId_].insert(rejectedPoses[i]);
+			allObservations_[rejectedWordId_].insert(std::make_pair(rejectedPoses[i], 0));
 			if(withOutliers)
 			{
-				corrupted_[rejectedWordId_].insert(rejectedPoses[i]);
+				corrupted_[rejectedWordId_].insert(std::make_pair(rejectedPoses[i], 0));
 			}
 		}
 	}
@@ -3106,7 +3117,7 @@ protected:
 	std::multimap<int, Link>                       links_;
 	std::map<int, std::vector<CameraModel> >       models_;
 	std::map<int, cv::Point3f>                     points3DMap_;
-	std::map<int, std::map<int, FeatureBA> >       wordReferences_;
+	std::map<int, std::multimap<int, FeatureBA> >       wordReferences_;
 };
 
 }  // namespace
@@ -3171,10 +3182,10 @@ TEST_P(BAOutlierRejectionTest, RejectsBadObservationsAndReportsThem)
 	// First pin what the scene actually holds, so the check below can't be
 	// vacuous: word -42 seen from poses 1-9 with only pose 4 displaced, word 7
 	// seen from poses 1 and 9 with both displaced.
-	ASSERT_EQ(allObservations_[partialWordId_],  std::set<int>({1, 2, 3, 4, 5, 6, 7, 8, 9}));
-	ASSERT_EQ(allObservations_[rejectedWordId_], std::set<int>({1, 9}));
-	ASSERT_EQ(corrupted_[partialWordId_],        std::set<int>({4}));
-	ASSERT_EQ(corrupted_[rejectedWordId_],       std::set<int>({1, 9}));
+	ASSERT_EQ(outliersFor(allObservations_, partialWordId_),  std::set<int>({1, 2, 3, 4, 5, 6, 7, 8, 9}));
+	ASSERT_EQ(outliersFor(allObservations_, rejectedWordId_), std::set<int>({1, 9}));
+	ASSERT_EQ(outliersFor(corrupted_, partialWordId_),        std::set<int>({4}));
+	ASSERT_EQ(outliersFor(corrupted_, rejectedWordId_),       std::set<int>({1, 9}));
 
 	// Then: exactly those, attributed to the right word *and* pose -- a flat set
 	// of word ids could not say which view was the bad one.
@@ -3228,6 +3239,274 @@ TEST_P(BAOutlierRejectionTest, RejectsOnDocumentedChi2Threshold)
 			std::set<int>({1, 2, 3, 5, 6, 7, 8, 9}))
 			<< optimizerTypeName(GetParam()) << ": " << formatOutliers(outliers);
 }
+
+// A point seen only once, by the two cameras of a rig in a same frame: both
+// observations are constraints of the bundle adjustment, which can then
+// triangulate the point, while a single observation leaves it anywhere on
+// its ray.
+class BAMultiObservationTest : public ::testing::TestWithParam<Optimizer::Type>
+{
+protected:
+	void SetUp() override
+	{
+		if(!Optimizer::isAvailable(GetParam()))
+		{
+			GTEST_SKIP() << optimizerTypeName(GetParam()) << " not built in";
+		}
+		opt_.reset(Optimizer::create(GetParam()));
+		ASSERT_NE(opt_.get(), nullptr);
+		opt_->setIterations(50);
+
+		// Two forward-looking cameras, 0.3 m apart
+		rig_.push_back(CameraModel(200.0, 200.0, 320.0, 240.0, CameraModel::opticalRotation(), 0.0, cv::Size(640, 480)));
+		rig_.push_back(CameraModel(200.0, 200.0, 320.0, 240.0, Transform(0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.0f)*CameraModel::opticalRotation(), 0.0, cv::Size(640, 480)));
+
+		// Two poses, the second one only there for a well-formed graph
+		poses_.insert({1, Transform::getIdentity()});
+		poses_.insert({2, Transform(0.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f)});
+		models_.insert({1, rig_});
+		models_.insert({2, rig_});
+		links_.insert({1, Link(1, 2, Link::kNeighbor, poses_.at(2), cv::Mat::eye(6, 6, CV_64FC1) * 1000000.0)});
+
+		// The point starts 0.5 m too far along the ray of the first camera:
+		// its reprojection in that camera is exact, wrong in the second one
+		truth_ = cv::Point3f(3.0f, 0.2f, 0.1f);
+		const cv::Point3f ray = truth_ * (1.0f / (float)cv::norm(truth_));
+		points3D_.insert({10, truth_ + ray * 0.5f});
+		points3D_.insert({11, cv::Point3f(2.5f, -0.4f, -0.2f)}); // a second, exact, point for the frame
+	}
+
+	// Mono observation (no depth) of a point by a camera of frame 1
+	FeatureBA observe(const cv::Point3f & pt, int camera) const
+	{
+		const cv::Point3f inCamera = util3d::transformPoint(pt, rig_[camera].localTransform().inverse());
+		float u, v;
+		rig_[camera].reproject(inCamera.x, inCamera.y, inCamera.z, u, v);
+		return FeatureBA(cv::KeyPoint(u, v, 3.0f), 0.0f, cv::Mat(), camera);
+	}
+
+	std::unique_ptr<Optimizer> opt_;
+	std::vector<CameraModel> rig_;
+	std::map<int, Transform> poses_;
+	std::map<int, std::vector<CameraModel> > models_;
+	std::multimap<int, Link> links_;
+	std::map<int, cv::Point3f> points3D_;
+	cv::Point3f truth_;
+};
+
+TEST_P(BAMultiObservationTest, TwoCamerasOfOneFrameTriangulateThePoint)
+{
+	std::map<int, std::multimap<int, FeatureBA> > wordReferences;
+	wordReferences[10].insert({1, observe(truth_, 0)});
+	wordReferences[10].insert({1, observe(truth_, 1)});
+	wordReferences[11].insert({1, observe(points3D_.at(11), 0)});
+	wordReferences[11].insert({1, observe(points3D_.at(11), 1)});
+
+	std::map<int, cv::Point3f> points3D = points3D_;
+	std::map<int, Transform> optimized = opt_->optimizeBA(1, poses_, links_, models_, points3D, wordReferences);
+	ASSERT_EQ(optimized.size(), 2u) << optimizerTypeName(GetParam());
+	ASSERT_TRUE(points3D.find(10) != points3D.end());
+	EXPECT_LT(cv::norm(points3D.at(10) - truth_), 0.01)
+			<< optimizerTypeName(GetParam()) << ": the second camera's observation should pull the point back";
+}
+
+TEST_P(BAMultiObservationTest, OneCameraLeavesThePointOnItsRay)
+{
+	if(GetParam() == Optimizer::kTypeGTSAM)
+	{
+		GTEST_SKIP() << "a point with a single mono observation makes GTSAM's system indeterminate";
+	}
+	std::map<int, std::multimap<int, FeatureBA> > wordReferences;
+	wordReferences[10].insert({1, observe(truth_, 0)});
+	wordReferences[11].insert({1, observe(points3D_.at(11), 0)});
+	wordReferences[11].insert({1, observe(points3D_.at(11), 1)});
+
+	std::map<int, cv::Point3f> points3D = points3D_;
+	opt_->optimizeBA(1, poses_, links_, models_, points3D, wordReferences);
+	ASSERT_TRUE(points3D.find(10) != points3D.end());
+	EXPECT_GT(cv::norm(points3D.at(10) - truth_), 0.3)
+			<< optimizerTypeName(GetParam()) << ": nothing constrains the point along the ray";
+}
+
+// computeBACorrespondences() on two multi-camera nodes with matched words:
+// a landmark in the overlap of two cameras of a node gives that node two
+// observations of its word, one per camera.
+TEST(OptimizerTest, ComputeBACorrespondencesKeepsOneObservationPerCamera)
+{
+#ifndef RTABMAP_OPENGV
+	GTEST_SKIP() << "multi-camera PnP needs OpenGV";
+#endif
+	std::unique_ptr<Optimizer> optimizer;
+	const Optimizer::Type backends[] = {Optimizer::kTypeG2O, Optimizer::kTypeGTSAM, Optimizer::kTypeCeres, Optimizer::kTypeTORO};
+	for(size_t i=0; i<sizeof(backends)/sizeof(backends[0]) && !optimizer; ++i)
+	{
+		if(Optimizer::isAvailable(backends[i]))
+		{
+			optimizer.reset(Optimizer::create(backends[i]));
+		}
+	}
+	ASSERT_NE(optimizer.get(), nullptr);
+
+	// Two cameras fanned out in yaw (+-0.4 rad), 116 deg of field of view
+	// each: a region of their own on each side and an overlap in front
+	std::vector<CameraModel> rig;
+	rig.push_back(CameraModel(200.0, 200.0, 320.0, 240.0, Transform(0.0f, -0.15f, 0.0f, 0.0f, 0.0f, -0.4f)*CameraModel::opticalRotation(), 0.0, cv::Size(640, 480)));
+	rig.push_back(CameraModel(200.0, 200.0, 320.0, 240.0, Transform(0.0f, 0.15f, 0.0f, 0.0f, 0.0f, 0.4f)*CameraModel::opticalRotation(), 0.0, cv::Size(640, 480)));
+
+	// Landmarks on an arc 2.5 m away, from -75 to 75 deg
+	std::vector<cv::Point3f> landmarks;
+	for(int i=0; i<40; ++i)
+	{
+		const float angle = -1.3f + 2.6f*float(i)/39.0f;
+		landmarks.push_back(cv::Point3f(2.5f*std::cos(angle), 2.5f*std::sin(angle), -0.5f + 0.025f*i));
+	}
+
+	std::map<int, Transform> poses;
+	poses.insert({1, Transform::getIdentity()});
+	poses.insert({2, Transform(0.2f, 0.1f, 0.0f, 0.0f, 0.0f, 0.05f)});
+	std::multimap<int, Link> links;
+	links.insert({1, Link(1, 2, Link::kNeighbor, poses.at(2), cv::Mat::eye(6, 6, CV_64FC1) * 1000000.0)});
+
+	// The nodes, with their words already matched (same word per landmark,
+	// no descriptors) and one keypoint per camera seeing the landmark
+	std::map<int, Signature> signatures;
+	std::map<int, int> camerasSeeingInNode1;
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		std::multimap<int, int> words;
+		std::vector<cv::KeyPoint> keypoints;
+		std::vector<cv::Point3f> words3;
+		for(size_t i=0; i<landmarks.size(); ++i)
+		{
+			const cv::Point3f inBase = util3d::transformPoint(landmarks[i], iter->second.inverse());
+			for(size_t c=0; c<rig.size(); ++c)
+			{
+				const cv::Point3f inCamera = util3d::transformPoint(inBase, rig[c].localTransform().inverse());
+				float u, v;
+				rig[c].reproject(inCamera.x, inCamera.y, inCamera.z, u, v);
+				if(inCamera.z > 0.0f && rig[c].inFrame((int)u, (int)v))
+				{
+					words.insert({(int)i+1, (int)keypoints.size()});
+					keypoints.push_back(cv::KeyPoint(u + float(c)*rig[c].imageWidth(), v, 3.0f));
+					words3.push_back(inBase);
+					if(iter->first == 1)
+					{
+						++camerasSeeingInNode1[(int)i+1];
+					}
+				}
+			}
+		}
+		Signature s(iter->first);
+		s.sensorData() = SensorData(cv::Mat(), cv::Mat(), rig, iter->first);
+		s.setWords(words, keypoints, words3, cv::Mat());
+		signatures.insert({iter->first, s});
+	}
+	int landmarksInBothCameras = 0;
+	for(std::map<int, int>::const_iterator iter=camerasSeeingInNode1.begin(); iter!=camerasSeeingInNode1.end(); ++iter)
+	{
+		landmarksInBothCameras += iter->second == 2 ? 1 : 0;
+	}
+	ASSERT_GT(landmarksInBothCameras, 10);
+	ASSERT_LE(landmarksInBothCameras, (int)camerasSeeingInNode1.size() - 3) << "some landmarks should be seen by one camera only";
+
+	std::map<int, cv::Point3f> points3DMap;
+	std::map<int, std::multimap<int, FeatureBA> > wordReferences;
+	optimizer->computeBACorrespondences(poses, links, signatures, points3DMap, wordReferences, false, true);
+
+	EXPECT_EQ(points3DMap.size(), wordReferences.size());
+	EXPECT_GE((int)wordReferences.size(), (int)landmarks.size() - 5);
+	int wordsWithTwoObservationsInNode1 = 0;
+	for(std::map<int, std::multimap<int, FeatureBA> >::const_iterator iter=wordReferences.begin(); iter!=wordReferences.end(); ++iter)
+	{
+		std::set<int> camerasOfNode1;
+		for(std::multimap<int, FeatureBA>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+		{
+			// The keypoint is in its camera's image, with the depth along that camera's axis
+			EXPECT_GE(jter->second.cameraIndex, 0);
+			EXPECT_LT(jter->second.cameraIndex, (int)rig.size());
+			EXPECT_LT(jter->second.kpt.pt.x, (float)rig[0].imageWidth());
+			EXPECT_GT(jter->second.depth, 1.0f);
+			if(jter->first == 1)
+			{
+				EXPECT_TRUE(camerasOfNode1.insert(jter->second.cameraIndex).second) << "one observation per camera";
+			}
+		}
+		wordsWithTwoObservationsInNode1 += camerasOfNode1.size() == 2 ? 1 : 0;
+	}
+	EXPECT_EQ(wordsWithTwoObservationsInNode1, landmarksInBothCameras);
+}
+
+TEST_P(BAMultiObservationTest, RejectsOneCameraObservationAndKeepsTheOther)
+{
+	// Robust kernel on, as the outlier rejection needs it
+	ParametersMap parameters;
+	parameters.insert(ParametersPair(Parameters::kOptimizerRobustKernelDelta(), "8"));
+	opt_.reset(Optimizer::create(GetParam(), parameters));
+	ASSERT_NE(opt_.get(), nullptr);
+	opt_->setIterations(50);
+
+	// A well-constrained scene: six poses along a line, 12 points seen by
+	// both cameras from every pose, with the second camera's observation of
+	// point 20 from pose 3 corrupted
+	std::map<int, Transform> poses;
+	std::map<int, std::vector<CameraModel> > models;
+	std::multimap<int, Link> links;
+	for(int id=1; id<=6; ++id)
+	{
+		poses.insert({id, Transform(0.0f, -0.3f*(id-1), 0.0f, 0.0f, 0.0f, 0.0f)});
+		models.insert({id, rig_});
+		if(id > 1)
+		{
+			links.insert({id-1, Link(id-1, id, Link::kNeighbor, poses.at(id-1).inverse()*poses.at(id), cv::Mat::eye(6, 6, CV_64FC1) * 1000000.0)});
+		}
+	}
+	std::map<int, cv::Point3f> points3D;
+	std::map<int, std::multimap<int, FeatureBA> > wordReferences;
+	for(int i=0; i<12; ++i)
+	{
+		const int wordId = 20 + i;
+		const cv::Point3f pt(3.0f + 0.1f*(i%4), -0.8f + 0.3f*(i%3), -0.5f + 0.1f*i);
+		points3D.insert({wordId, pt});
+		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			const cv::Point3f inBase = util3d::transformPoint(pt, iter->second.inverse());
+			for(int camera=0; camera<2; ++camera)
+			{
+				FeatureBA observation = observe(inBase, camera);
+				if(wordId == 20 && iter->first == 3 && camera == 1)
+				{
+					observation.kpt.pt.x += 100.0f; // the outlier
+				}
+				wordReferences[wordId].insert({iter->first, observation});
+			}
+		}
+	}
+
+	BAOutliers outliers;
+	const std::map<int, Transform> optimized = opt_->optimizeBA(1, poses, links, models, points3D, wordReferences, &outliers);
+	ASSERT_EQ(optimized.size(), 6u) << optimizerTypeName(GetParam());
+
+	// Only that observation is rejected: the first camera's one in the same frame is kept
+	const BAOutliers expected = {{20, {std::make_pair(3, 1)}}};
+	EXPECT_EQ(outliers, expected) << optimizerTypeName(GetParam()) << ": " << formatOutliers(outliers);
+	EXPECT_TRUE(baObservationRejected(outliers, 20, 3, 1));
+	EXPECT_FALSE(baObservationRejected(outliers, 20, 3, 0));
+	EXPECT_FALSE(baPoseRejected(outliers, wordReferences.at(20), 20, 3)) << "the frame still observes the word with its other camera";
+	EXPECT_FALSE(baPoseRejected(outliers, wordReferences.at(20), 20, 9)) << "a pose not observing the word";
+	BAOutliers both = expected;
+	both[20].insert(std::make_pair(3, 0));
+	EXPECT_TRUE(baPoseRejected(both, wordReferences.at(20), 20, 3)) << "both observations rejected";
+	EXPECT_LT(cv::norm(points3D.at(20) - cv::Point3f(3.0f, -0.8f, -0.5f)), 0.01) << optimizerTypeName(GetParam());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+		BABackends,
+		BAMultiObservationTest,
+		::testing::Values(Optimizer::kTypeG2O, Optimizer::kTypeGTSAM, Optimizer::kTypeCeres),
+		[](const ::testing::TestParamInfo<Optimizer::Type> & info)
+		{
+			return optimizerTypeName(info.param);
+		});
 
 INSTANTIATE_TEST_SUITE_P(
 		BABackends,
