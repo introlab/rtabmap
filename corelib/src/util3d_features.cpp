@@ -687,9 +687,9 @@ int mergeMultiCameraObservations(
 					{
 						// Nearly parallel rays (feature far away): check that each ray
 						// is seen along the other one, the depth stays unknown
-						const float far = 100.0f; // meters
-						consistent = reprojects(originA + directionA*far, (int)b, indexB) &&
-									 reprojects(originB + directionB*far, (int)a, indexA);
+						const float farAlong = 100.0f; // meters
+						consistent = reprojects(originA + directionA*farAlong, (int)b, indexB) &&
+									 reprojects(originB + directionB*farAlong, (int)a, indexA);
 					}
 				}
 				if(!consistent)
