@@ -85,6 +85,7 @@ public:
 		output.inliers = inliers;
 		output.inliersPerCam = inliersPerCam;
 		output.inliersIDsPerCam = inliersIDsPerCam;
+		output.inliersReprojOffsetPerCam = inliersReprojOffsetPerCam;
 		output.inliersMeanDistance = inliersMeanDistance;
 		output.inliersDistribution = inliersDistribution;
 		output.matches = matches;
@@ -121,6 +122,7 @@ public:
 	std::vector<int> projectedIDs; /**< Source ("from") feature IDs used in projection. */
 	std::vector<int> inliersPerCam; /**< Inlier count per camera (multi-camera). */
 	std::vector<std::vector<int> > inliersIDsPerCam; /**< Inlier word IDs per camera (multi-camera): a word seen by several cameras is listed under each camera where its observation is an inlier. Empty with a single camera. */
+	std::vector<cv::Point2f> inliersReprojOffsetPerCam; /**< Multi-camera 3D->2D estimation: mean reprojection offset (pixels, projection minus keypoint) of the inlier observations of each camera at the estimated pose. A consistent non-zero value on a camera reveals a calibration error (extrinsics or intrinsics). Empty with a single camera, where the pose absorbs such an offset. */
 	std::vector<int> matchesPerCam; /**< Match count per camera (multi-camera). */
 
 	// RegistrationIcp

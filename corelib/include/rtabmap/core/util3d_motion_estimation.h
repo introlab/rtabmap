@@ -225,6 +225,27 @@ Transform RTABMAP_CORE_EXPORT estimateMotion3DTo2D(
 			bool splitLinearCovarianceComponents = false);
 
 /**
+ * @brief Mean reprojection offset of a frame's observations, per camera of a rig.
+ *
+ * For each observation, the 3D point of its word is projected into its camera at
+ * the frame's pose and compared with the keypoint: the mean of (projection -
+ * keypoint) over the observations of each camera, in pixels. At a pose refined
+ * over all the cameras (bundle adjustment), a consistent offset on one camera
+ * reveals a calibration error of that camera (extrinsics or intrinsics).
+ *
+ * @param points        3D points by word ID, in the frame of @p pose.
+ * @param pose          The frame's pose in the points' frame.
+ * @param cameraModels  The rig (same image width), one entry per camera.
+ * @param observations  Word ID -> keypoint in the stitched image (x offset by cameraIndex*width).
+ * @return One mean offset per camera, (0,0) for a camera without observation.
+ */
+std::vector<cv::Point2f> RTABMAP_CORE_EXPORT reprojectionOffsetPerCamera(
+			const std::map<int, cv::Point3f> & points,
+			const Transform & pose,
+			const std::vector<CameraModel> & cameraModels,
+			const std::multimap<int, cv::KeyPoint> & observations);
+
+/**
  * @brief Estimates the 3D rigid transformation between two sets of 3D points.
  *
  * This function matches 3D points from two frames (A and B) using their unique IDs,

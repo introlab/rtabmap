@@ -1161,6 +1161,17 @@ TEST_P(OdometryF2MMultiCameraTest, OverlappingCamerasAddALandmarkOnceToTheLocalM
 			EXPECT_GT(inliersOverCameras, info.reg.inliers + 20) << "frame " << k;
 			EXPECT_GE(info.reg.inliers, (int)landmarksSeen.size() - 20) << "frame " << k;
 
+			// An exact rig: no reprojection offset on any camera, reported as statistics
+			ASSERT_EQ(info.reg.inliersReprojOffsetPerCam.size(), rig.models.size()) << "frame " << k;
+			const std::map<std::string, float> statistics = info.statistics(estimated);
+			for(size_t c=0; c<rig.models.size(); ++c)
+			{
+				EXPECT_NEAR(info.reg.inliersReprojOffsetPerCam[c].x, 0.0f, 0.1f) << "frame " << k << " camera " << c;
+				EXPECT_NEAR(info.reg.inliersReprojOffsetPerCam[c].y, 0.0f, 0.1f) << "frame " << k << " camera " << c;
+				EXPECT_EQ(statistics.count(uFormat("Odometry/reprojOffsetXCam%ld/pix", c)), 1u) << "frame " << k;
+				EXPECT_EQ(statistics.count(uFormat("Odometry/reprojOffsetYCam%ld/pix", c)), 1u) << "frame " << k;
+			}
+
 			if(GetParam() > 0)
 			{
 				// The local bundle adjustment gets every observation of an inlier

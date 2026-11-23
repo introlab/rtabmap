@@ -627,6 +627,31 @@ Transform OdometryF2M::computeTransform(
 									else
 									{
 										transform = bundlePoses.rbegin()->second;
+
+										if(lastFrameModels.size() > 1 && !regInfo.inliersReprojOffsetPerCam.empty())
+										{
+											// the reprojection offsets per camera at the bundle adjusted pose
+											// and points, over the observations it kept
+											std::multimap<int, cv::KeyPoint> observations;
+											for(std::set<std::pair<int, int> >::const_iterator oter=inlierObservations.begin(); oter!=inlierObservations.end(); ++oter)
+											{
+												std::map<int, std::multimap<int, FeatureBA> >::const_iterator wter = wordReferences.find(oter->first);
+												if(wter == wordReferences.end())
+												{
+													continue;
+												}
+												for(std::multimap<int, FeatureBA>::const_iterator fter=wter->second.lower_bound(lastFrame_->id()); fter!=wter->second.end() && fter->first == lastFrame_->id(); ++fter)
+												{
+													if(fter->second.cameraIndex == oter->second)
+													{
+														cv::KeyPoint kpt = fter->second.kpt;
+														kpt.pt.x += float(oter->second) * lastFrameModels[0].imageWidth();
+														observations.insert(std::make_pair(oter->first, kpt));
+													}
+												}
+											}
+											regInfo.inliersReprojOffsetPerCam = util3d::reprojectionOffsetPerCamera(points3DMap, transform, lastFrameModels, observations);
+										}
 										std::multimap<int, Link>::iterator iter = graph::findLink(bundleLinks, bundlePoses_.rbegin()->first, lastFrame_->id(), false);
 										UASSERT(iter != bundleLinks.end());
 										iter->second.setTransform(bundlePoses_.rbegin()->second.inverse()*transform);

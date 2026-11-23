@@ -15,6 +15,7 @@
 #include <rtabmap/core/util3d_transforms.h>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <rtabmap/core/util3d_motion_estimation.h>
 #include <set>
 #include <limits>
 #include <algorithm>
@@ -979,4 +980,155 @@ TEST(RegistrationVisTest, GuessMatchingRejectsALoneKeypointWithAnotherDescriptor
 		}
 		EXPECT_GE(info.inliers, 30) << label;
 	}
+}
+
+// The mean reprojection offset of the inlier observations, per camera of a rig:
+// about zero for a well calibrated rig, a consistent offset on the camera whose
+// calibration is off (here, its keypoints shifted by a pixel and a half along
+// u, as a wrong principal point would). The pose absorbs the part of the bias
+// common to the rig, so the biased camera stands out against the others, which
+// takes more than two cameras.
+TEST(RegistrationVisTest, InlierReprojectionOffsetRevealsAMiscalibratedCamera)
+{
+#ifndef RTABMAP_OPENGV
+	GTEST_SKIP() << "multi-camera PnP needs OpenGV";
+#endif
+#ifndef RTABMAP_G2O
+	GTEST_SKIP() << "the bundle adjustment needs g2o";
+#endif
+	util3d::setRansacDeterministicSeed(true);
+	// Four cameras fanned out in yaw, 116 deg of field of view each
+	std::vector<CameraModel> rig;
+	const float yaws[4] = {-0.9f, -0.3f, 0.3f, 0.9f};
+	for(int i=0; i<4; ++i)
+	{
+		rig.push_back(CameraModel(200.0, 200.0, 320.0, 240.0, Transform(0.05f*std::cos(yaws[i]), 0.05f*std::sin(yaws[i]), 0.0f, 0.0f, 0.0f, yaws[i])*CameraModel::opticalRotation(), 0.0, cv::Size(640, 480)));
+	}
+	const int biasedCamera = 2;
+
+	// Landmarks on a grid of each camera's image, 2 to 3 m away
+	cv::RNG rng(9);
+	std::vector<cv::Point3f> landmarks;
+	for(size_t camera=0; camera<rig.size(); ++camera)
+	{
+		for(int v=60; v<=440; v+=60)
+		{
+			for(int u=60; u<=600; u+=60)
+			{
+				float x, y, z;
+				rig[camera].project((float)u, (float)v, 2.0f + 0.1f*float((u/60 + v/60) % 10), x, y, z);
+				landmarks.push_back(util3d::transformPoint(cv::Point3f(x, y, z), rig[camera].localTransform()));
+			}
+		}
+	}
+	const int count = (int)landmarks.size();
+	cv::Mat descriptors(count, 32, CV_8UC1);
+	rng.fill(descriptors, cv::RNG::UNIFORM, 0, 256);
+
+	auto observe = [&rig](const cv::Point3f & inBase, int camera, float & u, float & v)
+	{
+		const cv::Point3f inCamera = util3d::transformPoint(inBase, rig[camera].localTransform().inverse());
+		if(inCamera.z <= 0.3f)
+		{
+			return false;
+		}
+		rig[camera].reproject(inCamera.x, inCamera.y, inCamera.z, u, v);
+		if(u < 20.0f || u > rig[camera].imageWidth()-20.0f || v < 20.0f || v > rig[camera].imageHeight()-20.0f)
+		{
+			return false;
+		}
+		u += float(camera)*rig[camera].imageWidth();
+		return true;
+	};
+
+	std::multimap<int, int> mapWords;
+	std::vector<cv::KeyPoint> mapKpts;
+	std::vector<cv::Point3f> map3D;
+	cv::Mat mapDesc;
+	for(int i=0; i<count; ++i)
+	{
+		for(size_t camera=0; camera<rig.size(); ++camera)
+		{
+			float u, v;
+			if(observe(landmarks[i], (int)camera, u, v))
+			{
+				mapWords.insert(std::make_pair(i+1, (int)mapKpts.size()));
+				mapKpts.push_back(cv::KeyPoint(u, v, 3.0f));
+				map3D.push_back(landmarks[i]);
+				mapDesc.push_back(descriptors.row(i));
+				break;
+			}
+		}
+	}
+
+	const Transform pose(0.05f, 0.02f, 0.0f, 0.0f, 0.0f, 0.01f);
+	for(float bias : {0.0f, 1.5f})
+	{
+		std::vector<cv::KeyPoint> frameKpts;
+		std::vector<cv::Point3f> frame3D;
+		cv::Mat frameDesc;
+		for(int i=0; i<count; ++i)
+		{
+			const cv::Point3f inBase = util3d::transformPoint(landmarks[i], pose.inverse());
+			for(size_t camera=0; camera<rig.size(); ++camera)
+			{
+				float u, v;
+				if(observe(inBase, (int)camera, u, v))
+				{
+					// the biased camera's keypoints are shifted along u
+					frameKpts.push_back(cv::KeyPoint(u + ((int)camera == biasedCamera ? bias : 0.0f), v, 3.0f));
+					frame3D.push_back(inBase);
+					frameDesc.push_back(descriptors.row(i));
+				}
+			}
+		}
+
+		ParametersMap params;
+		params.insert(ParametersPair(Parameters::kVisEstimationType(), "1"));
+		// The pose refined over all the cameras: the multi-camera PnP alone keeps
+		// the pose of a RANSAC sample, where the bias lands anywhere
+		params.insert(ParametersPair(Parameters::kVisBundleAdjustment(), "1"));
+		RegistrationVis reg(params);
+		Signature from(1);
+		from.sensorData() = SensorData(cv::Mat(), cv::Mat(), rig, 1); // the BA needs the models of both
+		from.setWords(mapWords, mapKpts, map3D, mapDesc);
+		Signature to(2);
+		to.sensorData() = SensorData(cv::Mat(), cv::Mat(), rig, 2);
+		to.sensorData().setFeatures(frameKpts, frame3D, frameDesc);
+		RegistrationInfo info;
+		const Transform result = reg.computeTransformationMod(from, to, pose, &info);
+		const std::string label = uFormat("bias=%.1f", bias);
+		ASSERT_FALSE(result.isNull()) << label << ": " << info.rejectedMsg;
+		ASSERT_EQ(info.inliersReprojOffsetPerCam.size(), rig.size()) << label;
+		EXPECT_GE(info.inliersPerCam[biasedCamera], 20) << label << ": the biased observations stay inliers";
+		std::string offsets;
+		for(size_t c=0; c<rig.size(); ++c)
+		{
+			offsets += uFormat(" cam%ld=(%.2f, %.2f)", c, info.inliersReprojOffsetPerCam[c].x, info.inliersReprojOffsetPerCam[c].y);
+		}
+		if(bias == 0.0f)
+		{
+			for(size_t c=0; c<rig.size(); ++c)
+			{
+				EXPECT_NEAR(info.inliersReprojOffsetPerCam[c].x, 0.0f, 0.2f) << label << offsets;
+				EXPECT_NEAR(info.inliersReprojOffsetPerCam[c].y, 0.0f, 0.2f) << label << offsets;
+			}
+		}
+		else
+		{
+			// The projection lands where the feature is, the keypoint is further
+			// along u: a negative offset on the biased camera, larger than on any
+			// other camera (the pose absorbs the part common to the rig)
+			const cv::Point2f & biased = info.inliersReprojOffsetPerCam[biasedCamera];
+			EXPECT_LT(biased.x, -0.5f*bias) << label << offsets;
+			for(size_t c=0; c<rig.size(); ++c)
+			{
+				if((int)c != biasedCamera)
+				{
+					EXPECT_LT(std::fabs(info.inliersReprojOffsetPerCam[c].x), std::fabs(biased.x)) << label << offsets;
+				}
+			}
+		}
+	}
+	util3d::setRansacDeterministicSeed(false);
 }

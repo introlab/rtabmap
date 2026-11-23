@@ -824,6 +824,55 @@ Transform estimateMotion3DTo2D(
 	return transform;
 }
 
+std::vector<cv::Point2f> reprojectionOffsetPerCamera(
+			const std::map<int, cv::Point3f> & points,
+			const Transform & pose,
+			const std::vector<CameraModel> & cameraModels,
+			const std::multimap<int, cv::KeyPoint> & observations)
+{
+	std::vector<cv::Point2f> offsets(cameraModels.size(), cv::Point2f(0.0f, 0.0f));
+	if(cameraModels.empty() || pose.isNull())
+	{
+		return offsets;
+	}
+	UASSERT(cameraModels[0].imageWidth() > 0);
+	const float subImageWidth = cameraModels[0].imageWidth();
+	std::vector<Transform> toCamera(cameraModels.size());
+	for(size_t c=0; c<cameraModels.size(); ++c)
+	{
+		toCamera[c] = (pose * cameraModels[c].localTransform()).inverse();
+	}
+	std::vector<int> counts(cameraModels.size(), 0);
+	for(std::multimap<int, cv::KeyPoint>::const_iterator iter=observations.begin(); iter!=observations.end(); ++iter)
+	{
+		std::map<int, cv::Point3f>::const_iterator pt = points.find(iter->first);
+		const int c = int(iter->second.pt.x / subImageWidth);
+		if(pt == points.end() || !util3d::isFinite(pt->second) || c < 0 || c >= (int)cameraModels.size())
+		{
+			continue;
+		}
+		const cv::Point3f inCamera = util3d::transformPoint(pt->second, toCamera[c]);
+		if(inCamera.z <= 0.0f)
+		{
+			continue;
+		}
+		float u, v;
+		cameraModels[c].reproject(inCamera.x, inCamera.y, inCamera.z, u, v);
+		offsets[c].x += u - (iter->second.pt.x - float(c)*subImageWidth);
+		offsets[c].y += v - iter->second.pt.y;
+		++counts[c];
+	}
+	for(size_t c=0; c<cameraModels.size(); ++c)
+	{
+		if(counts[c] > 0)
+		{
+			offsets[c].x /= float(counts[c]);
+			offsets[c].y /= float(counts[c]);
+		}
+	}
+	return offsets;
+}
+
 Transform estimateMotion3DTo3D(
 			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::Point3f> & words3B,
