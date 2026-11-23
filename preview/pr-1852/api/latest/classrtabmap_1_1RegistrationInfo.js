@@ -19,6 +19,7 @@ var classrtabmap_1_1RegistrationInfo =
     [ "projectedIDs", "classrtabmap_1_1RegistrationInfo.html#aa81f7ffab8e77dfc5240fd7e9a587498", null ],
     [ "inliersPerCam", "classrtabmap_1_1RegistrationInfo.html#a1537d6d65162a8c84cabcae7fba37c26", null ],
     [ "inliersIDsPerCam", "classrtabmap_1_1RegistrationInfo.html#a9b29910c48a6ad10079df25e07cf3e0d", null ],
+    [ "inliersReprojOffsetPerCam", "classrtabmap_1_1RegistrationInfo.html#a0c110c393c04bf6e06fc8c4b255a1a0d", null ],
     [ "matchesPerCam", "classrtabmap_1_1RegistrationInfo.html#ab79de88af655e987d8232d5b86d7ad82", null ],
     [ "icpInliersRatio", "classrtabmap_1_1RegistrationInfo.html#aa77a6a2994d004c83ce37906d7adce06", null ],
     [ "icpTranslation", "classrtabmap_1_1RegistrationInfo.html#a0aca4419a027a27d3aa9b65d7019898b", null ],
