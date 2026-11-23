@@ -1,0 +1,7 @@
+<map id="rtabmap::Registration" name="rtabmap::Registration">
+<area shape="rect" id="Node000001" title="Abstract base for registering two observations (visual, ICP, or both)." alt="" coords="119,5,283,31"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1RegistrationIcp.html" title=" " alt="" coords="5,79,188,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="174,41,115,81,112,76,171,36"/>
+<area shape="rect" id="Node000003" href="$classrtabmap_1_1RegistrationVis.html" title="Visual registration between two signatures using features and geometry." alt="" coords="213,79,397,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="230,36,289,76,286,81,227,41"/>
+</map>

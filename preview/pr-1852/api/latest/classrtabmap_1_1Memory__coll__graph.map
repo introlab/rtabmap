@@ -1,0 +1,9 @@
+<map id="rtabmap::Memory" name="rtabmap::Memory">
+<area shape="rect" id="Node000001" title="Three&#45;tiered memory management (STM, WM, LTM) for RTAB&#45;Map." alt="" coords="8,243,147,268"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1DBDriver.html" title="Abstract database driver for RTAB&#45;Map maps (signatures, links, words, statistics)." alt="" coords="5,155,149,180"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="80,194,80,242,75,242,75,194"/>
+<area shape="rect" id="Node000003" href="$classUThread.html" title=" " alt="" coords="22,80,133,105"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="80,120,80,154,75,154,75,120"/>
+<area shape="rect" id="Node000004" href="$classUThreadC_3_01void_01_4.html" title=" " alt="" coords="5,5,149,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="80,45,80,80,75,80,75,45"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="rtabmap::OdometryF2M" name="rtabmap::OdometryF2M">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,79,184,104"/>
+<area shape="rect" id="Node000002" href="$classrtabmap_1_1Odometry.html" title="Abstract base class for visual, lidar and visual&#45;inertial odometry backends." alt="" coords="19,5,170,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,44,97,79,92,79,92,44"/>
+</map>
