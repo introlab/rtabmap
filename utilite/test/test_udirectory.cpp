@@ -64,6 +64,41 @@ TEST(UDirectoryTest, MakeDir)
     UDirectory::removeDir(testDir);
 }
 
+TEST(UDirectoryTest, MakeDirCreateParents)
+{
+    const std::string root = "test_make_dir_parents";
+    const std::string sep = UDirectory::separator();
+    const std::string parent = root + sep + "a";
+    const std::string testDir = parent + sep + "b";
+    for(const std::string & dir : {testDir, parent, root})
+    {
+        if(UDirectory::exists(dir))
+        {
+            UDirectory::removeDir(dir);
+        }
+    }
+
+    // Without createParents, the missing parents make it fail.
+    EXPECT_FALSE(UDirectory::makeDir(testDir));
+    EXPECT_FALSE(UDirectory::exists(testDir));
+
+    EXPECT_TRUE(UDirectory::makeDir(testDir, true));
+    EXPECT_TRUE(UDirectory::exists(testDir));
+    // Already there: still a success with createParents (as "mkdir -p"), not without.
+    EXPECT_TRUE(UDirectory::makeDir(testDir, true));
+    EXPECT_FALSE(UDirectory::makeDir(testDir));
+    // A trailing separator.
+    EXPECT_TRUE(UDirectory::makeDir(parent + sep + "c" + sep, true));
+    EXPECT_TRUE(UDirectory::exists(parent + sep + "c"));
+
+    // Cleanup
+    UDirectory::removeDir(parent + sep + "c");
+    UDirectory::removeDir(testDir);
+    UDirectory::removeDir(parent);
+    UDirectory::removeDir(root);
+    EXPECT_FALSE(UDirectory::exists(root));
+}
+
 TEST(UDirectoryTest, RemoveDir)
 {
     std::string testDir = "test_remove_dir";

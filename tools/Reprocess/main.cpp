@@ -38,6 +38,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/SensorCaptureThread.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/OdometryInfo.h>
+#include <rtabmap/core/util2d.h>
+#include <rtabmap/core/util3d.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -130,6 +132,100 @@ std::string compareGraphs(
 	return "";
 }
 
+// The string without its leading and trailing spaces.
+std::string trimSpaces(const std::string & str)
+{
+	const size_t first = str.find_first_not_of(' ');
+	return first == std::string::npos ? std::string() : str.substr(first, str.find_last_not_of(' ') - first + 1);
+}
+
+// Applies a correction X of each camera's mount, in its body frame (x forward, y left,
+// z up), to its local transform T in this node: the base -> camera transform B becomes
+// B * X. Unlike overriding T, it keeps what differs between the nodes' T, e.g., the robot's
+// motion between the image's and the scan's stamps added to T in each node when mapping
+// (odom_sensor_sync in rtabmap_ros, or SensorCaptureThread with an odometry sensor). One
+// correction for all the cameras, or one per camera. For a stereo camera, it is of its
+// local transform, its left lens'.
+void correctCameraLocalTransforms(SensorData & data, const std::vector<Transform> & corrections)
+{
+	const size_t cameras = !data.cameraModels().empty() ? data.cameraModels().size() : data.stereoCameraModels().size();
+	if(cameras == 0)
+	{
+		return;
+	}
+	if(corrections.size() != 1 && corrections.size() != cameras)
+	{
+		UWARN("Node %d has %d cameras but %d camera transform corrections are given: not corrected.",
+				data.id(), (int)cameras, (int)corrections.size());
+		return;
+	}
+	const Transform & O = CameraModel::opticalRotation();
+	if(!data.cameraModels().empty())
+	{
+		std::vector<CameraModel> models = data.cameraModels();
+		for(size_t i=0; i<models.size(); ++i)
+		{
+			const Transform & X = corrections.size() == 1 ? corrections[0] : corrections[i];
+			models[i].setLocalTransform(models[i].localTransform() * O.inverse() * X * O);
+		}
+		data.setCameraModels(models);
+	}
+	else
+	{
+		std::vector<StereoCameraModel> models = data.stereoCameraModels();
+		for(size_t i=0; i<models.size(); ++i)
+		{
+			const Transform & X = corrections.size() == 1 ? corrections[0] : corrections[i];
+			models[i].setLocalTransform(models[i].localTransform() * O.inverse() * X * O);
+		}
+		data.setStereoCameraModels(models);
+	}
+}
+
+// Replaces the depth images of the data by its scan projected in its cameras, as
+// rtabmap_ros' gen_depth does when mapping: e.g., to regenerate them with the camera's
+// calibrated local transform (-cam_tf).
+void generateDepthFromScan(SensorData & data, int decimation, int fillHolesSize, float fillHolesError, int fillIterations)
+{
+	const LaserScan scan = data.laserScanRaw();
+	const cv::Mat rgb = data.imageRaw();
+	const std::vector<CameraModel> models = data.cameraModels();
+	if(rgb.empty() || scan.isEmpty() || models.empty())
+	{
+		return;
+	}
+	cv::Mat depth;
+	for(size_t i=0; i<models.size(); ++i)
+	{
+		CameraModel model = models[i];
+		if(decimation > 1)
+		{
+			if(model.imageWidth() % decimation != 0 || model.imageHeight() % decimation != 0)
+			{
+				UERROR("Depth from scan: decimation %d is not valid for image size %dx%d, depth not generated for node %d.",
+						decimation, model.imageWidth(), model.imageHeight(), data.id());
+				return;
+			}
+			model = model.scaled(1.0/double(decimation));
+		}
+		cv::Mat projected = util3d::projectCloudToCamera(
+				model.imageSize(),
+				model.K(),
+				scan.data(),
+				scan.localTransform().inverse()*model.localTransform());
+		for(int k=0; fillHolesSize > 0 && k<fillIterations; ++k)
+		{
+			projected = util2d::fillDepthHoles(projected, fillHolesSize, fillHolesError);
+		}
+		if(depth.empty())
+		{
+			depth = cv::Mat::zeros(model.imageHeight(), model.imageWidth()*models.size(), CV_32FC1);
+		}
+		projected.copyTo(depth.colRange(i*model.imageWidth(), (i+1)*model.imageWidth()));
+	}
+	data.setRGBDImage(rgb, depth, models);
+}
+
 void showUsage()
 {
 	printf("\nUsage:\n"
@@ -168,6 +264,13 @@ void showUsage()
 			"                 indices split by spaces in a string like \"0 2\" to stream cameras 0 and 2 only.\n"
 			"     -cam_tf \"x y z roll pitch yaw\" Camera local transform override(s) without optical rotation. For multi-cameras, \n"
 			"                                      use a \";\" between each transform.\n"
+			"     -cam_tf_correction \"x y z roll pitch yaw\" Correct the camera local transform of every node by this\n"
+			"                                      transform X, in the camera's body frame: base->camera B becomes B*X,\n"
+			"                                      e.g., as estimated by rtabmap-lidarCameraCalibration. Unlike -cam_tf,\n"
+			"                                      differences between the nodes' transforms are kept (e.g., with\n"
+			"                                      odom_sensor_sync). One for all the cameras of a node, or one per\n"
+			"                                      camera (streamed, see -cam) separated by \";\". For a stereo camera,\n"
+			"                                      X is of its local transform, its left lens'.\n"
 			"     -cam_tf_lens_offset #.#          Override camera local transform with an y-axis offset before optical rotation. \n"
 			"                                      If -cam_tf is also used, it is combined before optical rotation. For multi-cameras,\n"
 			"                                      -cam_tf should be also used, and explicitly enumerate offsets if they are different, \n"
@@ -201,6 +304,14 @@ void showUsage()
 			"     -o3         Assemble OctoMap 3D cloud and save it to \"[output]_octomap.pcd\".\n"
 			"     -db         Save assembled 2D occupancy grid in database instead of a file.\n"
 			"     -p          Save odometry and localization poses (*.g2o).\n"
+			"     -depth_from_scan    Generate depth images by projecting the scans in the cameras\n"
+			"                         (overwrite previous depth images, e.g., made from the lidar\n"
+			"                         when mapping), with the cameras' local transforms (after\n"
+			"                         -cam_tf if set). Only for RGB cameras (not stereo).\n"
+			"     -depth_from_scan_decimation #       Decimation of the generated depth images (default 1).\n"
+			"     -depth_from_scan_fill_holes #       Fill holes up to this size (pixels) in them (default 0: none).\n"
+			"     -depth_from_scan_fill_error #.#     Maximum relative depth error to fill a hole (default 0.1).\n"
+			"     -depth_from_scan_fill_iterations #  Hole filling iterations (default 1).\n"
 			"     -scan_from_depth    Generate scans from depth images (overwrite previous\n"
 			"                         scans if they exist).\n"
 			"     -scan_downsample #  Downsample input scans.\n"
@@ -394,6 +505,7 @@ int main(int argc, char * argv[])
 	std::vector<unsigned int> cameraIndices;
 	std::vector<Transform> cameraLocalTransformOverrides;
 	std::vector<float> cameraLocalTransformOffsetOverrides;
+	std::vector<Transform> cameraLocalTransformCorrections;
 	int framesToSkip = 0;
 	bool ignoreLandmarks = false;
 	bool ignorePriors = false;
@@ -408,6 +520,11 @@ int main(int argc, char * argv[])
 	bool originalGraphAsGT = false;
 	bool scanFromDepth = false;
 	int scanDecimation = 1;
+	bool depthFromScan = false;
+	int depthFromScanDecimation = 1;
+	int depthFromScanFillHolesSize = 0;
+	float depthFromScanFillHolesError = 0.1f;
+	int depthFromScanFillIterations = 1;
 	float scanRangeMin = 0.0f;
 	float scanRangeMax = 0.0f;
 	float scanVoxelSize = 0;
@@ -587,6 +704,30 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+		else if (strcmp(argv[i], "-cam_tf_correction") == 0 || strcmp(argv[i], "--cam_tf_correction") == 0)
+		{
+			++i;
+			if(i < argc - 2)
+			{
+				std::list<std::string> tfStr = uSplit(argv[i], ';');
+				for(std::list<std::string>::iterator iter=tfStr.begin(); iter!=tfStr.end(); ++iter)
+				{
+					std::list<std::string> values = uSplit(trimSpaces(*iter), ' ');
+					if(values.size() != 6)
+					{
+						printf("[Error] Invalid -cam_tf_correction \"%s\": expecting \"x y z roll pitch yaw\" for each camera, separated by \";\".\n", argv[i]);
+						return 1;
+					}
+					cameraLocalTransformCorrections.push_back(Transform::fromString(trimSpaces(*iter)));
+					printf("Camera transform correction %d = %s\n", (int)cameraLocalTransformCorrections.size()-1, cameraLocalTransformCorrections.back().prettyPrint().c_str());
+				}
+			}
+			else
+			{
+				printf("-cam_tf_correction option requires a value\n");
+				showUsage();
+			}
+		}
 		else if (strcmp(argv[i], "-cam_tf_lens_offset") == 0 || strcmp(argv[i], "--cam_tf_lens_offset") == 0)
 		{
 			++i;
@@ -713,6 +854,43 @@ int main(int argc, char * argv[])
 			printf("RTAB-Map is not built with OctoMap support, cannot set -o3 option!\n");
 #endif
 		}
+		else if (strcmp(argv[i], "-depth_from_scan") == 0 || strcmp(argv[i], "--depth_from_scan") == 0)
+		{
+			depthFromScan = true;
+		}
+		else if (strcmp(argv[i], "-depth_from_scan_decimation") == 0 || strcmp(argv[i], "--depth_from_scan_decimation") == 0 ||
+				strcmp(argv[i], "-depth_from_scan_fill_holes") == 0 || strcmp(argv[i], "--depth_from_scan_fill_holes") == 0 ||
+				strcmp(argv[i], "-depth_from_scan_fill_error") == 0 || strcmp(argv[i], "--depth_from_scan_fill_error") == 0 ||
+				strcmp(argv[i], "-depth_from_scan_fill_iterations") == 0 || strcmp(argv[i], "--depth_from_scan_fill_iterations") == 0)
+		{
+			const std::string option = argv[i];
+			++i;
+			if(i < argc - 2)
+			{
+				if(option.find("decimation") != std::string::npos)
+				{
+					depthFromScanDecimation = std::max(1, atoi(argv[i]));
+				}
+				else if(option.find("fill_holes") != std::string::npos)
+				{
+					depthFromScanFillHolesSize = atoi(argv[i]);
+				}
+				else if(option.find("fill_error") != std::string::npos)
+				{
+					depthFromScanFillHolesError = uStr2Float(argv[i]);
+				}
+				else
+				{
+					depthFromScanFillIterations = atoi(argv[i]);
+				}
+				printf("%s = %s\n", option.c_str(), argv[i]);
+			}
+			else
+			{
+				printf("%s option requires 1 value\n", option.c_str());
+				showUsage();
+			}
+		}
 		else if (strcmp(argv[i], "-scan_from_depth") == 0 || strcmp(argv[i], "--scan_from_depth") == 0)
 		{
 			scanFromDepth = true;
@@ -802,6 +980,17 @@ int main(int argc, char * argv[])
 				showUsage();
 			}
 		}
+	}
+
+	if(!cameraLocalTransformCorrections.empty() && (!cameraLocalTransformOverrides.empty() || !cameraLocalTransformOffsetOverrides.empty()))
+	{
+		printf("[Error] -cam_tf_correction cannot be used with -cam_tf or -cam_tf_lens_offset.\n");
+		return 1;
+	}
+	if(depthFromScan && scanFromDepth)
+	{
+		printf("[Error] -depth_from_scan and -scan_from_depth cannot be used together.\n");
+		return 1;
 	}
 
 	std::string inputDatabasePath = UDirectory::expandHomeDir(argv[argc-2]);
@@ -901,6 +1090,70 @@ int main(int argc, char * argv[])
 	// with their original values, restored before saving the output database
 	// so that it doesn't keep them.
 	ParametersMap parametersToRestore;
+
+	// Images rectified by RTAB-Map when mapping (Rtabmap/ImagesAlreadyRectified=false) are
+	// saved rectified in the database, with their raw calibration: rectifying them again
+	// would distort and shift them. Except RGB(-D) images with Rtabmap/RectifyOnlyFeatures,
+	// which are saved raw, only their features being rectified (stereo images are always
+	// rectified): the first node with a calibration tells which ones the database has.
+	if(configParameters.find(Parameters::kRtabmapImagesAlreadyRectified())==configParameters.end() &&
+		customParameters.find(Parameters::kRtabmapImagesAlreadyRectified())==customParameters.end())
+	{
+		bool imagesAlreadyRectified = Parameters::defaultRtabmapImagesAlreadyRectified();
+		bool rectifyOnlyFeatures = Parameters::defaultRtabmapRectifyOnlyFeatures();
+		Parameters::parse(parameters, Parameters::kRtabmapImagesAlreadyRectified(), imagesAlreadyRectified);
+		Parameters::parse(parameters, Parameters::kRtabmapRectifyOnlyFeatures(), rectifyOnlyFeatures);
+		bool stereo = false;
+		if(!imagesAlreadyRectified && rectifyOnlyFeatures)
+		{
+			std::set<int> nodeIds;
+			dbDriver->getAllNodeIds(nodeIds);
+			for(std::set<int>::iterator iter=nodeIds.begin(); iter!=nodeIds.end(); ++iter)
+			{
+				std::vector<CameraModel> models;
+				std::vector<StereoCameraModel> stereoModels;
+				if(dbDriver->getCalibration(*iter, models, stereoModels) && (!models.empty() || !stereoModels.empty()))
+				{
+					stereo = !stereoModels.empty();
+					break;
+				}
+			}
+		}
+		if(!imagesAlreadyRectified && (!rectifyOnlyFeatures || stereo))
+		{
+			printf("[Warning] Parameter %s is false in the opened database: its images were rectified "
+					"when mapping and saved rectified. Setting it to true for this reprocessing so that "
+					"they are not rectified again. Set %s explicitly to suppress this warning.\n",
+					Parameters::kRtabmapImagesAlreadyRectified().c_str(),
+					Parameters::kRtabmapImagesAlreadyRectified().c_str());
+			parametersToRestore.insert(ParametersPair(Parameters::kRtabmapImagesAlreadyRectified(), "false"));
+			uInsert(parameters, ParametersPair(Parameters::kRtabmapImagesAlreadyRectified(), "true"));
+		}
+	}
+
+	if(cameraLocalTransformCorrections.size() > 1)
+	{
+		// One correction per camera streamed: check their number on the first node with a
+		// calibration.
+		std::set<int> nodeIds;
+		dbDriver->getAllNodeIds(nodeIds);
+		for(std::set<int>::iterator iter=nodeIds.begin(); iter!=nodeIds.end(); ++iter)
+		{
+			std::vector<CameraModel> models;
+			std::vector<StereoCameraModel> stereoModels;
+			if(dbDriver->getCalibration(*iter, models, stereoModels) && (!models.empty() || !stereoModels.empty()))
+			{
+				const size_t cameras = cameraIndices.empty() ? std::max(models.size(), stereoModels.size()) : cameraIndices.size();
+				if(cameras != cameraLocalTransformCorrections.size())
+				{
+					printf("[Error] %d camera transform corrections given (-cam_tf_correction), but %d cameras are streamed.\n",
+							(int)cameraLocalTransformCorrections.size(), (int)cameras);
+					return 1;
+				}
+				break;
+			}
+		}
+	}
 
 	bool useOdomFeatures = Parameters::defaultMemUseOdomFeatures();
 	if((configParameters.find(Parameters::kKpDetectorStrategy())!=configParameters.end() ||
@@ -1350,6 +1603,14 @@ int main(int argc, char * argv[])
 	{
 		data.setLaserScan(LaserScan());
 	}
+	if(!cameraLocalTransformCorrections.empty())
+	{
+		correctCameraLocalTransforms(data, cameraLocalTransformCorrections);
+	}
+	if(depthFromScan)
+	{
+		generateDepthFromScan(data, depthFromScanDecimation, depthFromScanFillHolesSize, depthFromScanFillHolesError, depthFromScanFillIterations);
+	}
 	camThread.postUpdate(&data, &info);
 	Transform lastLocalizationOdomPose = info.odomPose;
 	Transform previousOdomPose;
@@ -1435,6 +1696,14 @@ int main(int argc, char * argv[])
 					if(scanFromDepth)
 					{
 						data.setLaserScan(LaserScan());
+					}
+					if(!cameraLocalTransformCorrections.empty())
+					{
+						correctCameraLocalTransforms(data, cameraLocalTransformCorrections);
+					}
+					if(depthFromScan)
+					{
+						generateDepthFromScan(data, depthFromScanDecimation, depthFromScanFillHolesSize, depthFromScanFillHolesError, depthFromScanFillIterations);
 					}
 					camThread.postUpdate(&data, &info);
 					++processed;
@@ -1773,6 +2042,14 @@ int main(int argc, char * argv[])
 		if(scanFromDepth)
 		{
 			data.setLaserScan(LaserScan());
+		}
+		if(!cameraLocalTransformCorrections.empty())
+		{
+			correctCameraLocalTransforms(data, cameraLocalTransformCorrections);
+		}
+		if(depthFromScan)
+		{
+			generateDepthFromScan(data, depthFromScanDecimation, depthFromScanFillHolesSize, depthFromScanFillHolesError, depthFromScanFillIterations);
 		}
 		camThread.postUpdate(&data, &info);
 

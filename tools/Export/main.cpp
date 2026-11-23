@@ -1628,6 +1628,16 @@ int main(int argc, char * argv[])
 							indices = util3d::radiusFiltering(cloudI, noiseRadius, noiseMinNeighbors);
 						}
 					}
+					if(!(noiseRadius>0.0f && noiseMinNeighbors>0))
+					{
+						// All the scan's points: the indices are used below to transform (or
+						// voxelize) the cloud, keeping only these points.
+						indices->resize(cloud.get() && !cloud->empty()?cloud->size():(cloudI.get()?cloudI->size():0));
+						for(size_t i=0; i<indices->size(); ++i)
+						{
+							indices->at(i) = (int)i;
+						}
+					}
 				}
 				else
 				{

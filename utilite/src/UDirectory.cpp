@@ -343,8 +343,24 @@ std::string UDirectory::currentDir(bool trailingSeparator)
 	return dir;
 }
 
-bool UDirectory::makeDir(const std::string & dirPath)
+bool UDirectory::makeDir(const std::string & dirPath, bool createParents)
 {
+	if(createParents)
+	{
+		// The missing parents first, left to right (not a drive, e.g., "C:").
+		for(size_t i = 1; i < dirPath.size(); ++i)
+		{
+			if(dirPath[i] == '/' || dirPath[i] == '\\')
+			{
+				const std::string parent = dirPath.substr(0, i);
+				if(parent[parent.size()-1] != ':' && !exists(parent))
+				{
+					makeDir(parent);
+				}
+			}
+		}
+		return exists(dirPath) || makeDir(dirPath);
+	}
 	int status;
 #ifdef _WIN32
 	status = _mkdir(dirPath.c_str());
