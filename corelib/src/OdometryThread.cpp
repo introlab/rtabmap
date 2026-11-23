@@ -247,8 +247,8 @@ bool OdometryThread::getData(SensorEvent & event)
 			if(!_odometry->canProcessAsyncIMU() && !scan.isEmpty() && scan.hasTime())
 			{
 				imuUntil += std::max(0.0f, std::max(
-						scan.data().ptr<float>(0, 0)[scan.getTimeOffset()],
-						scan.data().ptr<float>(0, scan.size()-1)[scan.getTimeOffset()]));
+						scan.field(0, scan.getTimeOffset()),
+						scan.field(scan.size()-1, scan.getTimeOffset())));
 			}
 			while(!_imuBuffer.empty())
 			{

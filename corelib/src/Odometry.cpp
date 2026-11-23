@@ -724,8 +724,8 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	const bool scanHasTimeSpread =
 			!data.laserScanRaw().empty() &&
 			data.laserScanRaw().hasTime() &&
-			data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()] !=
-			data.laserScanRaw().data().ptr<float>(0, 0)[data.laserScanRaw().getTimeOffset()];
+			data.laserScanRaw().field(data.laserScanRaw().size()-1, data.laserScanRaw().getTimeOffset()) !=
+			data.laserScanRaw().field(0, data.laserScanRaw().getTimeOffset());
 	if( _deskewing &&
 		scanHasTimeSpread &&
 		!imus_.empty() &&

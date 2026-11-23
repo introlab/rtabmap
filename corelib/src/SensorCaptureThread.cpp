@@ -408,14 +408,14 @@ void SensorCaptureThread::mainLoop()
 			if(!data.laserScanRaw().empty() && data.laserScanRaw().hasTime())
 			{
 				float scanTime =
-					data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()] -
-					data.laserScanRaw().data().ptr<float>(0, 0)[data.laserScanRaw().getTimeOffset()];
+					data.laserScanRaw().field(data.laserScanRaw().size()-1, data.laserScanRaw().getTimeOffset()) -
+					data.laserScanRaw().field(0, data.laserScanRaw().getTimeOffset());
 
 				Transform poseFirstScan;
 				Transform poseLastScan;
 				cv::Mat cov;
-				double firstStamp = data.stamp() + data.laserScanRaw().data().ptr<float>(0, 0)[data.laserScanRaw().getTimeOffset()];
-				double lastStamp = data.stamp() + data.laserScanRaw().data().ptr<float>(0, data.laserScanRaw().size()-1)[data.laserScanRaw().getTimeOffset()];
+				double firstStamp = data.stamp() + data.laserScanRaw().field(0, data.laserScanRaw().getTimeOffset());
+				double lastStamp = data.stamp() + data.laserScanRaw().field(data.laserScanRaw().size()-1, data.laserScanRaw().getTimeOffset());
 				if(_odomSensor->getPose(firstStamp+_poseTimeOffset, poseFirstScan, cov, _poseWaitTime>0?_poseWaitTime:0) &&
 				   _odomSensor->getPose(lastStamp+_poseTimeOffset, poseLastScan, cov, _poseWaitTime>0?_poseWaitTime:0))
 				{

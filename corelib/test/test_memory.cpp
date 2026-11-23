@@ -4560,6 +4560,59 @@ TEST(MemoryTest, CleanupLocalGridsFiltersObstaclesAgainstMap)
 	UFile::erase(dbPath.c_str());
 }
 
+// cleanupLocalGrids() with filterScans: the points of an organized scan (rings
+// x columns) are addressed by index, so the ones on the obstacle cells of the
+// map are kept, row by row, and the scan stored back is dense.
+TEST(MemoryTest, CleanupLocalGridsFiltersAnOrganizedScan)
+{
+	const std::string dbPath = uniqueDbPath();
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	{
+		Memory memory(params);
+		ASSERT_TRUE(memory.init(dbPath, true));
+
+		// 2 rings x 4 columns, points at x = column (m), y = ring * 0.5 (m)
+		cv::Mat points(2, 4, CV_32FC3);
+		for(int v=0; v<2; ++v)
+		{
+			for(int u=0; u<4; ++u)
+			{
+				float * p = points.ptr<float>(v, u);
+				p[0] = float(u); p[1] = 0.5f*float(v); p[2] = 0.0f;
+			}
+		}
+		cv::Mat image(8, 8, CV_8UC1, cv::Scalar(128));
+		SensorData data(image);
+		data.setLaserScan(LaserScan(points, 0, 10.0f, LaserScan::kXYZ));
+		data.setId(0);
+		ASSERT_TRUE(memory.update(data, Transform::getIdentity(), cv::Mat::eye(6, 6, CV_64FC1) * 0.01));
+		const int id = memory.getLastSignatureId();
+
+		// 4x4 map of 1 m cells from (-1,-1): a point lands on cell (x+1, y+1).
+		// Obstacles where the points (0, 0) of ring 0 and (2, 0.5) of ring 1 fall.
+		cv::Mat map(4, 4, CV_8UC1, cv::Scalar(0));
+		map.at<unsigned char>(1, 1) = 100; // row y=1, col x=1: point (0, 0)
+		map.at<unsigned char>(2, 3) = 100; // row y=2, col x=3: point (2, 0.5)
+		std::map<int, Transform> poses{{id, Transform::getIdentity()}};
+		EXPECT_EQ(memory.cleanupLocalGrids(poses, map, -1.0f, -1.0f, 1.0f, /*cropRadius=*/0, /*filterScans=*/true), 1);
+
+		const Signature * s = memory.getSignature(id);
+		ASSERT_NE(s, nullptr);
+		const LaserScan & filtered = s->sensorData().laserScanRaw();
+		ASSERT_EQ(filtered.size(), 2);
+		EXPECT_FALSE(filtered.isOrganized());
+		EXPECT_EQ(filtered.format(), LaserScan::kXYZ);
+		EXPECT_FLOAT_EQ(filtered.point(0)[0], 0.0f);
+		EXPECT_FLOAT_EQ(filtered.point(0)[1], 0.0f);
+		EXPECT_FLOAT_EQ(filtered.point(1)[0], 2.0f);
+		EXPECT_FLOAT_EQ(filtered.point(1)[1], 0.5f);
+
+		memory.close(false);
+	}
+	UFile::erase(dbPath.c_str());
+}
+
 // ---------------------------------------------------------------------------
 // Memory::computeIcpTransformMulti(): proximity refinement between two nodes
 // using their laser scans. Until now this only ran during the end-to-end

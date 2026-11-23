@@ -39,6 +39,7 @@ set(corelib_test_sources
 	test_memory.cpp                     #Memory.h
 	test_markerdetector.cpp             #MarkerDetector.h
 	test_rtabmap.cpp                    #Rtabmap.h
+	test_laserscan.cpp                  #LaserScan.h
 	test_link.cpp                       #Link.h
 	test_optimizer.cpp                  #Optimizer.h
 	test_gps.cpp                        #GPS.h

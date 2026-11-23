@@ -5246,7 +5246,7 @@ int Memory::cleanupLocalGrids(
 			int oi = 0;
 			for(int i=0; i<scan.size(); ++i)
 			{
-				const float * ptr = scan.data().ptr<float>(0, i);
+				const float * ptr = scan.point(i);
 				cv::Point3f pt(ptr[0], ptr[1], scan.is2d()?0:ptr[2]);
 				pt = util3d::transformPoint(pt, mapToScan);
 
@@ -5274,7 +5274,7 @@ int Memory::cleanupLocalGrids(
 					if(map.at<unsigned char>(y,x) != 0 || obstacleDetected)
 					{
 						// Verify that we don't have an obstacle on neighbor cells
-						cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(filtered, cv::Range::all(), cv::Range(oi,oi+1)));
+						memcpy(filtered.ptr<float>(0, oi), scan.point(i), scan.data().elemSize());
 						++oi;
 					}
 				}
@@ -6787,7 +6787,7 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			float maxRange = 0.0f;
 			for(int i=0; i<laserScan.size(); ++i)
 			{
-				const float * ptr = laserScan.data().ptr<float>(0, i);
+				const float * ptr = laserScan.point(i);
 				float r;
 				if(id2d)
 				{

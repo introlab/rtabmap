@@ -202,6 +202,19 @@ public:
 	 * @see getIntensityOffset() getRGBOffset() getNormalsOffset() getTimeOffset()
 	 */
 	float & field(unsigned int pointIndex, unsigned int channelOffset);
+	/**
+	 * @brief A field of a point, by its index over the whole scan (see point()).
+	 */
+	float field(unsigned int pointIndex, unsigned int channelOffset) const;
+	/**
+	 * @brief The fields of a point, by its index over the whole scan.
+	 *
+	 * For an organized scan (rows x columns), the index runs row by row, so
+	 * the index space is the same as for a 1xN scan: data().ptr<float>(0, i)
+	 * is only valid for the latter.
+	 */
+	const float * point(unsigned int pointIndex) const;
+	float * point(unsigned int pointIndex);
 
 	/**
 	 * @brief Clear the scan data.
