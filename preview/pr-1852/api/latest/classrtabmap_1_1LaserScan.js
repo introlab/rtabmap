@@ -19,6 +19,8 @@ var classrtabmap_1_1LaserScan =
     [ "LaserScan", "classrtabmap_1_1LaserScan.html#aaf554921f866f90c48a6174d5f97a016", null ],
     [ "isCompressed", "classrtabmap_1_1LaserScan.html#a25e8e9681240f4a21960977f5c12bcd9", null ],
     [ "field", "classrtabmap_1_1LaserScan.html#a61d7ecfee5d444fdde06efb0f13ed68d", null ],
+    [ "field", "classrtabmap_1_1LaserScan.html#a1c076824f99360688627d20c9c4954b6", null ],
+    [ "point", "classrtabmap_1_1LaserScan.html#a7a015431a9850e3f450f6739662739d9", null ],
     [ "clear", "classrtabmap_1_1LaserScan.html#af0ad1e84f0be48a84b772385249adb45", null ],
     [ "operator+=", "classrtabmap_1_1LaserScan.html#af9f9a32f97cfbac321fc2509f0d1bd04", null ],
     [ "operator+", "classrtabmap_1_1LaserScan.html#ab952e27e94b2fa942efe98ea651f4475", null ]

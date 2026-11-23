@@ -224,6 +224,16 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a61d7ecfee5d444fdde06efb0f13ed68d" id="r_a61d7ecfee5d444fdde06efb0f13ed68d"><td class="memItemLeft" align="right" valign="top">float &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1LaserScan.html#a61d7ecfee5d444fdde06efb0f13ed68d">field</a> (unsigned int pointIndex, unsigned int channelOffset)</td></tr>
 <tr class="memdesc:a61d7ecfee5d444fdde06efb0f13ed68d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Access a specific field value of a point.  <br /></td></tr>
 <tr class="separator:a61d7ecfee5d444fdde06efb0f13ed68d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c076824f99360688627d20c9c4954b6" id="r_a1c076824f99360688627d20c9c4954b6"><td class="memItemLeft" align="right" valign="top"><a id="a1c076824f99360688627d20c9c4954b6" name="a1c076824f99360688627d20c9c4954b6"></a>
+float&#160;</td><td class="memItemRight" valign="bottom"><b>field</b> (unsigned int pointIndex, unsigned int channelOffset) const</td></tr>
+<tr class="memdesc:a1c076824f99360688627d20c9c4954b6"><td class="mdescLeft">&#160;</td><td class="mdescRight">A field of a point, by its index over the whole scan (see <a class="el" href="classrtabmap_1_1LaserScan.html#a7a015431a9850e3f450f6739662739d9" title="The fields of a point, by its index over the whole scan.">point()</a>). <br /></td></tr>
+<tr class="separator:a1c076824f99360688627d20c9c4954b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7a015431a9850e3f450f6739662739d9" id="r_a7a015431a9850e3f450f6739662739d9"><td class="memItemLeft" align="right" valign="top">const float *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1LaserScan.html#a7a015431a9850e3f450f6739662739d9">point</a> (unsigned int pointIndex) const</td></tr>
+<tr class="memdesc:a7a015431a9850e3f450f6739662739d9"><td class="mdescLeft">&#160;</td><td class="mdescRight">The fields of a point, by its index over the whole scan.  <br /></td></tr>
+<tr class="separator:a7a015431a9850e3f450f6739662739d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a690ab287150d98516f62a36364dc260c" id="r_a690ab287150d98516f62a36364dc260c"><td class="memItemLeft" align="right" valign="top"><a id="a690ab287150d98516f62a36364dc260c" name="a690ab287150d98516f62a36364dc260c"></a>
+float *&#160;</td><td class="memItemRight" valign="bottom"><b>point</b> (unsigned int pointIndex)</td></tr>
+<tr class="separator:a690ab287150d98516f62a36364dc260c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af0ad1e84f0be48a84b772385249adb45" id="r_af0ad1e84f0be48a84b772385249adb45"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classrtabmap_1_1LaserScan.html#af0ad1e84f0be48a84b772385249adb45">clear</a> ()</td></tr>
 <tr class="memdesc:af0ad1e84f0be48a84b772385249adb45"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clear the scan data.  <br /></td></tr>
 <tr class="separator:af0ad1e84f0be48a84b772385249adb45"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1270,6 +1280,27 @@ static <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a>&#160;</
 
 </div>
 </div>
+<a id="a7a015431a9850e3f450f6739662739d9" name="a7a015431a9850e3f450f6739662739d9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7a015431a9850e3f450f6739662739d9">&#9670;&#160;</a></span>point()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const float * rtabmap::LaserScan::point </td>
+          <td>(</td>
+          <td class="paramtype">unsigned int&#160;</td>
+          <td class="paramname"><em>pointIndex</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>The fields of a point, by its index over the whole scan. </p>
+<p>For an organized scan (rows x columns), the index runs row by row, so the index space is the same as for a 1xN scan: data().ptr&lt;float&gt;(0, i) is only valid for the latter. </p>
+
+</div>
+</div>
 <a id="af0ad1e84f0be48a84b772385249adb45" name="af0ad1e84f0be48a84b772385249adb45"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#af0ad1e84f0be48a84b772385249adb45">&#9670;&#160;</a></span>clear()</h2>
 
@@ -1295,7 +1326,7 @@ static <a class="el" href="classrtabmap_1_1LaserScan.html">LaserScan</a>&#160;</
 
 <p>Clear the scan data. </p>
 
-<p class="definition">Definition at line <a class="el" href="LaserScan_8h_source.html#l00209">209</a> of file <a class="el" href="LaserScan_8h_source.html">LaserScan.h</a>.</p>
+<p class="definition">Definition at line <a class="el" href="LaserScan_8h_source.html#l00222">222</a> of file <a class="el" href="LaserScan_8h_source.html">LaserScan.h</a>.</p>
 
 </div>
 </div>
