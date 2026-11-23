@@ -1078,9 +1078,6 @@ pcl::IndicesPtr RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="b
 <tr class="memitem:a0a1a57cb2be47c4b6670672b2a0a5a93" id="r_a0a1a57cb2be47c4b6670672b2a0a5a93"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrtabmap_1_1Transform.html">Transform</a> RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util3d.html#a0a1a57cb2be47c4b6670672b2a0a5a93">estimateMotion3DTo2D</a> (const std::map&lt; int, cv::Point3f &gt; &amp;words3A, const std::map&lt; int, cv::KeyPoint &gt; &amp;words2B, const std::vector&lt; <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &gt; &amp;cameraModels, unsigned int samplingPolicy=0, int minInliers=10, int iterations=100, double reprojError=5., int flagsPnP=0, int pnpRefineIterations=1, int varianceMedianRatio=4, float maxVariance=0, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;guess=<a class="el" href="classrtabmap_1_1Transform.html#a8ea4368f2018d751d2733038081d56a2">Transform::getIdentity</a>(), const std::map&lt; int, cv::Point3f &gt; &amp;words3B=std::map&lt; int, cv::Point3f &gt;(), cv::Mat *covariance=0, std::vector&lt; int &gt; *matchesOut=0, std::vector&lt; int &gt; *inliersOut=0, bool splitLinearCovarianceComponents=false)</td></tr>
 <tr class="memdesc:a0a1a57cb2be47c4b6670672b2a0a5a93"><td class="mdescLeft">&#160;</td><td class="mdescRight">Estimates the 3D-to-2D motion (pose) transformation between a set of 3D points and their corresponding 2D keypoints using the OpenGV library.  <br /></td></tr>
 <tr class="separator:a0a1a57cb2be47c4b6670672b2a0a5a93"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab34ed0e1646687e6c5a258f1cd97a9ef" id="r_ab34ed0e1646687e6c5a258f1cd97a9ef"><td class="memItemLeft" align="right" valign="top">std::vector&lt; cv::Point2f &gt; RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util3d.html#ab34ed0e1646687e6c5a258f1cd97a9ef">reprojectionOffsetPerCamera</a> (const std::map&lt; int, cv::Point3f &gt; &amp;points, const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;pose, const std::vector&lt; <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &gt; &amp;cameraModels, const std::multimap&lt; int, cv::KeyPoint &gt; &amp;observations)</td></tr>
-<tr class="memdesc:ab34ed0e1646687e6c5a258f1cd97a9ef"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mean reprojection offset of a frame's observations, per camera of a rig.  <br /></td></tr>
-<tr class="separator:ab34ed0e1646687e6c5a258f1cd97a9ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a717fefeecb331b1dddc3ec3b4f6beb3a" id="r_a717fefeecb331b1dddc3ec3b4f6beb3a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classrtabmap_1_1Transform.html">Transform</a> RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util3d.html#a717fefeecb331b1dddc3ec3b4f6beb3a">estimateMotion3DTo3D</a> (const std::map&lt; int, cv::Point3f &gt; &amp;words3A, const std::map&lt; int, cv::Point3f &gt; &amp;words3B, int minInliers=10, double inliersDistance=0.1, int iterations=100, int refineIterations=5, cv::Mat *covariance=0, std::vector&lt; int &gt; *matchesOut=0, std::vector&lt; int &gt; *inliersOut=0)</td></tr>
 <tr class="memdesc:a717fefeecb331b1dddc3ec3b4f6beb3a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Estimates the 3D rigid transformation between two sets of 3D points.  <br /></td></tr>
 <tr class="separator:a717fefeecb331b1dddc3ec3b4f6beb3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -7787,59 +7784,6 @@ template&lt;typename PointT &gt; </div>
 
 <p>Estimates the 3D-to-2D motion (pose) transformation between a set of 3D points and their corresponding 2D keypoints using the OpenGV library. </p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="namespacertabmap_1_1util3d.html#a94321442a82f05368f8fd9c9a998284e" title="Estimates a 6-DOF camera transform from 3D-2D point correspondences using PnP RANSAC.">estimateMotion3DTo2D()</a>, the only difference is that output matches and inliers are combined in same vector instead of per camera. A word ID observed by several cameras is listed once. </dd></dl>
-
-</div>
-</div>
-<a id="ab34ed0e1646687e6c5a258f1cd97a9ef" name="ab34ed0e1646687e6c5a258f1cd97a9ef"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab34ed0e1646687e6c5a258f1cd97a9ef">&#9670;&#160;</a></span>reprojectionOffsetPerCamera()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::vector&lt; cv::Point2f &gt; RTABMAP_CORE_EXPORT rtabmap::util3d::reprojectionOffsetPerCamera </td>
-          <td>(</td>
-          <td class="paramtype">const std::map&lt; int, cv::Point3f &gt; &amp;&#160;</td>
-          <td class="paramname"><em>points</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const <a class="el" href="classrtabmap_1_1Transform.html">Transform</a> &amp;&#160;</td>
-          <td class="paramname"><em>pose</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const std::vector&lt; <a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &gt; &amp;&#160;</td>
-          <td class="paramname"><em>cameraModels</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const std::multimap&lt; int, cv::KeyPoint &gt; &amp;&#160;</td>
-          <td class="paramname"><em>observations</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Mean reprojection offset of a frame's observations, per camera of a rig. </p>
-<p>For each observation, the 3D point of its word is projected into its camera at the frame's pose and compared with the keypoint: the mean of (projection - keypoint) over the observations of each camera, in pixels. At a pose refined over all the cameras (bundle adjustment), a consistent offset on one camera reveals a calibration error of that camera (extrinsics or intrinsics).</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">points</td><td>3D points by word ID, in the frame of <code>pose</code>. </td></tr>
-    <tr><td class="paramname">pose</td><td>The frame's pose in the points' frame. </td></tr>
-    <tr><td class="paramname">cameraModels</td><td>The rig (same image width), one entry per camera. </td></tr>
-    <tr><td class="paramname">observations</td><td>Word ID -&gt; keypoint in the stitched image (x offset by cameraIndex*width). </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>One mean offset per camera, (0,0) for a camera without observation. </dd></dl>
 
 </div>
 </div>

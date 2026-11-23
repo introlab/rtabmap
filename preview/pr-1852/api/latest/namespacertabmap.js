@@ -293,7 +293,6 @@ var namespacertabmap =
       [ "estimateMotion3DTo2D", "namespacertabmap_1_1util3d.html#a3fffe99bf880decfb8a9f60ff7b882bd", null ],
       [ "estimateMotion3DTo2D", "namespacertabmap_1_1util3d.html#af29769077430404b4ab4b733d0ed6570", null ],
       [ "estimateMotion3DTo2D", "namespacertabmap_1_1util3d.html#a0a1a57cb2be47c4b6670672b2a0a5a93", null ],
-      [ "reprojectionOffsetPerCamera", "namespacertabmap_1_1util3d.html#ab34ed0e1646687e6c5a258f1cd97a9ef", null ],
       [ "estimateMotion3DTo3D", "namespacertabmap_1_1util3d.html#a717fefeecb331b1dddc3ec3b4f6beb3a", null ],
       [ "solvePnPRansac", "namespacertabmap_1_1util3d.html#ad426e396a196d6f69a004bb55982f9f7", null ],
       [ "transformFromXYZCorrespondencesSVD", "namespacertabmap_1_1util3d.html#a56797352c7d47f815c694bc4ccb1faea", null ],
