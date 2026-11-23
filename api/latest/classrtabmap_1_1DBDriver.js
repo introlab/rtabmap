@@ -5,6 +5,7 @@ var classrtabmap_1_1DBDriver =
     [ "isInMemory", "classrtabmap_1_1DBDriver.html#a0ecd6182f404d8e6822b66a54f1d248a", null ],
     [ "getUrl", "classrtabmap_1_1DBDriver.html#a79365611bce06aeda0d078641be89cab", null ],
     [ "getTargetVersion", "classrtabmap_1_1DBDriver.html#a456bc49e8e60e0c754078a4b09e3f1a1", null ],
+    [ "getDescriptorQuantization", "classrtabmap_1_1DBDriver.html#adfb2be62c1b2171887240f6eae0c79da", null ],
     [ "asyncSave", "classrtabmap_1_1DBDriver.html#ad1510e157f3ab8df3284528369a6d88f", null ],
     [ "asyncSave", "classrtabmap_1_1DBDriver.html#a88eee22aa9707a6993f734fe29f6af5d", null ],
     [ "emptyTrashes", "classrtabmap_1_1DBDriver.html#ab4a0036162994c2ef76d4236e2a7ea0a", null ],

@@ -33,7 +33,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.24.5</span>
+   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.25.0</span>
    </div>
    <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
@@ -566,6 +566,17 @@ cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><
 std::string RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>uncompressString</b> (const cv::Mat &amp;bytes)</td></tr>
 <tr class="memdesc:a811701fc1452e49e82fcab8d4476832f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Decompresses a string produced by <a class="el" href="namespacertabmap.html#a4f0dfae296aa7029e959d573b286285a">compressString()</a>. <br /></td></tr>
 <tr class="separator:a811701fc1452e49e82fcab8d4476832f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a03883bc6b32c824839cb8f40c6669fc5" id="r_a03883bc6b32c824839cb8f40c6669fc5"><td class="memItemLeft" align="right" valign="top">cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#a03883bc6b32c824839cb8f40c6669fc5">quantizeDescriptors</a> (const cv::Mat &amp;descriptors, int bits)</td></tr>
+<tr class="memdesc:a03883bc6b32c824839cb8f40c6669fc5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Quantizes float descriptors on 8 or 16 bits per element.  <br /></td></tr>
+<tr class="separator:a03883bc6b32c824839cb8f40c6669fc5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae2b526db56a3dac43adf4846d1244ed7" id="r_ae2b526db56a3dac43adf4846d1244ed7"><td class="memItemLeft" align="right" valign="top">cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#ae2b526db56a3dac43adf4846d1244ed7">dequantizeDescriptors</a> (const cv::Mat &amp;quantized, int descriptorSize)</td></tr>
+<tr class="memdesc:ae2b526db56a3dac43adf4846d1244ed7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Restores float descriptors quantized by <a class="el" href="namespacertabmap.html#a03883bc6b32c824839cb8f40c6669fc5">quantizeDescriptors()</a>.  <br /></td></tr>
+<tr class="separator:ae2b526db56a3dac43adf4846d1244ed7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5b301d9bf15797151ebd785a50edd37c" id="r_a5b301d9bf15797151ebd785a50edd37c"><td class="memItemLeft" align="right" valign="top">size_t RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#a5b301d9bf15797151ebd785a50edd37c">quantizedDescriptorSize</a> (int descriptorSize, int bits)</td></tr>
+<tr class="separator:a5b301d9bf15797151ebd785a50edd37c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af9996d68990ced4aa048bc2ef0c6d66b" id="r_af9996d68990ced4aa048bc2ef0c6d66b"><td class="memItemLeft" align="right" valign="top">int RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#af9996d68990ced4aa048bc2ef0c6d66b">quantizedDescriptorBits</a> (size_t bytes, int descriptorSize)</td></tr>
+<tr class="memdesc:af9996d68990ced4aa048bc2ef0c6d66b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Detects the quantization of a descriptor buffer from its size.  <br /></td></tr>
+<tr class="separator:af9996d68990ced4aa048bc2ef0c6d66b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a67c525e80a7187b3106e5fd76155cabc" id="r_a67c525e80a7187b3106e5fd76155cabc"><td class="memItemLeft" align="right" valign="top">std::string RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap.html#a67c525e80a7187b3106e5fd76155cabc">compressedDepthFormat</a> (const cv::Mat &amp;bytes)</td></tr>
 <tr class="memdesc:a67c525e80a7187b3106e5fd76155cabc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Detects the compression format of depth image bytes.  <br /></td></tr>
 <tr class="separator:a67c525e80a7187b3106e5fd76155cabc"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -869,6 +880,143 @@ Variables</h2></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="a03883bc6b32c824839cb8f40c6669fc5" name="a03883bc6b32c824839cb8f40c6669fc5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a03883bc6b32c824839cb8f40c6669fc5">&#9670;&#160;</a></span>quantizeDescriptors()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">cv::Mat RTABMAP_CORE_EXPORT rtabmap::quantizeDescriptors </td>
+          <td>(</td>
+          <td class="paramtype">const cv::Mat &amp;&#160;</td>
+          <td class="paramname"><em>descriptors</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>bits</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Quantizes float descriptors on 8 or 16 bits per element. </p>
+<p>Each row is quantized linearly between its own minimum and maximum values, which are kept in the output so that any descriptor range is supported (e.g., L2-normalized <a class="el" href="classrtabmap_1_1SIFT.html" title="SIFT detector and descriptor (optional GPU / CudaSift).">SIFT</a>, <a class="el" href="classrtabmap_1_1SURF.html" title="SURF detector and descriptor (non-free / xfeatures2d depending on OpenCV build).">SURF</a> or SuperPoint descriptors). Quantizing descriptors restored by <a class="el" href="namespacertabmap.html#ae2b526db56a3dac43adf4846d1244ed7">dequantizeDescriptors()</a> gives back exactly the same bytes, so a quantize/dequantize round trip can be applied once and repeated without further loss.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">descriptors</td><td><code>CV_32FC1</code> matrix, one descriptor per row, with more than 4 columns. </td></tr>
+    <tr><td class="paramname">bits</td><td>8 or 16. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd><code>CV_8UC1</code> matrix with the same number of rows and <a class="el" href="namespacertabmap.html#a5b301d9bf15797151ebd785a50edd37c">quantizedDescriptorSize()</a> columns. Each row is laid out as [min (float)][max (float)][values (uint8 or uint16)], in native byte order. </dd></dl>
+
+</div>
+</div>
+<a id="ae2b526db56a3dac43adf4846d1244ed7" name="ae2b526db56a3dac43adf4846d1244ed7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae2b526db56a3dac43adf4846d1244ed7">&#9670;&#160;</a></span>dequantizeDescriptors()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">cv::Mat RTABMAP_CORE_EXPORT rtabmap::dequantizeDescriptors </td>
+          <td>(</td>
+          <td class="paramtype">const cv::Mat &amp;&#160;</td>
+          <td class="paramname"><em>quantized</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>descriptorSize</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Restores float descriptors quantized by <a class="el" href="namespacertabmap.html#a03883bc6b32c824839cb8f40c6669fc5">quantizeDescriptors()</a>. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">quantized</td><td><code>CV_8UC1</code> matrix, one quantized descriptor per row, with <a class="el" href="namespacertabmap.html#a5b301d9bf15797151ebd785a50edd37c">quantizedDescriptorSize()</a> columns (the number of bits is deduced from it). </td></tr>
+    <tr><td class="paramname">descriptorSize</td><td>Number of elements of the original descriptors. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd><code>CV_32FC1</code> matrix of <code>descriptorSize</code> columns. </dd></dl>
+
+</div>
+</div>
+<a id="a5b301d9bf15797151ebd785a50edd37c" name="a5b301d9bf15797151ebd785a50edd37c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5b301d9bf15797151ebd785a50edd37c">&#9670;&#160;</a></span>quantizedDescriptorSize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">size_t RTABMAP_CORE_EXPORT rtabmap::quantizedDescriptorSize </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>descriptorSize</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>bits</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>Number of bytes of a descriptor of <code>descriptorSize</code> elements quantized on <code>bits</code> bits. </dd></dl>
+
+</div>
+</div>
+<a id="af9996d68990ced4aa048bc2ef0c6d66b" name="af9996d68990ced4aa048bc2ef0c6d66b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af9996d68990ced4aa048bc2ef0c6d66b">&#9670;&#160;</a></span>quantizedDescriptorBits()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int RTABMAP_CORE_EXPORT rtabmap::quantizedDescriptorBits </td>
+          <td>(</td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>bytes</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>descriptorSize</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Detects the quantization of a descriptor buffer from its size. </p>
+<dl class="section return"><dt>Returns</dt><dd>8 or 16 if <code>bytes</code> matches the size of a descriptor of <code>descriptorSize</code> elements quantized by <a class="el" href="namespacertabmap.html#a03883bc6b32c824839cb8f40c6669fc5">quantizeDescriptors()</a>, otherwise 0 (e.g., raw <code>CV_8U</code> or <code>CV_32F</code> descriptor). </dd></dl>
 
 </div>
 </div>
