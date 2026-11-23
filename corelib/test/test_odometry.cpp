@@ -1,4 +1,12 @@
 #include <gtest/gtest.h>
+#include <vector>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UMutex.h>
+#include <rtabmap/utilite/UEventsHandler.h>
+#include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/core/SensorEvent.h>
+#include <rtabmap/core/OdometryEvent.h>
+#include <rtabmap/core/OdometryThread.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/OdometryInfo.h>
 #include <rtabmap/core/CameraModel.h>
@@ -904,4 +912,79 @@ TEST(OdometryTest, InitialOrientationIsTheImuOrientationAtTheFirstFrame)
 		given->process(imu);
 	}
 	EXPECT_NEAR(given->getPose().theta(), 1.0, 1e-6);
+}
+
+namespace {
+
+// Collects the poses of the OdometryEvents posted by an OdometryThread.
+class OdometryEventCollector : public UEventsHandler
+{
+public:
+	std::vector<Transform> snapshot() const
+	{
+		UScopeMutex lock(mutex_);
+		return poses_;
+	}
+	size_t size() const
+	{
+		UScopeMutex lock(mutex_);
+		return poses_.size();
+	}
+protected:
+	virtual bool handleEvent(UEvent * event)
+	{
+		if(event->getClassName().compare("OdometryEvent") == 0)
+		{
+			UScopeMutex lock(mutex_);
+			poses_.push_back(((OdometryEvent*)event)->pose());
+		}
+		return false;
+	}
+private:
+	mutable UMutex mutex_;
+	std::vector<Transform> poses_;
+};
+
+} // namespace
+
+// The odometry thread feeds the buffered IMU to the odometry up to the end of
+// a timed sweep before processing it (deskewing predicts the pose of every
+// point with the IMU). The sweep is organized (rings x columns): its last point
+// is on the last row, where a 1xN addressing of the scan would be out of bounds.
+TEST(OdometryTest, OdometryThreadFeedsTheImuUpToTheEndOfATimedSweep)
+{
+	Trajectory turning;
+	turning.yawRate = 1.0;
+	ParametersMap parameters;
+	parameters.insert(ParametersPair(Parameters::kRegStrategy(), "1"));
+	parameters.insert(ParametersPair(Parameters::kIcpVoxelSize(), "0"));
+	OdometryThread thread(Odometry::create(parameters));
+
+	OdometryEventCollector collector;
+	UEventsManager::addHandler(&collector);
+	UEventsManager::addHandler(&thread); // the thread gets the sensor and IMU events through the events manager
+	thread.start();
+	uSleep(50);
+	// IMU up to the end of the sweep, then the sweep
+	const double stamp = 1.0;
+	for(double t = 0.0; t <= stamp + kSweep + 0.005; t += 0.005)
+	{
+		UEventsManager::post(new IMUEvent(makeImu(turning, t), t));
+	}
+	UEventsManager::post(new SensorEvent(SensorData(makeSweep(turning, stamp), cv::Mat(), cv::Mat(), CameraModel(), 1, stamp)));
+	UTimer timer;
+	while(timer.elapsed() < 5.0 && collector.size() == 0)
+	{
+		uSleep(5);
+	}
+	thread.kill();
+	thread.join(true);
+	UEventsManager::removeHandler(&thread);
+	UEventsManager::removeHandler(&collector);
+
+	const std::vector<Transform> poses = collector.snapshot();
+	ASSERT_FALSE(poses.empty()) << "no odometry event: the thread didn't process the sweep";
+	EXPECT_FALSE(poses[0].isNull());
+	// The first frame starts at the IMU orientation of its stamp
+	EXPECT_NEAR(poses[0].theta(), turning.yawRate*stamp, 0.01);
 }

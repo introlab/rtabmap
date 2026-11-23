@@ -3847,8 +3847,8 @@ static LaserScan deskewImpl(
 	// Get latest timestamp
 	double firstStamp;
 	double lastStamp;
-	firstStamp = inputStamp + input.data().ptr<float>(0, 0)[offsetTime];
-	lastStamp = inputStamp + input.data().ptr<float>(0, input.size()-1)[offsetTime];
+	firstStamp = inputStamp + input.field(0, offsetTime);
+	lastStamp = inputStamp + input.field(input.size()-1, offsetTime);
 
 	if(lastStamp <= firstStamp)
 	{
@@ -3907,7 +3907,7 @@ static LaserScan deskewImpl(
 		// ring4  ring3 ...
 		for(int u=0; u<input.data().cols; ++u)
 		{
-			const float * inputPtr = input.data().ptr<float>(0, u);
+			const float * inputPtr = input.point(u);
 			stamp = inputStamp + inputPtr[offsetTime];
 			rtabmap::Transform transform = slerp?firstPose.interpolate((stamp-firstStamp) / scanTime, lastPose):motion(stamp);
 			if(transform.isNull())

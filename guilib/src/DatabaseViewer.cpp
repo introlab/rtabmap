@@ -3243,7 +3243,7 @@ void DatabaseViewer::editSaved2DMap()
 					int oi = 0;
 					for(int i=0; i<scan.size(); ++i)
 					{
-						const float * ptr = scan.data().ptr<float>(0, i);
+						const float * ptr = scan.point(i);
 						cv::Point3f pt(ptr[0], ptr[1], scan.is2d()?0:ptr[2]);
 						pt = util3d::transformPoint(pt, mapToScan);
 

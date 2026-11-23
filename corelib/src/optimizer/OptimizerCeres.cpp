@@ -485,9 +485,9 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 
 			UASSERT(oi+6 <= baProblem.num_cameras_*6);
 
-			baProblem.cameras_[oi++] = rvec.at<double>(0,0);
-			baProblem.cameras_[oi++] = rvec.at<double>(0,1);
-			baProblem.cameras_[oi++] = rvec.at<double>(0,2);
+			baProblem.cameras_[oi++] = rvec.at<double>(0);
+			baProblem.cameras_[oi++] = rvec.at<double>(1);
+			baProblem.cameras_[oi++] = rvec.at<double>(2);
 			baProblem.cameras_[oi++] = t.x();
 			baProblem.cameras_[oi++] = t.y();
 			baProblem.cameras_[oi++] = t.z();
@@ -664,7 +664,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 				(double)camLink.r31(), (double)camLink.r32(), (double)camLink.r33()});
 		cv::Mat rvec(1, 3, CV_64FC1);
 		cv::Rodrigues(R, rvec);
-		const Eigen::Vector3d aa_meas(rvec.at<double>(0,0), rvec.at<double>(0,1), rvec.at<double>(0,2));
+		const Eigen::Vector3d aa_meas(rvec.at<double>(0), rvec.at<double>(1), rvec.at<double>(2));
 		const Eigen::Vector3d t_meas(camLink.x(), camLink.y(), camLink.z());
 
 		// Information matrix from the link covariance. rtabmap stores it as
@@ -740,7 +740,7 @@ std::map<int, Transform> OptimizerCeres::optimizeBA(
 					(double)camLink.r31(), (double)camLink.r32(), (double)camLink.r33()});
 			cv::Mat rvec(1, 3, CV_64FC1);
 			cv::Rodrigues(R, rvec);
-			const Eigen::Vector3d aa(rvec.at<double>(0,0), rvec.at<double>(0,1), rvec.at<double>(0,2));
+			const Eigen::Vector3d aa(rvec.at<double>(0), rvec.at<double>(1), rvec.at<double>(2));
 			const Eigen::Vector3d tm(camLink.x(), camLink.y(), camLink.z());
 			ceres::CostFunction * cost = ceres::BetweenCamerasError::Create(tm, aa, rigSqrtInfo);
 			problem.AddResidualBlock(cost,
