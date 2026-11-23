@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_features.h"
+#include <set>
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/util3d_motion_estimation.h"
 #include "rtabmap/core/util3d_filtering.h"
@@ -61,8 +62,9 @@ namespace rtabmap {
 
 // The observations of a word in a frame, one per camera of the rig seeing it,
 // as bundle adjustment references: the keypoint in the camera's own image
-// and the depth along its optical axis.
-static std::multimap<int, FeatureBA> frameReferences(const Signature & frame, int wordId, const std::vector<CameraModel> & models)
+// and the depth along its optical axis. With `keep`, only the observations
+// (word, camera) it holds, e.g. the inliers of the motion estimation.
+static std::multimap<int, FeatureBA> frameReferences(const Signature & frame, int wordId, const std::vector<CameraModel> & models, const std::set<std::pair<int, int> > * keep = 0)
 {
 	std::multimap<int, FeatureBA> references;
 	UASSERT(!frame.getWordsKpts().empty());
@@ -77,6 +79,10 @@ static std::multimap<int, FeatureBA> frameReferences(const Signature & frame, in
 			cameraIndex = int(kpt.pt.x / subImageWidth);
 			UASSERT(cameraIndex < (int)models.size());
 			kpt.pt.x = kpt.pt.x - (subImageWidth*float(cameraIndex));
+		}
+		if(keep && keep->count(std::make_pair(wordId, cameraIndex)) == 0)
+		{
+			continue;
 		}
 		float depth = 0.0f;
 		if(!frame.getWords3().empty() && util3d::isFinite(frame.getWords3()[iter->second]))
@@ -335,6 +341,11 @@ Transform OdometryF2M::computeTransform(
 			// The observation of each word of the frame to use: a word seen by several
 			// cameras of the rig keeps the one with the closest 3D point
 			std::map<int, int> lastFrameWordObs;
+			// The inlier observations (word, camera) of the motion estimation, when the
+			// registration tells them apart (multi-camera): the others are not kept as
+			// bundle adjustment references nor as map observations. Null otherwise.
+			std::set<std::pair<int, int> > inlierObservations;
+			const std::set<std::pair<int, int> > * keptObservations = 0;
 			for(int guessIteration=0;
 					guessIteration<(!guess.isNull()&&regPipeline_->isImageRequired()?2:1) && transform.isNull();
 					++guessIteration)
@@ -394,6 +405,16 @@ Transform OdometryF2M::computeTransform(
 						lastFrame_->getWordsKpts(),
 						lastFrame_->getWords3(),
 						lastFrameModels.size()>1 && lastFrameModels[0].imageWidth()>0 && !lastFrame_->getWordsKpts().empty() ? lastFrameModels[0].imageWidth() : 0);
+				inlierObservations.clear();
+				keptObservations = 0;
+				for(size_t c=0; c<regInfo.inliersIDsPerCam.size(); ++c)
+				{
+					for(size_t i=0; i<regInfo.inliersIDsPerCam[c].size(); ++i)
+					{
+						inlierObservations.insert(std::make_pair(regInfo.inliersIDsPerCam[c][i], (int)c));
+					}
+					keptObservations = &inlierObservations;
+				}
 
 				UDEBUG("Registration time = %fs", regInfo.totalTime);
 				if(!transform.isNull())
@@ -495,7 +516,7 @@ Transform OdometryF2M::computeTransform(
 
 								if(lastFrameWordObs.find(wordId) != lastFrameWordObs.end())
 								{
-									std::multimap<int, FeatureBA> current = frameReferences(*lastFrame_, wordId, lastFrameModels);
+									std::multimap<int, FeatureBA> current = frameReferences(*lastFrame_, wordId, lastFrameModels, keptObservations);
 									references.insert(current.begin(), current.end());
 								}
 								wordReferences.insert(std::make_pair(wordId, references));
@@ -544,6 +565,29 @@ Transform OdometryF2M::computeTransform(
 									}
 									if(!sbaOutliers.empty())
 									{
+										// the observations it rejected are not kept either
+										for(std::set<std::pair<int, int> >::iterator oter=inlierObservations.begin(); oter!=inlierObservations.end();)
+										{
+											if(baObservationRejected(sbaOutliers, oter->first, lastFrame_->id(), oter->second))
+											{
+												oter = inlierObservations.erase(oter);
+											}
+											else
+											{
+												++oter;
+											}
+										}
+										for(size_t c=0; c<regInfo.inliersIDsPerCam.size(); ++c)
+										{
+											regInfo.inliersIDsPerCam[c].clear();
+										}
+										for(std::set<std::pair<int, int> >::const_iterator oter=inlierObservations.begin(); oter!=inlierObservations.end(); ++oter)
+										{
+											if(oter->second < (int)regInfo.inliersIDsPerCam.size())
+											{
+												regInfo.inliersIDsPerCam[oter->second].push_back(oter->first);
+											}
+										}
 										regInfo.inliersPerCam = std::vector<int>(lastFrameModels.size(),0);
 										std::vector<int> newInliers(regInfo.inliersIDs.size());
 										int oi=0;
@@ -899,11 +943,16 @@ Transform OdometryF2M::computeTransform(
 									mapWordsKpts[iterKpts->second].octave = kpt.octave;
 								}
 
+								// the observations of the word in this frame (one per camera seeing
+								// it) that are inliers of the motion estimation
+								std::multimap<int, FeatureBA> framePt = frameReferences(*lastFrame_, iter->first, lastFrameModels, keptObservations);
+								if(framePt.empty())
+								{
+									continue;
+								}
 								UASSERT(iterBundlePosesRef!=bundlePoseReferences_.end());
 								iterBundlePosesRef->second += 1;
 
-								// every observation of the word in this frame (one per camera seeing it)
-								std::multimap<int, FeatureBA> framePt = frameReferences(*lastFrame_, iter->first, lastFrameModels);
 								if(bundleWordReferences_.find(iter->first) == bundleWordReferences_.end())
 								{
 									bundleWordReferences_.insert(std::make_pair(iter->first, framePt));

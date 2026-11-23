@@ -84,6 +84,7 @@ public:
 		output.rejectedMsg = rejectedMsg;
 		output.inliers = inliers;
 		output.inliersPerCam = inliersPerCam;
+		output.inliersIDsPerCam = inliersIDsPerCam;
 		output.inliersMeanDistance = inliersMeanDistance;
 		output.inliersDistribution = inliersDistribution;
 		output.matches = matches;
@@ -119,6 +120,7 @@ public:
 	std::vector<int> matchesIDs; /**< Indices of all matches. */
 	std::vector<int> projectedIDs; /**< Source ("from") feature IDs used in projection. */
 	std::vector<int> inliersPerCam; /**< Inlier count per camera (multi-camera). */
+	std::vector<std::vector<int> > inliersIDsPerCam; /**< Inlier word IDs per camera (multi-camera): a word seen by several cameras is listed under each camera where its observation is an inlier. Empty with a single camera. */
 	std::vector<int> matchesPerCam; /**< Match count per camera (multi-camera). */
 
 	// RegistrationIcp
