@@ -51,17 +51,29 @@ public:
 	{
 		return lastGuess_;
 	}
+	const cv::Size & lastImageSize() const
+	{
+		return lastImageSize_;
+	}
+	const cv::Size & lastDepthSize() const
+	{
+		return lastDepthSize_;
+	}
 
 protected:
-	Transform computeTransform(SensorData &, const Transform & guess, OdometryInfo *) override
+	Transform computeTransform(SensorData & data, const Transform & guess, OdometryInfo *) override
 	{
 		lastGuess_ = guess;
+		lastImageSize_ = data.imageRaw().size();
+		lastDepthSize_ = data.depthRaw().size();
 		return nextTransform_;
 	}
 
 private:
 	Transform nextTransform_;
 	Transform lastGuess_;
+	cv::Size lastImageSize_;
+	cv::Size lastDepthSize_;
 };
 
 SensorData makeImageData(int id, double stamp)
@@ -191,6 +203,54 @@ TEST(OdometryTest, ProcessLostReturnsNullTransform)
 	EXPECT_TRUE(t.isNull());
 	EXPECT_TRUE(info.lost);
 	EXPECT_EQ(odometry.framesProcessed(), 0u);
+}
+
+// Odom/ImageDecimation registers the decimated frame...
+TEST(OdometryTest, ProcessRegistersTheDecimatedFrame)
+{
+	ParametersMap parameters = baseTestParameters();
+	parameters.insert(ParametersPair(Parameters::kOdomImageDecimation(), "2"));
+	MockOdometry odometry(parameters);
+	odometry.setNextTransform(Transform::getIdentity());
+
+	SensorData data(cv::Mat::zeros(32, 32, CV_8UC1), cv::Mat::zeros(32, 32, CV_16UC1),
+			CameraModel(100.0, 100.0, 16.0, 16.0, CameraModel::opticalRotation(), 0, cv::Size(32, 32)), 1, 1.0);
+	odometry.process(data);
+	EXPECT_EQ(odometry.lastImageSize(), cv::Size(16, 16));
+	EXPECT_EQ(odometry.lastDepthSize(), cv::Size(16, 16));
+}
+
+// ... unless the decimation doesn't divide the images exactly: the RGB resized by 3 would be
+// rounded (11x11 from 32x32), out of step with the depth (decimated exactly by 4 to the 10
+// rows of 32/3) and with the calibration, so the frame is registered as it is.
+TEST(OdometryTest, ProcessDoesNotDecimateImagesNotDividedExactly)
+{
+	ParametersMap parameters = baseTestParameters();
+	parameters.insert(ParametersPair(Parameters::kOdomImageDecimation(), "3"));
+	MockOdometry odometry(parameters);
+	odometry.setNextTransform(Transform::getIdentity());
+
+	SensorData data(cv::Mat::zeros(32, 32, CV_8UC1), cv::Mat::zeros(32, 32, CV_16UC1),
+			CameraModel(100.0, 100.0, 16.0, 16.0, CameraModel::opticalRotation(), 0, cv::Size(32, 32)), 1, 1.0);
+	odometry.process(data);
+	EXPECT_EQ(odometry.lastImageSize(), cv::Size(32, 32));
+	EXPECT_EQ(odometry.lastDepthSize(), cv::Size(32, 32));
+}
+
+// Same when the depth decimation wouldn't be exact: 30 rows by 3 is 10, which the depth
+// reaches decimated by 3, not dividing its 32 columns (util2d::decimate() asserts).
+TEST(OdometryTest, ProcessDoesNotDecimateWhenTheDepthDecimationIsNotExact)
+{
+	ParametersMap parameters = baseTestParameters();
+	parameters.insert(ParametersPair(Parameters::kOdomImageDecimation(), "3"));
+	MockOdometry odometry(parameters);
+	odometry.setNextTransform(Transform::getIdentity());
+
+	SensorData data(cv::Mat::zeros(30, 32, CV_8UC1), cv::Mat::zeros(30, 32, CV_16UC1),
+			CameraModel(100.0, 100.0, 16.0, 15.0, CameraModel::opticalRotation(), 0, cv::Size(32, 30)), 1, 1.0);
+	odometry.process(data);
+	EXPECT_EQ(odometry.lastImageSize(), cv::Size(32, 30));
+	EXPECT_EQ(odometry.lastDepthSize(), cv::Size(32, 30));
 }
 
 TEST(OdometryTest, DefaultCapabilityFlags)

@@ -1245,6 +1245,36 @@ cv::Mat decimate(const cv::Mat & image, int decimation)
 	return out;
 }
 
+bool isDecimationExact(
+		const cv::Mat & image,
+		const cv::Mat & depthOrRight,
+		int decimation,
+		int depthDecimation,
+		int cameraCount)
+{
+	UASSERT(cameraCount >= 1);
+	if(depthDecimation < 1)
+	{
+		// Even with an empty depth: decimate() would assert on that factor.
+		return false;
+	}
+	if(decimation > 1 && !image.empty() &&
+	   (image.rows % decimation != 0 ||
+		image.cols % cameraCount != 0 ||
+		(image.cols / cameraCount) % decimation != 0))
+	{
+		return false;
+	}
+	if(depthDecimation > 1 && !depthOrRight.empty() &&
+	   (depthOrRight.rows % depthDecimation != 0 ||
+		depthOrRight.cols % cameraCount != 0 ||
+		(depthOrRight.cols / cameraCount) % depthDecimation != 0))
+	{
+		return false;
+	}
+	return true;
+}
+
 cv::Mat interpolate(const cv::Mat & image, int factor, float depthErrorRatio)
 {
 	UASSERT_MSG(factor >= 1, uFormat("factor=%d", factor).c_str());

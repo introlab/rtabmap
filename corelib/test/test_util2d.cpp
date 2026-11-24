@@ -637,6 +637,31 @@ TEST(Util2dTest, Decimate16UDepthImage)
     EXPECT_EQ(decimated.at<uint16_t>(1,1), 1100);
 }
 
+TEST(Util2dTest, IsDecimationExact)
+{
+    const cv::Mat rgb8(8, 8, CV_8UC1);
+    const cv::Mat depth8(8, 8, CV_16UC1);
+    const cv::Mat depth4(4, 4, CV_16UC1);
+
+    EXPECT_TRUE(util2d::isDecimationExact(rgb8, depth8, 2, 2));
+    EXPECT_TRUE(util2d::isDecimationExact(rgb8, depth4, 2, 1)) << "depth already at the decimated size";
+    EXPECT_TRUE(util2d::isDecimationExact(rgb8, depth8, 1, 1));
+    EXPECT_TRUE(util2d::isDecimationExact(cv::Mat(), cv::Mat(), 3, 3)) << "nothing to decimate";
+
+    EXPECT_FALSE(util2d::isDecimationExact(rgb8, depth8, 3, 4)) << "8x8 RGB isn't divided by 3";
+    EXPECT_FALSE(util2d::isDecimationExact(rgb8, cv::Mat(6, 8, CV_16UC1), 2, 3)) << "the depth's 8 columns aren't divided by 3";
+    EXPECT_FALSE(util2d::isDecimationExact(rgb8, depth8, 2, 0)) << "no depth decimation could be computed";
+    EXPECT_FALSE(util2d::isDecimationExact(cv::Mat(), cv::Mat(), 3, 0)) << "not even with no images: decimate() asserts on 0";
+    EXPECT_TRUE(util2d::isDecimationExact(rgb8, cv::Mat(), 2, 1)) << "no depth";
+    EXPECT_TRUE(util2d::isDecimationExact(cv::Mat(), depth8, 2, 2)) << "no RGB";
+
+    // Two cameras side by side: each one's width has to be divided.
+    const cv::Mat rgbTwo(8, 12, CV_8UC1);   // two 6x8 cameras
+    const cv::Mat depthTwo(8, 12, CV_16UC1);
+    EXPECT_TRUE(util2d::isDecimationExact(rgbTwo, depthTwo, 2, 2, 2));
+    EXPECT_FALSE(util2d::isDecimationExact(rgbTwo, depthTwo, 4, 4, 2)) << "12 is divided by 4, but not each 6 columns camera";
+}
+
 TEST(Util2dTest, InterpolateFloatDepthImage)
 {
     // Create a simple 2x2 image to interpolate into 4x4

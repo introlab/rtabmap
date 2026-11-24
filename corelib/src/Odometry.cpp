@@ -789,18 +789,21 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 
 
 	Transform t;
-	if(_imageDecimation > 1 && !data.imageRaw().empty())
+	bool decimate = _imageDecimation > 1 && !data.imageRaw().empty();
+	int decimationDepth = _imageDecimation;
+	if(decimate)
 	{
-		// Decimation of images with calibrations
-		SensorData decimatedData = data;
-		int decimationDepth = _imageDecimation;
 		if(	!data.cameraModels().empty() &&
 			data.cameraModels()[0].imageHeight()>0 &&
 			data.cameraModels()[0].imageWidth()>0)
 		{
 			// decimate from RGB image size
 			int targetSize = data.cameraModels()[0].imageHeight() / _imageDecimation;
-			if(targetSize >= data.depthRaw().rows)
+			if(targetSize < 1)
+			{
+				decimationDepth = 0; // not exact, see below
+			}
+			else if(targetSize >= data.depthRaw().rows)
 			{
 				decimationDepth = 1;
 			}
@@ -809,6 +812,25 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 				decimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
 			}
 		}
+		// Both decimations have to be exact, or the images come out of step with each
+		// other and with their calibrations (or decimate() asserts on the depth).
+		int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
+		if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imageDecimation, decimationDepth, cameraCount))
+		{
+			UWARN("%s=%d doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
+					"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), they are "
+					"registered without decimation.",
+					Parameters::kOdomImageDecimation().c_str(), _imageDecimation,
+					data.imageRaw().cols, data.imageRaw().rows,
+					data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
+					decimationDepth, cameraCount);
+			decimate = false;
+		}
+	}
+	if(decimate)
+	{
+		// Decimation of images with calibrations
+		SensorData decimatedData = data;
 		UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, _imageDecimation, data.depthOrRightRaw().rows, decimationDepth);
 
 		cv::Mat rgbLeft = util2d::decimate(decimatedData.imageRaw(), _imageDecimation);

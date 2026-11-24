@@ -472,6 +472,31 @@ cv::Rect RTABMAP_CORE_EXPORT computeRoi(const cv::Size & imageSize, const std::v
 cv::Mat RTABMAP_CORE_EXPORT decimate(const cv::Mat & image, int d);
 
 /**
+ * @brief Checks that decimating an RGB-D or stereo frame is exact.
+ *
+ * Both images have to be divided exactly, for each camera when several are side by side:
+ * decimate() samples the pixels of a depth image (and asserts its size is divisible), and
+ * resizes any other image, rounding a size the factor does not divide, out of step with
+ * its calibration (CameraModel::scaled()) and with the depth.
+ *
+ * @param image The RGB (or left) image, with @p cameraCount cameras side by side.
+ * @param depthOrRight The depth (or right) image, with the same cameras side by side.
+ * @param decimation The decimation of @p image.
+ * @param depthDecimation The decimation of @p depthOrRight; 0 or less if no decimation
+ *        could be computed for it (e.g., @p decimation larger than the image), which is
+ *        never exact, even with an empty @p depthOrRight.
+ * @param cameraCount Number of cameras side by side in the images (>= 1).
+ * @return true if @p depthDecimation is at least 1 and every decimation greater than 1
+ *         divides the size of each camera's image (empty images are not checked).
+ */
+bool RTABMAP_CORE_EXPORT isDecimationExact(
+		const cv::Mat & image,
+		const cv::Mat & depthOrRight,
+		int decimation,
+		int depthDecimation,
+		int cameraCount = 1);
+
+/**
  * @brief Upsamples a depth image using bilinear interpolation with depth consistency check.
  *
  * Performs a depth-aware interpolation for CV_32FC1 or CV_16UC1 types. It checks whether

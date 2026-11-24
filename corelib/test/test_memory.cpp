@@ -3388,6 +3388,109 @@ TEST(MemoryTest, CreateSignaturePostDecimatesDepthToRgbSize)
 	EXPECT_EQ(s->sensorData().depthConfidenceRaw().size(), cv::Size(8, 8));
 }
 
+// A Mem/ImagePostDecimation that doesn't divide the RGB image is not applied: the resized
+// RGB would be rounded (3x3 from 8x8 by 3), out of step with the depth (decimated exactly
+// by 4 to the 2 rows of 8/3) and with the calibration (scaled by exactly 1/3).
+TEST(MemoryTest, CreateSignatureDoesNotPostDecimateImagesNotDividedExactly)
+{
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePreDecimation()] = "1";
+	params[Parameters::kMemImagePostDecimation()] = "3";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+	Memory memory(params);
+
+	const cv::Mat image(8, 8, CV_8UC1, cv::Scalar(64));
+	const cv::Mat depth(8, 8, CV_16UC1, cv::Scalar(1000));
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const CameraModel model(10.0, 10.0, 4.0, 4.0,
+			CameraModel::opticalRotation(), 0.0, cv::Size(8, 8));
+
+	SensorData data(image, depth, model);
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), covariance));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	EXPECT_EQ(s->sensorData().imageRaw().size(), cv::Size(8, 8));
+	EXPECT_EQ(s->sensorData().depthRaw().size(), cv::Size(8, 8));
+	ASSERT_EQ(s->sensorData().cameraModels().size(), 1u);
+	EXPECT_DOUBLE_EQ(s->sensorData().cameraModels()[0].fx(), 10.0);
+}
+
+// Same when the depth decimation wouldn't be exact: 30 rows by 3 is 10, which the depth
+// reaches decimated by 3, not dividing its 32 columns (util2d::decimate() asserts).
+TEST(MemoryTest, CreateSignatureDoesNotPostDecimateWhenTheDepthDecimationIsNotExact)
+{
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePreDecimation()] = "1";
+	params[Parameters::kMemImagePostDecimation()] = "3";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+	Memory memory(params);
+
+	const cv::Mat image(30, 32, CV_8UC1, cv::Scalar(64));
+	const cv::Mat depth(30, 32, CV_16UC1, cv::Scalar(1000));
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const CameraModel model(10.0, 10.0, 16.0, 15.0,
+			CameraModel::opticalRotation(), 0.0, cv::Size(32, 30));
+
+	SensorData data(image, depth, model);
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), covariance));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	EXPECT_EQ(s->sensorData().imageRaw().size(), cv::Size(32, 30));
+	EXPECT_EQ(s->sensorData().depthRaw().size(), cv::Size(32, 30));
+}
+
+// A frame without images, only a calibration (e.g., features from odometry), with a camera
+// smaller than Mem/ImagePostDecimation: no depth decimation can be computed (0 rows), which
+// is not exact either, rather than decimating the empty depth by 0 (decimate() asserts).
+TEST(MemoryTest, CreateSignatureDoesNotPostDecimateACalibrationSmallerThanTheDecimation)
+{
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePreDecimation()] = "1";
+	params[Parameters::kMemImagePostDecimation()] = "3";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+	Memory memory(params);
+
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const CameraModel model(10.0, 10.0, 1.0, 1.0,
+			CameraModel::opticalRotation(), 0.0, cv::Size(2, 2));
+
+	SensorData data;
+	data.setRGBDImage(cv::Mat(), cv::Mat(), std::vector<CameraModel>{model});
+	ASSERT_EQ(data.cameraModels().size(), 1u);
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), covariance));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	ASSERT_EQ(s->sensorData().cameraModels().size(), 1u);
+	EXPECT_DOUBLE_EQ(s->sensorData().cameraModels()[0].fx(), 10.0);
+}
+
+// Same for Mem/ImagePreDecimation: features are extracted without decimation instead.
+TEST(MemoryTest, CreateSignatureDoesNotPreDecimateWhenTheDecimationIsNotExact)
+{
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kKpMaxFeatures()] = "100"; // pre-decimation is done for feature extraction
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePreDecimation()] = "3";
+	params[Parameters::kMemImagePostDecimation()] = "1";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+	Memory memory(params);
+
+	const cv::Mat image(30, 32, CV_8UC1, cv::Scalar(64));
+	const cv::Mat depth(30, 32, CV_16UC1, cv::Scalar(1000));
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const CameraModel model(10.0, 10.0, 16.0, 15.0,
+			CameraModel::opticalRotation(), 0.0, cv::Size(32, 30));
+
+	SensorData data(image, depth, model);
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), covariance));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	EXPECT_EQ(s->sensorData().imageRaw().size(), cv::Size(32, 30));
+}
+
 // Exhaustive checks of the rotation logic itself (all four roll cases, marker
 // positions, dimension swaps) live in test_util2d (RotateImagesUpsideUpIfNecessary*).
 // Here we just verify that Memory actually invokes util2d::rotateImagesUpsideUpIfNecessary

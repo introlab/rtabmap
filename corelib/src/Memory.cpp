@@ -5791,7 +5791,6 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			decimatedData = data;
 			if(_imagePreDecimation > 1)
 			{
-				preDecimation = _imagePreDecimation;
 				int decimationDepth = _imagePreDecimation;
 				if(	!data.cameraModels().empty() &&
 					data.cameraModels()[0].imageHeight()>0 &&
@@ -5799,7 +5798,11 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				{
 					// decimate from RGB image size
 					int targetSize = data.cameraModels()[0].imageHeight() / _imagePreDecimation;
-					if(targetSize >= data.depthRaw().rows)
+					if(targetSize < 1)
+					{
+						decimationDepth = 0; // not exact, see below
+					}
+					else if(targetSize >= data.depthRaw().rows)
 					{
 						decimationDepth = 1;
 					}
@@ -5811,31 +5814,49 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				}
 				UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d (conf? %d)", data.imageRaw().rows, _imagePreDecimation, data.depthOrRightRaw().rows, decimationDepth, data.depthConfidenceRaw().empty()?0:1);
 
-				std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
-				for(unsigned int i=0; i<cameraModels.size(); ++i)
+				// Both decimations have to be exact, or the images come out of step with
+				// each other and with their calibrations (or decimate() asserts on the depth).
+				int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
+				if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imagePreDecimation, decimationDepth, cameraCount))
 				{
-					cameraModels[i] = cameraModels[i].scaled(1.0/double(_imagePreDecimation));
+					UWARN("%s=%d doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
+							"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), features "
+							"are extracted without decimation.",
+							Parameters::kMemImagePreDecimation().c_str(), _imagePreDecimation,
+							data.imageRaw().cols, data.imageRaw().rows,
+							data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
+							decimationDepth, cameraCount);
 				}
-				if(!cameraModels.empty())
+				else
 				{
-					decimatedData.setRGBDImage(
-							util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
-							util2d::decimate(decimatedData.depthOrRightRaw(), decimationDepth),
-							util2d::decimate(decimatedData.depthConfidenceRaw(), decimationDepth),
-							cameraModels);
-				}
+					preDecimation = _imagePreDecimation;
 
-				std::vector<StereoCameraModel> stereoCameraModels = decimatedData.stereoCameraModels();
-				for(unsigned int i=0; i<stereoCameraModels.size(); ++i)
-				{
-					stereoCameraModels[i].scale(1.0/double(_imagePreDecimation));
-				}
-				if(!stereoCameraModels.empty())
-				{
-					decimatedData.setStereoImage(
-							util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
-							util2d::decimate(decimatedData.depthOrRightRaw(), _imagePreDecimation),
-							stereoCameraModels);
+					std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
+					for(unsigned int i=0; i<cameraModels.size(); ++i)
+					{
+						cameraModels[i] = cameraModels[i].scaled(1.0/double(_imagePreDecimation));
+					}
+					if(!cameraModels.empty())
+					{
+						decimatedData.setRGBDImage(
+								util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
+								util2d::decimate(decimatedData.depthOrRightRaw(), decimationDepth),
+								util2d::decimate(decimatedData.depthConfidenceRaw(), decimationDepth),
+								cameraModels);
+					}
+
+					std::vector<StereoCameraModel> stereoCameraModels = decimatedData.stereoCameraModels();
+					for(unsigned int i=0; i<stereoCameraModels.size(); ++i)
+					{
+						stereoCameraModels[i].scale(1.0/double(_imagePreDecimation));
+					}
+					if(!stereoCameraModels.empty())
+					{
+						decimatedData.setStereoImage(
+								util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation),
+								util2d::decimate(decimatedData.depthOrRightRaw(), _imagePreDecimation),
+								stereoCameraModels);
+					}
 				}
 			}
 
@@ -5889,20 +5910,20 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
                 
                 // A: Adjust keypoint position so that descriptors are correctly extracted
                 // B: In case we provided corresponding 3D features
-                if(_imagePreDecimation > 1 || useProvided3dPoints)
+                if(preDecimation > 1 || useProvided3dPoints)
                 {
-                    float decimationRatio = 1.0f / float(_imagePreDecimation);
+                    float decimationRatio = 1.0f / float(preDecimation);
                     // The octave a feature was found at moves with the image it is
                     // expressed in, by the same ratio as its position: a decimated
                     // image is already that many pyramid levels down, so scaling the
                     // keypoints into it lowers their octave. Databases older than
                     // 0.23.12 were filled with it raised instead; see _legacyDecimatedOctave.
                     double log2value = log(double(_legacyDecimatedOctave?
-                            double(_imagePreDecimation):double(decimationRatio)))/log(2.0);
+                            double(preDecimation):double(decimationRatio)))/log(2.0);
                     for(unsigned int i=0; i < keypoints.size(); ++i)
                     {
                         cv::KeyPoint & kpt = keypoints[i];
-                        if(_imagePreDecimation > 1)
+                        if(preDecimation > 1)
                         {
                             kpt.pt.x *= decimationRatio;
                             kpt.pt.y *= decimationRatio;
@@ -6494,6 +6515,52 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UDEBUG("id %d is a bad signature", id);
 	}
 
+	// The post-decimation actually applied: Mem/ImagePostDecimation, unless it doesn't
+	// divide the images exactly (then they are saved as they are). Decided here, as the
+	// keypoints are remapped below to the size of the images saved.
+	int postDecimation = 1;
+	int postDecimationDepth = 1;
+	if(_imagePostDecimation > 1 && isDataKept)
+	{
+		postDecimation = _imagePostDecimation;
+		if(!(postDecimation == (int)preDecimation && decimatedData.isValid()))
+		{
+			postDecimationDepth = _imagePostDecimation;
+			if(	!data.cameraModels().empty() &&
+				data.cameraModels()[0].imageHeight()>0 &&
+				data.cameraModels()[0].imageWidth()>0)
+			{
+				// decimate from RGB image size
+				int targetSize = data.cameraModels()[0].imageHeight() / _imagePostDecimation;
+				if(targetSize < 1)
+				{
+					postDecimationDepth = 0; // not exact, see below
+				}
+				else if(targetSize >= data.depthRaw().rows)
+				{
+					postDecimationDepth = 1;
+				}
+				else
+				{
+					postDecimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
+				}
+			}
+			int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
+			if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imagePostDecimation, postDecimationDepth, cameraCount))
+			{
+				UWARN("%s=%d doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
+						"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), they are "
+						"saved without decimation.",
+						Parameters::kMemImagePostDecimation().c_str(), _imagePostDecimation,
+						data.imageRaw().cols, data.imageRaw().rows,
+						data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
+						postDecimationDepth, cameraCount);
+				postDecimation = 1;
+				postDecimationDepth = 1;
+			}
+		}
+	}
+
 	std::multimap<int, int> words;
 	std::vector<cv::KeyPoint> wordsKpts;
 	std::vector<cv::Point3f> words3D;
@@ -6505,12 +6572,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UASSERT(descriptors.rows == 0 || descriptors.rows == (int)wordIds.size());
 		UASSERT(keypoints3D.size() == 0 || keypoints3D.size() == wordIds.size());
 		unsigned int i=0;
-		float decimationRatio = float(preDecimation) / float(_imagePostDecimation);
+		float decimationRatio = float(preDecimation) / float(postDecimation);
 		double log2value = log(double(decimationRatio))/log(2.0);
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
 			cv::KeyPoint kpt = keypoints[i];
-			if(preDecimation != _imagePostDecimation && isDataKept)
+			if((int)preDecimation != postDecimation && isDataKept)
 			{
 				// remap keypoints to final image size
 				kpt.pt.x *= decimationRatio;
@@ -6615,9 +6682,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	std::vector<StereoCameraModel> stereoCameraModels = data.stereoCameraModels();
 
 	// apply decimation?
-	if(_imagePostDecimation > 1 && isDataKept)
+	if(postDecimation > 1)
 	{
-		if(_imagePostDecimation == preDecimation && decimatedData.isValid())
+		if(postDecimation == (int)preDecimation && decimatedData.isValid())
 		{
 			image = decimatedData.imageRaw();
 			depthOrRightImage = decimatedData.depthOrRightRaw();
@@ -6627,34 +6694,18 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 		else
 		{
-			int decimationDepth = _imagePostDecimation;
-			if(	!data.cameraModels().empty() &&
-				data.cameraModels()[0].imageHeight()>0 &&
-				data.cameraModels()[0].imageWidth()>0)
-			{
-				// decimate from RGB image size
-				int targetSize = data.cameraModels()[0].imageHeight() / _imagePostDecimation;
-				if(targetSize >= data.depthRaw().rows)
-				{
-					decimationDepth = 1;
-				}
-				else
-				{
-					decimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
-				}
-			}
-			UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, _imagePostDecimation, data.depthOrRightRaw().rows, decimationDepth);
+			UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, postDecimation, data.depthOrRightRaw().rows, postDecimationDepth);
 
-			depthOrRightImage = util2d::decimate(depthOrRightImage, decimationDepth);
-			depthConfidence = util2d::decimate(depthConfidence, decimationDepth);
-			image = util2d::decimate(image, _imagePostDecimation);
+			depthOrRightImage = util2d::decimate(depthOrRightImage, postDecimationDepth);
+			depthConfidence = util2d::decimate(depthConfidence, postDecimationDepth);
+			image = util2d::decimate(image, postDecimation);
 			for(unsigned int i=0; i<cameraModels.size(); ++i)
 			{
-				cameraModels[i] = cameraModels[i].scaled(1.0/double(_imagePostDecimation));
+				cameraModels[i] = cameraModels[i].scaled(1.0/double(postDecimation));
 			}
 			for(unsigned int i=0; i<stereoCameraModels.size(); ++i)
 			{
-				stereoCameraModels[i].scale(1.0/double(_imagePostDecimation));
+				stereoCameraModels[i].scale(1.0/double(postDecimation));
 			}
 		}
 
