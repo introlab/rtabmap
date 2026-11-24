@@ -1036,7 +1036,7 @@ private:
 	// Compressed data
 	cv::Mat _imageCompressed; ///< Compressed RGB/grayscale image (CV_8UC1 with 1 row, JPEG/PNG-compressed bytes)
 	cv::Mat _depthOrRightCompressed; ///< Compressed depth or right stereo image (CV_8UC1 with 1 row, PNG/RVL-compressed bytes)
-	cv::Mat _depthConfidenceCompressed; ///< Compressed depth confidence map (CV_8UC1 with 1 row, PNG-compressed bytes)
+	cv::Mat _depthConfidenceCompressed; ///< Compressed depth confidence map (CV_8UC1 with 1 row, ZIP-compressed bytes, see compressData2())
 	LaserScan _laserScanCompressed; ///< Compressed laser scan (ZIP-compressed bytes)
 
 	// Raw data

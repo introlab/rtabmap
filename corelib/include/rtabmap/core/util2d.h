@@ -47,6 +47,8 @@ namespace rtabmap
  * @brief 2D image utilities: disparity and depth conversion, interpolation,
  *        decimation, sub-pixel refinement and similarity measures.
  */
+class SensorData;
+
 namespace util2d
 {
 
@@ -472,6 +474,59 @@ cv::Rect RTABMAP_CORE_EXPORT computeRoi(const cv::Size & imageSize, const std::v
 cv::Mat RTABMAP_CORE_EXPORT decimate(const cv::Mat & image, int d);
 
 /**
+ * @brief Depth (or right image) decimation for an exact decimation of an RGB-D or stereo frame.
+ *
+ * Both images have to be divided exactly, for each camera when several are side by side:
+ * decimate() samples the pixels of a depth image (and asserts its size is divisible), and
+ * resizes any other image, rounding a size the factor does not divide, out of step with
+ * its calibration (CameraModel::scaled()) and with the depth.
+ *
+ * The depth of an RGB-D frame is decimated only to be at most as big as the decimated RGB
+ * image: by the smallest factor bringing its height down to the decimated RGB height (1 if
+ * it already is), or, when that factor doesn't divide the depth while @p decimation does
+ * (leaving the depth smaller than the decimated RGB), by @p decimation (e.g. a 848x480
+ * depth with a 1280x720 RGB decimated by 4: 3 reaches the 180 rows but doesn't divide 848
+ * columns, 4 does). The right image of a stereo frame is decimated like the left one.
+ *
+ * @param image The RGB (or left) image, with @p cameraCount cameras side by side (may be
+ *        empty, e.g. a frame with only features and a calibration: not checked).
+ * @param depthOrRight The depth (or right) image, with the same cameras side by side.
+ * @param imageHeight Height of the RGB image (of each camera), from its calibration; 0 or
+ *        less for a stereo frame or an unknown size (@p depthOrRight is then decimated by
+ *        @p decimation).
+ * @param decimation The decimation of @p image (>= 1).
+ * @param cameraCount Number of cameras side by side in the images (>= 1).
+ * @return The decimation of @p depthOrRight (>= 1), or 0 if the frame can't be decimated
+ *         exactly: @p decimation doesn't divide @p image, no depth decimation can be
+ *         computed (@p decimation larger than @p imageHeight, even with an empty depth),
+ *         or it doesn't divide @p depthOrRight.
+ */
+int RTABMAP_CORE_EXPORT exactDepthDecimation(
+		const cv::Mat & image,
+		const cv::Mat & depthOrRight,
+		int imageHeight,
+		int decimation,
+		int cameraCount = 1);
+
+/**
+ * @brief Decimates the images of a frame in place, with their calibrations and features.
+ *
+ * The RGB (or left) image is decimated by @p decimation, the depth (or right image) and
+ * the depth confidence by exactDepthDecimation(), the camera models are scaled accordingly
+ * (CameraModel::scaled(), StereoCameraModel::scale()), and the features that came with the
+ * frame, placed in the full size image, are brought along: position and size divided by
+ * @p decimation, octave lowered by log2(@p decimation) but never below 0 (ORB refuses a
+ * negative octave). Their 3D positions and descriptors are kept.
+ *
+ * @param[in,out] data The frame, left untouched if it can't be decimated exactly.
+ * @param decimation The decimation of the RGB (or left) image (>= 1).
+ * @return true if the frame was decimated, or if there was nothing to decimate
+ *         (@p decimation of 1, or no image); false if the decimation is not exact (see
+ *         exactDepthDecimation()), @p data being then left as it is.
+ */
+bool RTABMAP_CORE_EXPORT decimateImages(SensorData & data, int decimation);
+
+/**
  * @brief Upsamples a depth image using bilinear interpolation with depth consistency check.
  *
  * Performs a depth-aware interpolation for CV_32FC1 or CV_16UC1 types. It checks whether
@@ -795,6 +850,7 @@ std::vector<int> RTABMAP_CORE_EXPORT SSC(
  * @param[in,out] model The camera model associated with the images. It will be updated to reflect the new orientation.
  * @param[in,out] rgb   The RGB image to be rotated if necessary.
  * @param[in,out] depth The depth image to be rotated if necessary.
+ * @param[in,out] depthConfidence The depth confidence map (same size as @p depth) to be rotated with the depth, if any.
  *
  * @return True if the images were rotated, false if no rotation was needed or the pitch angle is too large for a reliable decision.
  *
@@ -808,6 +864,15 @@ std::vector<int> RTABMAP_CORE_EXPORT SSC(
  * @warning This function assumes that the camera's local transform includes the standard optical rotation.
  *
  * @see rtabmap::CameraModel, cv::transpose, cv::flip
+ */
+bool RTABMAP_CORE_EXPORT rotateImagesUpsideUpIfNecessary(
+	CameraModel & model,
+	cv::Mat & rgb,
+	cv::Mat & depth,
+	cv::Mat & depthConfidence);
+
+/**
+ * @brief Same as rotateImagesUpsideUpIfNecessary(CameraModel &, cv::Mat &, cv::Mat &, cv::Mat &), without depth confidence.
  */
 bool RTABMAP_CORE_EXPORT rotateImagesUpsideUpIfNecessary(
 	CameraModel & model,
