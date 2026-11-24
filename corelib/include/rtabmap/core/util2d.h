@@ -820,6 +820,7 @@ std::vector<int> RTABMAP_CORE_EXPORT SSC(
  * @param[in,out] model The camera model associated with the images. It will be updated to reflect the new orientation.
  * @param[in,out] rgb   The RGB image to be rotated if necessary.
  * @param[in,out] depth The depth image to be rotated if necessary.
+ * @param[in,out] depthConfidence The depth confidence map (same size as @p depth) to be rotated with the depth, if any.
  *
  * @return True if the images were rotated, false if no rotation was needed or the pitch angle is too large for a reliable decision.
  *
@@ -833,6 +834,15 @@ std::vector<int> RTABMAP_CORE_EXPORT SSC(
  * @warning This function assumes that the camera's local transform includes the standard optical rotation.
  *
  * @see rtabmap::CameraModel, cv::transpose, cv::flip
+ */
+bool RTABMAP_CORE_EXPORT rotateImagesUpsideUpIfNecessary(
+	CameraModel & model,
+	cv::Mat & rgb,
+	cv::Mat & depth,
+	cv::Mat & depthConfidence);
+
+/**
+ * @brief Same as rotateImagesUpsideUpIfNecessary(CameraModel &, cv::Mat &, cv::Mat &, cv::Mat &), without depth confidence.
  */
 bool RTABMAP_CORE_EXPORT rotateImagesUpsideUpIfNecessary(
 	CameraModel & model,

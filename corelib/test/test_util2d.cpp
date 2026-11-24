@@ -1392,6 +1392,34 @@ TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryRotation90Degrees) {
     EXPECT_NEAR(yaw, 0.0f, 1e-5);
 }
 
+// The depth confidence map is rotated with the depth (same 90 CW case as above).
+TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryRotatesDepthConfidence) {
+    Transform rot = Transform(0,0,0, M_PI / 2, 0, 0);
+    CameraModel model(500, 500, 320, 240, rot*CameraModel::opticalRotation(), 0, cv::Size(640, 480));
+    cv::Mat rgb(480, 640, CV_8UC1, cv::Scalar(150));
+    cv::Mat depth(480, 640, CV_16UC1, cv::Scalar(1000));
+    cv::Mat confidence(480, 640, CV_8UC1, cv::Scalar(50));
+    depth.at<uint16_t>(100, 200) = 2000;
+    confidence.at<uint8_t>(100, 200) = 99;
+
+    EXPECT_TRUE(util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth, confidence));
+
+    EXPECT_EQ(depth.size(), cv::Size(480, 640));
+    ASSERT_EQ(confidence.size(), cv::Size(480, 640));
+    EXPECT_EQ(depth.at<uint16_t>(200, 379), 2000);
+    EXPECT_EQ(confidence.at<uint8_t>(200, 379), 99);
+    EXPECT_EQ(confidence.at<uint8_t>(100, 200), 50);
+
+    // Without confidence, the overload rotates the images the same way.
+    cv::Mat rgb2(480, 640, CV_8UC1, cv::Scalar(150));
+    cv::Mat depth2(480, 640, CV_16UC1, cv::Scalar(1000));
+    cv::Mat noConfidence;
+    CameraModel model2(500, 500, 320, 240, rot*CameraModel::opticalRotation(), 0, cv::Size(640, 480));
+    EXPECT_TRUE(util2d::rotateImagesUpsideUpIfNecessary(model2, rgb2, depth2, noConfidence));
+    EXPECT_EQ(depth2.size(), cv::Size(480, 640));
+    EXPECT_TRUE(noConfidence.empty());
+}
+
 TEST(Util2dTest, RotateImagesUpsideUpIfNecessaryRotation180Degrees) {
     // Simulate pi roll (camera upside down) -> 180 rotation:
     //   flip(1) + flip(0). For (100, 200) in 480x640:

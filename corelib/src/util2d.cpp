@@ -2494,6 +2494,17 @@ bool rotateImagesUpsideUpIfNecessary(
 	cv::Mat & rgb,
 	cv::Mat & depth)
 {
+	cv::Mat depthConfidence;
+	return rotateImagesUpsideUpIfNecessary(model, rgb, depth, depthConfidence);
+}
+
+bool rotateImagesUpsideUpIfNecessary(
+	CameraModel & model,
+	cv::Mat & rgb,
+	cv::Mat & depth,
+	cv::Mat & depthConfidence)
+{
+	UASSERT(depthConfidence.empty() || depth.empty() || depthConfidence.size() == depth.size());
 	float roll,pitch,yaw;
 	// remove optical rotation
 	Transform localTransform = model.localTransform()*CameraModel::opticalRotation().inverse();
@@ -2534,6 +2545,11 @@ bool rotateImagesUpsideUpIfNecessary(
 			cv::transpose(depth,depth);
 			cv::flip(depth,depth,1);
 		}
+		if(!depthConfidence.empty())
+		{
+			cv::transpose(depthConfidence,depthConfidence);
+			cv::flip(depthConfidence,depthConfidence,1);
+		}
 		cv::Size sizet(model.imageHeight(), model.imageWidth());
 		model = CameraModel(
 				model.fy(),
@@ -2563,6 +2579,11 @@ bool rotateImagesUpsideUpIfNecessary(
 		{
 			cv::flip(depth,depth,1);
 			cv::flip(depth,depth,0);
+		}
+		if(!depthConfidence.empty())
+		{
+			cv::flip(depthConfidence,depthConfidence,1);
+			cv::flip(depthConfidence,depthConfidence,0);
 		}
 		cv::Size sizet(model.imageWidth(), model.imageHeight());
 		model = CameraModel(
@@ -2598,6 +2619,11 @@ bool rotateImagesUpsideUpIfNecessary(
 		{
 			cv::flip(depth,depth,1);
 			cv::transpose(depth,depth);
+		}
+		if(!depthConfidence.empty())
+		{
+			cv::flip(depthConfidence,depthConfidence,1);
+			cv::transpose(depthConfidence,depthConfidence);
 		}
 		cv::Size sizet(model.imageHeight(), model.imageWidth());
 		model = CameraModel(

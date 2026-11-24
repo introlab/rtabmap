@@ -817,13 +817,18 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
 		if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imageDecimation, decimationDepth, cameraCount))
 		{
-			UWARN("%s=%d doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
-					"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), they are "
-					"registered without decimation.",
-					Parameters::kOdomImageDecimation().c_str(), _imageDecimation,
-					data.imageRaw().cols, data.imageRaw().rows,
-					data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
-					decimationDepth, cameraCount);
+			static bool warned = false;
+			if(!warned)
+			{
+				UWARN("%s=%u doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
+						"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), they are "
+						"registered without decimation. This warning is only printed once.",
+						Parameters::kOdomImageDecimation().c_str(), _imageDecimation,
+						data.imageRaw().cols, data.imageRaw().rows,
+						data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
+						decimationDepth, cameraCount);
+				warned = true;
+			}
 			decimate = false;
 		}
 	}

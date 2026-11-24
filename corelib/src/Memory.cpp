@@ -5440,30 +5440,40 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		// and if we don't use it for local occupancy grid
 		bool needRawScan = true;
 
+		// The depth confidence is only needed raw to be rotated or post-decimated with the depth
+		bool needRawDepthConfidence = needRawImages && (_imagePostDecimation > 1 || _rotateImagesUpsideUp) &&
+			data.depthConfidenceRaw().empty() && !data.depthConfidenceCompressed().empty();
+
 		if( (needRawImages && data.imageRaw().empty() && !data.imageCompressed().empty()) ||
 			(needRawImages && data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty()) ||
+			needRawDepthConfidence ||
 			(needRawScan && data.laserScanRaw().empty() && !data.laserScanCompressed().empty()))
 		{
-			cv::Mat left, right;
+			cv::Mat left, right, depthConfidence;
 			LaserScan laserScan;
 			UDEBUG("Uncompressing data...");
 			data.uncompressData(
 				needRawImages && data.imageRaw().empty() && !data.imageCompressed().empty() ? &left : 0,
 				needRawImages && data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty() ? &right : 0,
-				needRawScan && data.laserScanRaw().empty() && !data.laserScanCompressed().empty() ? &laserScan : 0);
+				needRawScan && data.laserScanRaw().empty() && !data.laserScanCompressed().empty() ? &laserScan : 0,
+				0, 0, 0, 0,
+				needRawDepthConfidence ? &depthConfidence : 0);
 			UDEBUG("Uncompressing data...done!");
 		}
 	}
-	else if(isDataKept && _imagePostDecimation > 1 &&
+	else if(isDataKept && this->isBinDataKept() && _imagePostDecimation > 1 &&
 		((data.imageRaw().empty() && !data.imageCompressed().empty()) ||
-		 (data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty())))
+		 (data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty()) ||
+		 (data.depthConfidenceRaw().empty() && !data.depthConfidenceCompressed().empty())))
 	{
-		// Intermediate node with data kept: we need raw images to post-decimate them
-		cv::Mat left, right;
+		// Intermediate node with data saved: we need raw images to post-decimate them
+		cv::Mat left, right, depthConfidence;
 		UDEBUG("Uncompressing images of intermediate node...");
 		data.uncompressData(
 			data.imageRaw().empty() && !data.imageCompressed().empty() ? &left : 0,
-			data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty() ? &right : 0);
+			data.depthOrRightRaw().empty() && !data.depthOrRightCompressed().empty() ? &right : 0,
+			0, 0, 0, 0, 0,
+			data.depthConfidenceRaw().empty() && !data.depthConfidenceCompressed().empty() ? &depthConfidence : 0);
 		UDEBUG("Uncompressing images of intermediate node...done!");
 	}
 
@@ -5689,10 +5699,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
 		int subInputImageWidth = data.imageRaw().cols/data.cameraModels().size();
 		int subInputDepthWidth = data.depthRaw().cols/data.cameraModels().size();
+		int subInputDepthConfidenceWidth = data.depthConfidenceRaw().cols/data.cameraModels().size();
 		int subOutputImageWidth = 0;
 		int subOutputDepthWidth = 0;
 		cv::Mat rotatedColorImages;
 		cv::Mat rotatedDepthImages;
+		cv::Mat rotatedDepthConfidences;
 		std::vector<CameraModel> rotatedCameraModels;
 		bool allOutputSizesAreOkay = true;
 		bool atLeastOneCameraRotated = false;
@@ -5701,8 +5713,9 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			UDEBUG("Rotating camera %ld", i);
 			cv::Mat rgb = cv::Mat(data.imageRaw(), cv::Rect(subInputImageWidth*i, 0, subInputImageWidth, data.imageRaw().rows));
 			cv::Mat depth = !data.depthRaw().empty()?cv::Mat(data.depthRaw(), cv::Rect(subInputDepthWidth*i, 0, subInputDepthWidth, data.depthRaw().rows)):cv::Mat();
+			cv::Mat depthConfidence = !data.depthConfidenceRaw().empty()?cv::Mat(data.depthConfidenceRaw(), cv::Rect(subInputDepthConfidenceWidth*i, 0, subInputDepthConfidenceWidth, data.depthConfidenceRaw().rows)):cv::Mat();
 			CameraModel model = data.cameraModels()[i];
-			atLeastOneCameraRotated |= util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth);
+			atLeastOneCameraRotated |= util2d::rotateImagesUpsideUpIfNecessary(model, rgb, depth, depthConfidence);
 			if(rotatedColorImages.empty())
 			{
 				rotatedColorImages = cv::Mat(cv::Size(rgb.cols * data.cameraModels().size(), rgb.rows), rgb.type());
@@ -5711,6 +5724,10 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				{
 					rotatedDepthImages = cv::Mat(cv::Size(depth.cols * data.cameraModels().size(), depth.rows), depth.type());
 					subOutputDepthWidth = depth.cols;
+				}
+				if(!depthConfidence.empty())
+				{
+					rotatedDepthConfidences = cv::Mat(cv::Size(depthConfidence.cols * data.cameraModels().size(), depthConfidence.rows), depthConfidence.type());
 				}
 			}
 			else if(rgb.cols != subOutputImageWidth || depth.cols != subOutputDepthWidth ||
@@ -5734,11 +5751,16 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			{
 				depth.copyTo(cv::Mat(rotatedDepthImages, cv::Rect(subOutputDepthWidth*i, 0, subOutputDepthWidth, depth.rows)));
 			}
+			if(!depthConfidence.empty())
+			{
+				// Same size as the depth (asserted by rotateImagesUpsideUpIfNecessary())
+				depthConfidence.copyTo(cv::Mat(rotatedDepthConfidences, cv::Rect(subOutputDepthWidth*i, 0, subOutputDepthWidth, depthConfidence.rows)));
+			}
 			rotatedCameraModels.push_back(model);
 		}
 		if(allOutputSizesAreOkay && atLeastOneCameraRotated)
 		{
-			data.setRGBDImage(rotatedColorImages, rotatedDepthImages, rotatedCameraModels);
+			data.setRGBDImage(rotatedColorImages, rotatedDepthImages, rotatedDepthConfidences, rotatedCameraModels);
 
 			// Clear any features to avoid confusion with the rotated cameras.
 			if(!data.keypoints().empty() || !data.keypoints3D().empty() || !data.descriptors().empty())
@@ -5819,13 +5841,18 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
 				if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imagePreDecimation, decimationDepth, cameraCount))
 				{
-					UWARN("%s=%d doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
-							"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), features "
-							"are extracted without decimation.",
-							Parameters::kMemImagePreDecimation().c_str(), _imagePreDecimation,
-							data.imageRaw().cols, data.imageRaw().rows,
-							data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
-							decimationDepth, cameraCount);
+					static bool warned = false;
+					if(!warned)
+					{
+						UWARN("%s=%u doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
+								"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), features "
+								"are extracted without decimation. This warning is only printed once.",
+								Parameters::kMemImagePreDecimation().c_str(), _imagePreDecimation,
+								data.imageRaw().cols, data.imageRaw().rows,
+								data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
+								decimationDepth, cameraCount);
+						warned = true;
+					}
 				}
 				else
 				{
@@ -6548,13 +6575,18 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
 			if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imagePostDecimation, postDecimationDepth, cameraCount))
 			{
-				UWARN("%s=%d doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
-						"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), they are "
-						"saved without decimation.",
-						Parameters::kMemImagePostDecimation().c_str(), _imagePostDecimation,
-						data.imageRaw().cols, data.imageRaw().rows,
-						data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
-						postDecimationDepth, cameraCount);
+				static bool warned = false;
+				if(!warned)
+				{
+					UWARN("%s=%u doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
+							"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), they are "
+							"saved without decimation. This warning is only printed once.",
+							Parameters::kMemImagePostDecimation().c_str(), _imagePostDecimation,
+							data.imageRaw().cols, data.imageRaw().rows,
+							data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
+							postDecimationDepth, cameraCount);
+					warned = true;
+				}
 				postDecimation = 1;
 				postDecimationDepth = 1;
 			}

@@ -253,6 +253,22 @@ TEST(OdometryTest, ProcessDoesNotDecimateWhenTheDepthDecimationIsNotExact)
 	EXPECT_EQ(odometry.lastDepthSize(), cv::Size(32, 30));
 }
 
+// Same with a camera smaller than Odom/ImageDecimation: no depth decimation can be
+// computed (0 rows), which is not exact either, rather than dividing by 0.
+TEST(OdometryTest, ProcessDoesNotDecimateACalibrationSmallerThanTheDecimation)
+{
+	ParametersMap parameters = baseTestParameters();
+	parameters.insert(ParametersPair(Parameters::kOdomImageDecimation(), "3"));
+	MockOdometry odometry(parameters);
+	odometry.setNextTransform(Transform::getIdentity());
+
+	SensorData data(cv::Mat::zeros(2, 2, CV_8UC1), cv::Mat::zeros(2, 2, CV_16UC1),
+			CameraModel(100.0, 100.0, 1.0, 1.0, CameraModel::opticalRotation(), 0, cv::Size(2, 2)), 1, 1.0);
+	odometry.process(data);
+	EXPECT_EQ(odometry.lastImageSize(), cv::Size(2, 2));
+	EXPECT_EQ(odometry.lastDepthSize(), cv::Size(2, 2));
+}
+
 TEST(OdometryTest, DefaultCapabilityFlags)
 {
 	MockOdometry odometry(baseTestParameters());
