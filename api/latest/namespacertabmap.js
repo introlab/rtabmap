@@ -19,6 +19,8 @@ var namespacertabmap =
       [ "computeRoi", "group__RoiComputation.html#ga81d9f49d117d02494c7ff57f5d426b15", null ],
       [ "computeRoi", "group__RoiComputation.html#ga56fed8ce688e8e9eb3b1f74ad0febcef", null ],
       [ "decimate", "namespacertabmap_1_1util2d.html#a0b545a9f852684afb0a6d8f835f9eaf2", null ],
+      [ "exactDepthDecimation", "namespacertabmap_1_1util2d.html#ac4e23515b1a09e3cde652ff9b26b8e81", null ],
+      [ "decimateImages", "namespacertabmap_1_1util2d.html#a123253b775842d6c49c05ef9b90aeb3d", null ],
       [ "interpolate", "namespacertabmap_1_1util2d.html#afc241016af8396edf5228dbe9e80ee8d", null ],
       [ "registerDepth", "namespacertabmap_1_1util2d.html#a48a7e15282f392e77561dd96ed3320f9", null ],
       [ "fillDepthHoles", "namespacertabmap_1_1util2d.html#aeb3dee2cf6484f0b224d4687899cb004", null ],
@@ -31,6 +33,7 @@ var namespacertabmap =
       [ "HSVtoRGB", "namespacertabmap_1_1util2d.html#ac29ac5b8bed26a5299d378708170dd11", null ],
       [ "NMS", "namespacertabmap_1_1util2d.html#aafa9a426c8e7dd0359adf40e1b45ee1c", null ],
       [ "SSC", "namespacertabmap_1_1util2d.html#aa6957971e17f27bb066efe036d80fd46", null ],
+      [ "rotateImagesUpsideUpIfNecessary", "namespacertabmap_1_1util2d.html#a40b2b9158342090f0afb5c54f2f6a9df", null ],
       [ "rotateImagesUpsideUpIfNecessary", "namespacertabmap_1_1util2d.html#a1577494ad9730181d5b768ca8237d5dd", null ]
     ] ],
     [ "util3d", "namespacertabmap_1_1util3d.html", [
