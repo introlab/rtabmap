@@ -5815,31 +5815,19 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			if(_imagePreDecimation > 1)
 			{
 				int decimationDepth = _imagePreDecimation;
+				int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
 				if(	!data.cameraModels().empty() &&
 					data.cameraModels()[0].imageHeight()>0 &&
 					data.cameraModels()[0].imageWidth()>0)
 				{
 					// decimate from RGB image size
-					int targetSize = data.cameraModels()[0].imageHeight() / _imagePreDecimation;
-					if(targetSize < 1)
-					{
-						decimationDepth = 0; // not exact, see below
-					}
-					else if(targetSize >= data.depthRaw().rows)
-					{
-						decimationDepth = 1;
-					}
-					else
-					{
-						decimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
-						UASSERT(data.depthConfidenceRaw().empty() || data.depthConfidenceRaw().size() == data.depthRaw().size());
-					}
+					decimationDepth = util2d::depthDecimation(data.depthRaw(), data.cameraModels()[0].imageHeight(), _imagePreDecimation, cameraCount);
+					UASSERT(data.depthConfidenceRaw().empty() || data.depthConfidenceRaw().size() == data.depthRaw().size());
 				}
 				UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d (conf? %d)", data.imageRaw().rows, _imagePreDecimation, data.depthOrRightRaw().rows, decimationDepth, data.depthConfidenceRaw().empty()?0:1);
 
 				// Both decimations have to be exact, or the images come out of step with
 				// each other and with their calibrations (or decimate() asserts on the depth).
-				int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
 				if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imagePreDecimation, decimationDepth, cameraCount))
 				{
 					static bool warned = false;
@@ -6554,26 +6542,14 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		if(!(postDecimation == (int)preDecimation && decimatedData.isValid()))
 		{
 			postDecimationDepth = _imagePostDecimation;
+			int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
 			if(	!data.cameraModels().empty() &&
 				data.cameraModels()[0].imageHeight()>0 &&
 				data.cameraModels()[0].imageWidth()>0)
 			{
 				// decimate from RGB image size
-				int targetSize = data.cameraModels()[0].imageHeight() / _imagePostDecimation;
-				if(targetSize < 1)
-				{
-					postDecimationDepth = 0; // not exact, see below
-				}
-				else if(targetSize >= data.depthRaw().rows)
-				{
-					postDecimationDepth = 1;
-				}
-				else
-				{
-					postDecimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
-				}
+				postDecimationDepth = util2d::depthDecimation(data.depthRaw(), data.cameraModels()[0].imageHeight(), _imagePostDecimation, cameraCount);
 			}
-			int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
 			if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imagePostDecimation, postDecimationDepth, cameraCount))
 			{
 				static bool warned = false;

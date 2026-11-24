@@ -1245,6 +1245,39 @@ cv::Mat decimate(const cv::Mat & image, int decimation)
 	return out;
 }
 
+int depthDecimation(
+		const cv::Mat & depthOrRight,
+		int imageHeight,
+		int decimation,
+		int cameraCount)
+{
+	UASSERT(decimation >= 1);
+	UASSERT(cameraCount >= 1);
+	int targetHeight = imageHeight / decimation;
+	if(targetHeight < 1)
+	{
+		// Decimation larger than the image: no depth decimation can be computed
+		return 0;
+	}
+	if(targetHeight >= depthOrRight.rows)
+	{
+		// Already at most as big as the decimated image
+		return 1;
+	}
+	int depthDecimation = (int)ceil(float(depthOrRight.rows) / float(targetHeight));
+	if(depthDecimation < decimation &&
+	   !isDecimationExact(cv::Mat(), depthOrRight, 1, depthDecimation, cameraCount) &&
+	   isDecimationExact(cv::Mat(), depthOrRight, 1, decimation, cameraCount))
+	{
+		// The smallest factor doesn't divide the depth, but the image's one does, leaving
+		// the depth smaller than the decimated image (e.g. a 848x480 depth with a 1280x720
+		// image decimated by 4: the 180 rows are reached by 3, which doesn't divide 848
+		// columns, while 4 gives 212x120).
+		return decimation;
+	}
+	return depthDecimation;
+}
+
 bool isDecimationExact(
 		const cv::Mat & image,
 		const cv::Mat & depthOrRight,

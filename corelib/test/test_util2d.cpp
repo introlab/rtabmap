@@ -637,6 +637,27 @@ TEST(Util2dTest, Decimate16UDepthImage)
     EXPECT_EQ(decimated.at<uint16_t>(1,1), 1100);
 }
 
+TEST(Util2dTest, DepthDecimation)
+{
+    const cv::Mat depth16(16, 16, CV_16UC1);
+    EXPECT_EQ(util2d::depthDecimation(depth16, 16, 2), 2) << "depth as big as the image: same factor";
+    EXPECT_EQ(util2d::depthDecimation(cv::Mat(8, 8, CV_16UC1), 16, 2), 1) << "depth already at the decimated size";
+    EXPECT_EQ(util2d::depthDecimation(cv::Mat(4, 4, CV_16UC1), 16, 2), 1) << "depth smaller than the decimated size";
+    EXPECT_EQ(util2d::depthDecimation(cv::Mat(32, 32, CV_16UC1), 16, 2), 4) << "depth bigger than the image";
+    EXPECT_EQ(util2d::depthDecimation(depth16, 2, 3), 0) << "image smaller than the factor: no decimation can be computed";
+    EXPECT_EQ(util2d::depthDecimation(cv::Mat(), 16, 2), 1) << "no depth";
+
+    // RealSense D435 defaults: 1280x720 color, 848x480 depth, decimated by 4. The depth
+    // reaches the 180 rows of the decimated color decimated by 3, which doesn't divide
+    // its 848 columns: the factor itself does (212x120, still smaller than 320x180).
+    const cv::Mat d435(480, 848, CV_16UC1);
+    EXPECT_EQ(util2d::depthDecimation(d435, 720, 4), 4);
+    EXPECT_EQ(util2d::depthDecimation(d435, 720, 3), 2) << "the 240 rows are reached by 2, which divides the depth";
+    EXPECT_EQ(util2d::depthDecimation(cv::Mat(480, 850, CV_16UC1), 720, 4), 3) << "neither 3 nor 4 divides 850 columns: not exact, left to the caller";
+    EXPECT_EQ(util2d::depthDecimation(cv::Mat(480, 1696, CV_16UC1), 720, 4, 2), 4) << "two D435 side by side";
+    EXPECT_EQ(util2d::depthDecimation(cv::Mat(30, 30, CV_16UC1), 16, 2), 4) << "the factor (2) would leave the depth (15 rows) bigger than the decimated image (8 rows): not used";
+}
+
 TEST(Util2dTest, IsDecimationExact)
 {
     const cv::Mat rgb8(8, 8, CV_8UC1);

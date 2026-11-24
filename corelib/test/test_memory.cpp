@@ -3388,6 +3388,61 @@ TEST(MemoryTest, CreateSignaturePostDecimatesCompressedDepthConfidence)
 	}
 }
 
+// A RealSense D435 at its defaults (1280x720 color, 848x480 depth) post-decimated by 4:
+// the depth reaches the 180 rows of the decimated RGB only decimated by 3, which doesn't
+// divide it. The factor itself does, so it is used for the depth instead of refusing.
+TEST(MemoryTest, CreateSignaturePostDecimatesTheDepthByTheFactorWhenItDividesIt)
+{
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePreDecimation()] = "1";
+	params[Parameters::kMemImagePostDecimation()] = "4";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+	Memory memory(params);
+
+	const cv::Mat image(720, 1280, CV_8UC1, cv::Scalar(64));
+	const cv::Mat depth(480, 848, CV_16UC1, cv::Scalar(1000));
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const CameraModel model(900.0, 900.0, 640.0, 360.0,
+			CameraModel::opticalRotation(), 0.0, cv::Size(1280, 720));
+
+	ASSERT_TRUE(memory.update(SensorData(image, depth, model), Transform(0, 0, 0, 0, 0, 0), covariance));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	EXPECT_EQ(s->sensorData().imageRaw().size(), cv::Size(320, 180));
+	EXPECT_EQ(s->sensorData().depthRaw().size(), cv::Size(212, 120));
+	ASSERT_EQ(s->sensorData().cameraModels().size(), 1u);
+	EXPECT_DOUBLE_EQ(s->sensorData().cameraModels()[0].fx(), 225.0);
+	EXPECT_EQ(s->sensorData().cameraModels()[0].imageSize(), cv::Size(320, 180));
+}
+
+// Same for Mem/ImagePreDecimation (the pre-decimated data being saved when
+// Mem/ImagePostDecimation is the same).
+TEST(MemoryTest, CreateSignaturePreDecimatesTheDepthByTheFactorWhenItDividesIt)
+{
+	ParametersMap params = defaultMemoryParams();
+	params[Parameters::kKpMaxFeatures()] = "100"; // pre-decimation is done for feature extraction
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePreDecimation()] = "4";
+	params[Parameters::kMemImagePostDecimation()] = "4";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+	Memory memory(params);
+
+	const cv::Mat image(720, 1280, CV_8UC1, cv::Scalar(64));
+	const cv::Mat depth(480, 848, CV_16UC1, cv::Scalar(1000));
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const CameraModel model(900.0, 900.0, 640.0, 360.0,
+			CameraModel::opticalRotation(), 0.0, cv::Size(1280, 720));
+
+	ASSERT_TRUE(memory.update(SensorData(image, depth, model), Transform(0, 0, 0, 0, 0, 0), covariance));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+	EXPECT_EQ(s->sensorData().imageRaw().size(), cv::Size(320, 180));
+	EXPECT_EQ(s->sensorData().depthRaw().size(), cv::Size(212, 120));
+	ASSERT_EQ(s->sensorData().cameraModels().size(), 1u);
+	EXPECT_DOUBLE_EQ(s->sensorData().cameraModels()[0].fx(), 225.0);
+}
+
 // Keypoints provided by odometry to an intermediate node whose data is kept are
 // rescaled to the post-decimated image, like those of other nodes.
 TEST(MemoryTest, CreateSignatureRescalesIntermediateNodeWordsToPostDecimatedImage)

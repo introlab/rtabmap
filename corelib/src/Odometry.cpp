@@ -793,28 +793,16 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	int decimationDepth = _imageDecimation;
 	if(decimate)
 	{
+		int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
 		if(	!data.cameraModels().empty() &&
 			data.cameraModels()[0].imageHeight()>0 &&
 			data.cameraModels()[0].imageWidth()>0)
 		{
 			// decimate from RGB image size
-			int targetSize = data.cameraModels()[0].imageHeight() / _imageDecimation;
-			if(targetSize < 1)
-			{
-				decimationDepth = 0; // not exact, see below
-			}
-			else if(targetSize >= data.depthRaw().rows)
-			{
-				decimationDepth = 1;
-			}
-			else
-			{
-				decimationDepth = (int)ceil(float(data.depthRaw().rows) / float(targetSize));
-			}
+			decimationDepth = util2d::depthDecimation(data.depthRaw(), data.cameraModels()[0].imageHeight(), _imageDecimation, cameraCount);
 		}
 		// Both decimations have to be exact, or the images come out of step with each
 		// other and with their calibrations (or decimate() asserts on the depth).
-		int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
 		if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imageDecimation, decimationDepth, cameraCount))
 		{
 			static bool warned = false;

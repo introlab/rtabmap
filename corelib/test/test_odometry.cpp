@@ -269,6 +269,23 @@ TEST(OdometryTest, ProcessDoesNotDecimateACalibrationSmallerThanTheDecimation)
 	EXPECT_EQ(odometry.lastDepthSize(), cv::Size(2, 2));
 }
 
+// A RealSense D435 at its defaults (1280x720 color, 848x480 depth) decimated by 4: the
+// depth reaches the 180 rows of the decimated RGB only decimated by 3, which doesn't
+// divide it. The factor itself does, so it is used for the depth instead of refusing.
+TEST(OdometryTest, ProcessDecimatesTheDepthByTheFactorWhenItDividesIt)
+{
+	ParametersMap parameters = baseTestParameters();
+	parameters.insert(ParametersPair(Parameters::kOdomImageDecimation(), "4"));
+	MockOdometry odometry(parameters);
+	odometry.setNextTransform(Transform::getIdentity());
+
+	SensorData data(cv::Mat::zeros(720, 1280, CV_8UC1), cv::Mat::zeros(480, 848, CV_16UC1),
+			CameraModel(900.0, 900.0, 640.0, 360.0, CameraModel::opticalRotation(), 0, cv::Size(1280, 720)), 1, 1.0);
+	odometry.process(data);
+	EXPECT_EQ(odometry.lastImageSize(), cv::Size(320, 180));
+	EXPECT_EQ(odometry.lastDepthSize(), cv::Size(212, 120));
+}
+
 TEST(OdometryTest, DefaultCapabilityFlags)
 {
 	MockOdometry odometry(baseTestParameters());

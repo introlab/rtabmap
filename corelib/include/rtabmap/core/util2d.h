@@ -497,6 +497,29 @@ bool RTABMAP_CORE_EXPORT isDecimationExact(
 		int cameraCount = 1);
 
 /**
+ * @brief Decimation of a depth (or right) image for a decimation of its RGB (or left) image.
+ *
+ * The depth is decimated to be at most as big as the decimated RGB image: by the smallest
+ * factor bringing its height down to the decimated RGB height (1 if it already is), or, when
+ * that factor doesn't divide the depth exactly while @p decimation does (leaving the depth
+ * smaller than the decimated RGB), by @p decimation (e.g. a 848x480 depth with a 1280x720
+ * RGB decimated by 4: 3 reaches the 180 rows but doesn't divide 848 columns, 4 does).
+ *
+ * @param depthOrRight The depth (or right) image, with @p cameraCount cameras side by side.
+ * @param imageHeight Height of the RGB (or left) image (of each camera).
+ * @param decimation The decimation of the RGB (or left) image (>= 1).
+ * @param cameraCount Number of cameras side by side in the images (>= 1).
+ * @return The decimation of @p depthOrRight, or 0 if none can be computed (@p decimation
+ *         larger than @p imageHeight). It may still not divide the depth exactly, see
+ *         isDecimationExact().
+ */
+int RTABMAP_CORE_EXPORT depthDecimation(
+		const cv::Mat & depthOrRight,
+		int imageHeight,
+		int decimation,
+		int cameraCount = 1);
+
+/**
  * @brief Upsamples a depth image using bilinear interpolation with depth consistency check.
  *
  * Performs a depth-aware interpolation for CV_32FC1 or CV_16UC1 types. It checks whether
