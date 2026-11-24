@@ -70,7 +70,7 @@ var searchData=
   ['rightraw_67',['rightRaw',['../classrtabmap_1_1SensorData.html#aaa7408cb13ea2cbe33438e007b80de30',1,'rtabmap::SensorData']]],
   ['roi_68',['roi',['../classrtabmap_1_1CameraModel.html#a2ff3290299c36b64ee880db2386f898f',1,'rtabmap::CameraModel::roi()'],['../classrtabmap_1_1StereoCameraModel.html#ac2fb1c489ae60bd7e4c104515db3c3a9',1,'rtabmap::StereoCameraModel::roi()']]],
   ['roi_20computation_69',['Region of Interest (ROI) Computation',['../group__RoiComputation.html',1,'']]],
-  ['rotateimagesupsideupifnecessary_70',['rotateImagesUpsideUpIfNecessary',['../namespacertabmap_1_1util2d.html#a1577494ad9730181d5b768ca8237d5dd',1,'rtabmap::util2d']]],
+  ['rotateimagesupsideupifnecessary_70',['rotateimagesupsideupifnecessary',['../namespacertabmap_1_1util2d.html#a1577494ad9730181d5b768ca8237d5dd',1,'rtabmap::util2d::rotateImagesUpsideUpIfNecessary(CameraModel &amp;model, cv::Mat &amp;rgb, cv::Mat &amp;depth)'],['../namespacertabmap_1_1util2d.html#a40b2b9158342090f0afb5c54f2f6a9df',1,'rtabmap::util2d::rotateImagesUpsideUpIfNecessary(CameraModel &amp;model, cv::Mat &amp;rgb, cv::Mat &amp;depth, cv::Mat &amp;depthConfidence)']]],
   ['rotation_71',['rotation',['../classrtabmap_1_1Transform.html#aeed78122de7f78a13641802b964d9631',1,'rtabmap::Transform']]],
   ['rotationmatrix_72',['rotationMatrix',['../classrtabmap_1_1Transform.html#a23dfabecb7b2ad9c6a7fdcde08d900ab',1,'rtabmap::Transform']]],
   ['rotvariance_73',['rotVariance',['../classrtabmap_1_1Link.html#a00cecebc9adf3ee5afb66d6ad63871e4',1,'rtabmap::Link']]],

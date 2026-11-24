@@ -33,7 +33,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.25.0</span>
+   <div id="projectname">RTAB-Map<span id="projectnumber">&#160;0.25.1</span>
    </div>
    <div id="projectbrief">Real-Time Appearance-Based Mapping</div>
   </td>
@@ -160,9 +160,12 @@ Functions</h2></td></tr>
 <tr class="memitem:a0b545a9f852684afb0a6d8f835f9eaf2" id="r_a0b545a9f852684afb0a6d8f835f9eaf2"><td class="memItemLeft" align="right" valign="top">cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html#a0b545a9f852684afb0a6d8f835f9eaf2">decimate</a> (const cv::Mat &amp;image, int d)</td></tr>
 <tr class="memdesc:a0b545a9f852684afb0a6d8f835f9eaf2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Downsamples an image by a given decimation factor.  <br /></td></tr>
 <tr class="separator:a0b545a9f852684afb0a6d8f835f9eaf2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa166cffd8ca2261f6f8e113694041741" id="r_aa166cffd8ca2261f6f8e113694041741"><td class="memItemLeft" align="right" valign="top">bool RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html#aa166cffd8ca2261f6f8e113694041741">isDecimationExact</a> (const cv::Mat &amp;image, const cv::Mat &amp;depthOrRight, int decimation, int depthDecimation, int cameraCount=1)</td></tr>
-<tr class="memdesc:aa166cffd8ca2261f6f8e113694041741"><td class="mdescLeft">&#160;</td><td class="mdescRight">Checks that decimating an RGB-D or stereo frame is exact.  <br /></td></tr>
-<tr class="separator:aa166cffd8ca2261f6f8e113694041741"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac4e23515b1a09e3cde652ff9b26b8e81" id="r_ac4e23515b1a09e3cde652ff9b26b8e81"><td class="memItemLeft" align="right" valign="top">int RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html#ac4e23515b1a09e3cde652ff9b26b8e81">exactDepthDecimation</a> (const cv::Mat &amp;image, const cv::Mat &amp;depthOrRight, int imageHeight, int decimation, int cameraCount=1)</td></tr>
+<tr class="memdesc:ac4e23515b1a09e3cde652ff9b26b8e81"><td class="mdescLeft">&#160;</td><td class="mdescRight">Depth (or right image) decimation for an exact decimation of an RGB-D or stereo frame.  <br /></td></tr>
+<tr class="separator:ac4e23515b1a09e3cde652ff9b26b8e81"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a123253b775842d6c49c05ef9b90aeb3d" id="r_a123253b775842d6c49c05ef9b90aeb3d"><td class="memItemLeft" align="right" valign="top">bool RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html#a123253b775842d6c49c05ef9b90aeb3d">decimateImages</a> (<a class="el" href="classrtabmap_1_1SensorData.html">SensorData</a> &amp;data, int decimation)</td></tr>
+<tr class="memdesc:a123253b775842d6c49c05ef9b90aeb3d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Decimates the images of a frame in place, with their calibrations and features.  <br /></td></tr>
+<tr class="separator:a123253b775842d6c49c05ef9b90aeb3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afc241016af8396edf5228dbe9e80ee8d" id="r_afc241016af8396edf5228dbe9e80ee8d"><td class="memItemLeft" align="right" valign="top">cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html#afc241016af8396edf5228dbe9e80ee8d">interpolate</a> (const cv::Mat &amp;image, int factor, float depthErrorRatio=0.02f)</td></tr>
 <tr class="memdesc:afc241016af8396edf5228dbe9e80ee8d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Upsamples a depth image using bilinear interpolation with depth consistency check.  <br /></td></tr>
 <tr class="separator:afc241016af8396edf5228dbe9e80ee8d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -202,8 +205,12 @@ cv::Mat RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><
 <tr class="memitem:aa6957971e17f27bb066efe036d80fd46" id="r_aa6957971e17f27bb066efe036d80fd46"><td class="memItemLeft" align="right" valign="top">std::vector&lt; int &gt; RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html#aa6957971e17f27bb066efe036d80fd46">SSC</a> (const std::vector&lt; cv::KeyPoint &gt; &amp;keypoints, int maxKeypoints, float tolerance, int cols, int rows, const std::vector&lt; int &gt; &amp;indx={})</td></tr>
 <tr class="memdesc:aa6957971e17f27bb066efe036d80fd46"><td class="mdescLeft">&#160;</td><td class="mdescRight">Applies the SSC (Suppression via Square Covering) algorithm to spatially select keypoints.  <br /></td></tr>
 <tr class="separator:aa6957971e17f27bb066efe036d80fd46"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1577494ad9730181d5b768ca8237d5dd" id="r_a1577494ad9730181d5b768ca8237d5dd"><td class="memItemLeft" align="right" valign="top">bool RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html#a1577494ad9730181d5b768ca8237d5dd">rotateImagesUpsideUpIfNecessary</a> (<a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &amp;model, cv::Mat &amp;rgb, cv::Mat &amp;depth)</td></tr>
-<tr class="memdesc:a1577494ad9730181d5b768ca8237d5dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rotates the input RGB and depth images to make them appear upright based on the camera's roll angle.  <br /></td></tr>
+<tr class="memitem:a40b2b9158342090f0afb5c54f2f6a9df" id="r_a40b2b9158342090f0afb5c54f2f6a9df"><td class="memItemLeft" align="right" valign="top">bool RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacertabmap_1_1util2d.html#a40b2b9158342090f0afb5c54f2f6a9df">rotateImagesUpsideUpIfNecessary</a> (<a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &amp;model, cv::Mat &amp;rgb, cv::Mat &amp;depth, cv::Mat &amp;depthConfidence)</td></tr>
+<tr class="memdesc:a40b2b9158342090f0afb5c54f2f6a9df"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rotates the input RGB and depth images to make them appear upright based on the camera's roll angle.  <br /></td></tr>
+<tr class="separator:a40b2b9158342090f0afb5c54f2f6a9df"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1577494ad9730181d5b768ca8237d5dd" id="r_a1577494ad9730181d5b768ca8237d5dd"><td class="memItemLeft" align="right" valign="top"><a id="a1577494ad9730181d5b768ca8237d5dd" name="a1577494ad9730181d5b768ca8237d5dd"></a>
+bool RTABMAP_CORE_EXPORT&#160;</td><td class="memItemRight" valign="bottom"><b>rotateImagesUpsideUpIfNecessary</b> (<a class="el" href="classrtabmap_1_1CameraModel.html">CameraModel</a> &amp;model, cv::Mat &amp;rgb, cv::Mat &amp;depth)</td></tr>
+<tr class="memdesc:a1577494ad9730181d5b768ca8237d5dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Same as <a class="el" href="namespacertabmap_1_1util2d.html#a40b2b9158342090f0afb5c54f2f6a9df" title="Rotates the input RGB and depth images to make them appear upright based on the camera&#39;s roll angle.">rotateImagesUpsideUpIfNecessary(CameraModel &amp;, cv::Mat &amp;, cv::Mat &amp;, cv::Mat &amp;)</a>, without depth confidence. <br /></td></tr>
 <tr class="separator:a1577494ad9730181d5b768ca8237d5dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
@@ -1050,14 +1057,14 @@ The disparity map is returned in floating point format, where the value represen
 
 </div>
 </div>
-<a id="aa166cffd8ca2261f6f8e113694041741" name="aa166cffd8ca2261f6f8e113694041741"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa166cffd8ca2261f6f8e113694041741">&#9670;&#160;</a></span>isDecimationExact()</h2>
+<a id="ac4e23515b1a09e3cde652ff9b26b8e81" name="ac4e23515b1a09e3cde652ff9b26b8e81"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac4e23515b1a09e3cde652ff9b26b8e81">&#9670;&#160;</a></span>exactDepthDecimation()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool RTABMAP_CORE_EXPORT rtabmap::util2d::isDecimationExact </td>
+          <td class="memname">int RTABMAP_CORE_EXPORT rtabmap::util2d::exactDepthDecimation </td>
           <td>(</td>
           <td class="paramtype">const cv::Mat &amp;&#160;</td>
           <td class="paramname"><em>image</em>, </td>
@@ -1072,13 +1079,13 @@ The disparity map is returned in floating point format, where the value represen
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">int&#160;</td>
-          <td class="paramname"><em>decimation</em>, </td>
+          <td class="paramname"><em>imageHeight</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">int&#160;</td>
-          <td class="paramname"><em>depthDecimation</em>, </td>
+          <td class="paramname"><em>decimation</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -1094,19 +1101,59 @@ The disparity map is returned in floating point format, where the value represen
       </table>
 </div><div class="memdoc">
 
-<p>Checks that decimating an RGB-D or stereo frame is exact. </p>
+<p>Depth (or right image) decimation for an exact decimation of an RGB-D or stereo frame. </p>
 <p>Both images have to be divided exactly, for each camera when several are side by side: <a class="el" href="namespacertabmap_1_1util2d.html#a0b545a9f852684afb0a6d8f835f9eaf2" title="Downsamples an image by a given decimation factor.">decimate()</a> samples the pixels of a depth image (and asserts its size is divisible), and resizes any other image, rounding a size the factor does not divide, out of step with its calibration (<a class="el" href="classrtabmap_1_1CameraModel.html#aecf2e87f260558dbf631e4803e1ed986" title="Returns a new camera model with all intrinsic parameters scaled by a given factor.">CameraModel::scaled()</a>) and with the depth.</p>
+<p>The depth of an RGB-D frame is decimated only to be at most as big as the decimated RGB image: by the smallest factor bringing its height down to the decimated RGB height (1 if it already is), or, when that factor doesn't divide the depth while <code>decimation</code> does (leaving the depth smaller than the decimated RGB), by <code>decimation</code> (e.g. a 848x480 depth with a 1280x720 RGB decimated by 4: 3 reaches the 180 rows but doesn't divide 848 columns, 4 does). The right image of a stereo frame is decimated like the left one.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">image</td><td>The RGB (or left) image, with <code>cameraCount</code> cameras side by side. </td></tr>
+    <tr><td class="paramname">image</td><td>The RGB (or left) image, with <code>cameraCount</code> cameras side by side (may be empty, e.g. a frame with only features and a calibration: not checked). </td></tr>
     <tr><td class="paramname">depthOrRight</td><td>The depth (or right) image, with the same cameras side by side. </td></tr>
-    <tr><td class="paramname">decimation</td><td>The decimation of <code>image</code>. </td></tr>
-    <tr><td class="paramname">depthDecimation</td><td>The decimation of <code>depthOrRight</code>; 0 or less if no decimation could be computed for it (e.g., <code>decimation</code> larger than the image), which is never exact, even with an empty <code>depthOrRight</code>. </td></tr>
+    <tr><td class="paramname">imageHeight</td><td>Height of the RGB image (of each camera), from its calibration; 0 or less for a stereo frame or an unknown size (<code>depthOrRight</code> is then decimated by <code>decimation</code>). </td></tr>
+    <tr><td class="paramname">decimation</td><td>The decimation of <code>image</code> (&gt;= 1). </td></tr>
     <tr><td class="paramname">cameraCount</td><td>Number of cameras side by side in the images (&gt;= 1). </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>true if <code>depthDecimation</code> is at least 1 and every decimation greater than 1 divides the size of each camera's image (empty images are not checked). </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>The decimation of <code>depthOrRight</code> (&gt;= 1), or 0 if the frame can't be decimated exactly: <code>decimation</code> doesn't divide <code>image</code>, no depth decimation can be computed (<code>decimation</code> larger than <code>imageHeight</code>, even with an empty depth), or it doesn't divide <code>depthOrRight</code>. </dd></dl>
+
+</div>
+</div>
+<a id="a123253b775842d6c49c05ef9b90aeb3d" name="a123253b775842d6c49c05ef9b90aeb3d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a123253b775842d6c49c05ef9b90aeb3d">&#9670;&#160;</a></span>decimateImages()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool RTABMAP_CORE_EXPORT rtabmap::util2d::decimateImages </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classrtabmap_1_1SensorData.html">SensorData</a> &amp;&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>decimation</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Decimates the images of a frame in place, with their calibrations and features. </p>
+<p>The RGB (or left) image is decimated by <code>decimation</code>, the depth (or right image) and the depth confidence by <a class="el" href="namespacertabmap_1_1util2d.html#ac4e23515b1a09e3cde652ff9b26b8e81" title="Depth (or right image) decimation for an exact decimation of an RGB-D or stereo frame.">exactDepthDecimation()</a>, the camera models are scaled accordingly (<a class="el" href="classrtabmap_1_1CameraModel.html#aecf2e87f260558dbf631e4803e1ed986" title="Returns a new camera model with all intrinsic parameters scaled by a given factor.">CameraModel::scaled()</a>, <a class="el" href="classrtabmap_1_1StereoCameraModel.html#a264d57ca1e0f6b41d03ffe1d89afc382" title="Scales both cameras&#39; calibration by a factor.">StereoCameraModel::scale()</a>), and the features that came with the frame, placed in the full size image, are brought along: position and size divided by <code>decimation</code>, octave lowered by log2(<code>decimation</code>) but never below 0 (<a class="el" href="classrtabmap_1_1ORB.html" title="ORB detector and descriptor (optional GPU).">ORB</a> refuses a negative octave). Their 3D positions and descriptors are kept.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">data</td><td>The frame, left untouched if it can't be decimated exactly. </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">decimation</td><td>The decimation of the RGB (or left) image (&gt;= 1). </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if the frame was decimated, or if there was nothing to decimate (<code>decimation</code> of 1, or no image); false if the decimation is not exact (see <a class="el" href="namespacertabmap_1_1util2d.html#ac4e23515b1a09e3cde652ff9b26b8e81" title="Depth (or right image) decimation for an exact decimation of an RGB-D or stereo frame.">exactDepthDecimation()</a>), <code>data</code> being then left as it is. </dd></dl>
 
 </div>
 </div>
@@ -1807,8 +1854,8 @@ If the <code>indx</code> vector is provided, the returned indices refer to the o
 
 </div>
 </div>
-<a id="a1577494ad9730181d5b768ca8237d5dd" name="a1577494ad9730181d5b768ca8237d5dd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1577494ad9730181d5b768ca8237d5dd">&#9670;&#160;</a></span>rotateImagesUpsideUpIfNecessary()</h2>
+<a id="a40b2b9158342090f0afb5c54f2f6a9df" name="a40b2b9158342090f0afb5c54f2f6a9df"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a40b2b9158342090f0afb5c54f2f6a9df">&#9670;&#160;</a></span>rotateImagesUpsideUpIfNecessary()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1829,7 +1876,13 @@ If the <code>indx</code> vector is provided, the returned indices refer to the o
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">cv::Mat &amp;&#160;</td>
-          <td class="paramname"><em>depth</em>&#160;</td>
+          <td class="paramname"><em>depth</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">cv::Mat &amp;&#160;</td>
+          <td class="paramname"><em>depthConfidence</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -1845,7 +1898,8 @@ If the <code>indx</code> vector is provided, the returned indices refer to the o
   <table class="params">
     <tr><td class="paramdir">[in,out]</td><td class="paramname">model</td><td>The camera model associated with the images. It will be updated to reflect the new orientation. </td></tr>
     <tr><td class="paramdir">[in,out]</td><td class="paramname">rgb</td><td>The RGB image to be rotated if necessary. </td></tr>
-    <tr><td class="paramdir">[in,out]</td><td class="paramname">depth</td><td>The depth image to be rotated if necessary.</td></tr>
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">depth</td><td>The depth image to be rotated if necessary. </td></tr>
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">depthConfidence</td><td>The depth confidence map (same size as <code>depth</code>) to be rotated with the depth, if any.</td></tr>
   </table>
   </dd>
 </dl>
