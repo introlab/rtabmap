@@ -677,6 +677,7 @@ TEST(Util2dTest, ExactDepthDecimation)
     const cv::Mat depthTwo(8, 12, CV_16UC1);
     EXPECT_EQ(util2d::exactDepthDecimation(rgbTwo, depthTwo, 8, 2, 2), 2);
     EXPECT_EQ(util2d::exactDepthDecimation(rgbTwo, depthTwo, 8, 4, 2), 0) << "12 is divided by 4, but not each 6 columns camera";
+    EXPECT_EQ(util2d::exactDepthDecimation(cv::Mat(8, 16, CV_8UC1), cv::Mat(6, 14, CV_16UC1), 8, 2, 2), 0) << "two 8x8 cameras divided by 2, but not the 7 columns of each one's depth (14 as a whole is)";
 }
 
 TEST(Util2dTest, DecimateImages)
@@ -696,6 +697,7 @@ TEST(Util2dTest, DecimateImages)
     EXPECT_EQ(data.depthConfidenceRaw().size(), cv::Size(8, 8));
     ASSERT_EQ(data.cameraModels().size(), 1u);
     EXPECT_DOUBLE_EQ(data.cameraModels()[0].fx(), 5.0);
+    EXPECT_DOUBLE_EQ(data.cameraModels()[0].cx(), 4.0);
     EXPECT_EQ(data.cameraModels()[0].imageSize(), cv::Size(8, 8));
     ASSERT_EQ(data.keypoints().size(), 1u);
     EXPECT_FLOAT_EQ(data.keypoints()[0].pt.x, 6.0f);
@@ -712,6 +714,32 @@ TEST(Util2dTest, DecimateImages)
     EXPECT_EQ(notExact.imageRaw().size(), cv::Size(8, 8));
     EXPECT_EQ(notExact.depthRaw().size(), cv::Size(8, 8));
     EXPECT_DOUBLE_EQ(notExact.cameraModels()[0].fx(), 10.0);
+
+    // A depth already smaller than the decimated RGB is left as it is
+    SensorData smallDepth(cv::Mat(16, 16, CV_8UC1), cv::Mat(8, 8, CV_16UC1),
+            CameraModel(10.0, 10.0, 8.0, 8.0, CameraModel::opticalRotation(), 0.0, cv::Size(16, 16)));
+    EXPECT_TRUE(util2d::decimateImages(smallDepth, 2));
+    EXPECT_EQ(smallDepth.imageRaw().size(), cv::Size(8, 8));
+    EXPECT_EQ(smallDepth.depthRaw().size(), cv::Size(8, 8)) << "already at the decimated size";
+    EXPECT_DOUBLE_EQ(smallDepth.cameraModels()[0].fx(), 5.0);
+
+    // A depth that its decimation (2, to the 4 rows of the decimated RGB) doesn't divide:
+    // refused, the frame untouched
+    SensorData depthNotExact(cv::Mat(8, 8, CV_8UC1), cv::Mat(7, 7, CV_16UC1),
+            CameraModel(10.0, 10.0, 4.0, 4.0, CameraModel::opticalRotation(), 0.0, cv::Size(8, 8)));
+    EXPECT_FALSE(util2d::decimateImages(depthNotExact, 2));
+    EXPECT_EQ(depthNotExact.imageRaw().size(), cv::Size(8, 8));
+    EXPECT_EQ(depthNotExact.depthRaw().size(), cv::Size(7, 7));
+    EXPECT_DOUBLE_EQ(depthNotExact.cameraModels()[0].fx(), 10.0);
+
+    // The depth images of several cameras are side by side in one image: the factor has
+    // to divide each camera's depth (7 columns here), not only the whole (14)
+    const CameraModel cam(10.0, 10.0, 4.0, 4.0, CameraModel::opticalRotation(), 0.0, cv::Size(8, 8));
+    SensorData twoCameras(cv::Mat(8, 16, CV_8UC1), cv::Mat(6, 14, CV_16UC1), std::vector<CameraModel>{cam, cam});
+    EXPECT_FALSE(util2d::decimateImages(twoCameras, 2));
+    EXPECT_EQ(twoCameras.imageRaw().size(), cv::Size(16, 8));
+    EXPECT_EQ(twoCameras.depthRaw().size(), cv::Size(14, 6));
+    EXPECT_DOUBLE_EQ(twoCameras.cameraModels()[0].fx(), 10.0);
 
     // Nothing to decimate
     EXPECT_TRUE(util2d::decimateImages(notExact, 1));
@@ -732,6 +760,15 @@ TEST(Util2dTest, DecimateImagesStereo)
     ASSERT_EQ(data.stereoCameraModels().size(), 1u);
     EXPECT_DOUBLE_EQ(data.stereoCameraModels()[0].left().fx(), 5.0);
     EXPECT_DOUBLE_EQ(data.stereoCameraModels()[0].baseline(), 0.1);
+
+    // A right image that the factor doesn't divide is refused like the left, the pair untouched
+    SensorData notExact;
+    notExact.setStereoImage(cv::Mat(8, 8, CV_8UC1), cv::Mat(8, 7, CV_8UC1), std::vector<StereoCameraModel>{
+            StereoCameraModel(10.0, 10.0, 4.0, 4.0, 0.1, CameraModel::opticalRotation(), cv::Size(8, 8))});
+    EXPECT_FALSE(util2d::decimateImages(notExact, 2));
+    EXPECT_EQ(notExact.imageRaw().size(), cv::Size(8, 8));
+    EXPECT_EQ(notExact.depthOrRightRaw().size(), cv::Size(7, 8));
+    EXPECT_DOUBLE_EQ(notExact.stereoCameraModels()[0].left().fx(), 10.0);
 }
 
 // A RealSense D435 at its defaults (1280x720 color, 848x480 depth) decimated by 4: the
