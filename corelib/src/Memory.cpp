@@ -5814,32 +5814,30 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			decimatedData = data;
 			if(_imagePreDecimation > 1)
 			{
-				int decimationDepth = _imagePreDecimation;
 				int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
-				if(	!data.cameraModels().empty() &&
-					data.cameraModels()[0].imageHeight()>0 &&
-					data.cameraModels()[0].imageWidth()>0)
-				{
-					// decimate from RGB image size
-					decimationDepth = util2d::depthDecimation(data.depthRaw(), data.cameraModels()[0].imageHeight(), _imagePreDecimation, cameraCount);
-					UASSERT(data.depthConfidenceRaw().empty() || data.depthConfidenceRaw().size() == data.depthRaw().size());
-				}
-				UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d (conf? %d)", data.imageRaw().rows, _imagePreDecimation, data.depthOrRightRaw().rows, decimationDepth, data.depthConfidenceRaw().empty()?0:1);
-
+				// The depth is decimated from the RGB image size (0: stereo or unknown, the
+				// right image or depth is then decimated like the RGB/left one)
+				int imageHeight = !data.cameraModels().empty() &&
+						data.cameraModels()[0].imageHeight()>0 &&
+						data.cameraModels()[0].imageWidth()>0 ? data.cameraModels()[0].imageHeight() : 0;
+				UASSERT(data.depthConfidenceRaw().empty() || data.depthConfidenceRaw().size() == data.depthRaw().size());
 				// Both decimations have to be exact, or the images come out of step with
 				// each other and with their calibrations (or decimate() asserts on the depth).
-				if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imagePreDecimation, decimationDepth, cameraCount))
+				int decimationDepth = util2d::exactDepthDecimation(data.imageRaw(), data.depthOrRightRaw(), imageHeight, _imagePreDecimation, cameraCount);
+				UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d (conf? %d)", data.imageRaw().rows, _imagePreDecimation, data.depthOrRightRaw().rows, decimationDepth, data.depthConfidenceRaw().empty()?0:1);
+
+				if(decimationDepth == 0)
 				{
 					static bool warned = false;
 					if(!warned)
 					{
 						UWARN("%s=%u doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
-								"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), features "
-								"are extracted without decimation. This warning is only printed once.",
+								"depth/right=%dx%d, cameras=%d), features are extracted without "
+								"decimation. This warning is only printed once.",
 								Parameters::kMemImagePreDecimation().c_str(), _imagePreDecimation,
 								data.imageRaw().cols, data.imageRaw().rows,
 								data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
-								decimationDepth, cameraCount);
+								cameraCount);
 						warned = true;
 					}
 				}
@@ -6541,27 +6539,27 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		postDecimation = _imagePostDecimation;
 		if(!(postDecimation == (int)preDecimation && decimatedData.isValid()))
 		{
-			postDecimationDepth = _imagePostDecimation;
 			int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
-			if(	!data.cameraModels().empty() &&
-				data.cameraModels()[0].imageHeight()>0 &&
-				data.cameraModels()[0].imageWidth()>0)
-			{
-				// decimate from RGB image size
-				postDecimationDepth = util2d::depthDecimation(data.depthRaw(), data.cameraModels()[0].imageHeight(), _imagePostDecimation, cameraCount);
-			}
-			if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imagePostDecimation, postDecimationDepth, cameraCount))
+			// The depth is decimated from the RGB image size (0: stereo or unknown, the
+			// right image or depth is then decimated like the RGB/left one)
+			int imageHeight = !data.cameraModels().empty() &&
+					data.cameraModels()[0].imageHeight()>0 &&
+					data.cameraModels()[0].imageWidth()>0 ? data.cameraModels()[0].imageHeight() : 0;
+			// Both decimations have to be exact, or the images come out of step with
+			// each other and with their calibrations (or decimate() asserts on the depth).
+			postDecimationDepth = util2d::exactDepthDecimation(data.imageRaw(), data.depthOrRightRaw(), imageHeight, _imagePostDecimation, cameraCount);
+			if(postDecimationDepth == 0)
 			{
 				static bool warned = false;
 				if(!warned)
 				{
 					UWARN("%s=%u doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
-							"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), they are "
-							"saved without decimation. This warning is only printed once.",
+							"depth/right=%dx%d, cameras=%d), they are saved without decimation. "
+							"This warning is only printed once.",
 							Parameters::kMemImagePostDecimation().c_str(), _imagePostDecimation,
 							data.imageRaw().cols, data.imageRaw().rows,
 							data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
-							postDecimationDepth, cameraCount);
+							cameraCount);
 					warned = true;
 				}
 				postDecimation = 1;

@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/StereoDense.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/video/tracking.hpp>
@@ -1245,7 +1246,16 @@ cv::Mat decimate(const cv::Mat & image, int decimation)
 	return out;
 }
 
-int depthDecimation(
+// Whether decimation divides the size of each of the cameraCount cameras side by side in image
+static bool dividesExactly(const cv::Mat & image, int decimation, int cameraCount)
+{
+	return image.rows % decimation == 0 &&
+		image.cols % cameraCount == 0 &&
+		(image.cols / cameraCount) % decimation == 0;
+}
+
+int exactDepthDecimation(
+		const cv::Mat & image,
 		const cv::Mat & depthOrRight,
 		int imageHeight,
 		int decimation,
@@ -1253,57 +1263,127 @@ int depthDecimation(
 {
 	UASSERT(decimation >= 1);
 	UASSERT(cameraCount >= 1);
-	int targetHeight = imageHeight / decimation;
-	if(targetHeight < 1)
+
+	// The image of each camera has to be divided exactly: decimate() resizes it, rounding
+	// a size the factor doesn't divide, out of step with its calibration
+	// (CameraModel::scaled()) and with the depth.
+	if(decimation > 1 && !image.empty() && !dividesExactly(image, decimation, cameraCount))
 	{
-		// Decimation larger than the image: no depth decimation can be computed
 		return 0;
 	}
-	if(targetHeight >= depthOrRight.rows)
+
+	int depthDecimation = decimation;
+	if(imageHeight > 0)
 	{
-		// Already at most as big as the decimated image
-		return 1;
+		// RGB-D: the depth is decimated only down to the size of the decimated image
+		int targetHeight = imageHeight / decimation;
+		if(targetHeight < 1)
+		{
+			// Decimation larger than the image: no depth decimation can be computed,
+			// not even for an empty depth (decimate() asserts on 0)
+			return 0;
+		}
+		if(targetHeight >= depthOrRight.rows)
+		{
+			// Already at most as big as the decimated image
+			depthDecimation = 1;
+		}
+		else
+		{
+			depthDecimation = (int)ceil(float(depthOrRight.rows) / float(targetHeight));
+			if(depthDecimation < decimation &&
+			   !dividesExactly(depthOrRight, depthDecimation, cameraCount) &&
+			   dividesExactly(depthOrRight, decimation, cameraCount))
+			{
+				// The smallest factor doesn't divide the depth, but the image's one does,
+				// leaving the depth smaller than the decimated image (e.g. a 848x480 depth
+				// with a 1280x720 image decimated by 4: the 180 rows are reached by 3,
+				// which doesn't divide 848 columns, while 4 gives 212x120).
+				depthDecimation = decimation;
+			}
+		}
 	}
-	int depthDecimation = (int)ceil(float(depthOrRight.rows) / float(targetHeight));
-	if(depthDecimation < decimation &&
-	   !isDecimationExact(cv::Mat(), depthOrRight, 1, depthDecimation, cameraCount) &&
-	   isDecimationExact(cv::Mat(), depthOrRight, 1, decimation, cameraCount))
+
+	// The depth (or right image) of each camera has to be divided exactly too: decimate()
+	// samples the pixels of a depth image (and asserts its size is divisible), and the
+	// images of several cameras are side by side in one image, which decimated as a whole
+	// would sample across the camera boundaries.
+	if(depthDecimation > 1 && !depthOrRight.empty() && !dividesExactly(depthOrRight, depthDecimation, cameraCount))
 	{
-		// The smallest factor doesn't divide the depth, but the image's one does, leaving
-		// the depth smaller than the decimated image (e.g. a 848x480 depth with a 1280x720
-		// image decimated by 4: the 180 rows are reached by 3, which doesn't divide 848
-		// columns, while 4 gives 212x120).
-		return decimation;
+		return 0;
 	}
 	return depthDecimation;
 }
 
-bool isDecimationExact(
-		const cv::Mat & image,
-		const cv::Mat & depthOrRight,
-		int decimation,
-		int depthDecimation,
-		int cameraCount)
+bool decimateImages(SensorData & data, int decimation)
 {
-	UASSERT(cameraCount >= 1);
-	if(depthDecimation < 1)
+	UASSERT(decimation >= 1);
+	if(decimation == 1 || data.imageRaw().empty())
 	{
-		// Even with an empty depth: decimate() would assert on that factor.
+		return true;
+	}
+
+	const bool stereo = data.cameraModels().empty() && !data.stereoCameraModels().empty();
+	int cameraCount = std::max(1, (int)(stereo ? data.stereoCameraModels().size() : data.cameraModels().size()));
+	// The depth is decimated from the RGB image size (0: stereo or unknown, the right
+	// image or depth is then decimated like the RGB/left one)
+	int imageHeight = !data.cameraModels().empty() &&
+			data.cameraModels()[0].imageHeight() > 0 &&
+			data.cameraModels()[0].imageWidth() > 0 ? data.cameraModels()[0].imageHeight() : 0;
+	int depthDecimation = exactDepthDecimation(data.imageRaw(), data.depthOrRightRaw(), imageHeight, decimation, cameraCount);
+	if(depthDecimation == 0)
+	{
+		UDEBUG("Decimation %d of rgb/left %dx%d and depth/right %dx%d (%d camera(s)) is not exact, not decimating.",
+				decimation, data.imageRaw().cols, data.imageRaw().rows, data.depthOrRightRaw().cols, data.depthOrRightRaw().rows, cameraCount);
 		return false;
 	}
-	if(decimation > 1 && !image.empty() &&
-	   (image.rows % decimation != 0 ||
-		image.cols % cameraCount != 0 ||
-		(image.cols / cameraCount) % decimation != 0))
+	UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, decimation, data.depthOrRightRaw().rows, depthDecimation);
+
+	cv::Mat image = decimate(data.imageRaw(), decimation);
+	cv::Mat depthOrRight = decimate(data.depthOrRightRaw(), depthDecimation);
+	// The depth confidence follows the depth
+	cv::Mat depthConfidence = decimate(data.depthConfidenceRaw(), depthDecimation);
+
+	// Features that came with the frame are placed in the full size image, bring them
+	// along in the decimated one.
+	std::vector<cv::KeyPoint> keypoints = data.keypoints();
+	if(!keypoints.empty())
 	{
-		return false;
+		double log2value = log(double(decimation))/log(2.0);
+		for(cv::KeyPoint & kpt : keypoints)
+		{
+			kpt.pt.x /= decimation;
+			kpt.pt.y /= decimation;
+			kpt.size /= decimation;
+			// Never below the finest level of the decimated image, which is as fine
+			// as its detail goes; ORB refuses a negative octave outright.
+			kpt.octave = std::max(0, int(kpt.octave - log2value));
+		}
 	}
-	if(depthDecimation > 1 && !depthOrRight.empty() &&
-	   (depthOrRight.rows % depthDecimation != 0 ||
-		depthOrRight.cols % cameraCount != 0 ||
-		(depthOrRight.cols / cameraCount) % depthDecimation != 0))
+	std::vector<cv::Point3f> keypoints3D = data.keypoints3D();
+	cv::Mat descriptors = data.descriptors();
+
+	if(stereo)
 	{
-		return false;
+		std::vector<StereoCameraModel> models = data.stereoCameraModels();
+		for(StereoCameraModel & model : models)
+		{
+			model.scale(1.0/double(decimation));
+		}
+		data.setStereoImage(image, depthOrRight, models);
+	}
+	else
+	{
+		std::vector<CameraModel> models = data.cameraModels();
+		for(CameraModel & model : models)
+		{
+			model = model.scaled(1.0/double(decimation));
+		}
+		data.setRGBDImage(image, depthOrRight, depthConfidence, models);
+	}
+	if(!keypoints.empty())
+	{
+		data.setFeatures(keypoints, keypoints3D, descriptors);
 	}
 	return true;
 }

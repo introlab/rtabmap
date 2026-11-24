@@ -789,32 +789,26 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 
 
 	Transform t;
+	// Decimation of images with calibrations (and the features that came with them)
+	SensorData decimatedData;
 	bool decimate = _imageDecimation > 1 && !data.imageRaw().empty();
-	int decimationDepth = _imageDecimation;
 	if(decimate)
 	{
-		int cameraCount = std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size()));
-		if(	!data.cameraModels().empty() &&
-			data.cameraModels()[0].imageHeight()>0 &&
-			data.cameraModels()[0].imageWidth()>0)
-		{
-			// decimate from RGB image size
-			decimationDepth = util2d::depthDecimation(data.depthRaw(), data.cameraModels()[0].imageHeight(), _imageDecimation, cameraCount);
-		}
+		decimatedData = data;
 		// Both decimations have to be exact, or the images come out of step with each
 		// other and with their calibrations (or decimate() asserts on the depth).
-		if(!util2d::isDecimationExact(data.imageRaw(), data.depthOrRightRaw(), _imageDecimation, decimationDepth, cameraCount))
+		if(!util2d::decimateImages(decimatedData, _imageDecimation))
 		{
 			static bool warned = false;
 			if(!warned)
 			{
 				UWARN("%s=%u doesn't divide exactly the images of each camera (rgb/left=%dx%d, "
-						"depth/right=%dx%d, depth/right decimation=%d, cameras=%d), they are "
-						"registered without decimation. This warning is only printed once.",
+						"depth/right=%dx%d, cameras=%d), they are registered without "
+						"decimation. This warning is only printed once.",
 						Parameters::kOdomImageDecimation().c_str(), _imageDecimation,
 						data.imageRaw().cols, data.imageRaw().rows,
 						data.depthOrRightRaw().cols, data.depthOrRightRaw().rows,
-						decimationDepth, cameraCount);
+						std::max(1, (int)std::max(data.cameraModels().size(), data.stereoCameraModels().size())));
 				warned = true;
 			}
 			decimate = false;
@@ -822,55 +816,6 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	}
 	if(decimate)
 	{
-		// Decimation of images with calibrations
-		SensorData decimatedData = data;
-		UDEBUG("decimation rgbOrLeft(rows=%d)=%d, depthOrRight(rows=%d)=%d", data.imageRaw().rows, _imageDecimation, data.depthOrRightRaw().rows, decimationDepth);
-
-		cv::Mat rgbLeft = util2d::decimate(decimatedData.imageRaw(), _imageDecimation);
-		cv::Mat depthRight = util2d::decimate(decimatedData.depthOrRightRaw(), decimationDepth);
-		std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
-		for(unsigned int i=0; i<cameraModels.size(); ++i)
-		{
-			cameraModels[i] = cameraModels[i].scaled(1.0/double(_imageDecimation));
-		}
-		if(!cameraModels.empty())
-		{
-			decimatedData.setRGBDImage(rgbLeft, depthRight, cameraModels);
-		}
-		else
-		{
-			std::vector<StereoCameraModel> stereoModels = decimatedData.stereoCameraModels();
-			for(unsigned int i=0; i<stereoModels.size(); ++i)
-			{
-				stereoModels[i].scale(1.0/double(_imageDecimation));
-			}
-			if(!stereoModels.empty())
-			{
-				decimatedData.setStereoImage(rgbLeft, depthRight, stereoModels);
-			}
-		}
-
-
-		// Features that came with the frame are placed in the full size image, while what
-		// is about to be registered is the decimated one and the calibration that goes
-		// with it, so bring them along. They are scaled back below with whatever the
-		// registration returns, leaving the caller its own frame of reference.
-		if(!decimatedData.keypoints().empty())
-		{
-			std::vector<cv::KeyPoint> decimatedKpts = decimatedData.keypoints();
-			double log2value = log(double(_imageDecimation))/log(2.0);
-			for(unsigned int i=0; i<decimatedKpts.size(); ++i)
-			{
-				decimatedKpts[i].pt.x /= _imageDecimation;
-				decimatedKpts[i].pt.y /= _imageDecimation;
-				decimatedKpts[i].size /= _imageDecimation;
-				// Never below the finest level of the decimated image, which is as fine
-				// as its detail goes; ORB refuses a negative octave outright.
-				decimatedKpts[i].octave = std::max(0, int(decimatedKpts[i].octave - log2value));
-			}
-			decimatedData.setFeatures(decimatedKpts, decimatedData.keypoints3D(), decimatedData.descriptors());
-		}
-
 		// compute transform
 		t = this->computeTransform(decimatedData, guess, info);
 

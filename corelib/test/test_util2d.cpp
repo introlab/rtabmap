@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "rtabmap/core/util2d.h"
+#include "rtabmap/core/SensorData.h"
 #include "rtabmap/utilite/UException.h"
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/util3d.h"
@@ -637,50 +638,113 @@ TEST(Util2dTest, Decimate16UDepthImage)
     EXPECT_EQ(decimated.at<uint16_t>(1,1), 1100);
 }
 
-TEST(Util2dTest, DepthDecimation)
-{
-    const cv::Mat depth16(16, 16, CV_16UC1);
-    EXPECT_EQ(util2d::depthDecimation(depth16, 16, 2), 2) << "depth as big as the image: same factor";
-    EXPECT_EQ(util2d::depthDecimation(cv::Mat(8, 8, CV_16UC1), 16, 2), 1) << "depth already at the decimated size";
-    EXPECT_EQ(util2d::depthDecimation(cv::Mat(4, 4, CV_16UC1), 16, 2), 1) << "depth smaller than the decimated size";
-    EXPECT_EQ(util2d::depthDecimation(cv::Mat(32, 32, CV_16UC1), 16, 2), 4) << "depth bigger than the image";
-    EXPECT_EQ(util2d::depthDecimation(depth16, 2, 3), 0) << "image smaller than the factor: no decimation can be computed";
-    EXPECT_EQ(util2d::depthDecimation(cv::Mat(), 16, 2), 1) << "no depth";
-
-    // RealSense D435 defaults: 1280x720 color, 848x480 depth, decimated by 4. The depth
-    // reaches the 180 rows of the decimated color decimated by 3, which doesn't divide
-    // its 848 columns: the factor itself does (212x120, still smaller than 320x180).
-    const cv::Mat d435(480, 848, CV_16UC1);
-    EXPECT_EQ(util2d::depthDecimation(d435, 720, 4), 4);
-    EXPECT_EQ(util2d::depthDecimation(d435, 720, 3), 2) << "the 240 rows are reached by 2, which divides the depth";
-    EXPECT_EQ(util2d::depthDecimation(cv::Mat(480, 850, CV_16UC1), 720, 4), 3) << "neither 3 nor 4 divides 850 columns: not exact, left to the caller";
-    EXPECT_EQ(util2d::depthDecimation(cv::Mat(480, 1696, CV_16UC1), 720, 4, 2), 4) << "two D435 side by side";
-    EXPECT_EQ(util2d::depthDecimation(cv::Mat(30, 30, CV_16UC1), 16, 2), 4) << "the factor (2) would leave the depth (15 rows) bigger than the decimated image (8 rows): not used";
-}
-
-TEST(Util2dTest, IsDecimationExact)
+TEST(Util2dTest, ExactDepthDecimation)
 {
     const cv::Mat rgb8(8, 8, CV_8UC1);
     const cv::Mat depth8(8, 8, CV_16UC1);
     const cv::Mat depth4(4, 4, CV_16UC1);
 
-    EXPECT_TRUE(util2d::isDecimationExact(rgb8, depth8, 2, 2));
-    EXPECT_TRUE(util2d::isDecimationExact(rgb8, depth4, 2, 1)) << "depth already at the decimated size";
-    EXPECT_TRUE(util2d::isDecimationExact(rgb8, depth8, 1, 1));
-    EXPECT_TRUE(util2d::isDecimationExact(cv::Mat(), cv::Mat(), 3, 3)) << "nothing to decimate";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, depth8, 8, 2), 2) << "depth as big as the image: same factor";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, depth4, 8, 2), 1) << "depth already at the decimated size";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, cv::Mat(2, 2, CV_16UC1), 8, 2), 1) << "depth smaller than the decimated size";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, cv::Mat(16, 16, CV_16UC1), 8, 2), 4) << "depth bigger than the image";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, depth8, 8, 1), 1) << "no decimation";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, cv::Mat(), 8, 2), 1) << "no depth";
+    EXPECT_EQ(util2d::exactDepthDecimation(cv::Mat(), depth8, 8, 2), 2) << "no RGB (only its calibration)";
+    EXPECT_EQ(util2d::exactDepthDecimation(cv::Mat(), cv::Mat(), 8, 3), 1) << "nothing to decimate";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, depth8, 0, 2), 2) << "no calibration size (stereo): the right image is decimated like the left";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, depth4, 0, 2), 2) << "even when smaller";
 
-    EXPECT_FALSE(util2d::isDecimationExact(rgb8, depth8, 3, 4)) << "8x8 RGB isn't divided by 3";
-    EXPECT_FALSE(util2d::isDecimationExact(rgb8, cv::Mat(6, 8, CV_16UC1), 2, 3)) << "the depth's 8 columns aren't divided by 3";
-    EXPECT_FALSE(util2d::isDecimationExact(rgb8, depth8, 2, 0)) << "no depth decimation could be computed";
-    EXPECT_FALSE(util2d::isDecimationExact(cv::Mat(), cv::Mat(), 3, 0)) << "not even with no images: decimate() asserts on 0";
-    EXPECT_TRUE(util2d::isDecimationExact(rgb8, cv::Mat(), 2, 1)) << "no depth";
-    EXPECT_TRUE(util2d::isDecimationExact(cv::Mat(), depth8, 2, 2)) << "no RGB";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, depth8, 8, 3), 0) << "8x8 RGB isn't divided by 3";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, cv::Mat(9, 8, CV_16UC1), 8, 2), 0) << "the 4 rows are reached by 3, which doesn't divide the depth's 8 columns (nor does 2 its 9 rows)";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, cv::Mat(8, 7, CV_16UC1), 0, 2), 0) << "the right image's 7 columns aren't divided by 2";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb8, depth8, 2, 3), 0) << "calibration smaller than the factor: no depth decimation can be computed";
+    EXPECT_EQ(util2d::exactDepthDecimation(cv::Mat(), cv::Mat(), 2, 3), 0) << "not even with no images: decimate() asserts on 0";
+
+    // RealSense D435 defaults: 1280x720 color, 848x480 depth, decimated by 4. The depth
+    // reaches the 180 rows of the decimated color decimated by 3, which doesn't divide
+    // its 848 columns: the factor itself does (212x120, still smaller than 320x180).
+    const cv::Mat rgb720(720, 1280, CV_8UC1);
+    const cv::Mat d435(480, 848, CV_16UC1);
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb720, d435, 720, 4), 4);
+    EXPECT_EQ(util2d::exactDepthDecimation(cv::Mat(), d435, 720, 3), 2) << "the 240 rows are reached by 2, which divides the depth";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgb720, cv::Mat(480, 850, CV_16UC1), 720, 4), 0) << "neither 3 nor 4 divides 850 columns";
+    EXPECT_EQ(util2d::exactDepthDecimation(cv::Mat(720, 2560, CV_8UC1), cv::Mat(480, 1696, CV_16UC1), 720, 4, 2), 4) << "two D435 side by side";
+    EXPECT_EQ(util2d::exactDepthDecimation(cv::Mat(16, 16, CV_8UC1), cv::Mat(30, 30, CV_16UC1), 16, 2), 0) << "the factor (2) would leave the depth (15 rows) bigger than the decimated image (8 rows): not used, and 4 doesn't divide 30";
 
     // Two cameras side by side: each one's width has to be divided.
     const cv::Mat rgbTwo(8, 12, CV_8UC1);   // two 6x8 cameras
     const cv::Mat depthTwo(8, 12, CV_16UC1);
-    EXPECT_TRUE(util2d::isDecimationExact(rgbTwo, depthTwo, 2, 2, 2));
-    EXPECT_FALSE(util2d::isDecimationExact(rgbTwo, depthTwo, 4, 4, 2)) << "12 is divided by 4, but not each 6 columns camera";
+    EXPECT_EQ(util2d::exactDepthDecimation(rgbTwo, depthTwo, 8, 2, 2), 2);
+    EXPECT_EQ(util2d::exactDepthDecimation(rgbTwo, depthTwo, 8, 4, 2), 0) << "12 is divided by 4, but not each 6 columns camera";
+}
+
+TEST(Util2dTest, DecimateImages)
+{
+    // RGB-D frame with a depth confidence, a calibration and features in the full size image
+    SensorData data(cv::Mat(16, 16, CV_8UC1, cv::Scalar(64)), cv::Mat(16, 16, CV_16UC1, cv::Scalar(1000)),
+            cv::Mat(16, 16, CV_8UC1, cv::Scalar(50)),
+            CameraModel(10.0, 10.0, 8.0, 8.0, CameraModel::opticalRotation(), 0.0, cv::Size(16, 16)));
+    cv::KeyPoint kpt(12.0f, 6.0f, 4.0f);
+    kpt.octave = 1;
+    data.setFeatures(std::vector<cv::KeyPoint>(1, kpt),
+            std::vector<cv::Point3f>(1, cv::Point3f(0.0f, 0.0f, 1.0f)), cv::Mat::ones(1, 32, CV_8UC1));
+
+    EXPECT_TRUE(util2d::decimateImages(data, 2));
+    EXPECT_EQ(data.imageRaw().size(), cv::Size(8, 8));
+    EXPECT_EQ(data.depthRaw().size(), cv::Size(8, 8));
+    EXPECT_EQ(data.depthConfidenceRaw().size(), cv::Size(8, 8));
+    ASSERT_EQ(data.cameraModels().size(), 1u);
+    EXPECT_DOUBLE_EQ(data.cameraModels()[0].fx(), 5.0);
+    EXPECT_EQ(data.cameraModels()[0].imageSize(), cv::Size(8, 8));
+    ASSERT_EQ(data.keypoints().size(), 1u);
+    EXPECT_FLOAT_EQ(data.keypoints()[0].pt.x, 6.0f);
+    EXPECT_FLOAT_EQ(data.keypoints()[0].pt.y, 3.0f);
+    EXPECT_FLOAT_EQ(data.keypoints()[0].size, 2.0f);
+    EXPECT_EQ(data.keypoints()[0].octave, 0) << "lowered by log2(2), never below 0";
+    EXPECT_EQ(data.keypoints3D().size(), 1u);
+    EXPECT_EQ(data.descriptors().rows, 1);
+
+    // A frame that can't be decimated exactly is left untouched
+    SensorData notExact(cv::Mat(8, 8, CV_8UC1), cv::Mat(8, 8, CV_16UC1),
+            CameraModel(10.0, 10.0, 4.0, 4.0, CameraModel::opticalRotation(), 0.0, cv::Size(8, 8)));
+    EXPECT_FALSE(util2d::decimateImages(notExact, 3));
+    EXPECT_EQ(notExact.imageRaw().size(), cv::Size(8, 8));
+    EXPECT_EQ(notExact.depthRaw().size(), cv::Size(8, 8));
+    EXPECT_DOUBLE_EQ(notExact.cameraModels()[0].fx(), 10.0);
+
+    // Nothing to decimate
+    EXPECT_TRUE(util2d::decimateImages(notExact, 1));
+    EXPECT_EQ(notExact.imageRaw().size(), cv::Size(8, 8));
+    SensorData noImage;
+    EXPECT_TRUE(util2d::decimateImages(noImage, 2));
+}
+
+TEST(Util2dTest, DecimateImagesStereo)
+{
+    StereoCameraModel model(10.0, 10.0, 8.0, 8.0, 0.1, CameraModel::opticalRotation(), cv::Size(16, 16));
+    SensorData data;
+    data.setStereoImage(cv::Mat(16, 16, CV_8UC1), cv::Mat(16, 16, CV_8UC1), std::vector<StereoCameraModel>{model});
+
+    EXPECT_TRUE(util2d::decimateImages(data, 2));
+    EXPECT_EQ(data.imageRaw().size(), cv::Size(8, 8));
+    EXPECT_EQ(data.depthOrRightRaw().size(), cv::Size(8, 8)) << "the right image is decimated like the left";
+    ASSERT_EQ(data.stereoCameraModels().size(), 1u);
+    EXPECT_DOUBLE_EQ(data.stereoCameraModels()[0].left().fx(), 5.0);
+    EXPECT_DOUBLE_EQ(data.stereoCameraModels()[0].baseline(), 0.1);
+}
+
+// A RealSense D435 at its defaults (1280x720 color, 848x480 depth) decimated by 4: the
+// depth is decimated by 4 too (see ExactDepthDecimation).
+TEST(Util2dTest, DecimateImagesD435)
+{
+    SensorData data(cv::Mat(720, 1280, CV_8UC3, cv::Scalar(10, 20, 30)), cv::Mat(480, 848, CV_16UC1, cv::Scalar(1000)),
+            CameraModel(900.0, 900.0, 640.0, 360.0, CameraModel::opticalRotation(), 0.0, cv::Size(1280, 720)));
+    ASSERT_TRUE(util2d::decimateImages(data, 4));
+    EXPECT_EQ(data.imageRaw().size(), cv::Size(320, 180));
+    EXPECT_EQ(data.depthRaw().size(), cv::Size(212, 120));
+    ASSERT_EQ(data.cameraModels().size(), 1u);
+    EXPECT_DOUBLE_EQ(data.cameraModels()[0].fx(), 225.0);
 }
 
 TEST(Util2dTest, InterpolateFloatDepthImage)
