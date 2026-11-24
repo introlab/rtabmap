@@ -3318,6 +3318,36 @@ TEST(MemoryTest, CreateSignaturePostDecimatesCompressedIntermediateNodeWhenItsDa
 	EXPECT_EQ(s->sensorData().cameraModels()[0].imageSize(), cv::Size(8, 8));
 }
 
+// Compressed images are uncompressed to be post-decimated even when no features are
+// extracted from them (Kp/MaxFeatures=-1): otherwise the full-size compressed images
+// were saved as they were, with calibrations scaled by the decimation.
+TEST(MemoryTest, CreateSignaturePostDecimatesCompressedImagesWithoutFeatureExtraction)
+{
+	ParametersMap params = defaultMemoryParams();
+	ASSERT_EQ(params.at(Parameters::kKpMaxFeatures()), "-1");
+	params[Parameters::kMemBinDataKept()] = "true";
+	params[Parameters::kMemImagePostDecimation()] = "2";
+	params[Parameters::kRtabmapImagesAlreadyRectified()] = "true"; // skip rectification
+	Memory memory(params);
+
+	const cv::Mat image(16, 16, CV_8UC1, cv::Scalar(64));
+	const cv::Mat depth(16, 16, CV_16UC1, cv::Scalar(1000));
+	const cv::Mat covariance = cv::Mat::eye(6, 6, CV_64FC1) * 0.01;
+	const CameraModel model(10.0, 10.0, 8.0, 8.0,
+			CameraModel::opticalRotation(), 0.0, cv::Size(16, 16));
+
+	SensorData data(compressImage2(image, ".png"), compressImage2(depth, ".png"), model);
+	ASSERT_TRUE(data.imageRaw().empty());
+	ASSERT_TRUE(memory.update(data, Transform(0, 0, 0, 0, 0, 0), covariance));
+	const Signature * s = memory.getSignature(memory.getLastSignatureId());
+	ASSERT_NE(s, nullptr);
+
+	ASSERT_EQ(s->sensorData().cameraModels().size(), 1u);
+	EXPECT_EQ(s->sensorData().cameraModels()[0].imageSize(), cv::Size(8, 8));
+	EXPECT_EQ(uncompressImage(s->sensorData().imageCompressed()).size(), cv::Size(8, 8));
+	EXPECT_EQ(uncompressImage(s->sensorData().depthOrRightCompressed()).size(), cv::Size(8, 8));
+}
+
 // A compressed depth confidence has to be uncompressed with the images to be decimated
 // with the depth, or the original full-size confidence would be saved next to the
 // decimated depth (for an intermediate node as for any other node).

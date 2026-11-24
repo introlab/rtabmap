@@ -5422,17 +5422,18 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 	
 	if(!isIntermediateNode)
 	{
-		// We need raw images if we need to extract features and/or do tag detection
+		// We need raw images if we need to extract features, to detect markers,
+		// to rotate or post-decimate the images saved, and/or to rectify them
 		bool needRawImages = (_feature2D->getMaxFeatures() >= 0 &&
 			(!_useOdometryFeatures ||
 			 data.keypoints().empty() ||
 			 (int)data.keypoints().size() != data.descriptors().rows ||
 			 data.descriptors().empty() ||
-			 _detectMarkers ||
-			 _rotateImagesUpsideUp ||
-			 _imagePostDecimation > 1 ||
 			 (_createOccupancyGrid && _localMapMaker->isGridFromDepth() &&
 			  data.gridCellSize() == 0.0f))) ||
+			_detectMarkers ||
+			_rotateImagesUpsideUp ||
+			(_imagePostDecimation > 1 && this->isBinDataKept()) ||
 			// Images rectified below: stereo always, RGB-D unless only its features are
 			(!_imagesAlreadyRectified && !(_rectifyOnlyFeatures && data.stereoCameraModels().empty()));
 
