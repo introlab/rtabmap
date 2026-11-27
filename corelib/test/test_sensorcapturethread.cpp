@@ -176,10 +176,13 @@ private:
 // Constructor Tests
 
 // Collects the data of the SensorEvents posted by the thread (dispatched on the
-// UEventsManager thread, read from the test thread: hence the mutex).
+// UEventsManager thread, read from the test thread: hence the mutex). Only the events
+// of the sensor with the given serial are kept: the dispatching being asynchronous,
+// events posted by a thread of a previous test can still be on their way.
 class SensorEventCollector : public UEventsHandler
 {
 public:
+	explicit SensorEventCollector(const std::string & serial) : serial_(serial) {}
 	std::vector<SensorData> snapshot() const
 	{
 		UScopeMutex lock(mutex_);
@@ -196,7 +199,8 @@ protected:
 		if(event->getClassName().compare("SensorEvent") == 0)
 		{
 			SensorEvent * sensorEvent = (SensorEvent*)event;
-			if(sensorEvent->getCode() == SensorEvent::kCodeData)
+			if(sensorEvent->getCode() == SensorEvent::kCodeData &&
+			   sensorEvent->info().cameraName == serial_)
 			{
 				UScopeMutex lock(mutex_);
 				datas_.push_back(sensorEvent->data());
@@ -205,6 +209,7 @@ protected:
 		return false;
 	}
 private:
+	std::string serial_;
 	mutable UMutex mutex_;
 	std::vector<SensorData> datas_;
 };
@@ -642,6 +647,7 @@ TEST(SensorCaptureThreadTest, DeskewsAnOrganizedTimedScanWithTheOdomSensor)
 		}
 	}
 	MockLidar * lidar = new MockLidar();
+	lidar->setSerial("DESKEW_TEST_LIDAR");
 	lidar->setScan(LaserScan(points, rings*columns, 0.0f, LaserScan::kXYZIT), /*scanStamp=*/100.0);
 	lidar->init();
 	MockCamera * odomSensor = new MockCamera();
@@ -652,7 +658,7 @@ TEST(SensorCaptureThreadTest, DeskewsAnOrganizedTimedScanWithTheOdomSensor)
 	SensorCaptureThread thread(lidar, odomSensor, 0.0, 1.0f, 0.1);
 	thread.setScanParameters(false, 1, 0.0f, 0.0f, 0.0f, 0, 0.0f, 0.0f, /*deskewing=*/true);
 
-	SensorEventCollector collector;
+	SensorEventCollector collector(lidar->getSerial());
 	UEventsManager::addHandler(&collector);
 	thread.start();
 	UTimer timer;
@@ -704,7 +710,9 @@ TEST(SensorCaptureThreadTest, FrameReadWhileKilledIsPosted)
 	ASSERT_TRUE(camera->init());
 	SensorCaptureThread thread(camera);
 
-	SensorEventCollector collector;
+	// Not the serial of the mock sensors of the other tests
+	ASSERT_EQ(camera->getSerial().find("MOCK_"), std::string::npos);
+	SensorEventCollector collector(camera->getSerial());
 	UEventsManager::addHandler(&collector);
 	const int cycles = 5;
 	for(int i=0; i<cycles; ++i)
