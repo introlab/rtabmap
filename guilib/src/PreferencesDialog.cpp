@@ -104,6 +104,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UEventsManager.h>
 #include "rtabmap/utilite/UPlot.h"
@@ -5769,24 +5770,23 @@ void PreferencesDialog::updatePredictionPlot()
 	QVector<qreal> dataX((values.size()-2)*2 + 1);
 	QVector<qreal> dataY((values.size()-2)*2 + 1);
 	double value;
-	// Summed as PredictionModel does it, into a float: that is the sum the filter decides on,
-	// and under 1 of it is what has normalize() spread the difference over every other
-	// location. A double would land a few 1e-8 from a float on a list like the default one,
-	// and say 1 where the filter says otherwise.
-	float sum = 0.0f;
+	// Parsed and summed as bayes::PredictionModel::set() does it (uStr2Double, in double), so
+	// that the sum shown is the one the filter decides on: under 1, it spreads the difference
+	// over every other location and ignores Bayes/SparsePrediction.
+	std::vector<double> parsedValues(values.size());
 	int lvl = 1;
 	bool ok = false;
 	bool error = false;
 	int loopClosureIndex = (dataX.size()-1)/2;
 	for(int i=0; i<values.size(); ++i)
 	{
-		value = values.at(i).toDouble(&ok);
+		values.at(i).toDouble(&ok);
 		if(!ok)
 		{
 			UERROR("Error parsing prediction : \"%s\"", values.at(i).toStdString().c_str());
 			error = true;
 		}
-		sum+=value;
+		value = parsedValues[i] = uStr2Double(values.at(i).toStdString());
 		if(i==0)
 		{
 			//do nothing
@@ -5806,12 +5806,19 @@ void PreferencesDialog::updatePredictionPlot()
 		}
 	}
 
-	_ui->label_prediction_sum->setNum(sum);
+	const double sum = uSum(parsedValues);
+	// With enough digits to not look like 1 when it is not exactly 1
+	QString sumText("1");
+	for(int precision=8; precision<=17 && sumText == "1" && sum != 1.0; ++precision)
+	{
+		sumText = QString::number(sum, 'g', precision);
+	}
+	_ui->label_prediction_sum->setText(sumText);
 	if(error)
 	{
 		_ui->label_prediction_sum->setText(QString("<font color=#FF0000>") + _ui->label_prediction_sum->text() + "</font>");
 	}
-	else if(sum == 1.0f)
+	else if(sum == 1.0)
 	{
 		_ui->label_prediction_sum->setText(QString("<font color=#00FF00>") + _ui->label_prediction_sum->text() + "</font>");
 	}

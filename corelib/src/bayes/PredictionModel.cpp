@@ -49,7 +49,7 @@ bool PredictionModel::set(const std::string & prediction)
 		bool valid = true;
 		for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
 		{
-			tmpValues[i] = uStr2Float((*iter).c_str());
+			tmpValues[i] = uStr2Double((*iter).c_str());
 			//UINFO("%d=%e", i, tmpValues[i]);
 			if(tmpValues[i] < 0.0 || tmpValues[i]>1.0)
 			{
@@ -69,7 +69,7 @@ bool PredictionModel::set(const std::string & prediction)
 			set = true;
 		}
 	}
-	total_ = 0.0f;
+	total_ = 0.0;
 	for(unsigned int j=0; j<values_.size(); ++j)
 	{
 		total_ += values_[j];
