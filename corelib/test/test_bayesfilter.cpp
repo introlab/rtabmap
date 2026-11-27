@@ -1798,3 +1798,52 @@ TEST_F(BayesFilterMemoryFixture, GeneratePredictionRejectsALocationInShortTermMe
 	ids.push_back(idInStm);
 	EXPECT_THROW(filter.generatePrediction(memory_, ids), UException);
 }
+
+// A list summing to 1 in decimal must sum to 1, so that the prediction is kept sparse when
+// asked for, and that the matrix does not get a rounding error spread over every zero of its
+// columns. Parsed as floats and added into a float, this one summed to 0.99999994.
+TEST_P(BayesFilterMemoryModeFixture, PredictionSummingToOneWithFloatRoundingIsNotSpread)
+{
+	addChain(14); // deeper than the 9 levels of the model, so some locations are out of reach
+
+	ParametersMap params = modeParams();
+	params.insert(ParametersPair(Parameters::kBayesPredictionLC(), "0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1e-6"));
+	BayesFilter filter(params);
+
+	const std::vector<int> ids = getBayesIds();
+	ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(ids)));
+	EXPECT_EQ(filter.isPredictionSparse(), GetParam()) << "fell back to the matrix";
+
+	// The column of the chain start: the locations beyond the depth of the model stay at 0.
+	const cv::Mat prediction = filter.generatePrediction(memory_, ids);
+	ASSERT_EQ(prediction.cols, (int)ids.size());
+	const int depth = (int)filter.getPredictionLC().size() - 2;
+	ASSERT_GT((int)ids.size(), depth + 2);
+	for(int row = depth + 2; row < prediction.rows; ++row)
+	{
+		EXPECT_EQ(predictionAt(prediction, row, 1), 0.0f) << "row " << row;
+	}
+}
+
+// The prediction is kept sparse when the values sum to 1 or more, and held as a matrix with
+// the difference spread when they sum to less: the sum is the one the GUI shows (in double).
+TEST_F(BayesFilterMemoryFixture, PredictionKeptSparseWhenSumIsNotUnderOne)
+{
+	addChain(4);
+	const std::vector<int> ids = getBayesIds();
+	const std::vector<std::pair<std::string, bool> > cases = {
+		{"0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1e-6", true}, // 1 (0.99999994 in float)
+		{Parameters::defaultBayesPredictionLC(), true}, // 1.00000005
+		{"0.1 0.36 0.30 0.16 0.062 0.0151 0.00255 0.000324 2.5e-05 1.3e-06 4.8e-08 1.2e-09 1.9e-11 2.2e-13 1.7e-15 8.5e-18 2.9e-20 6.9e-23", true}, // previous default, 1.00000035
+		{"0.6 0.3 0.09999", false},               // 0.99999
+		{kPredictionSumBelowOne, false}};         // 0.6
+	for(const std::pair<std::string, bool> & c : cases)
+	{
+		ParametersMap params;
+		params.insert(ParametersPair(Parameters::kBayesSparsePrediction(), "true"));
+		params.insert(ParametersPair(Parameters::kBayesPredictionLC(), c.first));
+		BayesFilter filter(params);
+		ASSERT_TRUE(filter.computePosterior(memory_, uniformLikelihood(ids)));
+		EXPECT_EQ(filter.isPredictionSparse(), c.second) << c.first;
+	}
+}

@@ -86,7 +86,7 @@ public:
 	/// location, which fills every zero of a column and leaves nothing sparse to keep.
 	bool spreadsOverAllLocations() const {return total_ < 1;}
 
-	float total() const {return total_;}
+	double total() const {return total_;}
 	bool valid() const {return values_.size() >= 2;}
 
 	float virtualPlacePrior() const {return virtualPlacePrior_;}
@@ -115,7 +115,7 @@ public:
 
 private:
 	std::vector<double> values_;
-	float total_ = 0.0f;
+	double total_ = 0.0;
 	float epsilon_ = 0.0f;          ///< Smallest probability of the model, under which normalize() drops a value.
 	float virtualPlacePrior_ = 0.0f;
 };
