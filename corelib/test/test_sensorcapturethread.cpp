@@ -689,11 +689,13 @@ TEST(SensorCaptureThreadTest, DeskewsAnOrganizedTimedScanWithTheOdomSensor)
 // resume, and shift-click on pause steps by restarting it and killing it half a
 // frame period later: the kill arrives while takeData() waits for the frame rate.
 // The frame read then must still be posted, otherwise it would be skipped (here,
-// as each cycle is killed during that wait, no frame would ever be posted).
+// as each cycle is killed during that wait, no frame would ever be posted). A
+// slow machine can read more than one frame per cycle: every frame read must be
+// posted, in order.
 TEST(SensorCaptureThreadTest, FrameReadWhileKilledIsPosted)
 {
 	rtabmap::test::TempDir dir("sensorcapturethread_images");
-	const int images = 10;
+	const int images = 20; // more than the frames read, even at 2 per cycle
 	for(int i=1; i<=images; ++i)
 	{
 		ASSERT_TRUE(cv::imwrite(uFormat("%s/%02d.png", dir.path().c_str(), i), cv::Mat(8, 8, CV_8UC1, cv::Scalar(i))));
@@ -711,18 +713,26 @@ TEST(SensorCaptureThreadTest, FrameReadWhileKilledIsPosted)
 		uSleep(50); // half the period, like a shift-click step
 		thread.join(true);
 	}
+	// The frames are numbered from 1 as they are read: the next one tells how many
+	// the thread read.
+	const SensorData next = camera->takeData();
+	ASSERT_FALSE(next.imageRaw().empty());
+	const int read = next.id() - 1;
+	ASSERT_GE(read, cycles); // each cycle reads at least the frame it is killed on
+
 	// events are dispatched asynchronously
 	UTimer timer;
-	while(timer.elapsed() < 3.0 && (int)collector.size() < cycles)
+	while(timer.elapsed() < 3.0 && (int)collector.size() < read)
 	{
 		uSleep(5);
 	}
+	uSleep(50); // let any unexpected extra event arrive
 	UEventsManager::removeHandler(&collector);
 
 	const std::vector<SensorData> datas = collector.snapshot();
-	ASSERT_EQ((int)datas.size(), cycles);
+	ASSERT_EQ((int)datas.size(), read) << "a frame read was not posted";
 	for(size_t i=0; i<datas.size(); ++i)
 	{
-		EXPECT_EQ(datas[i].id(), datas[0].id()+(int)i) << "a frame was skipped";
+		EXPECT_EQ(datas[i].id(), (int)i+1) << "a frame was skipped";
 	}
 }
