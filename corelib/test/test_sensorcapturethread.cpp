@@ -16,7 +16,11 @@
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UThread.h>
+#include <rtabmap/core/camera/CameraImages.h>
+#include <rtabmap/utilite/UStl.h>
 #include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include "TestUtils.h"
 
 using namespace rtabmap;
 
@@ -172,10 +176,13 @@ private:
 // Constructor Tests
 
 // Collects the data of the SensorEvents posted by the thread (dispatched on the
-// UEventsManager thread, read from the test thread: hence the mutex).
+// UEventsManager thread, read from the test thread: hence the mutex). Only the events
+// of the sensor with the given serial are kept: the dispatching being asynchronous,
+// events posted by a thread of a previous test can still be on their way.
 class SensorEventCollector : public UEventsHandler
 {
 public:
+	explicit SensorEventCollector(const std::string & serial) : serial_(serial) {}
 	std::vector<SensorData> snapshot() const
 	{
 		UScopeMutex lock(mutex_);
@@ -192,7 +199,8 @@ protected:
 		if(event->getClassName().compare("SensorEvent") == 0)
 		{
 			SensorEvent * sensorEvent = (SensorEvent*)event;
-			if(sensorEvent->getCode() == SensorEvent::kCodeData)
+			if(sensorEvent->getCode() == SensorEvent::kCodeData &&
+			   sensorEvent->info().cameraName == serial_)
 			{
 				UScopeMutex lock(mutex_);
 				datas_.push_back(sensorEvent->data());
@@ -201,6 +209,7 @@ protected:
 		return false;
 	}
 private:
+	std::string serial_;
 	mutable UMutex mutex_;
 	std::vector<SensorData> datas_;
 };
@@ -638,6 +647,7 @@ TEST(SensorCaptureThreadTest, DeskewsAnOrganizedTimedScanWithTheOdomSensor)
 		}
 	}
 	MockLidar * lidar = new MockLidar();
+	lidar->setSerial("DESKEW_TEST_LIDAR");
 	lidar->setScan(LaserScan(points, rings*columns, 0.0f, LaserScan::kXYZIT), /*scanStamp=*/100.0);
 	lidar->init();
 	MockCamera * odomSensor = new MockCamera();
@@ -648,7 +658,7 @@ TEST(SensorCaptureThreadTest, DeskewsAnOrganizedTimedScanWithTheOdomSensor)
 	SensorCaptureThread thread(lidar, odomSensor, 0.0, 1.0f, 0.1);
 	thread.setScanParameters(false, 1, 0.0f, 0.0f, 0.0f, 0, 0.0f, 0.0f, /*deskewing=*/true);
 
-	SensorEventCollector collector;
+	SensorEventCollector collector(lidar->getSerial());
 	UEventsManager::addHandler(&collector);
 	thread.start();
 	UTimer timer;
@@ -679,4 +689,58 @@ TEST(SensorCaptureThreadTest, DeskewsAnOrganizedTimedScanWithTheOdomSensor)
 		xMax = std::max(xMax, scan.point(i)[0]);
 	}
 	EXPECT_NEAR(xMax - xMin, 0.05f, 5e-3f);
+}
+
+// Pausing in the GUI kills the capture thread (join(true)) and restarts it on
+// resume, and shift-click on pause steps by restarting it and killing it half a
+// frame period later: the kill arrives while takeData() waits for the frame rate.
+// The frame read then must still be posted, otherwise it would be skipped (here,
+// as each cycle is killed during that wait, no frame would ever be posted). A
+// slow machine can read more than one frame per cycle: every frame read must be
+// posted, in order.
+TEST(SensorCaptureThreadTest, FrameReadWhileKilledIsPosted)
+{
+	rtabmap::test::TempDir dir("sensorcapturethread_images");
+	const int images = 20; // more than the frames read, even at 2 per cycle
+	for(int i=1; i<=images; ++i)
+	{
+		ASSERT_TRUE(cv::imwrite(uFormat("%s/%02d.png", dir.path().c_str(), i), cv::Mat(8, 8, CV_8UC1, cv::Scalar(i))));
+	}
+	CameraImages * camera = new CameraImages(dir.path(), 10.0f); // 100 ms period
+	ASSERT_TRUE(camera->init());
+	SensorCaptureThread thread(camera);
+
+	// Not the serial of the mock sensors of the other tests
+	ASSERT_EQ(camera->getSerial().find("MOCK_"), std::string::npos);
+	SensorEventCollector collector(camera->getSerial());
+	UEventsManager::addHandler(&collector);
+	const int cycles = 5;
+	for(int i=0; i<cycles; ++i)
+	{
+		thread.start();
+		uSleep(50); // half the period, like a shift-click step
+		thread.join(true);
+	}
+	// The frames are numbered from 1 as they are read: the next one tells how many
+	// the thread read.
+	const SensorData next = camera->takeData();
+	ASSERT_FALSE(next.imageRaw().empty());
+	const int read = next.id() - 1;
+	ASSERT_GE(read, cycles); // each cycle reads at least the frame it is killed on
+
+	// events are dispatched asynchronously
+	UTimer timer;
+	while(timer.elapsed() < 3.0 && (int)collector.size() < read)
+	{
+		uSleep(5);
+	}
+	uSleep(50); // let any unexpected extra event arrive
+	UEventsManager::removeHandler(&collector);
+
+	const std::vector<SensorData> datas = collector.snapshot();
+	ASSERT_EQ((int)datas.size(), read) << "a frame read was not posted";
+	for(size_t i=0; i<datas.size(); ++i)
+	{
+		EXPECT_EQ(datas[i].id(), (int)i+1) << "a frame was skipped";
+	}
 }

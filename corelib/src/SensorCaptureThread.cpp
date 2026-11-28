@@ -540,18 +540,20 @@ void SensorCaptureThread::mainLoop()
 		info.odomPose.setNull();
 	}
 
-	if(this->isKilled())
-	{
-		// A kill was requested (e.g. while we were blocked capturing this frame): don't
-		// publish anything so we never deliver events to handlers that are being torn down.
-	}
-	else if(!data.imageCompressed().empty() || !data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
+	// Note: the data is published even if a kill was requested while we were blocked
+	// capturing it (e.g., the GUI paused or stopped): it is already taken from the
+	// sensor (or read from the database), it would be skipped otherwise.
+	if(!data.imageCompressed().empty() || !data.imageRaw().empty() || !data.laserScanRaw().empty() || (dynamic_cast<DBReader*>(_camera) != 0 && data.id()>0)) // intermediate nodes could not have image set
 	{
 		_failedCaptures = 0;
 		postUpdate(&data, &info);
 		info.cameraName = _lidar?_lidar->getSerial():_camera->getSerial();
 		info.timeTotal = totalTime.ticks();
 		this->post(new SensorEvent(data, info));
+	}
+	else if(this->isKilled())
+	{
+		// Killed while capturing, without data: not the end of the stream.
 	}
 	else if(++_failedCaptures < 3 &&
 			dynamic_cast<DBReader*>(_camera) == 0 &&
